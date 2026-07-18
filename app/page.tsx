@@ -1,26 +1,22 @@
+import { Header } from "@/components/Header/Header";
+import { HeroBanner } from "@/components/HeroBanner/HeroBanner";
+
 export default function Home() {
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "40px",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <div style={{ textAlign: "center" }}>
-        <p style={{ marginBottom: "12px" }}>Persi Materiais</p>
+    <>
+      <Header />
 
-        <h1 style={{ fontSize: "48px", marginBottom: "16px" }}>
-          Nova loja em desenvolvimento
+      <HeroBanner />
+
+      <main className="mx-auto max-w-7xl px-4 py-10">
+        <h1 className="text-3xl font-bold text-[#0c2d72]">
+          Persi Materiais
         </h1>
 
-        <p style={{ fontSize: "18px", maxWidth: "600px" }}>
-          Projeto Next.js da Persi — Revisão 0.1
+        <p className="mt-3 text-slate-600">
+          Nova loja em desenvolvimento — Revisão 0.1
         </p>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }
