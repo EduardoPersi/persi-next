@@ -21,10 +21,10 @@
   --persi-border-strong: #cbd5e1;
 
   /* Radius */
-  --persi-radius-sm: 8px;
-  --persi-radius-md: 10px;
-  --persi-radius-lg: 14px;
-  --persi-radius-xl: 18px;
+  --persi-radius-sm: 6px;
+  --persi-radius-md: 6px;
+  --persi-radius-lg: 6px;
+  --persi-radius-xl: 6px;
   --persi-radius-pill: 999px;
 
   /* Shadows */
@@ -113,6 +113,42 @@ svg {
 img {
   max-width: 100%;
   height: auto;
+}
+
+.product-card-primary-image,
+.product-card-secondary-image {
+  transition:
+    opacity 300ms var(--persi-ease),
+    transform 300ms var(--persi-ease);
+}
+
+.product-card-secondary-image {
+  opacity: 0;
+}
+
+.product-card-image-unavailable {
+  opacity: 0.5;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .product-card-image-link:hover
+    .product-card-primary-image.product-card-has-secondary-image {
+    opacity: 0;
+  }
+
+  .product-card-image-link:hover .product-card-secondary-image {
+    opacity: 1;
+  }
+
+  .product-card-image-link:hover
+    .product-card-secondary-image.product-card-image-unavailable {
+    opacity: 0.5;
+  }
+
+  .product-card-image-link:hover
+    .product-card-primary-image:not(.product-card-has-secondary-image) {
+    transform: scale(1.03);
+  }
 }
 
 ::selection {

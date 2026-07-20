@@ -1,19 +1,21 @@
 "use client";
 
+import Image from "next/image";
 import { ShoppingCart, X } from "lucide-react";
 import { useEffect } from "react";
-import { Drawer } from "./Drawer";
+import { useCart } from "@/hooks/useCart";
 
-type MiniCartProps = {
-  open: boolean;
-  onClose: () => void;
-};
+export function MiniCart() {
+  const { cart, isOpen: open, closeCart, error } = useCart();
+  const formatter = new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: cart?.currencyCode ?? "BRL",
+  });
 
-export function MiniCart({ open, onClose }: MiniCartProps) {
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") closeCart();
+    }
 
     if (open) {
       document.body.style.overflow = "hidden";
@@ -24,27 +26,33 @@ export function MiniCart({ open, onClose }: MiniCartProps) {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, onClose]);
+  }, [closeCart, open]);
 
   return (
     <>
-      <div
-        onClick={onClose}
+      <button
+        type="button"
+        onClick={closeCart}
+        aria-label="Fechar carrinho"
         className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 ${
-          open ? "opacity-100 visible" : "opacity-0 invisible"
+          open ? "visible opacity-100" : "invisible opacity-0"
         }`}
       />
 
       <aside
-        className={`fixed right-0 top-0 z-50 flex h-screen w-full max-w-[360px]
-        flex-col bg-white shadow-2xl transition-transform duration-300
-        ${open ? "translate-x-0" : "translate-x-full"}`}
+        aria-label="Mini carrinho"
+        aria-hidden={!open}
+        className={`fixed right-0 top-0 z-50 flex h-screen w-full max-w-[360px] flex-col bg-white shadow-2xl transition-transform duration-300 ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
       >
         <header className="flex items-center justify-between border-b px-6 py-5">
-          <h2 className="text-xl font-bold">Carrinho (0)</h2>
-
+          <h2 className="text-xl font-bold">
+            Carrinho ({cart?.itemsCount ?? 0})
+          </h2>
           <button
-            onClick={onClose}
+            type="button"
+            onClick={closeCart}
             className="rounded-md p-2 transition hover:bg-slate-100"
             aria-label="Fechar carrinho"
           >
@@ -52,37 +60,67 @@ export function MiniCart({ open, onClose }: MiniCartProps) {
           </button>
         </header>
 
-        <main className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-          <ShoppingCart
-            size={72}
-            strokeWidth={1.4}
-            className="text-slate-300"
-          />
+        {cart?.items.length ? (
+          <main className="flex-1 space-y-4 overflow-y-auto p-6">
+            {cart.items.map((item) => (
+              <article key={item.key} className="flex gap-3">
+                {item.image ? (
+                  <Image
+                    src={item.image.src}
+                    alt={item.image.alt}
+                    width={72}
+                    height={72}
+                    className="h-[72px] w-[72px] shrink-0 rounded-md border border-slate-200 object-contain"
+                  />
+                ) : null}
+                <div className="min-w-0">
+                  <h3 className="line-clamp-2 text-sm font-semibold">
+                    {item.name}
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {item.quantity} × {formatter.format(item.price)}
+                  </p>
+                </div>
+              </article>
+            ))}
+          </main>
+        ) : (
+          <main className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+            <ShoppingCart
+              size={72}
+              strokeWidth={1.4}
+              className="text-slate-300"
+            />
+            <h3 className="mt-6 text-lg font-semibold">
+              Seu carrinho está vazio
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              Adicione produtos ao carrinho para visualizar o subtotal e
+              finalizar sua compra.
+            </p>
+            <button
+              type="button"
+              onClick={closeCart}
+              className="mt-8 w-full rounded-md bg-[#0c2d72] py-3 font-semibold text-white transition hover:bg-[#17439f]"
+            >
+              CONTINUAR COMPRANDO
+            </button>
+          </main>
+        )}
 
-          <h3 className="mt-6 text-lg font-semibold">
-            Seu carrinho está vazio
-          </h3>
-
-          <p className="mt-3 text-sm leading-6 text-slate-500">
-            Adicione produtos ao carrinho para visualizar o subtotal e finalizar
-            sua compra.
+        {error ? (
+          <p className="px-6 pb-3 text-sm text-red-700" role="status">
+            {error}
           </p>
-
-          <button
-            onClick={onClose}
-            className="mt-8 w-full rounded-md bg-[#0c2d72] py-3 font-semibold text-white transition hover:bg-[#17439f]"
-          >
-            CONTINUAR COMPRANDO
-          </button>
-        </main>
+        ) : null}
 
         <footer className="border-t p-6">
           <div className="mb-4 flex items-center justify-between">
             <span className="text-sm text-slate-600">Subtotal</span>
-
-            <strong className="text-lg">R$ 0,00</strong>
+            <strong className="text-lg">
+              {formatter.format(cart?.subtotal ?? 0)}
+            </strong>
           </div>
-
           <button
             disabled
             className="w-full cursor-not-allowed rounded-md bg-slate-200 py-3 font-semibold text-slate-500"

@@ -1,7 +1,11 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
+
 import { MobileMenu } from "./MobileMenu";
 import { MiniCart } from "./MiniCart";
+import { useCart } from "@/hooks/useCart";
 import { useState } from "react";
 import {
   Heart,
@@ -24,7 +28,7 @@ const menuItems = [
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [cartOpen, setCartOpen] = useState(false);
+  const { cart, openCart } = useCart();
 
   return (
     <header>
@@ -55,13 +59,19 @@ export function Header() {
               {menuOpen ? <X size={27} /> : <Menu size={27} />}
             </button>
 
-            {/* Logo temporário */}
-            <a
-              href="#"
-              className="text-3xl font-semibold tracking-tight text-[#ff6a00] sm:text-4xl lg:text-5xl"
+            <Link
+              href="/"
+              aria-label="Ir para a página inicial da Persi Materiais"
             >
-              Persi
-            </a>
+              <Image
+                src="/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas.webp"
+                alt="Persi Materiais Elétricos, Hidráulicos e Ferramentas"
+                width={130}
+                height={53}
+                priority
+                className="h-auto w-[130px] max-w-full object-contain"
+              />
+            </Link>
 
             {/* Busca desktop */}
             <form className="hidden flex-1 overflow-hidden rounded-md bg-white md:flex">
@@ -107,21 +117,21 @@ export function Header() {
   <a
     href="#"
     aria-label="Favoritos"
-    className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/30 transition hover:bg-white/10 sm:flex"
+    className="hidden h-10 w-10 items-center justify-center p-2 transition hover:text-[#ff6a00] sm:flex"
   >
     <Heart size={24} />
   </a>
 
   <button
   type="button"
-  onClick={() => setCartOpen(true)}
+  onClick={openCart}
   aria-label="Carrinho"
-  className="relative flex h-10 w-10 items-center justify-center rounded-full border border-white/30 transition hover:bg-white/10"
+  className="relative flex h-10 w-10 items-center justify-center p-2 transition hover:text-white/80"
 >
-  <ShoppingCart size={24} />
+  <ShoppingCart className="h-7 w-7" />
 
-  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[11px] font-bold text-[#0c2d72]">
-    0
+  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff6a00] px-1 text-[10px] font-bold leading-none text-white">
+    {cart?.itemsCount ?? 0}
   </span>
 </button>
 </nav>
@@ -176,10 +186,7 @@ export function Header() {
   open={menuOpen}
   onClose={() => setMenuOpen(false)}
 />
-<MiniCart
-  open={cartOpen}
-  onClose={() => setCartOpen(false)}
-/>
+<MiniCart />
     </header>
   );
 }
