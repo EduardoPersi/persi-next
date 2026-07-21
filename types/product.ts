@@ -49,8 +49,11 @@ export interface Product {
   slug: string;
   type?: string;
   name: string;
+  dateCreated?: string;
+  totalSales?: number;
   permalink: string;
   sku: string;
+  ean?: string | null;
   shortDescription: string;
   description: string;
   price: number;

@@ -1,25 +1,34 @@
 "use client";
 
+import clsx from "clsx";
+
 interface ProductQuantityProps {
   value: number;
   max?: number;
   onChange: (quantity: number) => void;
+  fullWidthOnMobile?: boolean;
 }
 
 export function ProductQuantity({
   value,
   max,
   onChange,
+  fullWidthOnMobile = true,
 }: ProductQuantityProps) {
   const canIncrease = max === undefined || value < max;
 
   return (
-    <div>
+    <div className={clsx(fullWidthOnMobile ? "w-full" : "w-auto", "sm:w-auto")}>
       <span id="product-quantity-label" className="mb-2 block text-sm font-semibold text-slate-800">
         Quantidade
       </span>
       <div
-        className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1"
+        className={clsx(
+          "items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 sm:inline-flex sm:w-auto sm:justify-start",
+          fullWidthOnMobile
+            ? "flex w-full justify-between"
+            : "inline-flex w-auto justify-start",
+        )}
         role="group"
         aria-labelledby="product-quantity-label"
       >

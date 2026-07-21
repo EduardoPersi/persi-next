@@ -108,7 +108,7 @@ export function SubcategoryCarousel({
 
   return (
     <section
-      className="group/subcategories relative mt-8"
+      className="group/subcategories relative mt-4 sm:mt-6 lg:mt-8"
       aria-label="Selecionar subcategoria"
       aria-busy={isPending}
       onFocusCapture={pauseAutoplay}
@@ -177,7 +177,7 @@ export function SubcategoryCarousel({
         onResize={updateOverflow}
         onLock={() => setHasOverflow(false)}
         onUnlock={() => setHasOverflow(true)}
-        className="pb-7!"
+        className="pb-5! sm:pb-7!"
       >
         {items.map((item) => {
           const isSelected =

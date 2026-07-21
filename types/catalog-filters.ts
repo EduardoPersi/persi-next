@@ -22,5 +22,6 @@ export interface CatalogFilterData {
   inStockCount: number;
   onSaleAvailable: boolean;
   brands: CatalogFilterOption[];
+  categories?: CatalogFilterOption[];
   attributes: CatalogAttributeFilter[];
 }

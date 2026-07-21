@@ -116,7 +116,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     <>
       <Header />
       <RecentlyViewedTracker slug={product.slug} />
-      <main className="py-6 sm:py-8 lg:py-10">
+      <main className="pb-6 pt-3 sm:pb-8 sm:pt-4 lg:pb-10 lg:pt-5">
         <Container>
           <nav aria-label="Breadcrumb">
             <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 sm:text-sm">
@@ -152,7 +152,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </ol>
           </nav>
 
-          <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:gap-12">
+          <div className="mt-4 grid min-w-0 gap-8 lg:grid-cols-2 lg:gap-12">
             <ProductGallery
               images={product.images}
               productName={product.name}

@@ -18,6 +18,7 @@ export interface CategoryFilterValues {
   availability?: string;
   promotion?: string;
   brand?: string;
+  category?: string;
   subcategory?: string;
   order?: string;
   attributes?: Record<string, string>;
@@ -27,6 +28,7 @@ interface CategoryFiltersProps {
   pathname: string;
   values: CategoryFilterValues;
   filterData: CatalogFilterData;
+  preservedParams?: Record<string, string>;
   mode?: "mobile" | "desktop" | "both";
 }
 
@@ -54,6 +56,7 @@ function FilterForm({
   pathname,
   values,
   filterData,
+  preservedParams = {},
   onSubmit,
 }: FilterFormProps) {
   const router = useRouter();
@@ -96,12 +99,17 @@ function FilterForm({
 
   function handleClear() {
     onSubmit?.();
+    const params = new URLSearchParams(preservedParams);
+    const query = params.toString();
     startTransition(() => {
-      router.push(pathname, { scroll: false });
+      router.push(query ? `${pathname}?${query}` : pathname, {
+        scroll: false,
+      });
     });
   }
 
   const selectedBrands = splitSelected(values.brand);
+  const selectedCategories = splitSelected(values.category);
   const priceFloor = Math.floor(filterData.minPrice);
   const priceCeiling = Math.max(
     Math.ceil(filterData.maxPrice),
@@ -127,6 +135,9 @@ function FilterForm({
 
   return (
     <form action={pathname} method="get" onSubmit={handleSubmit}>
+      {Object.entries(preservedParams).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
       {values.order ? (
         <input type="hidden" name="ordem" value={values.order} />
       ) : null}
@@ -193,6 +204,42 @@ function FilterForm({
           </button>
         </div>
       </fieldset>
+
+      {(filterData.categories?.length ?? 0) > 0 ? (
+        <fieldset className="border-b border-slate-200 py-7">
+          <legend className="text-[13px] font-medium text-slate-900">
+            Categoria
+          </legend>
+          <div className="mt-3 max-h-44 space-y-1 overflow-y-auto pr-1">
+            {filterData.categories?.map((category) => (
+              <label
+                key={category.id}
+                className="flex min-h-8 cursor-pointer items-center gap-2 rounded-[6px] px-1 text-sm text-slate-600 transition-colors hover:bg-slate-50 focus-within:ring-2 focus-within:ring-[#0c2d72]/20"
+              >
+                <input
+                  type="checkbox"
+                  name="categoria"
+                  value={category.id}
+                  defaultChecked={
+                    selectedCategories.has(String(category.id)) ||
+                    selectedCategories.has(category.slug)
+                  }
+                  onChange={(event) =>
+                    event.currentTarget.form?.requestSubmit()
+                  }
+                  className="h-3.5 w-3.5 shrink-0 accent-[#0c2d72]"
+                />
+                <span className="min-w-0 flex-1 truncate">
+                  {category.name}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] leading-none text-slate-400">
+                  ({category.count})
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
 
       {filterData.brands.length > 0 ? (
         <fieldset className="border-b border-slate-200 py-7">
@@ -395,8 +442,22 @@ function FilterForm({
 export function CategoryFilters(props: CategoryFiltersProps) {
   const { mode = "both" } = props;
   const [isOpen, setIsOpen] = useState(false);
+  const [isOpenButtonVisible, setIsOpenButtonVisible] = useState(true);
   const openButtonRef = useRef<HTMLButtonElement>(null);
+  const floatingButtonRef = useRef<HTMLButtonElement>(null);
+  const lastOpenButtonRef = useRef<HTMLButtonElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (mode === "desktop" || !openButtonRef.current) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsOpenButtonVisible(entry.isIntersecting);
+    });
+
+    observer.observe(openButtonRef.current);
+    return () => observer.disconnect();
+  }, [mode]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -408,7 +469,7 @@ export function CategoryFilters(props: CategoryFiltersProps) {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsOpen(false);
-        openButtonRef.current?.focus();
+        lastOpenButtonRef.current?.focus({ preventScroll: true });
       }
     }
 
@@ -421,7 +482,12 @@ export function CategoryFilters(props: CategoryFiltersProps) {
 
   function closeDrawer() {
     setIsOpen(false);
-    openButtonRef.current?.focus();
+    lastOpenButtonRef.current?.focus({ preventScroll: true });
+  }
+
+  function openDrawer(button: HTMLButtonElement) {
+    lastOpenButtonRef.current = button;
+    setIsOpen(true);
   }
 
   return (
@@ -430,13 +496,26 @@ export function CategoryFilters(props: CategoryFiltersProps) {
         <button
           ref={openButtonRef}
           type="button"
-          onClick={() => setIsOpen(true)}
+          onClick={(event) => openDrawer(event.currentTarget)}
           aria-expanded={isOpen}
           aria-controls="category-filter-drawer"
-          className="flex h-11 items-center justify-center gap-2 rounded-[6px] border border-slate-200 bg-white px-4 text-sm font-semibold text-[#0c2d72] lg:hidden"
+          className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-[6px] border border-slate-200 bg-white px-4 text-sm font-semibold text-[#0c2d72] lg:hidden"
         >
           <SlidersHorizontal className="h-5 w-5" aria-hidden="true" />
           Filtros
+        </button>
+      ) : null}
+
+      {mode !== "desktop" && !isOpenButtonVisible && !isOpen ? (
+        <button
+          ref={floatingButtonRef}
+          type="button"
+          onClick={(event) => openDrawer(event.currentTarget)}
+          aria-label="Abrir filtros"
+          aria-controls="category-filter-drawer"
+          className="fixed left-0 top-1/2 z-30 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-r-xl border border-l-0 border-slate-200 bg-white/70 text-[#0c2d72] shadow-md transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] lg:hidden"
+        >
+          <SlidersHorizontal className="h-5 w-5" aria-hidden="true" />
         </button>
       ) : null}
 

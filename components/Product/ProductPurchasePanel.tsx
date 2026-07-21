@@ -45,7 +45,7 @@ export function ProductPurchasePanel({
   }
 
   return (
-    <div>
+    <div className="min-w-0 max-w-full">
       <div className="flex items-start justify-between gap-4">
         <h1 className="min-w-0 flex-1 text-2xl font-bold leading-tight text-[#0c2d72] sm:text-3xl">
           {product.name}
@@ -142,16 +142,17 @@ export function ProductPurchasePanel({
       <div className="mt-6">
         {product.available ? (
           <>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex items-end gap-3">
               <ProductQuantity
                 value={quantity}
                 max={product.stockQuantity}
                 onChange={setQuantity}
+                fullWidthOnMobile={false}
               />
               <Button
                 variant="secondary"
                 size="lg"
-                className="h-[50px] w-full rounded-[6px] sm:min-w-0 sm:flex-1"
+                className="h-[50px] min-w-0 flex-1 rounded-[6px] text-xl font-bold"
                 onClick={handleTemporaryPurchase}
               >
                 Adicionar ao carrinho

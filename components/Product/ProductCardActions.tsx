@@ -34,7 +34,7 @@ export function ProductCardActions({
             aria-label={`${favoriteLabel}: ${productName}`}
             aria-pressed={favorited}
             title={favoriteLabel}
-            className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-white text-[#0c2d72] shadow-sm transition-colors hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+            className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-white/60 text-[#0c2d72] shadow-sm transition-colors hover:bg-white hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
           >
             <Heart
               className={`h-5 w-5 ${
@@ -51,7 +51,7 @@ export function ProductCardActions({
           </span>
         </div>
 
-        <div className="group/action relative">
+        <div className="group/action relative hidden md:block">
           <button
             ref={quickViewTriggerRef}
             type="button"
@@ -60,7 +60,7 @@ export function ProductCardActions({
             aria-haspopup="dialog"
             aria-expanded={isQuickViewOpen}
             title="Visualização rápida"
-            className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-white text-[#0c2d72] shadow-sm transition-colors hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+            className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-white/60 text-[#0c2d72] shadow-sm transition-colors hover:bg-white hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
           >
             <Search className="h-5 w-5" aria-hidden="true" />
           </button>

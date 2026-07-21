@@ -97,7 +97,7 @@ export function BackInStockForm({
   }
 
   return (
-    <div className="rounded-[12px] border border-slate-200 bg-white p-4 sm:p-5">
+    <div className="w-full min-w-0 max-w-full rounded-[12px] border border-slate-200 bg-white p-4 sm:p-5">
       <h2 className="font-semibold text-[#0c2d72]">
         Atualmente, este produto está fora de estoque.
       </h2>
@@ -119,7 +119,7 @@ export function BackInStockForm({
             name="email"
             type="email"
             autoComplete="email"
-            className="h-11 w-full rounded-[6px] border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20"
+            className="h-11 w-full min-w-0 max-w-full rounded-[6px] border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20"
             placeholder="seuemail@exemplo.com"
             aria-describedby={`back-in-stock-status-${productId}`}
           />

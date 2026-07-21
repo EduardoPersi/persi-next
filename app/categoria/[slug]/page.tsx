@@ -388,7 +388,7 @@ export default async function CategoryPage({
   return (
     <>
       <Header />
-      <main className="py-6 sm:py-8 lg:py-10">
+      <main className="py-3 sm:py-6 lg:py-10">
         <Container>
           <nav aria-label="Breadcrumb">
             <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 sm:text-sm">
@@ -441,7 +441,7 @@ export default async function CategoryPage({
             includeMainCategory={!selectedSubcategory}
           />
 
-          <div className="mt-6 lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start lg:gap-4">
+          <div className="mt-4 sm:mt-6 lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start lg:gap-4">
             <div className="hidden lg:block">
               <CategoryFilters
                 key={`desktop-${JSON.stringify(filterValues)}`}
@@ -467,7 +467,7 @@ export default async function CategoryPage({
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                   <CategoryFilters
                     key={`mobile-${JSON.stringify(filterValues)}`}
                     mode="mobile"

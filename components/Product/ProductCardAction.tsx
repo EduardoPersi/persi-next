@@ -48,7 +48,7 @@ export function ProductCardAction({
       <div className="mt-3">
         <Link
           href={href}
-          className="inline-flex h-10 min-h-10 w-full items-center justify-center rounded-[6px] border border-[#0c2d72] px-3 text-center text-sm font-semibold text-[#0c2d72] transition-colors hover:bg-[#0c2d72] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+          className="inline-flex h-10 min-h-10 w-full items-center justify-center rounded-[6px] border border-[#0c2d72] px-3 text-center text-base font-bold text-[#0c2d72] transition-colors hover:bg-[#0c2d72] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2 md:text-sm md:font-semibold"
         >
           {label}
         </Link>
@@ -63,7 +63,7 @@ export function ProductCardAction({
         type="button"
         onClick={handleAdd}
         disabled={isAdding}
-        className="inline-flex h-10 min-h-10 w-full items-center justify-center rounded-[6px] bg-[#ff6a00] px-3 text-center text-sm font-semibold text-white transition-colors hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+        className="inline-flex h-10 min-h-10 w-full items-center justify-center rounded-[6px] bg-[#ff6a00] px-3 text-center text-base font-bold text-white transition-colors hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 md:text-sm md:font-semibold"
       >
         {isAdding ? "Adicionando..." : "Adicionar ao carrinho"}
       </button>

@@ -5,13 +5,13 @@ import Link from "next/link";
 
 import { MobileMenu } from "./MobileMenu";
 import { MiniCart } from "./MiniCart";
+import { ProductSearch } from "./ProductSearch";
 import { useCart } from "@/hooks/useCart";
 import { useState } from "react";
 import {
   Heart,
   MapPin,
   Menu,
-  Search,
   ShoppingCart,
   Truck,
   User,
@@ -69,26 +69,12 @@ export function Header() {
                 width={130}
                 height={53}
                 priority
-                className="h-auto w-[130px] max-w-full object-contain"
+                className="h-auto w-[110px] max-w-full object-contain md:w-[130px]"
               />
             </Link>
 
             {/* Busca desktop */}
-            <form className="hidden flex-1 overflow-hidden rounded-md bg-white md:flex">
-              <input
-                type="search"
-                placeholder="Pesquisar produtos na Persi"
-                className="min-w-0 flex-1 px-5 py-3 text-sm text-slate-900 outline-none"
-              />
-
-              <button
-                type="submit"
-                aria-label="Pesquisar"
-                className="flex items-center justify-center px-4 text-[#0c2d72] transition hover:bg-slate-100"
-              >
-                <Search size={23} />
-              </button>
-            </form>
+            <ProductSearch variant="desktop" />
 
             {/* Ações */}
            {/* Ações */}
@@ -138,21 +124,7 @@ export function Header() {
           </div>
 
           {/* Busca mobile */}
-          <form className="mt-3 flex overflow-hidden rounded-md bg-white md:hidden">
-            <input
-              type="search"
-              placeholder="O que você está procurando?"
-              className="min-w-0 flex-1 px-4 py-3 text-sm text-slate-900 outline-none"
-            />
-
-            <button
-              type="submit"
-              aria-label="Pesquisar"
-              className="flex items-center justify-center px-4 text-[#0c2d72]"
-            >
-              <Search size={22} />
-            </button>
-          </form>
+          <ProductSearch variant="mobile" />
         </div>
       </div>
 

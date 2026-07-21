@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { CartProvider } from "@/components/Cart/CartProvider";
 import { Footer } from "@/components/Footer/Footer";
+import { BackToTopButton } from "@/components/UI/BackToTopButton";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,6 +34,7 @@ export default function RootLayout({
         <CartProvider>
           <div className="flex-1">{children}</div>
           <Footer />
+          <BackToTopButton />
         </CartProvider>
       </body>
     </html>

@@ -20,7 +20,7 @@ export function ProductDetails({ product }: ProductDetailsProps) {
         <h2 className="text-2xl font-bold text-[#0c2d72]">
           Descrição do produto
         </h2>
-        <p className="mt-4 max-w-4xl leading-7 text-slate-700">
+        <p className="mt-4 w-full leading-7 text-slate-700">
           {product.description || product.shortDescription}
         </p>
       </div>
