@@ -6,9 +6,11 @@ import { ProductCard } from "@/components/Product/ProductCard";
 import { ProductDetails } from "@/components/Product/ProductDetails";
 import { ProductGallery } from "@/components/Product/ProductGallery";
 import { ProductPurchasePanel } from "@/components/Product/ProductPurchasePanel";
+import { RecentlyViewedProducts } from "@/components/Product/RecentlyViewedProducts";
 import { RecentlyViewedTracker } from "@/components/Product/RecentlyViewedTracker";
 import { Container } from "@/components/UI/Container";
 import { getBrandBySlug } from "@/services/woocommerce/brands";
+import { getBuyTogetherProducts } from "@/services/woocommerce/recommendations";
 import {
   getProductBySlug,
   getProducts,
@@ -105,11 +107,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
     notFound();
   }
 
-  const [relatedProducts, brand] = await Promise.all([
+  const [relatedProducts, brand, buyTogetherProducts] = await Promise.all([
     getRelatedProducts(product),
     product.brands[0]?.slug
       ? getBrandBySlug(product.brands[0].slug).catch(() => undefined)
       : Promise.resolve(undefined),
+    getBuyTogetherProducts(product.slug).catch(() => []),
   ]);
 
   return (
@@ -153,13 +156,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </nav>
 
           <div className="mt-4 grid min-w-0 gap-8 lg:grid-cols-2 lg:gap-12">
-            <ProductGallery
-              images={product.images}
-              productName={product.name}
-            />
+            <div className="min-w-0 lg:sticky lg:top-20 lg:self-start">
+              <ProductGallery
+                images={product.images}
+                productName={product.name}
+              />
+            </div>
             <ProductPurchasePanel
               product={product}
               brand={brand}
+              buyTogetherProducts={buyTogetherProducts}
               stockNotificationEnabled={Boolean(
                 process.env.WORDPRESS_STOCK_NOTIFICATION_ENDPOINT,
               )}
@@ -167,6 +173,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </div>
 
           <ProductDetails product={product} />
+
+          <RecentlyViewedProducts
+            title="Quem viu, viu também"
+            excludeSlug={product.slug}
+            sectionId="customers-also-viewed-title"
+          />
 
           {relatedProducts.length > 0 ? (
             <section

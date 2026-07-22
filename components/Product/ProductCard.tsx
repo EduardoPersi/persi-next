@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getProductPaymentInfo } from "@/lib/commerce/productPayment";
 import type { ProductImage } from "@/types/product";
 import { ProductCardAction } from "./ProductCardAction";
 import { ProductCardActions } from "./ProductCardActions";
@@ -105,8 +106,6 @@ export function ProductCard({
   price,
   regularPrice,
   currencyCode = "BRL",
-  commercialText,
-  brand,
   badge,
   available = true,
   priority = false,
@@ -126,6 +125,10 @@ export function ProductCard({
       : undefined;
   const hasDiscount =
     regularPrice !== undefined && regularPrice > price;
+  const payment = getProductPaymentInfo({
+    currentPrice: price,
+    isVariable: productType === "variable",
+  });
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition duration-200 hover:-translate-y-1 hover:shadow-md">
@@ -181,22 +184,16 @@ export function ProductCard({
       ) : null}
 
       <div className="flex flex-1 flex-col p-4">
-        {brand ? (
-          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">
-            {brand}
-          </p>
-        ) : null}
-
         <Link
           href={href}
           className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
         >
-          <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-slate-800 transition-colors group-hover:text-[#ff6a00] md:min-h-12 md:text-base md:leading-6">
+          <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-slate-800 transition-colors group-hover:text-[#ff6a00]">
             {name}
           </h3>
         </Link>
 
-        <div className="mt-auto pt-3">
+        <div className="mt-auto min-h-32 pt-3">
           {hasDiscount ? (
             <p className="text-xs text-slate-500 line-through">
               {formatCurrency(regularPrice, currencyCode)}
@@ -205,16 +202,26 @@ export function ProductCard({
             <div className="h-4" aria-hidden="true" />
           )}
 
-          <p className="text-lg font-bold text-[#0c2d72]">
-            {formatCurrency(price, currencyCode)}
+          <p className="mt-1 text-lg font-bold leading-6 text-emerald-700">
+            {formatCurrency(payment.pixPrice, currencyCode)}
+            <span className="ml-1 text-xs font-semibold">no Pix</span>
           </p>
-          {commercialText ? (
-            <p className="mt-1 line-clamp-2 min-h-8 text-xs text-slate-500">
-              {commercialText}
-            </p>
-          ) : (
-            <div className="min-h-8" aria-hidden="true" />
-          )}
+
+          <div className="mt-1.5 text-xs leading-4 text-slate-600">
+            {payment.installments === 1 ? (
+              <p>
+                ou {formatCurrency(payment.currentPrice, currencyCode)} sem
+                juros no cartão
+              </p>
+            ) : (
+              <p>
+                ou {formatCurrency(payment.currentPrice, currencyCode)} em até{" "}
+                {payment.installments}x de{" "}
+                {formatCurrency(payment.installmentValue, currencyCode)} sem
+                juros no cartão
+              </p>
+            )}
+          </div>
           {showAddToCart && productId ? (
             <ProductCardAction
               productId={productId}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import {
   CategoryFilters,
@@ -10,8 +11,14 @@ import { Header } from "@/components/Header/Header";
 import { ProductCard } from "@/components/Product/ProductCard";
 import { RecentlyViewedProducts } from "@/components/Product/RecentlyViewedProducts";
 import { Container } from "@/components/UI/Container";
+import { getBrandByIdentifier } from "@/services/woocommerce/brands";
+import {
+  getAvailabilityFirstProductsPage,
+  type GetProductsOptions,
+} from "@/services/woocommerce/products";
 import {
   filterAndSortSearchProducts,
+  getFilterContextProducts,
   getSearchFilterData,
   searchWooCommerceProducts,
   type ProductSearchFilters,
@@ -59,6 +66,24 @@ function normalizeSearchParams(params: RawSearchParams) {
   return normalized;
 }
 
+function getCatalogOrderOptions(order: ProductSearchOrder): Pick<
+  GetProductsOptions,
+  "order" | "orderby"
+> {
+  switch (order) {
+    case "menor-preco":
+      return { order: "asc", orderby: "price" };
+    case "maior-preco":
+      return { order: "desc", orderby: "price" };
+    case "mais-vendidos":
+      return { order: "desc", orderby: "popularity" };
+    case "nome-az":
+      return { order: "asc", orderby: "title" };
+    default:
+      return { order: "desc", orderby: "date" };
+  }
+}
+
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const rawSearchParams = await searchParams;
   const query = (getSingleParam(rawSearchParams, "q") ?? "").trim().slice(0, 100);
@@ -73,7 +98,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const maxPrice = getSingleParam(rawSearchParams, "preco_max");
   const availability = getSingleParam(rawSearchParams, "estoque");
   const promotion = getSingleParam(rawSearchParams, "promocao");
-  const brand = getSingleParam(rawSearchParams, "marca");
+  const brandIdentifier = getSingleParam(rawSearchParams, "marca");
   const category = getSingleParam(rawSearchParams, "categoria");
   const selectedAttributes: Record<string, string[]> = {};
 
@@ -86,6 +111,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     }
   });
 
+  const selectedBrand = brandIdentifier
+    ? await getBrandByIdentifier(brandIdentifier).catch(() => undefined)
+    : undefined;
+  const isBrandCatalog = !query && Boolean(selectedBrand);
   let allProducts = [] as Awaited<ReturnType<typeof searchWooCommerceProducts>>;
   let searchFailed = false;
 
@@ -102,23 +131,78 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     maxPrice: getPositiveNumber(maxPrice),
     inStockOnly: availability === "disponivel",
     onSaleOnly: promotion === "sim",
-    brands: splitParam(brand),
+    brands: splitParam(brandIdentifier),
     categories: splitParam(category),
     attributes: selectedAttributes,
   };
-  const filteredProducts = filterAndSortSearchProducts(
+  const filteredSearchProducts = filterAndSortSearchProducts(
     allProducts,
     query,
     filters,
     currentOrder,
   );
   const productsPerPage = 16;
-  const loadedPageCount = Math.min(
+  let loadedPageCount = Math.min(
     currentPage,
-    Math.max(Math.ceil(filteredProducts.length / productsPerPage), 1),
+    Math.max(Math.ceil(filteredSearchProducts.length / productsPerPage), 1),
   );
-  const products = filteredProducts.slice(0, loadedPageCount * productsPerPage);
-  const filterData = await getSearchFilterData(allProducts);
+  let products = filteredSearchProducts.slice(
+    0,
+    loadedPageCount * productsPerPage,
+  );
+  let totalProducts = filteredSearchProducts.length;
+
+  if (isBrandCatalog) {
+    const productOptions: GetProductsOptions = {
+      brand: brandIdentifier,
+      category,
+      perPage: productsPerPage,
+      minPrice: getPositiveNumber(minPrice),
+      maxPrice: getPositiveNumber(maxPrice),
+      stockStatus: availability === "disponivel" ? "instock" : undefined,
+      onSale: promotion === "sim" ? true : undefined,
+      attributes: Object.entries(selectedAttributes).map(
+        ([taxonomy, slugs]) => ({ taxonomy, slug: slugs.join(",") }),
+      ),
+      ...getCatalogOrderOptions(currentOrder),
+    };
+
+    try {
+      const firstPage = await getAvailabilityFirstProductsPage({
+        ...productOptions,
+        page: 1,
+      });
+      loadedPageCount = Math.min(
+        currentPage,
+        Math.max(firstPage.totalPages, 1),
+      );
+      const additionalPages =
+        loadedPageCount > 1
+          ? await Promise.all(
+              Array.from({ length: loadedPageCount - 1 }, (_, index) =>
+                getAvailabilityFirstProductsPage({
+                  ...productOptions,
+                  page: index + 2,
+                }),
+              ),
+            )
+          : [];
+      products = [
+        ...firstPage.products,
+        ...additionalPages.flatMap((page) => page.products),
+      ];
+      totalProducts = firstPage.total;
+    } catch {
+      searchFailed = true;
+      products = [];
+      totalProducts = 0;
+    }
+  }
+
+  const filterContextProducts = isBrandCatalog
+    ? await getFilterContextProducts({ brand: brandIdentifier }).catch(() => [])
+    : allProducts;
+  const filterData = await getSearchFilterData(filterContextProducts);
   const pathname = "/busca";
   const normalizedParams = normalizeSearchParams(rawSearchParams);
   const preservedSortParams = { ...normalizedParams };
@@ -133,7 +217,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     maxPrice,
     availability,
     promotion,
-    brand,
+    brand: selectedBrand ? brandIdentifier : undefined,
     category,
     order: currentOrder,
     attributes: Object.fromEntries(
@@ -144,6 +228,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     ),
   };
   const clearHref = query ? `/busca?q=${encodeURIComponent(query)}` : "/busca";
+  const hasCatalogContext = Boolean(query) || isBrandCatalog;
+  const preservedFilterParams: Record<string, string> = query
+    ? { q: query }
+    : {};
 
   return (
     <>
@@ -151,18 +239,40 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       <main className="py-6 sm:py-8 lg:py-10">
         <Container>
           <nav aria-label="Breadcrumb">
-            <ol className="flex flex-wrap items-center gap-2 text-xs text-slate-600 sm:text-sm">
+            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 sm:text-sm">
               <li>
-                <Link href="/" className="hover:text-[#ff6a00]">Home</Link>
+                <Link
+                  href="/"
+                  className="rounded-sm hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                >
+                  Home
+                </Link>
               </li>
-              <li className="flex items-center gap-2">
-                <span aria-hidden="true">›</span>
-                <span className="text-slate-800" aria-current="page">Busca</span>
-              </li>
+              {isBrandCatalog && selectedBrand ? (
+                <>
+                  <li className="flex min-w-0 items-center gap-2">
+                    <span aria-hidden="true">›</span>
+                    <span>Marcas</span>
+                  </li>
+                  <li className="flex min-w-0 items-center gap-2">
+                    <span aria-hidden="true">›</span>
+                    <span className="text-slate-800" aria-current="page">
+                      {selectedBrand.name}
+                    </span>
+                  </li>
+                </>
+              ) : (
+                <li className="flex min-w-0 items-center gap-2">
+                  <span aria-hidden="true">›</span>
+                  <span className="text-slate-800" aria-current="page">
+                    Busca
+                  </span>
+                </li>
+              )}
             </ol>
           </nav>
 
-          {!query ? (
+          {!hasCatalogContext ? (
             <div className="mt-6 rounded-xl border border-slate-200 bg-white p-8 text-center">
               <h1 className="text-2xl font-bold text-[#0c2d72]">Busca de produtos</h1>
               <p className="mt-2 text-slate-600">
@@ -171,7 +281,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             </div>
           ) : null}
 
-          {query ? (
+          {hasCatalogContext ? (
             <div className="mt-6 lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start lg:gap-4">
               <div className="hidden lg:block">
                 <CategoryFilters
@@ -180,18 +290,35 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                   pathname={pathname}
                   values={filterValues}
                   filterData={filterData}
-                  preservedParams={{ q: query }}
+                  preservedParams={preservedFilterParams}
                 />
               </div>
 
               <div className="min-w-0">
                 <div className="flex flex-col gap-4 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <h1 className="text-2xl font-bold text-[#0c2d72]">
-                      Resultados para “{query}”
-                    </h1>
+                    <div className="flex items-center gap-4">
+                      {isBrandCatalog && selectedBrand?.image ? (
+                        <Image
+                          src={selectedBrand.image.src}
+                          alt={
+                            selectedBrand.image.alt ||
+                            `Logo da marca ${selectedBrand.name}`
+                          }
+                          width={120}
+                          height={64}
+                          sizes="120px"
+                          className="h-16 w-24 shrink-0 object-contain sm:w-28"
+                        />
+                      ) : null}
+                      <h1 className="text-2xl font-bold text-[#0c2d72]">
+                        {isBrandCatalog && selectedBrand
+                          ? selectedBrand.name
+                          : `Resultados para “${query}”`}
+                      </h1>
+                    </div>
                     <p className="sr-only" aria-live="polite">
-                      {filteredProducts.length} produtos encontrados
+                      {totalProducts} produtos encontrados
                     </p>
                   </div>
                   {!searchFailed ? (
@@ -202,7 +329,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                         pathname={pathname}
                         values={filterValues}
                         filterData={filterData}
-                        preservedParams={{ q: query }}
+                        preservedParams={preservedFilterParams}
                       />
                       <CategorySort
                         key={currentOrder}
@@ -251,7 +378,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                           />
                         ))}
                       </div>
-                      {products.length < filteredProducts.length ? (
+                      {products.length < totalProducts ? (
                         <div className="mt-8 flex justify-center">
                           <LoadMoreButton pathname={pathname} searchParams={loadMoreParams} />
                         </div>
@@ -276,6 +403,23 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 </div>
               </div>
             </div>
+          ) : null}
+
+          {isBrandCatalog && selectedBrand?.description ? (
+            <section
+              className="mt-10 border-t border-slate-200 pt-8"
+              aria-labelledby="brand-description-title"
+            >
+              <h2
+                id="brand-description-title"
+                className="text-xl font-semibold text-[#0c2d72]"
+              >
+                Sobre {selectedBrand.name}
+              </h2>
+              <p className="mt-4 whitespace-pre-line text-left leading-7 text-slate-700">
+                {selectedBrand.description}
+              </p>
+            </section>
           ) : null}
 
           <RecentlyViewedProducts />

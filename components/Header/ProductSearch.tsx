@@ -110,12 +110,16 @@ export function ProductSearch({ variant }: ProductSearchProps) {
   useEffect(() => {
     if (!isSearchActive) return;
 
-    const header = containerRef.current?.closest("header");
+    const header =
+      containerRef.current?.closest("[data-search-header]") ??
+      containerRef.current?.closest("header");
     const overlay = overlayRef.current;
     if (!header || !overlay) return;
 
     function updateOverlayTop() {
-      const currentHeader = containerRef.current?.closest("header");
+      const currentHeader =
+        containerRef.current?.closest("[data-search-header]") ??
+        containerRef.current?.closest("header");
       const currentOverlay = overlayRef.current;
       if (!currentHeader || !currentOverlay) return;
 

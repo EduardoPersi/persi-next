@@ -57,10 +57,10 @@ export function BrandCarousel({
     setHasOverflow(!swiper.isLocked);
   }
 
-  function getBrandHref(slug: string) {
+  function getBrandHref(brand: CatalogFilterOption) {
     const params = new URLSearchParams();
     if (subcategorySlug) params.set("subcategoria", subcategorySlug);
-    params.set("marca", slug);
+    params.set("marca", String(brand.id));
     return `${pathname}?${params.toString()}`;
   }
 
@@ -134,7 +134,7 @@ export function BrandCarousel({
         {brands.map((brand) => (
           <SwiperSlide key={brand.id} className="h-auto!">
             <Link
-              href={getBrandHref(brand.slug)}
+              href={getBrandHref(brand)}
               className="flex h-24 w-full items-center justify-center rounded-[6px] px-2 opacity-80 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
               aria-label={`Ver produtos da marca ${brand.name}`}
             >

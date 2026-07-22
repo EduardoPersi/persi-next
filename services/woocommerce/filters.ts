@@ -75,7 +75,6 @@ export async function getCategoryFilterData(
     calculate_stock_status_counts: true,
     calculate_taxonomy_counts: "product_brand",
   };
-
   attributes.forEach((attribute, index) => {
     query[`calculate_attribute_counts[${index}][taxonomy]`] =
       attribute.taxonomy;

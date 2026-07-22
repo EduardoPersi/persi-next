@@ -26,6 +26,7 @@ export interface WooCommerceRestProduct {
   permalink: string;
   type: string;
   status: string;
+  catalog_visibility?: "visible" | "catalog" | "search" | "hidden";
   date_created?: string;
   sku: string;
   global_unique_id?: string;
@@ -43,7 +44,16 @@ export interface WooCommerceRestProduct {
   total_sales?: number;
   images: WooCommerceRestImage[];
   categories: WooCommerceRestTerm[];
+  tags?: WooCommerceRestTerm[];
   brands?: WooCommerceRestTerm[];
   attributes: WooCommerceRestAttribute[];
   variations: number[];
+  upsell_ids?: number[];
+  cross_sell_ids?: number[];
+  related_ids?: number[];
+  meta_data?: Array<{
+    id: number;
+    key: string;
+    value: unknown;
+  }>;
 }

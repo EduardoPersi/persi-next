@@ -2,10 +2,10 @@ import {
   Clock,
   Mail,
   MapPin,
-  MessageCircle,
   Phone,
 } from "lucide-react";
 import Image from "next/image";
+import { WhatsAppIcon } from "@/components/UI/SocialIcons";
 
 import { Container } from "@/components/UI/Container";
 
@@ -140,7 +140,7 @@ export function Footer() {
                   aria-label="Conversar com a Persi Materiais pelo WhatsApp"
                   className="flex min-h-9 items-center gap-3 hover:text-[#ff6a00]"
                 >
-                  <MessageCircle
+                  <WhatsAppIcon
                     aria-hidden="true"
                     className="h-5 w-5 shrink-0 text-[#ff6a00]"
                   />

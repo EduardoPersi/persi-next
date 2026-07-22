@@ -45,15 +45,26 @@ function readStoredSlugs(storedValue: string) {
   }
 }
 
-export function RecentlyViewedProducts() {
+interface RecentlyViewedProductsProps {
+  title?: string;
+  excludeSlug?: string;
+  sectionId?: string;
+}
+
+export function RecentlyViewedProducts({
+  title = "Produtos visualizados recentemente",
+  excludeSlug,
+  sectionId = "recently-viewed-title",
+}: RecentlyViewedProductsProps = {}) {
   const storedValue = useSyncExternalStore(
     subscribeToStorage,
     getStoredValue,
     getServerStoredValue,
   );
   const slugs = useMemo(
-    () => readStoredSlugs(storedValue),
-    [storedValue],
+    () =>
+      readStoredSlugs(storedValue).filter((slug) => slug !== excludeSlug),
+    [excludeSlug, storedValue],
   );
   const [products, setProducts] =
     useState<RecentlyViewedProductData[] | null>(null);
@@ -107,14 +118,14 @@ export function RecentlyViewedProducts() {
   return (
     <section
       className="mt-12"
-      aria-labelledby="recently-viewed-title"
+      aria-labelledby={sectionId}
       aria-busy={isLoading}
     >
       <h2
-        id="recently-viewed-title"
+        id={sectionId}
         className="text-xl font-semibold text-slate-900 sm:text-2xl"
       >
-        Produtos visualizados recentemente
+        {title}
       </h2>
 
       {isLoading ? (

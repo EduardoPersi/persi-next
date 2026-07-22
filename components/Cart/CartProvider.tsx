@@ -19,6 +19,10 @@ interface CartContextValue {
     productId: number,
     quantity?: number,
   ) => Promise<{ success: boolean; message: string }>;
+  updateItem: (
+    key: string,
+    quantity: number,
+  ) => Promise<{ success: boolean; message: string }>;
   openCart: () => void;
   closeCart: () => void;
 }
@@ -101,6 +105,35 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const updateItem = useCallback(async (key: string, quantity: number) => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/cart/items", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key, quantity }),
+      });
+      const result = (await response.json()) as Cart & { message?: string };
+
+      if (!response.ok) {
+        const message = result.message || "Não foi possível atualizar o item.";
+        setError(message);
+        return { success: false, message };
+      }
+
+      setCart(result);
+      return { success: true, message: "Quantidade atualizada." };
+    } catch {
+      const message = "Não foi possível atualizar o item.";
+      setError(message);
+      return { success: false, message };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const value = useMemo(
     () => ({
       cart,
@@ -108,10 +141,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       isOpen,
       error,
       addItem,
+      updateItem,
       openCart: () => setIsOpen(true),
       closeCart: () => setIsOpen(false),
     }),
-    [addItem, cart, error, isLoading, isOpen],
+    [addItem, cart, error, isLoading, isOpen, updateItem],
   );
 
   return (

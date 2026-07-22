@@ -13,6 +13,9 @@ interface WooCartItem {
   id?: number;
   name?: string;
   quantity?: number;
+  quantity_limits?: {
+    maximum?: number;
+  };
   images?: WooCartImage[];
   prices?: {
     price?: string;
@@ -97,6 +100,10 @@ function mapCartItem(item: WooCartItem, minorUnit: number): CartItem | null {
     id: item.id,
     name: stripHtml(item.name),
     quantity: item.quantity,
+    maxQuantity:
+      typeof item.quantity_limits?.maximum === "number"
+        ? Math.min(999, item.quantity_limits.maximum)
+        : 999,
     image: image?.src
       ? {
           src: image.src,

@@ -107,7 +107,7 @@ export default async function Home() {
         <Container>
           <BrandCarousel
             brands={brands}
-            pathname="/categoria/todos"
+            pathname="/busca"
           />
           <InstagramFeed posts={instagramPosts} />
           <RecentlyViewedProducts />

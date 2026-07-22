@@ -1,35 +1,65 @@
 "use client";
 
 import Image from "next/image";
-import { useState, type FormEvent } from "react";
-import { MapPin, ShieldCheck, Store, Truck } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  MapPin,
+  ShieldCheck,
+  Store,
+  Truck,
+} from "lucide-react";
 import { Button } from "@/components/UI/Button";
+import { getProductPaymentInfo } from "@/lib/commerce/productPayment";
 import type { ProductBrand } from "@/types/brand";
 import type { Product } from "@/types/product";
 import { BackInStockForm } from "./BackInStockForm";
+import { BuyTogether } from "./BuyTogether";
+import { ProductPaymentMethods } from "./ProductPaymentMethods";
 import { ProductQuantity } from "./ProductQuantity";
 
 interface ProductPurchasePanelProps {
   product: Product;
   brand?: ProductBrand;
+  buyTogetherProducts?: Product[];
   stockNotificationEnabled: boolean;
 }
 
 export function ProductPurchasePanel({
   product,
   brand,
+  buyTogetherProducts = [],
   stockNotificationEnabled,
 }: ProductPurchasePanelProps) {
+  const mainPurchaseButtonRef = useRef<HTMLButtonElement>(null);
   const [quantity, setQuantity] = useState(1);
   const [purchaseMessage, setPurchaseMessage] = useState("");
   const [shippingMessage, setShippingMessage] = useState("");
+  const [showStickyPurchase, setShowStickyPurchase] = useState(false);
   const regularPrice = product.regularPrice;
   const hasDiscount =
     regularPrice !== undefined && regularPrice > product.price;
+  const payment = getProductPaymentInfo({
+    currentPrice: product.price,
+    isVariable: product.type === "variable",
+  });
   const currencyFormatter = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: product.currencyCode,
   });
+
+  useEffect(() => {
+    const purchaseButton = mainPurchaseButtonRef.current;
+    if (!purchaseButton || !product.available) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      const hasPassedAboveViewport =
+        !entry.isIntersecting && entry.boundingClientRect.bottom <= 0;
+      setShowStickyPurchase(hasPassedAboveViewport);
+    });
+
+    observer.observe(purchaseButton);
+    return () => observer.disconnect();
+  }, [product.available]);
 
   function handleTemporaryPurchase() {
     setPurchaseMessage(
@@ -46,14 +76,14 @@ export function ProductPurchasePanel({
 
   return (
     <div className="min-w-0 max-w-full">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
         <h1 className="min-w-0 flex-1 text-2xl font-bold leading-tight text-[#0c2d72] sm:text-3xl">
           {product.name}
         </h1>
         {brand?.image && brand.permalink ? (
           <a
             href={brand.permalink}
-            className="flex h-14 w-24 shrink-0 items-center justify-center rounded-[6px] border border-slate-200 bg-white p-2 transition-colors hover:border-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2 sm:h-16 sm:w-28"
+            className="flex h-12 w-20 shrink-0 items-center justify-center rounded-[6px] border border-slate-200 bg-white p-2 transition-colors hover:border-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2 sm:h-16 sm:w-28"
             aria-label={`Conhecer a marca ${brand.name}`}
             title={`Conhecer a marca ${brand.name}`}
           >
@@ -76,26 +106,27 @@ export function ProductPurchasePanel({
             {currencyFormatter.format(regularPrice)}
           </p>
         ) : null}
-        <p className="text-3xl font-bold text-[#0c2d72]">
-          {currencyFormatter.format(product.price)}
+        <p className="mt-1 text-3xl font-bold text-emerald-700">
+          {currencyFormatter.format(payment.pixPrice)}
+          <span className="ml-2 text-sm font-semibold">no Pix</span>
         </p>
-        {product.pixPrice !== undefined ? (
-          <p className="mt-1 font-semibold text-emerald-700">
-            {currencyFormatter.format(product.pixPrice)} no Pix
+        {payment.installments === 1 ? (
+          <p className="mt-2 text-sm leading-5 text-slate-600">
+            ou {currencyFormatter.format(payment.currentPrice)} sem juros no
+            cartão
           </p>
-        ) : null}
-        {product.installmentText ? (
-          <p className="mt-1 text-sm text-slate-600">
-            {product.installmentText}
+        ) : (
+          <p className="mt-2 text-sm leading-5 text-slate-600">
+            ou {currencyFormatter.format(payment.currentPrice)} em até{" "}
+            {payment.installments}x de{" "}
+            {currencyFormatter.format(payment.installmentValue)} sem juros no
+            cartão
           </p>
-        ) : null}
-        {!product.pixPrice &&
-        !product.installmentText &&
-        product.commercialText ? (
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            {product.commercialText}
-          </p>
-        ) : null}
+        )}
+        <ProductPaymentMethods
+          payment={payment}
+          currencyCode={product.currencyCode}
+        />
       </div>
 
       <div className="mt-5">
@@ -150,6 +181,7 @@ export function ProductPurchasePanel({
                 fullWidthOnMobile={false}
               />
               <Button
+                ref={mainPurchaseButtonRef}
                 variant="secondary"
                 size="lg"
                 className="h-[50px] min-w-0 flex-1 rounded-[6px] text-xl font-bold"
@@ -176,6 +208,13 @@ export function ProductPurchasePanel({
           />
         )}
       </div>
+
+      {buyTogetherProducts.length > 0 ? (
+        <BuyTogether
+          mainProduct={product}
+          complementaryProducts={buyTogetherProducts}
+        />
+      ) : null}
 
       {product.available ? (
         <form
@@ -256,6 +295,44 @@ export function ProductPurchasePanel({
           Entrega para Jundiaí e região
         </li>
       </ul>
+
+      {product.available ? (
+        <div
+          aria-hidden={!showStickyPurchase}
+          inert={!showStickyPurchase}
+          className={`fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur transition-[transform,opacity,visibility] duration-300 ease-out ${
+            showStickyPurchase
+              ? "visible translate-y-0 opacity-100"
+              : "invisible translate-y-full opacity-0"
+          }`}
+        >
+          <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:gap-4">
+            <div className="hidden min-w-0 flex-1 md:block">
+              <p className="line-clamp-1 text-sm font-semibold text-slate-800">
+                {product.name}
+              </p>
+              <p className="mt-0.5 text-sm font-bold text-emerald-700">
+                {currencyFormatter.format(payment.pixPrice)} no Pix
+              </p>
+            </div>
+            <ProductQuantity
+              value={quantity}
+              max={product.stockQuantity}
+              onChange={setQuantity}
+              fullWidthOnMobile={false}
+              showLabel={false}
+            />
+            <Button
+              variant="secondary"
+              size="lg"
+              className="h-[50px] min-w-0 flex-1 rounded-[6px] px-4 text-base font-bold sm:text-lg md:max-w-sm"
+              onClick={handleTemporaryPurchase}
+            >
+              Adicionar ao carrinho
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

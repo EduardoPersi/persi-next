@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   ChevronRight,
   Heart,
@@ -83,6 +84,16 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="border-b px-3 py-3">
+            <Link
+              href="/promocoes"
+              onClick={onClose}
+              className="flex items-center justify-between rounded-md px-3 py-3.5 text-sm font-semibold text-[#0c2d72] transition hover:bg-slate-100"
+            >
+              <span>Promoções</span>
+              <ChevronRight size={18} className="text-[#ff6a00]" />
+            </Link>
+          </div>
           <div className="px-5 pb-2 pt-5 text-xs font-bold uppercase tracking-wider text-slate-500">
             Categorias
           </div>

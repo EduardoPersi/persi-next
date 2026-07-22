@@ -1,12 +1,19 @@
 "use client";
 
 import Image from "next/image";
-import { ShoppingCart, X } from "lucide-react";
+import { Minus, Plus, ShoppingCart, X } from "lucide-react";
 import { useEffect } from "react";
 import { useCart } from "@/hooks/useCart";
 
 export function MiniCart() {
-  const { cart, isOpen: open, closeCart, error } = useCart();
+  const {
+    cart,
+    isLoading,
+    isOpen: open,
+    closeCart,
+    error,
+    updateItem,
+  } = useCart();
   const formatter = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: cart?.currencyCode ?? "BRL",
@@ -73,13 +80,62 @@ export function MiniCart() {
                     className="h-[72px] w-[72px] shrink-0 rounded-md border border-slate-200 object-contain"
                   />
                 ) : null}
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <h3 className="line-clamp-2 text-sm font-semibold">
                     {item.name}
                   </h3>
                   <p className="mt-1 text-sm text-slate-600">
-                    {item.quantity} × {formatter.format(item.price)}
+                    {formatter.format(item.price)} por unidade
                   </p>
+                  <div className="mt-2 inline-flex h-8 items-center rounded-md border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => void updateItem(item.key, item.quantity - 1)}
+                      disabled={isLoading || item.quantity <= 1}
+                      aria-label={`Diminuir quantidade de ${item.name}`}
+                      className="flex h-full w-8 items-center justify-center rounded-l-md text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
+                    >
+                      <Minus className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                    <input
+                      key={`${item.key}-${item.quantity}`}
+                      type="number"
+                      min={1}
+                      max={item.maxQuantity ?? 999}
+                      step={1}
+                      defaultValue={item.quantity}
+                      onFocus={(event) => event.currentTarget.select()}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") event.currentTarget.blur();
+                      }}
+                      onBlur={(event) => {
+                        const nextQuantity = Math.min(
+                          item.maxQuantity ?? 999,
+                          Math.max(
+                            1,
+                            Math.trunc(event.currentTarget.valueAsNumber || 1),
+                          ),
+                        );
+                        event.currentTarget.value = String(nextQuantity);
+                        if (nextQuantity !== item.quantity) {
+                          void updateItem(item.key, nextQuantity);
+                        }
+                      }}
+                      aria-label={`Quantidade de ${item.name}`}
+                      className="h-full w-12 appearance-none border-x border-slate-200 bg-white text-center text-sm font-semibold text-slate-900 outline-none focus:border-[#0c2d72] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void updateItem(item.key, item.quantity + 1)}
+                      disabled={
+                        isLoading || item.quantity >= (item.maxQuantity ?? 999)
+                      }
+                      aria-label={`Aumentar quantidade de ${item.name}`}
+                      className="flex h-full w-8 items-center justify-center rounded-r-md text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
+                    >
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}

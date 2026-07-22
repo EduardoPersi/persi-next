@@ -171,7 +171,7 @@ export function mapRestProduct(product: WooCommerceRestProduct): Product {
   const canonicalBrands =
     taxonomyBrands.length > 0
       ? taxonomyBrands.map((brand) => ({
-          id: getCanonicalBrandId(brand.name, brand.slug),
+          id: brand.id,
           name: stripHtml(brand.name),
           slug: getCanonicalBrandKey(brand.name, brand.slug),
         }))
@@ -230,6 +230,7 @@ export function mapRestProduct(product: WooCommerceRestProduct): Product {
 async function getAllRestProducts(
   query: Record<string, string | number | boolean | undefined>,
   limit?: number,
+  maxPages = MAX_RESULT_PAGES_PER_QUERY,
 ) {
   const firstResponse = await restApiGetWithMeta<unknown>("products", {
     query: {
@@ -244,7 +245,7 @@ async function getAllRestProducts(
     : [];
   const wantedPages = limit
     ? 1
-    : Math.min(firstResponse.totalPages, MAX_RESULT_PAGES_PER_QUERY);
+    : Math.min(firstResponse.totalPages, maxPages);
 
   if (wantedPages > 1) {
     const remainingResponses = await Promise.all(
@@ -267,6 +268,25 @@ async function getAllRestProducts(
   }
 
   return products.slice(0, limit);
+}
+
+export interface CatalogFilterContext {
+  brand?: string | number;
+  onSale?: boolean;
+}
+
+export async function getFilterContextProducts(
+  context: CatalogFilterContext,
+): Promise<Product[]> {
+  const products = await getAllRestProducts(
+    {
+      brand: context.brand,
+      on_sale: context.onSale,
+    },
+    undefined,
+    Number.MAX_SAFE_INTEGER,
+  );
+  return products.map(mapRestProduct);
 }
 
 async function findTerms(endpoint: string, terms: string[]) {
@@ -459,21 +479,23 @@ export async function getSearchFilterData(products: Product[]): Promise<CatalogF
   >();
 
   const officialBrands = await getAllProductBrands().catch(() => []);
-  const officialBrandImages = new Map(
-    officialBrands
-      .filter((brand) => brand.image)
-      .map((brand) => [getCanonicalBrandKey(brand.name, brand.slug), brand.image]),
+  const officialBrandsByKey = new Map(
+    officialBrands.map((brand) => [
+      getCanonicalBrandKey(brand.name, brand.slug),
+      brand,
+    ]),
   );
 
   products.forEach((product) => {
     product.brands.forEach((brand) => {
       const key = getCanonicalBrandKey(brand.name, brand.slug);
       const current = brandMap.get(key);
-      const image = officialBrandImages.get(key);
+      const officialBrand = officialBrandsByKey.get(key);
+      const image = officialBrand?.image;
       brandMap.set(key, {
-        id: brand.id,
-        name: brand.name,
-        slug: key,
+        id: officialBrand?.id ?? brand.id,
+        name: officialBrand?.name ?? brand.name,
+        slug: officialBrand?.slug ?? key,
         count: (current?.count ?? 0) + 1,
         image: image
           ? { src: image.src, alt: image.alt || `Logo ${brand.name}` }
