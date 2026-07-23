@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Heart,
   MapPin,
@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
+import { AccountDrawer } from "@/components/Account/AccountDrawer";
 import { MiniCart } from "./MiniCart";
 import { MobileMenu } from "./MobileMenu";
 import { ProductSearch } from "./ProductSearch";
@@ -45,7 +46,7 @@ function HeaderLogo({ compact = false }: HeaderLogoProps) {
         className={
           compact
             ? "h-auto w-[86px] max-w-full object-contain sm:w-[100px] md:w-[110px]"
-            : "h-auto w-[110px] max-w-full object-contain md:w-[130px]"
+            : "h-auto w-[90px] max-w-full object-contain md:w-[110px]"
         }
       />
     </Link>
@@ -55,12 +56,14 @@ function HeaderLogo({ compact = false }: HeaderLogoProps) {
 interface HeaderActionsProps {
   itemsCount: number;
   onOpenCart: () => void;
+  onOpenAccount: () => void;
   compact?: boolean;
 }
 
 function HeaderActions({
   itemsCount,
   onOpenCart,
+  onOpenAccount,
   compact = false,
 }: HeaderActionsProps) {
   return (
@@ -80,8 +83,9 @@ function HeaderActions({
         </>
       ) : null}
 
-      <a
-        href="#"
+      <button
+        type="button"
+        onClick={onOpenAccount}
         aria-label="Login ou cadastro"
         className="flex h-10 items-center justify-center gap-2 rounded-md px-2 transition hover:bg-white/10 xl:px-3"
       >
@@ -91,7 +95,7 @@ function HeaderActions({
             Login / Registrar
           </span>
         ) : null}
-      </a>
+      </button>
 
       <a
         href="#"
@@ -121,9 +125,13 @@ export function Header() {
   const lastScrollYRef = useRef(0);
   const frameRef = useRef<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [showCompactHeader, setShowCompactHeader] = useState(false);
   const { cart, openCart } = useCart();
   const itemsCount = cart?.itemsCount ?? 0;
+  const openAccount = useCallback(() => setAccountOpen(true), []);
+  const closeAccount = useCallback(() => setAccountOpen(false), []);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
 
   useEffect(() => {
     lastScrollYRef.current = window.scrollY;
@@ -187,7 +195,11 @@ export function Header() {
 
             <HeaderLogo />
             <ProductSearch variant="desktop" />
-            <HeaderActions itemsCount={itemsCount} onOpenCart={openCart} />
+            <HeaderActions
+              itemsCount={itemsCount}
+              onOpenCart={openCart}
+              onOpenAccount={openAccount}
+            />
           </div>
           <ProductSearch variant="mobile" />
         </div>
@@ -200,7 +212,7 @@ export function Header() {
               <Link
                 key={item.label}
                 href={item.href}
-                className="border-r border-white/40 px-3 py-3 text-sm font-semibold transition last:border-r-0 hover:bg-black/10 lg:px-4"
+                className="border-r border-white/40 px-3 py-3 text-base font-semibold transition last:border-r-0 hover:bg-black/10 lg:px-4"
               >
                 {item.label}
               </Link>
@@ -208,7 +220,7 @@ export function Header() {
           </nav>
           <a
             href="#"
-            className="hidden items-center gap-2 px-4 py-3 text-sm font-semibold hover:bg-black/10 lg:flex"
+            className="hidden items-center gap-2 px-4 py-3 text-base font-semibold hover:bg-black/10 lg:flex"
           >
             <MapPin size={18} />
             Nossa Loja
@@ -227,7 +239,7 @@ export function Header() {
         }`}
       >
         <div className="mx-auto max-w-7xl px-4 py-2">
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="hidden items-center gap-2 sm:gap-3 md:flex">
             <button
               type="button"
               aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
@@ -242,14 +254,20 @@ export function Header() {
             <HeaderActions
               itemsCount={itemsCount}
               onOpenCart={openCart}
+              onOpenAccount={openAccount}
               compact
             />
           </div>
-          <ProductSearch variant="mobile" />
+          <ProductSearch variant="mobile" compact />
         </div>
       </div>
 
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <MobileMenu
+        open={menuOpen}
+        onClose={closeMenu}
+        onOpenAccount={openAccount}
+      />
+      <AccountDrawer open={accountOpen} onClose={closeAccount} />
       <MiniCart />
     </header>
   );

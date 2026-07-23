@@ -111,12 +111,12 @@ export function ProductPurchasePanel({
           <span className="ml-2 text-sm font-semibold">no Pix</span>
         </p>
         {payment.installments === 1 ? (
-          <p className="mt-2 text-sm leading-5 text-slate-600">
+          <p className="mt-2 text-sm font-medium leading-5 text-slate-600">
             ou {currencyFormatter.format(payment.currentPrice)} sem juros no
             cartão
           </p>
         ) : (
-          <p className="mt-2 text-sm leading-5 text-slate-600">
+          <p className="mt-2 text-sm font-medium leading-5 text-slate-600">
             ou {currencyFormatter.format(payment.currentPrice)} em até{" "}
             {payment.installments}x de{" "}
             {currencyFormatter.format(payment.installmentValue)} sem juros no
@@ -155,7 +155,7 @@ export function ProductPurchasePanel({
         <div key={variation.id} className="mt-5">
           <label
             htmlFor={`variation-${variation.id}`}
-            className="mb-2 block text-sm font-semibold text-slate-800"
+            className="mb-2 block text-sm font-medium text-slate-800"
           >
             {variation.name}
           </label>
@@ -173,18 +173,19 @@ export function ProductPurchasePanel({
       <div className="mt-6">
         {product.available ? (
           <>
-            <div className="flex items-end gap-3">
+            <div className="grid grid-cols-[minmax(96px,min(30%,140px))_minmax(0,1fr)] items-end gap-3">
               <ProductQuantity
                 value={quantity}
                 max={product.stockQuantity}
                 onChange={setQuantity}
+                compact
                 fullWidthOnMobile={false}
               />
               <Button
                 ref={mainPurchaseButtonRef}
                 variant="secondary"
                 size="lg"
-                className="h-[50px] min-w-0 flex-1 rounded-[6px] text-xl font-bold"
+                className="h-[50px] min-w-0 flex-1 rounded-[6px] text-xl font-medium"
                 onClick={handleTemporaryPurchase}
               >
                 Adicionar ao carrinho
@@ -226,7 +227,7 @@ export function ProductPurchasePanel({
               className="h-5 w-5 text-[#ff6a00]"
               aria-hidden="true"
             />
-            <h2 className="font-semibold text-[#0c2d72]">
+            <h2 className="font-bold text-[#0c2d72]">
               Calcular frete e prazo
             </h2>
           </div>
@@ -315,21 +316,24 @@ export function ProductPurchasePanel({
                 {currencyFormatter.format(payment.pixPrice)} no Pix
               </p>
             </div>
-            <ProductQuantity
-              value={quantity}
-              max={product.stockQuantity}
-              onChange={setQuantity}
-              fullWidthOnMobile={false}
-              showLabel={false}
-            />
-            <Button
-              variant="secondary"
-              size="lg"
-              className="h-[50px] min-w-0 flex-1 rounded-[6px] px-4 text-base font-bold sm:text-lg md:max-w-sm"
-              onClick={handleTemporaryPurchase}
-            >
-              Adicionar ao carrinho
-            </Button>
+            <div className="grid min-w-0 flex-1 grid-cols-[minmax(96px,min(30%,140px))_minmax(0,1fr)] items-center gap-3 md:max-w-xl">
+              <ProductQuantity
+                value={quantity}
+                max={product.stockQuantity}
+                onChange={setQuantity}
+                compact
+                fullWidthOnMobile={false}
+                showLabel={false}
+              />
+              <Button
+                variant="secondary"
+                size="lg"
+                className="h-[50px] min-w-0 rounded-[6px] px-4 text-base font-medium sm:text-lg"
+                onClick={handleTemporaryPurchase}
+              >
+                Adicionar ao carrinho
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}

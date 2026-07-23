@@ -20,6 +20,12 @@
   --persi-border: #e5e7eb;
   --persi-border-strong: #cbd5e1;
 
+  /* Typography */
+  --persi-font-weight-regular: 400;
+  --persi-font-weight-medium: 500;
+  --persi-font-weight-semibold: 600;
+  --persi-font-weight-bold: 700;
+
   /* Radius */
   --persi-radius-sm: 6px;
   --persi-radius-md: 6px;
@@ -65,8 +71,11 @@
   --shadow-md: var(--persi-shadow-md);
   --shadow-lg: var(--persi-shadow-lg);
 
-  --font-sans: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  --font-mono: var(--font-geist-mono), monospace;
+  --font-sans: var(--font-inter), Arial, Helvetica, sans-serif;
+  --font-weight-normal: var(--persi-font-weight-regular);
+  --font-weight-medium: var(--persi-font-weight-medium);
+  --font-weight-semibold: var(--persi-font-weight-semibold);
+  --font-weight-bold: var(--persi-font-weight-bold);
 }
 
 * {
@@ -82,7 +91,8 @@ body {
   margin: 0;
   background: var(--persi-background);
   color: var(--persi-foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+  font-weight: var(--persi-font-weight-regular);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -93,6 +103,34 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+h1,
+h2 {
+  font-weight: var(--persi-font-weight-bold);
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-weight: var(--persi-font-weight-semibold);
+}
+
+button,
+input[type="button"],
+input[type="reset"],
+input[type="submit"] {
+  font-weight: var(--persi-font-weight-medium);
+}
+
+nav a,
+nav button {
+  font-weight: var(--persi-font-weight-semibold);
+}
+
+label {
+  font-weight: var(--persi-font-weight-medium);
 }
 
 button,
@@ -154,6 +192,78 @@ img {
 ::selection {
   background: rgb(255 106 0 / 0.22);
   color: var(--persi-foreground);
+}
+
+.institutional-content {
+  color: var(--persi-foreground);
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.institutional-content :where(h2, h3, h4) {
+  margin-top: 1.75em;
+  margin-bottom: 0.65em;
+  color: #071f5c;
+}
+
+.institutional-content h2 {
+  font-size: 1.5rem;
+  font-weight: var(--persi-font-weight-bold);
+}
+
+.institutional-content :where(h3, h4) {
+  font-size: 1.125rem;
+  font-weight: var(--persi-font-weight-semibold);
+}
+
+.institutional-content :where(p, ul, ol, blockquote, table, figure) {
+  margin-block: 1em;
+}
+
+.institutional-content :where(ul, ol) {
+  padding-left: 1.5rem;
+}
+
+.institutional-content ul {
+  list-style: disc;
+}
+
+.institutional-content ol {
+  list-style: decimal;
+}
+
+.institutional-content li + li {
+  margin-top: 0.4rem;
+}
+
+.institutional-content a {
+  color: #0c2d72;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.institutional-content img {
+  height: auto;
+  max-width: 100%;
+}
+
+.institutional-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.institutional-content :where(th, td) {
+  border: 1px solid var(--persi-border);
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.institutional-content blockquote {
+  border-left: 4px solid #ff6a00;
+  padding-left: 1rem;
+  color: var(--persi-muted);
 }
 
 :focus-visible {

@@ -19,6 +19,7 @@ import type {
 
 interface ProductSearchProps {
   variant: "desktop" | "mobile";
+  compact?: boolean;
 }
 
 type SuggestionsStatus = "idle" | "loading" | "success" | "error";
@@ -42,7 +43,10 @@ function formatCurrency(value: number, currencyCode: string) {
   }
 }
 
-export function ProductSearch({ variant }: ProductSearchProps) {
+export function ProductSearch({
+  variant,
+  compact = false,
+}: ProductSearchProps) {
   const router = useRouter();
   const resultsId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -171,11 +175,15 @@ export function ProductSearch({ variant }: ProductSearchProps) {
       className={
         isDesktop
           ? "relative hidden flex-1 md:block"
-          : "relative mt-3 md:hidden"
+          : compact
+            ? "relative md:hidden"
+            : "relative mt-3 md:hidden"
       }
     >
       <form
-        className="flex overflow-hidden rounded-md bg-white"
+        className={`flex overflow-hidden rounded-md bg-white ${
+          isDesktop ? "h-[42px]" : ""
+        }`}
         role="search"
         onSubmit={submitSearch}
       >
@@ -193,7 +201,9 @@ export function ProductSearch({ variant }: ProductSearchProps) {
           placeholder={
             isDesktop
               ? "Pesquisar produtos na Persi"
-              : "O que você está procurando?"
+              : compact
+                ? "Pesquisar produtos na Persi"
+                : "O que você está procurando?"
           }
           aria-label="Pesquisar produtos"
           aria-autocomplete="list"
@@ -201,7 +211,7 @@ export function ProductSearch({ variant }: ProductSearchProps) {
           aria-expanded={isOpen}
           className={
             isDesktop
-              ? "min-w-0 flex-1 px-5 py-3 text-sm text-slate-900 outline-none"
+              ? "min-w-0 flex-1 px-5 py-0 text-sm text-slate-900 outline-none"
               : "min-w-0 flex-1 px-4 py-2 text-sm text-slate-900 outline-none"
           }
         />

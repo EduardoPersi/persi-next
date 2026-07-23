@@ -48,7 +48,7 @@ export function ProductCardAction({
       <div className="mt-3">
         <Link
           href={href}
-          className="inline-flex h-10 min-h-10 w-full items-center justify-center rounded-[6px] border border-[#0c2d72] px-3 text-center text-base font-bold text-[#0c2d72] transition-colors hover:bg-[#0c2d72] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2 md:text-sm md:font-semibold"
+          className="inline-flex h-10 min-h-10 w-full items-center justify-center rounded-[6px] border border-[#0c2d72] px-3 text-center text-base font-medium text-[#0c2d72] transition-colors hover:bg-[#0c2d72] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2 md:text-sm"
         >
           {label}
         </Link>
@@ -63,13 +63,22 @@ export function ProductCardAction({
         type="button"
         onClick={handleAdd}
         disabled={isAdding}
-        className="inline-flex h-10 min-h-10 w-full items-center justify-center rounded-[6px] bg-[#ff6a00] px-3 text-center text-base font-bold text-white transition-colors hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 md:text-sm md:font-semibold"
+        className="-mx-1.5 inline-flex h-10 w-[calc(100%+0.75rem)] items-center justify-center rounded-[6px] bg-[#ff6a00] px-2 py-1 text-center text-[10px] font-medium leading-[13px] text-white transition-colors hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 lg:mx-0 lg:w-full lg:px-3 lg:py-2 lg:text-sm lg:leading-4"
       >
-        {isAdding ? "Adicionando..." : "Adicionar ao carrinho"}
+        {isAdding ? (
+          "Adicionando..."
+        ) : (
+          <span className="flex flex-col items-center justify-center gap-0">
+            <span>Adicionar ao</span>
+            <span className="-mt-[6px]">carrinho</span>
+          </span>
+        )}
       </button>
-      <p className="mt-1 min-h-4 text-xs text-slate-600" role="status">
-        {message}
-      </p>
+      {message ? (
+        <p className="mt-1 text-xs text-slate-600" role="status">
+          {message}
+        </p>
+      ) : null}
     </div>
   );
 }

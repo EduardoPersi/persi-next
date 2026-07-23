@@ -188,7 +188,7 @@ export function ProductCard({
           href={href}
           className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
         >
-          <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-slate-800 transition-colors group-hover:text-[#ff6a00]">
+          <h3 className="line-clamp-2 min-h-9 text-[13px] font-semibold leading-[18px] text-slate-800 transition-colors group-hover:text-[#ff6a00] md:min-h-10 md:text-sm md:leading-5">
             {name}
           </h3>
         </Link>
@@ -202,12 +202,14 @@ export function ProductCard({
             <div className="h-4" aria-hidden="true" />
           )}
 
-          <p className="mt-1 text-lg font-bold leading-6 text-emerald-700">
+          <p className="mt-1 text-base font-bold leading-5 text-emerald-700 md:text-lg md:leading-6">
             {formatCurrency(payment.pixPrice, currencyCode)}
-            <span className="ml-1 text-xs font-semibold">no Pix</span>
+            <span className="ml-1 whitespace-nowrap text-[11px] font-semibold md:text-xs">
+              no Pix
+            </span>
           </p>
 
-          <div className="mt-1.5 text-xs leading-4 text-slate-600">
+          <div className="mt-1.5 text-[11px] font-medium leading-[15px] text-slate-600 md:text-xs md:leading-4">
             {payment.installments === 1 ? (
               <p>
                 ou {formatCurrency(payment.currentPrice, currencyCode)} sem

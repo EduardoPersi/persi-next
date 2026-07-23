@@ -5,57 +5,67 @@ import {
   Phone,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { WhatsAppIcon } from "@/components/UI/SocialIcons";
 
 import { Container } from "@/components/UI/Container";
 
 const categories = [
-  "Acabamentos",
-  "Materiais de construção",
-  "Hidráulica",
-  "Banheiros",
-  "Ferragens",
-  "Ferramentas",
-  "Elétrica",
-  "Pintura",
-  "Utilidades",
+  { label: "Acabamentos", href: "/categoria/acabamentos" },
+  {
+    label: "Materiais de construção",
+    href: "/categoria/materiais-de-construcao",
+  },
+  { label: "Hidráulica", href: "/categoria/hidraulica" },
+  { label: "Banheiros", href: "/categoria/banheiros" },
+  { label: "Ferragens", href: "/categoria/ferragens" },
+  { label: "Ferramentas", href: "/categoria/ferramentas" },
+  { label: "Elétrica", href: "/categoria/eletrica" },
+  { label: "Pintura", href: "/categoria/pintura" },
+  { label: "Utilidades", href: "/categoria/utilidades" },
 ];
 
 const institutionalLinks = [
-  "Sobre nós",
-  "Política de troca e devolução",
-  "Dúvidas frequentes",
-  "Política de pagamento",
-  "Política de privacidade e segurança",
-  "Política de segurança",
-  "Política de entrega",
-  "Termos de uso",
+  { label: "Sobre nós", href: "/sobre-nos" },
+  {
+    label: "Política de troca e devolução",
+    href: "/politica-de-troca-e-devolucao",
+  },
+  { label: "Dúvidas frequentes", href: "/duvidas-frequentes" },
+  { label: "Política de pagamento", href: "/politica-de-pagamento" },
+  {
+    label: "Política de privacidade e segurança",
+    href: "/politica-de-privacidade-e-seguranca",
+  },
+  { label: "Política de segurança", href: "/politica-de-seguranca" },
+  { label: "Política de entrega", href: "/politica-de-entrega" },
+  { label: "Termos de uso", href: "/termos-de-uso" },
 ];
 
 const usefulLinks = [
-  "Frete grátis na região",
-  "Minha conta",
-  "Pedidos",
-  "Trocas e devoluções",
-  "Contato",
-  "Rastrear pedido",
+  { label: "Frete grátis na região", href: "/frete-gratis-na-regiao" },
+  { label: "Minha conta", href: "/minha-conta" },
+  { label: "Pedidos", href: "/minha-conta/pedidos" },
+  { label: "Trocas e devoluções", href: "/trocas-e-devolucoes" },
+  { label: "Contato", href: "/contato" },
+  { label: "Rastrear pedido", href: "/rastrear-pedido" },
 ];
 
 const footerLinkClasses =
   "inline-flex min-h-9 items-center text-sm text-slate-600 transition-colors hover:text-[#ff6a00]";
 
 type FooterLinksProps = {
-  items: string[];
+  items: ReadonlyArray<{ label: string; href: string }>;
 };
 
 function FooterLinks({ items }: FooterLinksProps) {
   return (
     <ul className="mt-3 space-y-0.5 md:mt-4">
-      {items.map((label) => (
-        <li key={label}>
-          <a href="#" className={footerLinkClasses}>
+      {items.map(({ label, href }) => (
+        <li key={href}>
+          <Link href={href} className={footerLinkClasses}>
             {label}
-          </a>
+          </Link>
         </li>
       ))}
     </ul>
@@ -81,7 +91,7 @@ export function Footer() {
             />
             <h2
               id="newsletter-title"
-              className="text-xl font-bold md:font-semibold"
+              className="text-xl font-bold"
             >
               Assine nossa newsletter
             </h2>
@@ -101,7 +111,7 @@ export function Footer() {
             />
             <button
               type="button"
-              className="box-border flex h-11 min-h-0 w-full items-center justify-center rounded-[6px] bg-[#ff6a00] px-8 text-sm font-semibold leading-normal text-white transition-colors duration-200 hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#1246ab] md:w-auto md:rounded-md md:font-bold"
+              className="box-border flex h-11 min-h-0 w-full items-center justify-center rounded-[6px] bg-[#ff6a00] px-8 text-sm font-medium leading-normal text-white transition-colors duration-200 hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#1246ab] md:w-auto md:rounded-md"
             >
               ENVIAR
             </button>
@@ -114,7 +124,7 @@ export function Footer() {
           <section aria-labelledby="footer-contact-title">
             <h2
               id="footer-contact-title"
-              className="text-sm font-semibold text-[#ff6a00] md:text-base"
+              className="text-sm font-bold text-[#ff6a00] md:text-base"
             >
               Contato
             </h2>
@@ -149,7 +159,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="#"
+                  href="tel:+5511996340689"
                   className="flex min-h-9 items-center gap-3 hover:text-[#ff6a00]"
                 >
                   <Phone
@@ -161,7 +171,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="#"
+                  href="mailto:vendas@persimateriais.com.br"
                   className="flex min-h-9 items-center gap-3 break-all hover:text-[#ff6a00]"
                 >
                   <Mail
@@ -192,7 +202,7 @@ export function Footer() {
           <nav aria-labelledby="footer-categories-title">
             <h2
               id="footer-categories-title"
-              className="text-sm font-semibold text-[#ff6a00] md:text-base"
+              className="text-sm font-bold text-[#ff6a00] md:text-base"
             >
               Categorias
             </h2>
@@ -202,7 +212,7 @@ export function Footer() {
           <nav aria-labelledby="footer-institutional-title">
             <h2
               id="footer-institutional-title"
-              className="text-sm font-semibold text-[#ff6a00] md:text-base"
+              className="text-sm font-bold text-[#ff6a00] md:text-base"
             >
               Institucional
             </h2>
@@ -213,7 +223,7 @@ export function Footer() {
             <nav aria-labelledby="footer-useful-title">
               <h2
                 id="footer-useful-title"
-                className="text-sm font-semibold text-[#ff6a00] md:text-base"
+                className="text-sm font-bold text-[#ff6a00] md:text-base"
               >
                 Links úteis
               </h2>
@@ -226,7 +236,7 @@ export function Footer() {
             >
               <h2
                 id="footer-social-title"
-                className="text-sm font-semibold text-[#ff6a00] md:text-base"
+                className="text-sm font-bold text-[#ff6a00] md:text-base"
               >
                 Redes Sociais:
               </h2>
@@ -307,7 +317,7 @@ export function Footer() {
             aria-labelledby="footer-brand-title"
             className="lg:max-w-[260px]"
           >
-            <h2 id="footer-brand-title" className="text-lg font-semibold">
+            <h2 id="footer-brand-title" className="text-lg font-bold">
               <Image
                 src="/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas.webp"
                 alt="Persi Materiais Elétricos, Hidráulicos e Ferramentas"
@@ -331,7 +341,7 @@ export function Footer() {
           <section aria-labelledby="footer-payment-title">
             <h2
               id="footer-payment-title"
-              className="text-sm font-semibold text-[#ff6a00] md:text-base"
+              className="text-sm font-bold text-[#ff6a00] md:text-base"
             >
               Formas de pagamento
             </h2>
@@ -348,7 +358,7 @@ export function Footer() {
           <section aria-labelledby="footer-security-title">
             <h2
               id="footer-security-title"
-              className="text-sm font-semibold text-[#ff6a00] md:text-base"
+              className="text-sm font-bold text-[#ff6a00] md:text-base"
             >
               Site seguro
             </h2>
@@ -383,7 +393,7 @@ export function Footer() {
           <section aria-labelledby="footer-shipping-title">
             <h2
               id="footer-shipping-title"
-              className="text-sm font-semibold text-[#ff6a00] md:text-base"
+              className="text-sm font-bold text-[#ff6a00] md:text-base"
             >
               Formas de envio
             </h2>

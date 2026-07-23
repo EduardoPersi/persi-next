@@ -30,7 +30,7 @@ export function LoadMoreButton({
       type="button"
       onClick={handleLoadMore}
       disabled={isPending}
-      className="inline-flex h-11 min-w-36 items-center justify-center gap-2 rounded-[6px] bg-[#0c2d72] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#071f5c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-white disabled:text-slate-700 disabled:ring-1 disabled:ring-inset disabled:ring-slate-300"
+      className="inline-flex h-11 min-w-36 items-center justify-center gap-2 rounded-[6px] bg-[#0c2d72] px-6 text-sm font-medium text-white transition-colors hover:bg-[#071f5c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-white disabled:text-slate-700 disabled:ring-1 disabled:ring-inset disabled:ring-slate-300"
       aria-live="polite"
     >
       {isPending ? (

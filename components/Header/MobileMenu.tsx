@@ -15,6 +15,7 @@ import { Drawer } from "./Drawer";
 type MobileMenuProps = {
   open: boolean;
   onClose: () => void;
+  onOpenAccount: () => void;
 };
 
 const categories = [
@@ -29,7 +30,11 @@ const categories = [
   "Utilidades",
 ];
 
-export function MobileMenu({ open, onClose }: MobileMenuProps) {
+export function MobileMenu({
+  open,
+  onClose,
+  onOpenAccount,
+}: MobileMenuProps) {
   return (
     <Drawer open={open} onClose={onClose} side="left">
       <div className="flex h-full flex-col">
@@ -50,17 +55,21 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
         </header>
 
         <div className="border-b px-3 py-3">
-          <a
-            href="#"
-            className="flex items-center gap-3 rounded-md px-3 py-3 text-sm font-medium transition hover:bg-slate-100"
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onOpenAccount();
+            }}
+            className="flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition hover:bg-slate-100"
           >
             <User size={20} />
             Minha Conta
-          </a>
+          </button>
 
           <a
             href="#"
-            className="flex items-center gap-3 rounded-md px-3 py-3 text-sm font-medium transition hover:bg-slate-100"
+            className="flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition hover:bg-slate-100"
           >
             <Heart size={20} />
             Favoritos
@@ -68,7 +77,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
 
           <a
             href="#"
-            className="flex items-center gap-3 rounded-md px-3 py-3 text-sm font-medium transition hover:bg-slate-100"
+            className="flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition hover:bg-slate-100"
           >
             <Package size={20} />
             Meus Pedidos
@@ -76,7 +85,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
 
           <a
             href="#"
-            className="flex items-center gap-3 rounded-md px-3 py-3 text-sm font-medium transition hover:bg-slate-100"
+            className="flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition hover:bg-slate-100"
           >
             <MapPin size={20} />
             Nossa Loja
@@ -88,13 +97,13 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
             <Link
               href="/promocoes"
               onClick={onClose}
-              className="flex items-center justify-between rounded-md px-3 py-3.5 text-sm font-semibold text-[#0c2d72] transition hover:bg-slate-100"
+              className="flex items-center justify-between rounded-md px-3 py-3.5 text-[17px] font-semibold text-[#0c2d72] transition hover:bg-slate-100"
             >
               <span>Promoções</span>
               <ChevronRight size={18} className="text-[#ff6a00]" />
             </Link>
           </div>
-          <div className="px-5 pb-2 pt-5 text-xs font-bold uppercase tracking-wider text-slate-500">
+          <div className="px-5 pb-2 pt-5 text-xs font-semibold uppercase tracking-wider text-slate-500">
             Categorias
           </div>
 
@@ -103,7 +112,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
               <button
                 key={category}
                 type="button"
-                className="flex w-full items-center justify-between rounded-md px-3 py-3.5 text-left text-sm font-medium transition hover:bg-slate-100"
+                className="flex w-full items-center justify-between rounded-md px-3 py-3.5 text-left text-[17px] font-semibold transition hover:bg-slate-100"
               >
                 <span>{category}</span>
                 <ChevronRight size={18} className="text-slate-400" />

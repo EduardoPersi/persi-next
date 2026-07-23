@@ -123,7 +123,7 @@ export function RecentlyViewedProducts({
     >
       <h2
         id={sectionId}
-        className="text-xl font-semibold text-slate-900 sm:text-2xl"
+        className="text-xl font-bold text-slate-900 sm:text-2xl"
       >
         {title}
       </h2>

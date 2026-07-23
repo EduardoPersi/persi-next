@@ -28,14 +28,37 @@ Nunca criar containers diferentes por página.
 
 ## Tipografia
 
-Hierarquia:
+A interface utiliza apenas Inter como fonte principal. A configuração da
+família é feita em `app/layout.tsx` com `next/font/google` e distribuída pelo
+tema do Tailwind em `app/globals.css`.
 
-- H1
-- H2
-- H3
-- H4
-- Texto
-- Legendas
+### Escala tipográfica
+
+| Elemento | Fonte | Peso |
+| --- | --- | ---: |
+| H1 | Inter | 700 |
+| H2 | Inter | 700 |
+| H3 | Inter | 600 |
+| H4 | Inter | 600 |
+| H5 | Inter | 600 |
+| H6 | Inter | 600 |
+| Texto | Inter | 400 |
+| Botões | Inter | 500 |
+| Menus | Inter | 600 |
+| Preços | Inter | 700 |
+| Parcelamento | Inter | 500 |
+| Labels | Inter | 500 |
+| Descrições | Inter | 400 |
+
+### Tokens de peso
+
+- `font-normal`: 400, para textos e descrições;
+- `font-medium`: 500, para labels e parcelamentos;
+- `font-semibold`: 600, para menus e títulos de H3 a H6;
+- `font-bold`: 700, para H1, H2 e preços.
+
+Os valores são definidos uma única vez no tema. Componentes não devem usar
+pesos arbitrários nem declarar `font-family` localmente.
 
 Sempre priorizar boa leitura em dispositivos móveis.
 

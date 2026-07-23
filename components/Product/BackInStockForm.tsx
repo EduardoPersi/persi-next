@@ -98,7 +98,7 @@ export function BackInStockForm({
 
   return (
     <div className="w-full min-w-0 max-w-full rounded-[12px] border border-slate-200 bg-white p-4 sm:p-5">
-      <h2 className="font-semibold text-[#0c2d72]">
+      <h2 className="font-bold text-[#0c2d72]">
         Atualmente, este produto está fora de estoque.
       </h2>
       <p className="mt-1 text-sm leading-6 text-slate-600">
@@ -150,7 +150,7 @@ export function BackInStockForm({
             !integrationEnabled ||
             variationPending
           }
-          className="inline-flex h-11 w-full items-center justify-center rounded-[6px] bg-[#ff6a00] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-11 w-full items-center justify-center rounded-[6px] bg-[#ff6a00] px-4 text-sm font-medium text-white transition-colors hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {state === "submitting"
             ? "Enviando..."
@@ -177,7 +177,7 @@ export function BackInStockForm({
         href={whatsappUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-[6px] border border-emerald-600 px-4 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+        className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-[6px] border border-emerald-600 px-4 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
         aria-label={`Consultar disponibilidade de ${productName} pelo WhatsApp`}
       >
         Consultar pelo WhatsApp

@@ -345,7 +345,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 <div className="mt-6">
                   {searchFailed ? (
                     <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-                      <h2 className="text-lg font-semibold text-[#0c2d72]">
+                      <h2 className="text-lg font-bold text-[#0c2d72]">
                         Não foi possível pesquisar agora
                       </h2>
                       <p className="mt-2 text-sm text-slate-600">
@@ -386,7 +386,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                     </>
                   ) : (
                     <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-                      <h2 className="text-lg font-semibold text-[#0c2d72]">
+                      <h2 className="text-lg font-bold text-[#0c2d72]">
                         Nenhum produto encontrado
                       </h2>
                       <p className="mt-2 text-sm text-slate-600">
@@ -412,7 +412,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             >
               <h2
                 id="brand-description-title"
-                className="text-xl font-semibold text-[#0c2d72]"
+                className="text-xl font-bold text-[#0c2d72]"
               >
                 Sobre {selectedBrand.name}
               </h2>

@@ -87,7 +87,7 @@ export function BrandCarousel({
     >
       <h2
         id="brand-carousel-title"
-        className="text-xl font-semibold text-slate-900 sm:text-2xl"
+        className="text-xl font-bold text-slate-900 sm:text-2xl"
       >
         Selecionar por marca
       </h2>

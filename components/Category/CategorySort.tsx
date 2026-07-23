@@ -88,7 +88,7 @@ export function CategorySort({
       <button
         type="submit"
         disabled={isPending}
-        className="hidden h-11 rounded-xl border border-[#0c2d72] px-4 text-sm font-semibold text-[#0c2d72] transition-colors hover:bg-[#0c2d72] hover:text-white sm:inline-flex sm:items-center sm:justify-center"
+        className="hidden h-11 rounded-xl border border-[#0c2d72] px-4 text-sm font-medium text-[#0c2d72] transition-colors hover:bg-[#0c2d72] hover:text-white sm:inline-flex sm:items-center sm:justify-center"
       >
         {isPending ? "Ordenando..." : "Ordenar"}
       </button>

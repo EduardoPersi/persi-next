@@ -191,7 +191,7 @@ export function QuickViewModal({
           <div className="col-span-full flex min-h-80 flex-col items-center justify-center p-8 text-center">
             <h2
               id="quick-view-title"
-              className="text-xl font-semibold text-[#0c2d72]"
+              className="text-xl font-bold text-[#0c2d72]"
             >
               Visualização rápida
             </h2>
@@ -245,11 +245,11 @@ export function QuickViewModal({
                   </p>
                 ) : null}
                 {product.installmentText ? (
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="mt-1 text-sm font-medium text-slate-600">
                     {product.installmentText}
                   </p>
                 ) : product.commercialText ? (
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="mt-1 text-sm font-medium text-slate-600">
                     {product.commercialText}
                   </p>
                 ) : null}

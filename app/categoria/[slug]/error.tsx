@@ -23,7 +23,7 @@ export default function CategoryError({ reset }: CategoryErrorProps) {
             <button
               type="button"
               onClick={reset}
-              className="mt-6 h-11 rounded-xl bg-[#ff6a00] px-5 font-semibold text-white"
+              className="mt-6 h-11 rounded-xl bg-[#ff6a00] px-5 font-medium text-white"
             >
               Tentar novamente
             </button>

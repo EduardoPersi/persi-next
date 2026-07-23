@@ -529,7 +529,7 @@ export default async function CategoryPage({
                   </>
                 ) : (
                   <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-                    <h2 className="text-lg font-semibold text-[#0c2d72]">
+                    <h2 className="text-lg font-bold text-[#0c2d72]">
                       Nenhum produto encontrado
                     </h2>
                     <p className="mt-2 text-sm text-slate-600">
@@ -555,7 +555,7 @@ export default async function CategoryPage({
             >
               <h2
                 id="category-description-title"
-                className="text-xl font-semibold text-[#0c2d72]"
+                className="text-xl font-bold text-[#0c2d72]"
               >
                 Sobre {contextName}
               </h2>

@@ -52,7 +52,7 @@ export function ProductPaymentMethods({
       <button
         type="button"
         onClick={openDialog}
-        className="mt-5 flex min-h-12 w-full items-center gap-2 border-t border-slate-200 pt-4 text-left text-sm font-semibold text-slate-800 transition-colors hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+        className="mt-5 flex min-h-12 w-full items-center gap-2 border-t border-slate-200 pt-4 text-left text-sm font-medium text-slate-800 transition-colors hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
         aria-haspopup="dialog"
       >
         <span className="flex items-center gap-1.5 text-slate-600" aria-hidden="true">
@@ -98,7 +98,7 @@ export function ProductPaymentMethods({
                   type="button"
                   onClick={() => setActiveMethod(method.id)}
                   aria-pressed={activeMethod === method.id}
-                  className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] ${
+                  className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] ${
                     activeMethod === method.id
                       ? "border-[#0c2d72] bg-[#0c2d72] text-white"
                       : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
@@ -165,7 +165,7 @@ export function ProductPaymentMethods({
             <button
               type="button"
               onClick={closeDialog}
-              className="min-h-11 rounded-xl bg-[#0c2d72] px-5 font-semibold text-white hover:bg-[#071f5c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+              className="min-h-11 rounded-xl bg-[#0c2d72] px-5 font-medium text-white hover:bg-[#071f5c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
             >
               Fechar
             </button>

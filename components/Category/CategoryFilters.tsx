@@ -198,7 +198,7 @@ function FilterForm({
           <button
             type="submit"
             disabled={isPending}
-            className="h-8 rounded-[6px] bg-slate-50 px-3 text-[10px] font-semibold uppercase text-slate-800 hover:bg-slate-100"
+            className="h-8 rounded-[6px] bg-slate-50 px-3 text-[10px] font-medium uppercase text-slate-800 hover:bg-slate-100"
           >
             Filtrar
           </button>
@@ -499,7 +499,7 @@ export function CategoryFilters(props: CategoryFiltersProps) {
           onClick={(event) => openDrawer(event.currentTarget)}
           aria-expanded={isOpen}
           aria-controls="category-filter-drawer"
-          className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-[6px] border border-slate-200 bg-white px-4 text-sm font-semibold text-[#0c2d72] lg:hidden"
+          className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-[6px] border border-slate-200 bg-white px-4 text-sm font-medium text-[#0c2d72] lg:hidden"
         >
           <SlidersHorizontal className="h-5 w-5" aria-hidden="true" />
           Filtros
@@ -547,7 +547,7 @@ export function CategoryFilters(props: CategoryFiltersProps) {
             <div className="flex items-center justify-between gap-3">
               <h2
                 id="category-filter-title"
-                className="text-lg font-semibold text-[#0c2d72]"
+                className="text-lg font-bold text-[#0c2d72]"
               >
                 Filtrar produtos
               </h2>

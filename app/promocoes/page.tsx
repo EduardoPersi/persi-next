@@ -278,7 +278,7 @@ export default async function PromotionsPage({
                   </>
                 ) : (
                   <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-                    <h2 className="text-lg font-semibold text-[#0c2d72]">
+                    <h2 className="text-lg font-bold text-[#0c2d72]">
                       Nenhuma promoção encontrada
                     </h2>
                     <p className="mt-2 text-sm text-slate-600">

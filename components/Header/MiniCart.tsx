@@ -157,7 +157,7 @@ export function MiniCart() {
             <button
               type="button"
               onClick={closeCart}
-              className="mt-8 w-full rounded-md bg-[#0c2d72] py-3 font-semibold text-white transition hover:bg-[#17439f]"
+              className="mt-8 w-full rounded-md bg-[#0c2d72] py-3 font-medium text-white transition hover:bg-[#17439f]"
             >
               CONTINUAR COMPRANDO
             </button>
@@ -179,7 +179,7 @@ export function MiniCart() {
           </div>
           <button
             disabled
-            className="w-full cursor-not-allowed rounded-md bg-slate-200 py-3 font-semibold text-slate-500"
+            className="w-full cursor-not-allowed rounded-md bg-slate-200 py-3 font-medium text-slate-500"
           >
             FINALIZAR COMPRA
           </button>

@@ -56,7 +56,7 @@ export function InstagramFeed({ posts }: InstagramFeedProps) {
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2
           id="instagram-feed-title"
-          className="text-xl font-semibold text-slate-900 sm:text-2xl"
+          className="text-xl font-bold text-slate-900 sm:text-2xl"
         >
           Siga a gente no Instagram
         </h2>
