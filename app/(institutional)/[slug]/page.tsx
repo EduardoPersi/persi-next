@@ -49,7 +49,7 @@ export default async function InstitutionalPage({
   if (!page) notFound();
 
   return (
-    <InstitutionalPageLayout title={config.title} modified={page.modified}>
+    <InstitutionalPageLayout title={config.title}>
       <div dangerouslySetInnerHTML={{ __html: page.content }} />
     </InstitutionalPageLayout>
   );

@@ -5,21 +5,13 @@ import { Container } from "@/components/UI/Container";
 
 type InstitutionalPageLayoutProps = {
   title: string;
-  modified?: string;
   children: ReactNode;
 };
 
 export function InstitutionalPageLayout({
   title,
-  modified,
   children,
 }: InstitutionalPageLayoutProps) {
-  const formattedDate = modified
-    ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(
-        new Date(modified),
-      )
-    : null;
-
   return (
     <>
       <Header />
@@ -43,11 +35,6 @@ export function InstitutionalPageLayout({
             <h1 className="text-2xl font-bold text-[#071f5c] sm:text-3xl">
               {title}
             </h1>
-            {formattedDate ? (
-              <p className="mt-2 text-xs text-slate-500">
-                Última atualização: {formattedDate}
-              </p>
-            ) : null}
             <div className="institutional-content mt-7">{children}</div>
           </article>
         </Container>

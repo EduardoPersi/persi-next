@@ -40,6 +40,33 @@ function sanitizeWordPressHtml(html: string) {
     .replace(/<\/h1>/gi, "</h2>");
 }
 
+function normalizeHeadingText(value: string) {
+  return value
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLocaleLowerCase("pt-BR");
+}
+
+function removeRepeatedPageTitle(html: string, title: string) {
+  const normalizedTitle = normalizeHeadingText(title);
+  let removed = false;
+
+  return html.replace(
+    /<h([2-4])\b[^>]*>([\s\S]*?)<\/h\1>/gi,
+    (heading, _level: string, content: string) => {
+      if (!removed && normalizeHeadingText(content) === normalizedTitle) {
+        removed = true;
+        return "";
+      }
+
+      return heading;
+    },
+  );
+}
+
 function isWordPressPageResponse(
   value: unknown,
 ): value is WordPressPageResponse {
@@ -82,7 +109,10 @@ export async function getWordPressPageBySlug(
     }
 
     const title = getRenderedString(page.title);
-    const content = sanitizeWordPressHtml(getRenderedString(page.content));
+    const content = removeRepeatedPageTitle(
+      sanitizeWordPressHtml(getRenderedString(page.content)),
+      title,
+    );
     if (!title || !content) return null;
 
     return {
