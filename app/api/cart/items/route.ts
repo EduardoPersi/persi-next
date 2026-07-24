@@ -1,13 +1,41 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import {
   addItemToCart,
   CartServiceError,
   updateCartItem,
+  removeCartItem,
 } from "@/services/woocommerce/cart";
 
 const CART_TOKEN_COOKIE = "persi_cart_token";
 const MAX_CART_QUANTITY = 999;
+
+const variationAttributeSchema = z.object({
+  attribute: z.string().trim().min(1).max(120),
+  value: z.string().trim().min(1).max(200),
+}).strict();
+
+const addCartItemSchema = z
+  .object({
+    productId: z.number().int().positive(),
+    quantity: z.number().int().positive().max(MAX_CART_QUANTITY),
+    variationId: z.number().int().positive().optional(),
+    variation: z.array(variationAttributeSchema).min(1).max(20).optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (Boolean(value.variationId) !== Boolean(value.variation?.length)) {
+      context.addIssue({
+        code: "custom",
+        message: "A variaÃ§Ã£o estÃ¡ incompleta.",
+      });
+    }
+  });
+
+const cartItemKeySchema = z.object({
+  key: z.string().trim().min(1).max(100),
+}).strict();
 
 function parsePositiveInteger(value: unknown): number | undefined {
   return typeof value === "number" &&
@@ -36,22 +64,25 @@ export async function POST(request: Request) {
     );
   }
 
-  const input = body as Record<string, unknown>;
-  const productId = parsePositiveInteger(input.productId);
-  const quantity = parsePositiveInteger(input.quantity);
+  const parsedInput = addCartItemSchema.safeParse(body);
 
-  if (!productId || !quantity || quantity > MAX_CART_QUANTITY) {
+  if (!parsedInput.success) {
     return NextResponse.json(
       { message: "Produto ou quantidade inválidos." },
       { status: 400 },
     );
   }
+  const input = parsedInput.data;
 
   const cookieStore = await cookies();
 
   try {
     const result = await addItemToCart(
-      { productId, quantity },
+      {
+        productId: input.variationId ?? input.productId,
+        quantity: input.quantity,
+        variation: input.variation,
+      },
       cookieStore.get(CART_TOKEN_COOKIE)?.value,
     );
     const response = NextResponse.json(result.cart);
@@ -76,6 +107,43 @@ export async function POST(request: Request) {
         message: unavailable
           ? "Este produto não está disponível no momento."
           : "Não foi possível adicionar o produto. Tente novamente.",
+      },
+      { status },
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  const cartToken = (await cookies()).get(CART_TOKEN_COOKIE)?.value;
+
+  if (!cartToken) {
+    return NextResponse.json(
+      { message: "Carrinho nÃ£o encontrado." },
+      { status: 404 },
+    );
+  }
+
+  const body = await request.json().catch(() => null);
+  const parsedInput = cartItemKeySchema.safeParse(body);
+
+  if (!parsedInput.success) {
+    return NextResponse.json(
+      { message: "Item invÃ¡lido." },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const result = await removeCartItem(parsedInput.data.key, cartToken);
+    return NextResponse.json(result.cart);
+  } catch (error) {
+    const status = error instanceof CartServiceError ? error.status : 500;
+    return NextResponse.json(
+      {
+        message:
+          status === 400 || status === 404 || status === 409
+            ? "Este item nÃ£o estÃ¡ mais no carrinho."
+            : "NÃ£o foi possÃ­vel remover o item. Tente novamente.",
       },
       { status },
     );

@@ -69,13 +69,7 @@ const baseProduct: Product = {
     { label: "Uso indicado", value: "Cozinha e área de serviço" },
     { label: "Garantia", value: "12 meses" },
   ],
-  variations: [
-    {
-      id: "acabamento",
-      name: "Acabamento",
-      options: ["Cromado"],
-    },
-  ],
+  variations: [],
 };
 
 const relatedProducts: Product[] = [

@@ -23,13 +23,22 @@ export interface ProductSpecification {
 }
 
 export interface ProductVariation {
-  id: number | string;
-  attributes?: Array<{
+  id: number;
+  parentId: number;
+  sku?: string;
+  attributes: Array<{
     name: string;
     value: string;
   }>;
-  name?: string;
-  options?: string[];
+  price: number;
+  regularPrice?: number;
+  salePrice?: number;
+  onSale: boolean;
+  purchasable: boolean;
+  inStock: boolean;
+  stockQuantity?: number | null;
+  backordersAllowed?: boolean;
+  image?: ProductImage | null;
 }
 
 export interface ProductAttribute {
@@ -41,6 +50,11 @@ export interface ProductAttribute {
     id: number;
     name: string;
     slug: string;
+  }>;
+  options: Array<{
+    value: string;
+    label: string;
+    slug?: string;
   }>;
 }
 

@@ -12,9 +12,17 @@ interface WooCartItem {
   key?: string;
   id?: number;
   name?: string;
+  sku?: string;
+  permalink?: string;
+  variation?: Array<{
+    attribute?: string;
+    value?: string;
+  }>;
   quantity?: number;
   quantity_limits?: {
+    minimum?: number;
     maximum?: number;
+    multiple_of?: number;
   };
   images?: WooCartImage[];
   prices?: {
@@ -49,6 +57,25 @@ export interface AddCartItemInput {
     attribute: string;
     value: string;
   }>;
+}
+
+function getSlug(permalink: string | undefined) {
+  if (!permalink) return undefined;
+
+  try {
+    return new URL(permalink).pathname.split("/").filter(Boolean).at(-1);
+  } catch {
+    return undefined;
+  }
+}
+
+function getVariationLabel(attribute: string) {
+  return stripHtml(
+    attribute
+      .replace(/^attribute_/, "")
+      .replace(/^pa_/, "")
+      .replace(/[-_]+/g, " "),
+  ).replace(/\b\p{L}/gu, (letter) => letter.toLocaleUpperCase("pt-BR"));
 }
 
 export class CartServiceError extends Error {
@@ -98,12 +125,30 @@ function mapCartItem(item: WooCartItem, minorUnit: number): CartItem | null {
   return {
     key: item.key,
     id: item.id,
+    productId: item.id,
+    variationId: item.variation?.length ? item.id : undefined,
     name: stripHtml(item.name),
+    sku: item.sku ? stripHtml(item.sku) : undefined,
+    permalink: item.permalink,
+    slug: getSlug(item.permalink),
+    variation: (item.variation ?? []).flatMap((attribute) =>
+      attribute.attribute && attribute.value
+        ? [
+            {
+              attribute: attribute.attribute,
+              label: getVariationLabel(attribute.attribute),
+              value: stripHtml(attribute.value),
+            },
+          ]
+        : [],
+    ),
     quantity: item.quantity,
+    minQuantity: item.quantity_limits?.minimum ?? 1,
     maxQuantity:
       typeof item.quantity_limits?.maximum === "number"
         ? Math.min(999, item.quantity_limits.maximum)
         : 999,
+    quantityStep: item.quantity_limits?.multiple_of ?? 1,
     image: image?.src
       ? {
           src: image.src,

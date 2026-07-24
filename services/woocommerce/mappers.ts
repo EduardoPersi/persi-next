@@ -2,6 +2,7 @@ import type { ProductCategory } from "@/types/category";
 import type {
   Product,
   ProductImage,
+  ProductVariation,
 } from "@/types/product";
 import type {
   WooCommerceStoreCategory,
@@ -190,11 +191,47 @@ export function mapStoreProduct(
         name: stripHtml(term.name),
         slug: term.slug,
       })),
+      options: attribute.terms.map((term) => ({
+        value: term.slug || term.name,
+        label: stripHtml(term.name),
+        slug: term.slug,
+      })),
     })),
-    variations: product.variations ?? [],
+    variations: [],
     hasOptions: product.has_options,
     isPurchasable: product.is_purchasable,
     commercialText: stripHtml(product.price_html),
+  };
+}
+
+export function mapStoreVariation(
+  product: WooCommerceStoreProduct,
+  parentId: number,
+): ProductVariation {
+  const minorUnit = product.prices.currency_minor_unit;
+
+  return {
+    id: product.id,
+    parentId,
+    sku: product.sku || undefined,
+    attributes: (product.attributes ?? []).flatMap((attribute) =>
+      attribute.terms.map((term) => ({
+        name: attribute.taxonomy || attribute.name,
+        value: term.slug || term.name,
+      })),
+    ),
+    price: convertMinorUnitPrice(product.prices.price, minorUnit) ?? 0,
+    regularPrice: convertMinorUnitPrice(
+      product.prices.regular_price,
+      minorUnit,
+    ),
+    salePrice: convertMinorUnitPrice(product.prices.sale_price, minorUnit),
+    onSale: product.on_sale,
+    purchasable: product.is_purchasable,
+    inStock: product.is_in_stock,
+    stockQuantity: undefined,
+    backordersAllowed: product.backorders_allowed,
+    image: product.images[0] ? mapImage(product.images[0]) : null,
   };
 }
 

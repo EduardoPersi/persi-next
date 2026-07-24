@@ -129,17 +129,24 @@ function mapAttributes(
       (attribute.id > 0 ? `pa_${slugify(attribute.name)}` : null);
     const attributeId = attribute.id || getStableNumber(attribute.name);
 
+    const terms = attribute.options.map((option, optionIndex) => ({
+      id: getStableNumber(
+        `${productId}-${attributeId}-${option}-${attributeIndex}-${optionIndex}`,
+      ),
+      name: stripHtml(option),
+      slug: slugify(option),
+    }));
+
     return {
       id: attributeId,
       name: stripHtml(attribute.name),
       taxonomy,
       hasVariations: attribute.variation,
-      terms: attribute.options.map((option, optionIndex) => ({
-        id: getStableNumber(
-          `${productId}-${attributeId}-${option}-${attributeIndex}-${optionIndex}`,
-        ),
-        name: stripHtml(option),
-        slug: slugify(option),
+      terms,
+      options: terms.map((term) => ({
+        value: term.slug || term.name,
+        label: term.name,
+        slug: term.slug,
       })),
     };
   });
@@ -219,7 +226,7 @@ export function mapRestProduct(product: WooCommerceRestProduct): Product {
     featured: false,
     onSale: product.on_sale,
     attributes: mapAttributes(product.id, product.attributes),
-    variations: (product.variations ?? []).map((id) => ({ id })),
+    variations: [],
     hasOptions:
       product.type === "variable" || (product.variations?.length ?? 0) > 0,
     isPurchasable: product.purchasable,

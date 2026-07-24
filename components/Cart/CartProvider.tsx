@@ -8,16 +8,20 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Cart } from "@/types/cart";
+import type { AddCartItemInput, Cart } from "@/types/cart";
 
 interface CartContextValue {
   cart: Cart | null;
   isLoading: boolean;
   isOpen: boolean;
   error: string;
+  pendingItemKey: string | null;
   addItem: (
-    productId: number,
+    input: number | AddCartItemInput,
     quantity?: number,
+  ) => Promise<{ success: boolean; message: string }>;
+  removeItem: (
+    key: string,
   ) => Promise<{ success: boolean; message: string }>;
   updateItem: (
     key: string,
@@ -34,6 +38,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState("");
+  const [pendingItemKey, setPendingItemKey] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -65,15 +70,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addItem = useCallback(
-    async (productId: number, quantity = 1) => {
+    async (input: number | AddCartItemInput, quantity = 1) => {
       setIsLoading(true);
       setError("");
+
+      const payload =
+        typeof input === "number"
+          ? { productId: input, quantity }
+          : { ...input, quantity: input.quantity ?? 1 };
 
       try {
         const response = await fetch("/api/cart/items", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ productId, quantity }),
+          body: JSON.stringify(payload),
         });
         const result = (await response.json()) as Cart & {
           message?: string;
@@ -107,6 +117,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const updateItem = useCallback(async (key: string, quantity: number) => {
     setIsLoading(true);
+    setPendingItemKey(key);
     setError("");
 
     try {
@@ -131,6 +142,38 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return { success: false, message };
     } finally {
       setIsLoading(false);
+      setPendingItemKey(null);
+    }
+  }, []);
+
+  const removeItem = useCallback(async (key: string) => {
+    setIsLoading(true);
+    setPendingItemKey(key);
+    setError("");
+
+    try {
+      const response = await fetch("/api/cart/items", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+      });
+      const result = (await response.json()) as Cart & { message?: string };
+
+      if (!response.ok) {
+        const message = result.message || "NÃ£o foi possÃ­vel remover o item.";
+        setError(message);
+        return { success: false, message };
+      }
+
+      setCart(result);
+      return { success: true, message: "Produto removido do carrinho." };
+    } catch {
+      const message = "NÃ£o foi possÃ­vel remover o item.";
+      setError(message);
+      return { success: false, message };
+    } finally {
+      setIsLoading(false);
+      setPendingItemKey(null);
     }
   }, []);
 
@@ -140,12 +183,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       isLoading,
       isOpen,
       error,
+      pendingItemKey,
       addItem,
       updateItem,
+      removeItem,
       openCart: () => setIsOpen(true),
       closeCart: () => setIsOpen(false),
     }),
-    [addItem, cart, error, isLoading, isOpen, updateItem],
+    [addItem, cart, error, isLoading, isOpen, pendingItemKey, removeItem, updateItem],
   );
 
   return (

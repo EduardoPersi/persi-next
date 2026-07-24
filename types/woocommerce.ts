@@ -73,6 +73,9 @@ export interface WooCommerceStoreProduct {
   has_options: boolean;
   is_purchasable: boolean;
   is_in_stock: boolean;
+  low_stock_remaining?: number | null;
+  backorders_allowed?: boolean;
+  parent?: number;
   stock_availability?: {
     text?: string;
     class?: string;

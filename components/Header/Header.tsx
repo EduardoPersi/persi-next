@@ -55,6 +55,7 @@ function HeaderLogo({ compact = false }: HeaderLogoProps) {
 
 interface HeaderActionsProps {
   itemsCount: number;
+  isCartOpen: boolean;
   onOpenCart: () => void;
   onOpenAccount: () => void;
   compact?: boolean;
@@ -62,6 +63,7 @@ interface HeaderActionsProps {
 
 function HeaderActions({
   itemsCount,
+  isCartOpen,
   onOpenCart,
   onOpenAccount,
   compact = false,
@@ -108,7 +110,9 @@ function HeaderActions({
       <button
         type="button"
         onClick={onOpenCart}
-        aria-label="Carrinho"
+        aria-label="Abrir mini carrinho"
+        aria-expanded={isCartOpen}
+        aria-controls="mini-cart-drawer"
         className="relative flex h-10 w-10 items-center justify-center p-2 transition hover:text-white/80"
       >
         <ShoppingCart className={compact ? "h-6 w-6" : "h-7 w-7"} />
@@ -127,7 +131,7 @@ export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [showCompactHeader, setShowCompactHeader] = useState(false);
-  const { cart, openCart } = useCart();
+  const { cart, isOpen: isCartOpen, openCart } = useCart();
   const itemsCount = cart?.itemsCount ?? 0;
   const openAccount = useCallback(() => setAccountOpen(true), []);
   const closeAccount = useCallback(() => setAccountOpen(false), []);
@@ -197,6 +201,7 @@ export function Header() {
             <ProductSearch variant="desktop" />
             <HeaderActions
               itemsCount={itemsCount}
+              isCartOpen={isCartOpen}
               onOpenCart={openCart}
               onOpenAccount={openAccount}
             />
@@ -253,6 +258,7 @@ export function Header() {
             <ProductSearch variant="desktop" />
             <HeaderActions
               itemsCount={itemsCount}
+              isCartOpen={isCartOpen}
               onOpenCart={openCart}
               onOpenAccount={openAccount}
               compact

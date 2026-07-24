@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   MapPin,
   ShieldCheck,
@@ -9,6 +9,11 @@ import {
   Truck,
 } from "lucide-react";
 import { Button } from "@/components/UI/Button";
+import { useCart } from "@/hooks/useCart";
+import {
+  canAttributeOptionMatch,
+  resolveSelectedVariation,
+} from "@/lib/commerce/variation";
 import { getProductPaymentInfo } from "@/lib/commerce/productPayment";
 import type { ProductBrand } from "@/types/brand";
 import type { Product } from "@/types/product";
@@ -33,14 +38,42 @@ export function ProductPurchasePanel({
   const mainPurchaseButtonRef = useRef<HTMLButtonElement>(null);
   const [quantity, setQuantity] = useState(1);
   const [purchaseMessage, setPurchaseMessage] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const [selectedAttributes, setSelectedAttributes] = useState<
+    Record<string, string>
+  >({});
   const [shippingMessage, setShippingMessage] = useState("");
   const [showStickyPurchase, setShowStickyPurchase] = useState(false);
-  const regularPrice = product.regularPrice;
+  const { addItem } = useCart();
+  const variationAttributes = useMemo(
+    () => product.attributes.filter((attribute) => attribute.hasVariations),
+    [product.attributes],
+  );
+  const selectedVariation = useMemo(
+    () => resolveSelectedVariation(product.variations, selectedAttributes),
+    [product.variations, selectedAttributes],
+  );
+  const isVariable = product.type === "variable";
+  const isSupportedType =
+    product.type === undefined ||
+    product.type === "simple" ||
+    product.type === "variable";
+  const variationSelectionMessage =
+    isVariable && !selectedVariation
+      ? "Selecione todas as opções do produto."
+      : selectedVariation && !selectedVariation.inStock
+        ? "Produto fora de estoque."
+        : selectedVariation && !selectedVariation.purchasable
+          ? "Esta combinação não está disponível."
+          : "";
+  const activePrice = selectedVariation?.price ?? product.price;
+  const regularPrice =
+    selectedVariation?.regularPrice ?? product.regularPrice;
   const hasDiscount =
-    regularPrice !== undefined && regularPrice > product.price;
+    regularPrice !== undefined && regularPrice > activePrice;
   const payment = getProductPaymentInfo({
-    currentPrice: product.price,
-    isVariable: product.type === "variable",
+    currentPrice: activePrice,
+    isVariable: isVariable && !selectedVariation,
   });
   const currencyFormatter = new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -61,10 +94,39 @@ export function ProductPurchasePanel({
     return () => observer.disconnect();
   }, [product.available]);
 
-  function handleTemporaryPurchase() {
-    setPurchaseMessage(
-      "Integração com o carrinho será adicionada na próxima etapa.",
+  async function handlePurchase() {
+    if (!isSupportedType) return;
+
+    if (isVariable && !selectedVariation) {
+      setPurchaseMessage("Selecione todas as opções do produto.");
+      return;
+    }
+
+    if (
+      selectedVariation &&
+      (!selectedVariation.purchasable || !selectedVariation.inStock)
+    ) {
+      setPurchaseMessage("Esta combinação não está disponível.");
+      return;
+    }
+
+    setIsAdding(true);
+    setPurchaseMessage("");
+    const result = await addItem(
+      selectedVariation
+        ? {
+            productId: product.id,
+            variationId: selectedVariation.id,
+            quantity,
+            variation: selectedVariation.attributes.map((attribute) => ({
+              attribute: attribute.name,
+              value: attribute.value,
+            })),
+          }
+        : { productId: product.id, quantity },
     );
+    setPurchaseMessage(result.message);
+    setIsAdding(false);
   }
 
   function handleShippingSubmit(event: FormEvent<HTMLFormElement>) {
@@ -146,32 +208,63 @@ export function ProductPurchasePanel({
         </p>
       </div>
 
-      {product.variations
-        .filter(
-          (variation) =>
-            variation.name && (variation.options?.length ?? 0) > 0,
-        )
-        .map((variation) => (
-        <div key={variation.id} className="mt-5">
-          <label
-            htmlFor={`variation-${variation.id}`}
-            className="mb-2 block text-sm font-medium text-slate-800"
-          >
-            {variation.name}
-          </label>
-          <select
-            id={`variation-${variation.id}`}
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20"
-          >
-            {(variation.options ?? []).map((option) => (
-              <option key={option}>{option}</option>
-            ))}
-          </select>
-        </div>
-        ))}
+      {isVariable
+        ? variationAttributes.map((attribute) => {
+            const attributeName = attribute.taxonomy || attribute.name;
+
+            return (
+              <div key={attributeName} className="mt-5">
+                <label
+                  htmlFor={`variation-${attribute.id}`}
+                  className="mb-2 block text-sm font-medium text-slate-800"
+                >
+                  {attribute.name} <span aria-hidden="true">*</span>
+                </label>
+                <select
+                  id={`variation-${attribute.id}`}
+                  required
+                  value={selectedAttributes[attributeName] ?? ""}
+                  onChange={(event) => {
+                    setSelectedAttributes((current) => ({
+                      ...current,
+                      [attributeName]: event.target.value,
+                    }));
+                    setPurchaseMessage("");
+                  }}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20"
+                >
+                  <option value="">
+                    Selecionar {attribute.name.toLocaleLowerCase("pt-BR")}
+                  </option>
+                  {attribute.options.map((option) => (
+                    <option
+                      key={option.value}
+                      value={option.value}
+                      disabled={
+                        !canAttributeOptionMatch(
+                          product.variations,
+                          selectedAttributes,
+                          attributeName,
+                          option.value,
+                        )
+                      }
+                    >
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            );
+          })
+        : null}
 
       <div className="mt-6">
-        {product.available ? (
+        {!isSupportedType ? (
+          <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
+            Este produto possui uma configuração especial. Entre em contato
+            para comprar.
+          </p>
+        ) : product.available ? (
           <>
             <div className="grid grid-cols-[minmax(96px,min(30%,140px))_minmax(0,1fr)] items-end gap-3">
               <ProductQuantity
@@ -186,9 +279,16 @@ export function ProductPurchasePanel({
                 variant="secondary"
                 size="lg"
                 className="h-[50px] min-w-0 flex-1 rounded-[6px] text-xl font-medium"
-                onClick={handleTemporaryPurchase}
+                onClick={() => void handlePurchase()}
+                disabled={
+                  isAdding ||
+                  (isVariable &&
+                    (!selectedVariation ||
+                      !selectedVariation.purchasable ||
+                      !selectedVariation.inStock))
+                }
               >
-                Adicionar ao carrinho
+                {isAdding ? "Adicionando..." : "Adicionar ao carrinho"}
               </Button>
             </div>
             <p
@@ -196,7 +296,7 @@ export function ProductPurchasePanel({
               role="status"
               aria-live="polite"
             >
-              {purchaseMessage}
+              {purchaseMessage || variationSelectionMessage}
             </p>
           </>
         ) : (
@@ -329,9 +429,16 @@ export function ProductPurchasePanel({
                 variant="secondary"
                 size="lg"
                 className="h-[50px] min-w-0 rounded-[6px] px-4 text-base font-medium sm:text-lg"
-                onClick={handleTemporaryPurchase}
+                onClick={() => void handlePurchase()}
+                disabled={
+                  isAdding ||
+                  (isVariable &&
+                    (!selectedVariation ||
+                      !selectedVariation.purchasable ||
+                      !selectedVariation.inStock))
+                }
               >
-                Adicionar ao carrinho
+                {isAdding ? "Adicionando..." : "Adicionar ao carrinho"}
               </Button>
             </div>
           </div>

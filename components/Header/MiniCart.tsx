@@ -1,17 +1,22 @@
 "use client";
 
 import Image from "next/image";
-import { Minus, Plus, ShoppingCart, X } from "lucide-react";
-import { useEffect } from "react";
+import Link from "next/link";
+import { Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { useCart } from "@/hooks/useCart";
 
 export function MiniCart() {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
   const {
     cart,
     isLoading,
     isOpen: open,
     closeCart,
     error,
+    pendingItemKey,
+    removeItem,
     updateItem,
   } = useCart();
   const formatter = new Intl.NumberFormat("pt-BR", {
@@ -25,13 +30,21 @@ export function MiniCart() {
     }
 
     if (open) {
+      triggerRef.current =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
       document.body.style.overflow = "hidden";
       window.addEventListener("keydown", handleKeyDown);
+      window.requestAnimationFrame(() => closeButtonRef.current?.focus());
     }
 
     return () => {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
+      if (open && triggerRef.current && document.contains(triggerRef.current)) {
+        triggerRef.current.focus();
+      }
     };
   }, [closeCart, open]);
 
@@ -41,68 +54,96 @@ export function MiniCart() {
         type="button"
         onClick={closeCart}
         aria-label="Fechar carrinho"
+        aria-hidden={!open}
+        inert={!open}
         className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 ${
-          open ? "visible opacity-100" : "invisible opacity-0"
+          open
+            ? "visible opacity-100"
+            : "pointer-events-none invisible opacity-0"
         }`}
       />
 
       <aside
+        id="mini-cart-drawer"
         aria-label="Mini carrinho"
         aria-hidden={!open}
+        inert={!open}
         className={`fixed right-0 top-0 z-50 flex h-screen w-full max-w-[360px] flex-col bg-white shadow-2xl transition-transform duration-300 ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <header className="flex items-center justify-between border-b px-6 py-5">
-          <h2 className="text-xl font-bold">
+        <header className="flex items-center justify-between border-b px-5 py-4">
+          <h2 className="text-lg font-semibold">
             Carrinho ({cart?.itemsCount ?? 0})
           </h2>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={closeCart}
-            className="rounded-md p-2 transition hover:bg-slate-100"
+            className="inline-flex h-9 items-center gap-1 rounded-md px-2 text-sm font-medium transition hover:bg-slate-100"
             aria-label="Fechar carrinho"
           >
-            <X size={22} />
+            <X size={18} aria-hidden="true" />
+            Fechar
           </button>
         </header>
 
         {cart?.items.length ? (
-          <main className="flex-1 space-y-4 overflow-y-auto p-6">
+          <main className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
             {cart.items.map((item) => (
-              <article key={item.key} className="flex gap-3">
+              <article key={item.key} className="relative flex gap-3 pr-5">
                 {item.image ? (
                   <Image
                     src={item.image.src}
                     alt={item.image.alt}
-                    width={72}
-                    height={72}
-                    className="h-[72px] w-[72px] shrink-0 rounded-md border border-slate-200 object-contain"
+                    width={60}
+                    height={60}
+                    className="h-[60px] w-[60px] shrink-0 object-contain"
                   />
                 ) : null}
                 <div className="min-w-0 flex-1">
-                  <h3 className="line-clamp-2 text-sm font-semibold">
+                  <h3 className="line-clamp-2 text-sm font-medium leading-5 text-slate-900">
                     {item.name}
                   </h3>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {formatter.format(item.price)} por unidade
-                  </p>
-                  <div className="mt-2 inline-flex h-8 items-center rounded-md border border-slate-200">
+                  {item.variation.length > 0 ? (
+                    <dl className="mt-1 text-xs text-slate-500">
+                      {item.variation.map((attribute) => (
+                        <div key={`${attribute.attribute}-${attribute.value}`}>
+                          <dt className="inline font-medium">
+                            {attribute.label}:
+                          </dt>{" "}
+                          <dd className="inline">{attribute.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : null}
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <div className="inline-flex h-7 items-center rounded-md border border-slate-200">
                     <button
                       type="button"
-                      onClick={() => void updateItem(item.key, item.quantity - 1)}
-                      disabled={isLoading || item.quantity <= 1}
+                      onClick={() =>
+                        void updateItem(
+                          item.key,
+                          Math.max(
+                            item.minQuantity,
+                            item.quantity - item.quantityStep,
+                          ),
+                        )
+                      }
+                      disabled={
+                        isLoading || item.quantity <= item.minQuantity
+                      }
                       aria-label={`Diminuir quantidade de ${item.name}`}
-                      className="flex h-full w-8 items-center justify-center rounded-l-md text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
+                      className="flex h-full w-7 items-center justify-center rounded-l-md text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
                     >
-                      <Minus className="h-4 w-4" aria-hidden="true" />
+                      <Minus className="h-3 w-3" aria-hidden="true" />
                     </button>
                     <input
                       key={`${item.key}-${item.quantity}`}
                       type="number"
-                      min={1}
+                      min={item.minQuantity}
                       max={item.maxQuantity ?? 999}
-                      step={1}
+                      step={item.quantityStep}
                       defaultValue={item.quantity}
                       onFocus={(event) => event.currentTarget.select()}
                       onKeyDown={(event) => {
@@ -112,7 +153,7 @@ export function MiniCart() {
                         const nextQuantity = Math.min(
                           item.maxQuantity ?? 999,
                           Math.max(
-                            1,
+                            item.minQuantity,
                             Math.trunc(event.currentTarget.valueAsNumber || 1),
                           ),
                         );
@@ -122,21 +163,50 @@ export function MiniCart() {
                         }
                       }}
                       aria-label={`Quantidade de ${item.name}`}
-                      className="h-full w-12 appearance-none border-x border-slate-200 bg-white text-center text-sm font-semibold text-slate-900 outline-none focus:border-[#0c2d72] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      className="h-full w-9 appearance-none border-x border-slate-200 bg-white text-center text-xs font-semibold text-slate-900 outline-none focus:border-[#0c2d72] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <button
                       type="button"
-                      onClick={() => void updateItem(item.key, item.quantity + 1)}
+                      onClick={() =>
+                        void updateItem(
+                          item.key,
+                          Math.min(
+                            item.maxQuantity ?? 999,
+                            item.quantity + item.quantityStep,
+                          ),
+                        )
+                      }
                       disabled={
                         isLoading || item.quantity >= (item.maxQuantity ?? 999)
                       }
                       aria-label={`Aumentar quantidade de ${item.name}`}
-                      className="flex h-full w-8 items-center justify-center rounded-r-md text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
+                      className="flex h-full w-7 items-center justify-center rounded-r-md text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
                     >
-                      <Plus className="h-4 w-4" aria-hidden="true" />
+                      <Plus className="h-3 w-3" aria-hidden="true" />
                     </button>
                   </div>
+                    <p className="text-xs text-slate-400">
+                      {item.quantity} ×{" "}
+                      <strong className="font-semibold text-[#0c2d72]">
+                        {formatter.format(item.price)}
+                      </strong>
+                    </p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => void removeItem(item.key)}
+                  disabled={pendingItemKey === item.key}
+                  aria-label={`Remover ${item.name} do carrinho`}
+                  title="Remover produto"
+                  className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:cursor-wait disabled:opacity-50"
+                >
+                  {pendingItemKey === item.key ? (
+                    <span className="h-3 w-3 animate-spin rounded-full border border-slate-300 border-t-[#0c2d72]" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </button>
               </article>
             ))}
           </main>
@@ -170,13 +240,20 @@ export function MiniCart() {
           </p>
         ) : null}
 
-        <footer className="border-t p-6">
+        <footer className="border-t p-5">
           <div className="mb-4 flex items-center justify-between">
             <span className="text-sm text-slate-600">Subtotal</span>
             <strong className="text-lg">
               {formatter.format(cart?.subtotal ?? 0)}
             </strong>
           </div>
+          <Link
+            href="/carrinho"
+            onClick={closeCart}
+            className="mb-3 inline-flex h-11 w-full items-center justify-center rounded-md border border-[#0c2d72] px-4 font-medium text-[#0c2d72] transition hover:bg-slate-50"
+          >
+            Ver carrinho
+          </Link>
           <button
             disabled
             className="w-full cursor-not-allowed rounded-md bg-slate-200 py-3 font-medium text-slate-500"

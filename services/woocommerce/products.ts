@@ -8,6 +8,7 @@ import {
   convertMajorUnitToMinorUnit,
   isWooCommerceStoreProduct,
   mapStoreProduct,
+  mapStoreVariation,
 } from "./mappers";
 
 export interface GetProductsOptions {
@@ -230,7 +231,33 @@ export async function getProductBySlug(
     perPage: 1,
   });
 
-  return products[0];
+  const product = products[0];
+
+  if (!product || product.type !== "variable") return product;
+
+  return {
+    ...product,
+    variations: await getProductVariations(product.id),
+  };
+}
+
+export async function getProductVariations(productId: number) {
+  const response = await storeApiGetWithMeta<unknown>("products", {
+    query: {
+      type: "variation",
+      parent: productId,
+      per_page: 100,
+    },
+    revalidate: 30,
+  });
+
+  if (!Array.isArray(response.data)) {
+    throw new Error("A Store API retornou variaÃ§Ãµes invÃ¡lidas.");
+  }
+
+  return response.data
+    .filter(isWooCommerceStoreProduct)
+    .map((variation) => mapStoreVariation(variation, productId));
 }
 
 export async function getProductsByCategory(
