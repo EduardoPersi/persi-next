@@ -1,36 +1,30 @@
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
 import {
   CartServiceError,
   getCart,
 } from "@/services/woocommerce/cart";
+import {
+  CART_TOKEN_COOKIE,
+  createCartErrorResponse,
+  createCartResponse,
+} from "./cart-response";
 
-const CART_TOKEN_COOKIE = "persi_cart_token";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET() {
-  const cookieStore = await cookies();
+  const cartToken = (await cookies()).get(CART_TOKEN_COOKIE)?.value;
 
   try {
-    const result = await getCart(cookieStore.get(CART_TOKEN_COOKIE)?.value);
-    const response = NextResponse.json(result.cart);
-
-    if (result.cartToken) {
-      response.cookies.set(CART_TOKEN_COOKIE, result.cartToken, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 30,
-      });
-    }
-
-    return response;
+    const result = await getCart(cartToken);
+    return createCartResponse(result.cart, result.cartToken);
   } catch (error) {
     const status = error instanceof CartServiceError ? error.status : 500;
 
-    return NextResponse.json(
-      { message: "Não foi possível carregar o carrinho." },
-      { status },
+    return createCartErrorResponse(
+      "Não foi possível carregar o carrinho.",
+      status,
+      cartToken,
     );
   }
 }

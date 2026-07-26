@@ -7,9 +7,15 @@ import {
   updateCartItem,
   removeCartItem,
 } from "@/services/woocommerce/cart";
+import {
+  CART_TOKEN_COOKIE,
+  createCartResponse,
+} from "../cart-response";
 
-const CART_TOKEN_COOKIE = "persi_cart_token";
 const MAX_CART_QUANTITY = 999;
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const variationAttributeSchema = z.object({
   attribute: z.string().trim().min(1).max(120),
@@ -85,19 +91,7 @@ export async function POST(request: Request) {
       },
       cookieStore.get(CART_TOKEN_COOKIE)?.value,
     );
-    const response = NextResponse.json(result.cart);
-
-    if (result.cartToken) {
-      response.cookies.set(CART_TOKEN_COOKIE, result.cartToken, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 30,
-      });
-    }
-
-    return response;
+    return createCartResponse(result.cart, result.cartToken);
   } catch (error) {
     const status = error instanceof CartServiceError ? error.status : 500;
     const unavailable = status === 400 || status === 409;
@@ -135,7 +129,7 @@ export async function DELETE(request: Request) {
 
   try {
     const result = await removeCartItem(parsedInput.data.key, cartToken);
-    return NextResponse.json(result.cart);
+    return createCartResponse(result.cart, result.cartToken);
   } catch (error) {
     const status = error instanceof CartServiceError ? error.status : 500;
     return NextResponse.json(
@@ -185,7 +179,7 @@ export async function PATCH(request: Request) {
 
   try {
     const result = await updateCartItem(key, quantity, cartToken);
-    return NextResponse.json(result.cart);
+    return createCartResponse(result.cart, result.cartToken);
   } catch (error) {
     const status = error instanceof CartServiceError ? error.status : 500;
 
