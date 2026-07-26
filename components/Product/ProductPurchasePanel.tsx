@@ -16,23 +16,28 @@ import {
 } from "@/lib/commerce/variation";
 import { getProductPaymentInfo } from "@/lib/commerce/productPayment";
 import type { ProductBrand } from "@/types/brand";
+import type { BoughtTogetherItem } from "@/types/boughtTogether";
+import type { ProductFamilyResponse } from "@/types/productFamily";
 import type { Product } from "@/types/product";
 import { BackInStockForm } from "./BackInStockForm";
-import { BuyTogether } from "./BuyTogether";
+import { FrequentlyBoughtTogether } from "./FrequentlyBoughtTogether";
+import { ProductFamilyOptions } from "./ProductFamilyOptions";
 import { ProductPaymentMethods } from "./ProductPaymentMethods";
 import { ProductQuantity } from "./ProductQuantity";
 
 interface ProductPurchasePanelProps {
   product: Product;
   brand?: ProductBrand;
-  buyTogetherProducts?: Product[];
+  boughtTogetherItems?: BoughtTogetherItem[];
+  productFamily?: ProductFamilyResponse;
   stockNotificationEnabled: boolean;
 }
 
 export function ProductPurchasePanel({
   product,
   brand,
-  buyTogetherProducts = [],
+  boughtTogetherItems = [],
+  productFamily,
   stockNotificationEnabled,
 }: ProductPurchasePanelProps) {
   const mainPurchaseButtonRef = useRef<HTMLButtonElement>(null);
@@ -266,6 +271,7 @@ export function ProductPurchasePanel({
           </p>
         ) : product.available ? (
           <>
+            {productFamily ? <ProductFamilyOptions data={productFamily} /> : null}
             <div className="grid grid-cols-[minmax(96px,min(30%,140px))_minmax(0,1fr)] items-end gap-3">
               <ProductQuantity
                 value={quantity}
@@ -310,10 +316,10 @@ export function ProductPurchasePanel({
         )}
       </div>
 
-      {buyTogetherProducts.length > 0 ? (
-        <BuyTogether
+      {boughtTogetherItems.length > 0 ? (
+        <FrequentlyBoughtTogether
           mainProduct={product}
-          complementaryProducts={buyTogetherProducts}
+          items={boughtTogetherItems}
         />
       ) : null}
 

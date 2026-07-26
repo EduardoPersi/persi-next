@@ -3,6 +3,7 @@ export interface StockNotificationSubscription {
   variationId?: number;
   email: string;
   consent: true;
+  website: string;
 }
 
 export type StockNotificationResult =

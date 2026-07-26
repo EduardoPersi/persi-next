@@ -38,6 +38,7 @@ export function BackInStockForm({
     const formData = new FormData(form);
     const email = String(formData.get("email") ?? "").trim();
     const consent = formData.get("consent") === "on";
+    const website = String(formData.get("website") ?? "");
 
     if (!EMAIL_PATTERN.test(email)) {
       setState("error");
@@ -66,6 +67,7 @@ export function BackInStockForm({
           productId,
           variationId,
           email,
+          website,
           consent,
         }),
       });
@@ -107,6 +109,16 @@ export function BackInStockForm({
       </p>
 
       <form className="mt-4 space-y-3" noValidate onSubmit={handleSubmit}>
+        <div className="sr-only" aria-hidden="true">
+          <label htmlFor={`back-in-stock-website-${productId}`}>Website</label>
+          <input
+            id={`back-in-stock-website-${productId}`}
+            name="website"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+          />
+        </div>
         <div>
           <label
             htmlFor={`back-in-stock-email-${productId}`}

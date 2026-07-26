@@ -65,7 +65,7 @@ export function CartPage() {
             return (
               <article
                 key={item.key}
-                className="relative grid grid-cols-[72px_minmax(0,1fr)] gap-3 p-4 md:grid-cols-[112px_minmax(0,1fr)] md:gap-4 md:rounded-xl md:border md:border-slate-200 md:bg-white md:p-5"
+                className="grid grid-cols-[72px_minmax(0,1fr)] gap-3 p-4 md:grid-cols-[112px_minmax(0,1fr)_auto] md:gap-4 md:rounded-xl md:border md:border-slate-200 md:bg-white md:p-5"
               >
                 <Image
                   src={item.image?.src || FALLBACK_IMAGE}
@@ -78,12 +78,12 @@ export function CartPage() {
                   {productHref ? (
                     <Link
                       href={productHref}
-                      className="line-clamp-2 pr-7 text-sm font-semibold leading-5 text-slate-900 hover:text-[#ff6a00] md:pr-0 md:text-base"
+                      className="line-clamp-2 text-sm font-semibold leading-5 text-slate-900 hover:text-[#ff6a00] md:text-base"
                     >
                       {item.name}
                     </Link>
                   ) : (
-                    <h3 className="line-clamp-2 pr-7 text-sm font-semibold leading-5 text-slate-900 md:pr-0 md:text-base">
+                    <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-slate-900 md:text-base">
                       {item.name}
                     </h3>
                   )}
@@ -131,14 +131,8 @@ export function CartPage() {
                         />
                       </dd>
                     </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <dt className="text-slate-500">Subtotal</dt>
-                      <dd className="font-bold text-[#0c2d72]">
-                        {formatter.format(item.total)}
-                      </dd>
-                    </div>
                   </dl>
-                  <div className="mt-4 hidden md:flex md:items-end md:justify-between">
+                  <div className="mt-4 hidden md:flex md:items-end">
                     <ProductQuantity
                       value={item.quantity}
                       min={item.minQuantity}
@@ -151,26 +145,26 @@ export function CartPage() {
                       }}
                       fullWidthOnMobile={false}
                     />
-                    <div className="text-right">
-                      <p className="font-bold text-slate-900">
-                        {formatter.format(item.total)}
-                      </p>
-                    </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void removeItem(item.key)}
-                  disabled={isPending}
-                  aria-label={`Remover ${item.name} do carrinho`}
-                  title="Remover produto"
-                  className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:cursor-wait disabled:opacity-50 md:right-4 md:top-auto md:bottom-4 md:w-auto md:gap-1 md:rounded-md md:px-2 md:text-sm md:font-medium md:text-red-700"
-                >
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  <span className="hidden md:inline">
-                    {isPending ? "Removendo..." : "Remover"}
-                  </span>
-                </button>
+                <div className="col-span-2 flex flex-col items-end gap-1 border-t border-slate-100 pt-3 md:col-span-1 md:min-w-32 md:justify-between md:border-0 md:pt-0">
+                  <button
+                    type="button"
+                    onClick={() => void removeItem(item.key)}
+                    disabled={isPending}
+                    aria-label={`Remover ${item.name} do carrinho`}
+                    className="inline-flex min-h-11 w-auto items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium text-red-700 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:cursor-wait disabled:opacity-50"
+                  >
+                    <Trash2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span>{isPending ? "Removendo..." : "Remover"}</span>
+                  </button>
+                  <p className="whitespace-nowrap font-bold text-[#0c2d72] md:text-slate-900">
+                    <span className="mr-2 font-normal text-slate-500 md:hidden">
+                      Subtotal:
+                    </span>
+                    {formatter.format(item.total)}
+                  </p>
+                </div>
               </article>
             );
           })}

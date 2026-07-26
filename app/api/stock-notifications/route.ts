@@ -14,6 +14,7 @@ interface ParsedSubscription {
   variationId?: number;
   email: string;
   consent: true;
+  website: string;
 }
 
 function parsePositiveInteger(value: unknown): number | undefined {
@@ -37,6 +38,8 @@ function parseSubscription(value: unknown): ParsedSubscription | undefined {
       : parsePositiveInteger(body.variationId);
   const email =
     typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  const website =
+    typeof body.website === "string" ? body.website.slice(0, 200) : "";
 
   if (
     !productId ||
@@ -48,7 +51,7 @@ function parseSubscription(value: unknown): ParsedSubscription | undefined {
     return undefined;
   }
 
-  return { productId, variationId, email, consent: true };
+  return { productId, variationId, email, website, consent: true };
 }
 
 function isRateLimited(request: NextRequest): boolean {

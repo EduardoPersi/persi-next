@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Mail,
+  Maximize2,
   MessagesSquare,
   Send,
   Share2,
@@ -21,6 +22,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperInstance } from "swiper";
 import type { ProductImage } from "@/types/product";
 import { FacebookIcon, WhatsAppIcon } from "@/components/UI/SocialIcons";
+import { ProductImageLightbox } from "./ProductImageLightbox";
 import "swiper/css";
 import "swiper/css/pagination";
 
@@ -48,6 +50,8 @@ export function ProductGallery({
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isExpandLabelVisible, setIsExpandLabelVisible] = useState(false);
   const shareUrl = useSyncExternalStore(
     subscribeToBrowserState,
     () => window.location.href,
@@ -97,6 +101,23 @@ export function ProductGallery({
     swiperRef.current?.slideNext();
   }
 
+  function selectLightboxImage(index: number) {
+    selectImage(index);
+  }
+
+  function handleExpandClick() {
+    const usesTouchPointer = window.matchMedia(
+      "(hover: none), (pointer: coarse)",
+    ).matches;
+
+    if (usesTouchPointer && !isExpandLabelVisible) {
+      setIsExpandLabelVisible(true);
+      return;
+    }
+
+    setIsLightboxOpen(true);
+  }
+
   async function shareNatively() {
     if (!navigator.share || !shareUrl) return;
 
@@ -117,7 +138,8 @@ export function ProductGallery({
   const encodedMessage = encodeURIComponent(`${productName} ${shareUrl}`);
 
   return (
-    <section
+    <>
+      <section
       aria-label={`Galeria de imagens de ${productName}`}
       onContextMenu={(event) => event.preventDefault()}
       className="min-w-0 max-w-full"
@@ -228,6 +250,31 @@ export function ProductGallery({
           ) : null}
         </div>
 
+        <button
+          type="button"
+          onClick={handleExpandClick}
+          onBlur={() => setIsExpandLabelVisible(false)}
+          aria-label="Ampliar imagem do produto"
+          aria-expanded={isExpandLabelVisible}
+          title="Clique para ampliar"
+          className={`group absolute bottom-10 left-3 z-20 inline-flex h-11 min-w-11 items-center overflow-hidden rounded-full border border-slate-100 bg-white/95 text-sm font-medium text-slate-800 shadow-md transition-[padding,gap] duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] ${
+            isExpandLabelVisible
+              ? "gap-2 px-4"
+              : "justify-center gap-0 px-3 hover:justify-start hover:gap-2 hover:px-4 focus-visible:justify-start focus-visible:gap-2 focus-visible:px-4"
+          }`}
+        >
+          <Maximize2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span
+            className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-200 motion-reduce:transition-none ${
+              isExpandLabelVisible
+                ? "max-w-40 opacity-100"
+                : "max-w-0 opacity-0 group-hover:max-w-40 group-hover:opacity-100 group-focus-visible:max-w-40 group-focus-visible:opacity-100"
+            }`}
+          >
+            Clique para ampliar
+          </span>
+        </button>
+
         {hasMultipleImages ? (
           <>
             <button
@@ -280,7 +327,17 @@ export function ProductGallery({
           );
         })}
       </div>
-    </section>
+      </section>
+      {isLightboxOpen ? (
+        <ProductImageLightbox
+          images={galleryImages}
+          selectedIndex={selectedIndex}
+          productName={productName}
+          onIndexChange={selectLightboxImage}
+          onClose={() => setIsLightboxOpen(false)}
+        />
+      ) : null}
+    </>
   );
 }
 

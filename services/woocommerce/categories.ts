@@ -59,9 +59,9 @@ export async function getCategoryBySlug(
   return undefined;
 }
 
-export async function getAllProductCategories(): Promise<
-  ProductCategory[]
-> {
+export async function getAllProductCategories(
+  options: Pick<GetProductCategoriesOptions, "hideEmpty"> = {},
+): Promise<ProductCategory[]> {
   const perPage = 100;
   const categories: ProductCategory[] = [];
   let page = 1;
@@ -70,6 +70,7 @@ export async function getAllProductCategories(): Promise<
     const batch = await getProductCategories({
       page,
       perPage,
+      hideEmpty: options.hideEmpty,
     });
 
     categories.push(...batch);
