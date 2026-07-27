@@ -4,12 +4,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
+import { useCheckoutTransfer } from "@/hooks/useCheckoutTransfer";
 import { ProductQuantity } from "@/components/Product/ProductQuantity";
+import { ShippingCalculator } from "@/components/Shipping/ShippingCalculator";
+import { getCartShippingContextKey } from "@/lib/commerce/shippingCalculator";
+import { formatStoreMoney, isZeroMoney } from "@/lib/formatting/money";
 
 const FALLBACK_IMAGE =
   "/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas.webp";
 
 export function CartPage() {
+  const { checkoutError, isPreparingCheckout, prepareCheckout } =
+    useCheckoutTransfer();
   const {
     cart,
     error,
@@ -22,6 +28,8 @@ export function CartPage() {
     style: "currency",
     currency: cart?.currencyCode ?? "BRL",
   });
+  const shippingContextKey = getCartShippingContextKey(cart);
+  const pixAdjustment = cart?.fees.find((fee) => /pix/i.test(fee.name));
 
   if (isLoading && !cart) {
     return (
@@ -180,19 +188,65 @@ export function CartPage() {
           <span className="text-slate-600">Subtotal dos produtos</span>
           <strong>{formatter.format(cart.subtotal)}</strong>
         </div>
-        <p className="mt-4 text-sm leading-6 text-slate-600">
-          Frete e descontos serão calculados no checkout.
-        </p>
+        <div className="mt-5">
+          <ShippingCalculator
+            mode="cart"
+            contextKey={shippingContextKey}
+          />
+        </div>
+        <dl className="mt-5 space-y-3 border-t border-slate-200 pt-4 text-sm">
+          <div className="flex justify-between gap-4">
+            <dt className="text-slate-600">Frete</dt>
+            <dd className="font-semibold text-slate-900">
+              {cart.hasCalculatedShipping
+                ? isZeroMoney(cart.totals.shipping)
+                  ? "Grátis"
+                  : formatStoreMoney(cart.totals.shipping)
+                : "A calcular"}
+            </dd>
+          </div>
+          {!isZeroMoney(cart.totals.discount) ? (
+            <div className="flex justify-between gap-4">
+              <dt className="text-slate-600">Descontos</dt>
+              <dd className="font-semibold text-emerald-700">
+                -{formatStoreMoney(cart.totals.discount)}
+              </dd>
+            </div>
+          ) : null}
+          {pixAdjustment ? (
+            <div className="flex justify-between gap-4">
+              <dt className="text-slate-600">Desconto Pix</dt>
+              <dd className="font-semibold text-emerald-700">
+                {formatStoreMoney(pixAdjustment.total)}
+              </dd>
+            </div>
+          ) : null}
+          <div className="flex justify-between gap-4 border-t border-slate-200 pt-3 text-base">
+            <dt className="font-bold text-[#0c2d72]">Total</dt>
+            <dd className="font-bold text-[#0c2d72]">
+              {formatStoreMoney(cart.totals.price)}
+            </dd>
+          </div>
+        </dl>
         <button
           type="button"
-          disabled
+          onClick={() => void prepareCheckout()}
+          disabled={isPreparingCheckout || isLoading || Boolean(pendingItemKey)}
+          aria-busy={isPreparingCheckout}
           aria-describedby="checkout-status"
-          className="mt-6 h-12 w-full cursor-not-allowed rounded-xl bg-slate-200 px-4 font-medium text-slate-500"
+          className="mt-6 h-12 w-full rounded-xl bg-[#ff6a00] px-4 font-semibold text-white transition hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-200 disabled:text-slate-500"
         >
-          Ir para o checkout
+          {isPreparingCheckout ? "Preparando checkout..." : "Finalizar compra"}
         </button>
-        <p id="checkout-status" className="mt-2 text-center text-sm text-slate-500">
-          Checkout em implantação
+        <p
+          id="checkout-status"
+          className={`mt-2 text-center text-sm ${
+            checkoutError ? "text-red-700" : "text-slate-500"
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          {checkoutError || "Você será direcionado ao checkout seguro."}
         </p>
       </aside>
     </div>

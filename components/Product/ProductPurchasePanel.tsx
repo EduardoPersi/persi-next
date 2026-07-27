@@ -1,9 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  MapPin,
   ShieldCheck,
   Store,
   Truck,
@@ -24,6 +23,9 @@ import { FrequentlyBoughtTogether } from "./FrequentlyBoughtTogether";
 import { ProductFamilyOptions } from "./ProductFamilyOptions";
 import { ProductPaymentMethods } from "./ProductPaymentMethods";
 import { ProductQuantity } from "./ProductQuantity";
+import { ShippingCalculator } from "@/components/Shipping/ShippingCalculator";
+import { getProductShippingContextKey } from "@/lib/commerce/shippingCalculator";
+import type { SelectedShippingRate } from "@/types/shipping";
 
 interface ProductPurchasePanelProps {
   product: Product;
@@ -47,9 +49,14 @@ export function ProductPurchasePanel({
   const [selectedAttributes, setSelectedAttributes] = useState<
     Record<string, string>
   >({});
-  const [shippingMessage, setShippingMessage] = useState("");
+  const [selectedShipping, setSelectedShipping] =
+    useState<SelectedShippingRate>();
   const [showStickyPurchase, setShowStickyPurchase] = useState(false);
-  const { addItem } = useCart();
+  const {
+    addItem,
+    calculateShippingPostcode,
+    selectShippingRate,
+  } = useCart();
   const variationAttributes = useMemo(
     () => product.attributes.filter((attribute) => attribute.hasVariations),
     [product.attributes],
@@ -84,6 +91,19 @@ export function ProductPurchasePanel({
     style: "currency",
     currency: product.currencyCode,
   });
+  const shippingProduct = useMemo(
+    () => ({
+      productId: product.id,
+      variationId: selectedVariation?.id,
+      quantity,
+      variation: selectedVariation?.attributes.map((attribute) => ({
+        attribute: attribute.name,
+        value: attribute.value,
+      })),
+    }),
+    [product.id, quantity, selectedVariation],
+  );
+  const shippingContextKey = getProductShippingContextKey(shippingProduct);
 
   useEffect(() => {
     const purchaseButton = mainPurchaseButtonRef.current;
@@ -130,15 +150,28 @@ export function ProductPurchasePanel({
           }
         : { productId: product.id, quantity },
     );
+
+    if (result.success && selectedShipping) {
+      const shippingResult = await calculateShippingPostcode(
+        selectedShipping.postcode,
+      );
+      const matchingPackage = shippingResult.cart?.shippingPackages.find(
+        (shippingPackage) =>
+          shippingPackage.rates.some(
+            (rate) => rate.rateId === selectedShipping.rateId,
+          ),
+      );
+
+      if (matchingPackage) {
+        await selectShippingRate(
+          matchingPackage.packageId,
+          selectedShipping.rateId,
+        );
+      }
+    }
+
     setPurchaseMessage(result.message);
     setIsAdding(false);
-  }
-
-  function handleShippingSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setShippingMessage(
-      "A integração de frete será adicionada posteriormente.",
-    );
   }
 
   return (
@@ -324,59 +357,18 @@ export function ProductPurchasePanel({
       ) : null}
 
       {product.available ? (
-        <form
-          className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4"
-          onSubmit={handleShippingSubmit}
-        >
-          <div className="flex items-center gap-2">
-            <MapPin
-              className="h-5 w-5 text-[#ff6a00]"
-              aria-hidden="true"
-            />
-            <h2 className="font-bold text-[#0c2d72]">
-              Calcular frete e prazo
-            </h2>
-          </div>
-          <label
-            htmlFor="shipping-postcode"
-            className="mt-4 block text-sm font-medium text-slate-700"
-          >
-            CEP
-          </label>
-          <div className="mt-2 flex w-full flex-col gap-2 sm:flex-row">
-            <input
-              id="shipping-postcode"
-              name="postcode"
-              inputMode="numeric"
-              autoComplete="postal-code"
-              placeholder="00000-000"
-              className="box-border h-11 w-full min-w-0 rounded-[6px] border border-slate-200 bg-white px-4 text-sm leading-normal text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20 sm:flex-1"
-            />
-            <Button
-              type="submit"
-              variant="outline"
-              className="box-border h-11 min-h-0 w-full rounded-[6px] sm:w-auto"
-            >
-              Calcular
-            </Button>
-          </div>
-          <a
-            href="https://buscacepinter.correios.com.br/app/endereco/index.php?t"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-block text-sm font-medium text-[#ff6a00] underline underline-offset-2 hover:text-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2"
-            aria-label="Consultar meu CEP no site dos Correios"
-          >
-            Não sei o meu CEP
-          </a>
-          <p
-            className="mt-2 text-sm text-slate-600"
-            role="status"
-            aria-live="polite"
-          >
-            {shippingMessage}
-          </p>
-        </form>
+        <div className="mt-6">
+          <ShippingCalculator
+            mode="product"
+            contextKey={shippingContextKey}
+            product={
+              isVariable && !selectedVariation
+                ? undefined
+                : shippingProduct
+            }
+            onSelectionChange={setSelectedShipping}
+          />
+        </div>
       ) : null}
 
       <ul className="mt-5 grid gap-3 text-sm text-slate-700 sm:grid-cols-3">

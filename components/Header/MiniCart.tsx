@@ -5,8 +5,11 @@ import Link from "next/link";
 import { Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useCart } from "@/hooks/useCart";
+import { useCheckoutTransfer } from "@/hooks/useCheckoutTransfer";
 
 export function MiniCart() {
+  const { checkoutError, isPreparingCheckout, prepareCheckout } =
+    useCheckoutTransfer();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const {
@@ -234,9 +237,9 @@ export function MiniCart() {
           </main>
         )}
 
-        {error ? (
+        {error || checkoutError ? (
           <p className="px-6 pb-3 text-sm text-red-700" role="status">
-            {error}
+            {checkoutError || error}
           </p>
         ) : null}
 
@@ -255,10 +258,20 @@ export function MiniCart() {
             Ver carrinho
           </Link>
           <button
-            disabled
-            className="w-full cursor-not-allowed rounded-md bg-slate-200 py-3 font-medium text-slate-500"
+            type="button"
+            onClick={() => void prepareCheckout()}
+            disabled={
+              !cart?.items.length ||
+              isLoading ||
+              Boolean(pendingItemKey) ||
+              isPreparingCheckout
+            }
+            aria-busy={isPreparingCheckout}
+            className="w-full rounded-md bg-[#ff6a00] py-3 font-medium text-white transition hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-200 disabled:text-slate-500"
           >
-            FINALIZAR COMPRA
+            {isPreparingCheckout
+              ? "PREPARANDO CHECKOUT..."
+              : "FINALIZAR COMPRA"}
           </button>
         </footer>
       </aside>

@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
 import type { Cart } from "@/types/cart";
+import {
+  CART_CACHE_CONTROL,
+  getCartTokenCookieOptions,
+  getPrivateCartHeaders,
+} from "@/lib/commerce/cartResponsePolicy";
 
 export const CART_TOKEN_COOKIE = "persi_cart_token";
-
-const CART_CACHE_CONTROL =
-  "private, no-store, no-cache, must-revalidate, max-age=0";
+export { CART_CACHE_CONTROL };
 
 function applyPrivateCartHeaders(response: NextResponse) {
-  response.headers.set("Cache-Control", CART_CACHE_CONTROL);
-  response.headers.set("Pragma", "no-cache");
-  response.headers.set("Expires", "0");
-  response.headers.set("Vary", "Cookie");
+  for (const [name, value] of Object.entries(getPrivateCartHeaders())) {
+    response.headers.set(name, value);
+  }
   return response;
 }
 
@@ -22,13 +24,11 @@ export function createCartResponse(cart: Cart, cartToken?: string) {
 
 function persistCartToken(response: NextResponse, cartToken?: string) {
   if (cartToken) {
-    response.cookies.set(CART_TOKEN_COOKIE, cartToken, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    });
+    response.cookies.set(
+      CART_TOKEN_COOKIE,
+      cartToken,
+      getCartTokenCookieOptions(process.env.NODE_ENV === "production"),
+    );
   }
 
   return response;

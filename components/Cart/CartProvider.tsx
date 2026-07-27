@@ -10,6 +10,11 @@ import {
   type ReactNode,
 } from "react";
 import type { AddCartItemInput, Cart } from "@/types/cart";
+import type { CheckoutCustomerPayload } from "@/types/checkout";
+import {
+  createSingleCartInitializer,
+  LatestCartRequest,
+} from "@/lib/commerce/cartClient";
 
 interface CartContextValue {
   cart: Cart | null;
@@ -18,6 +23,7 @@ interface CartContextValue {
   isOpen: boolean;
   error: string;
   pendingItemKey: string | null;
+  isCheckoutUpdating: boolean;
   addItem: (
     input: number | AddCartItemInput,
     quantity?: number,
@@ -29,26 +35,41 @@ interface CartContextValue {
     key: string,
     quantity: number,
   ) => Promise<{ success: boolean; message: string }>;
+  updateCustomerAddress: (
+    input: CheckoutCustomerPayload,
+    signal?: AbortSignal,
+  ) => Promise<CartMutationResult>;
+  selectShippingRate: (
+    packageId: number | string,
+    rateId: string,
+  ) => Promise<CartMutationResult>;
+  calculateShippingPostcode: (
+    postcode: string,
+    signal?: AbortSignal,
+  ) => Promise<CartMutationResult>;
   openCart: () => void;
   closeCart: () => void;
 }
 
+interface CartMutationResult {
+  success: boolean;
+  message: string;
+  cart?: Cart;
+  aborted?: boolean;
+}
+
 export const CartContext = createContext<CartContextValue | null>(null);
 
-let cartInitializationPromise: Promise<Cart> | null = null;
-
-function initializeCart() {
-  cartInitializationPromise ??= fetch("/api/cart", {
+const initializeCart = createSingleCartInitializer(async () => {
+  const response = await fetch("/api/cart", {
     cache: "no-store",
     credentials: "same-origin",
-  }).then(async (response) => {
-    const result = (await response.json()) as Cart & { message?: string };
-    if (!response.ok) throw new Error(result.message);
-    return result;
   });
 
-  return cartInitializationPromise;
-}
+  const result = (await response.json()) as Cart & { message?: string };
+  if (!response.ok) throw new Error(result.message);
+  return result;
+});
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<Cart | null>(null);
@@ -56,23 +77,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState("");
   const [pendingItemKey, setPendingItemKey] = useState<string | null>(null);
+  const [isCheckoutUpdating, setIsCheckoutUpdating] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
-  const latestRequestId = useRef(0);
+  const latestRequest = useRef(new LatestCartRequest());
 
   useEffect(() => {
     let active = true;
-    const requestId = ++latestRequestId.current;
+    const requestId = latestRequest.current.start();
 
     async function loadCart() {
       try {
         const result = await initializeCart();
-        if (active && requestId === latestRequestId.current) setCart(result);
+        if (active && latestRequest.current.isLatest(requestId)) setCart(result);
       } catch {
-        if (active && requestId === latestRequestId.current) {
+        if (active && latestRequest.current.isLatest(requestId)) {
           setError("Não foi possível carregar o carrinho.");
         }
       } finally {
-        if (active && requestId === latestRequestId.current) {
+        if (active && latestRequest.current.isLatest(requestId)) {
           setIsHydrated(true);
           setIsLoading(false);
         }
@@ -88,7 +110,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addItem = useCallback(
     async (input: number | AddCartItemInput, quantity = 1) => {
       await initializeCart().catch(() => undefined);
-      const requestId = ++latestRequestId.current;
+      const requestId = latestRequest.current.start();
       setIsLoading(true);
       setError("");
 
@@ -100,6 +122,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       try {
         const response = await fetch("/api/cart/items", {
           method: "POST",
+          cache: "no-store",
+          credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
@@ -111,11 +135,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
           const message =
             result.message ||
             "Não foi possível adicionar o produto. Tente novamente.";
-          if (requestId === latestRequestId.current) setError(message);
+          if (latestRequest.current.isLatest(requestId)) setError(message);
           return { success: false, message };
         }
 
-        if (requestId === latestRequestId.current) {
+        if (latestRequest.current.isLatest(requestId)) {
           setCart(result);
           setIsOpen(true);
         }
@@ -126,10 +150,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       } catch {
         const message =
           "Não foi possível adicionar o produto. Tente novamente.";
-        if (requestId === latestRequestId.current) setError(message);
+        if (latestRequest.current.isLatest(requestId)) setError(message);
         return { success: false, message };
       } finally {
-        if (requestId === latestRequestId.current) setIsLoading(false);
+        if (latestRequest.current.isLatest(requestId)) setIsLoading(false);
       }
     },
     [],
@@ -137,7 +161,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const updateItem = useCallback(async (key: string, quantity: number) => {
     await initializeCart().catch(() => undefined);
-    const requestId = ++latestRequestId.current;
+    const requestId = latestRequest.current.start();
     setIsLoading(true);
     setPendingItemKey(key);
     setError("");
@@ -145,6 +169,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch("/api/cart/items", {
         method: "PATCH",
+        cache: "no-store",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key, quantity }),
       });
@@ -152,25 +178,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       if (!response.ok) {
         const message = result.message || "Não foi possível atualizar o item.";
-        if (requestId === latestRequestId.current) setError(message);
+        if (latestRequest.current.isLatest(requestId)) setError(message);
         return { success: false, message };
       }
 
-      if (requestId === latestRequestId.current) setCart(result);
+      if (latestRequest.current.isLatest(requestId)) setCart(result);
       return { success: true, message: "Quantidade atualizada." };
     } catch {
       const message = "Não foi possível atualizar o item.";
-      if (requestId === latestRequestId.current) setError(message);
+      if (latestRequest.current.isLatest(requestId)) setError(message);
       return { success: false, message };
     } finally {
-      if (requestId === latestRequestId.current) setIsLoading(false);
-      if (requestId === latestRequestId.current) setPendingItemKey(null);
+      if (latestRequest.current.isLatest(requestId)) setIsLoading(false);
+      if (latestRequest.current.isLatest(requestId)) setPendingItemKey(null);
     }
   }, []);
 
   const removeItem = useCallback(async (key: string) => {
     await initializeCart().catch(() => undefined);
-    const requestId = ++latestRequestId.current;
+    const requestId = latestRequest.current.start();
     setIsLoading(true);
     setPendingItemKey(key);
     setError("");
@@ -178,6 +204,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch("/api/cart/items", {
         method: "DELETE",
+        cache: "no-store",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key }),
       });
@@ -185,21 +213,163 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       if (!response.ok) {
         const message = result.message || "NÃ£o foi possÃ­vel remover o item.";
-        if (requestId === latestRequestId.current) setError(message);
+        if (latestRequest.current.isLatest(requestId)) setError(message);
         return { success: false, message };
       }
 
-      if (requestId === latestRequestId.current) setCart(result);
+      if (latestRequest.current.isLatest(requestId)) setCart(result);
       return { success: true, message: "Produto removido do carrinho." };
     } catch {
       const message = "NÃ£o foi possÃ­vel remover o item.";
-      if (requestId === latestRequestId.current) setError(message);
+      if (latestRequest.current.isLatest(requestId)) setError(message);
       return { success: false, message };
     } finally {
-      if (requestId === latestRequestId.current) setIsLoading(false);
-      if (requestId === latestRequestId.current) setPendingItemKey(null);
+      if (latestRequest.current.isLatest(requestId)) setIsLoading(false);
+      if (latestRequest.current.isLatest(requestId)) setPendingItemKey(null);
     }
   }, []);
+
+  const updateCustomerAddress = useCallback(
+    async (
+      input: CheckoutCustomerPayload,
+      signal?: AbortSignal,
+    ): Promise<CartMutationResult> => {
+      await initializeCart().catch(() => undefined);
+      const requestId = latestRequest.current.start();
+      setIsCheckoutUpdating(true);
+      setError("");
+
+      try {
+        const response = await fetch("/api/checkout/customer", {
+          method: "POST",
+          cache: "no-store",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+          signal,
+        });
+        const result = (await response.json()) as Cart & { message?: string };
+        if (!response.ok) {
+          const message =
+            result.message || "Não foi possível calcular a entrega agora.";
+          if (latestRequest.current.isLatest(requestId)) setError(message);
+          return { success: false, message };
+        }
+        if (latestRequest.current.isLatest(requestId)) setCart(result);
+        return {
+          success: true,
+          message: "Endereço atualizado.",
+          cart: result,
+        };
+      } catch (requestError) {
+        if (
+          requestError instanceof Error &&
+          requestError.name === "AbortError"
+        ) {
+          return { success: false, message: "", aborted: true };
+        }
+        const message = "Não foi possível calcular a entrega agora.";
+        if (latestRequest.current.isLatest(requestId)) setError(message);
+        return { success: false, message };
+      } finally {
+        if (latestRequest.current.isLatest(requestId)) {
+          setIsCheckoutUpdating(false);
+        }
+      }
+    },
+    [],
+  );
+
+  const selectShippingRate = useCallback(
+    async (
+      packageId: number | string,
+      rateId: string,
+    ): Promise<CartMutationResult> => {
+      const requestId = latestRequest.current.start();
+      setIsCheckoutUpdating(true);
+      setError("");
+      try {
+        const response = await fetch("/api/checkout/shipping", {
+          method: "POST",
+          cache: "no-store",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ packageId, rateId }),
+        });
+        const result = (await response.json()) as Cart & { message?: string };
+        if (!response.ok) {
+          const message =
+            result.message || "Não foi possível selecionar a entrega.";
+          if (latestRequest.current.isLatest(requestId)) setError(message);
+          return { success: false, message };
+        }
+        if (latestRequest.current.isLatest(requestId)) setCart(result);
+        return {
+          success: true,
+          message: "Opção de entrega atualizada.",
+          cart: result,
+        };
+      } catch {
+        const message = "Não foi possível selecionar a entrega.";
+        if (latestRequest.current.isLatest(requestId)) setError(message);
+        return { success: false, message };
+      } finally {
+        if (latestRequest.current.isLatest(requestId)) {
+          setIsCheckoutUpdating(false);
+        }
+      }
+    },
+    [],
+  );
+
+  const calculateShippingPostcode = useCallback(
+    async (
+      postcode: string,
+      signal?: AbortSignal,
+    ): Promise<CartMutationResult> => {
+      const requestId = latestRequest.current.start();
+      setIsCheckoutUpdating(true);
+      setError("");
+      try {
+        const response = await fetch("/api/shipping/cart", {
+          method: "POST",
+          cache: "no-store",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ postcode }),
+          signal,
+        });
+        const result = (await response.json()) as Cart & { message?: string };
+        if (!response.ok) {
+          const message =
+            result.message || "Não foi possível calcular o frete agora.";
+          if (latestRequest.current.isLatest(requestId)) setError(message);
+          return { success: false, message };
+        }
+        if (latestRequest.current.isLatest(requestId)) setCart(result);
+        return {
+          success: true,
+          message: "Opções de frete atualizadas.",
+          cart: result,
+        };
+      } catch (requestError) {
+        if (
+          requestError instanceof Error &&
+          requestError.name === "AbortError"
+        ) {
+          return { success: false, message: "", aborted: true };
+        }
+        const message = "Não foi possível calcular o frete agora.";
+        if (latestRequest.current.isLatest(requestId)) setError(message);
+        return { success: false, message };
+      } finally {
+        if (latestRequest.current.isLatest(requestId)) {
+          setIsCheckoutUpdating(false);
+        }
+      }
+    },
+    [],
+  );
 
   const value = useMemo(
     () => ({
@@ -209,9 +379,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       isOpen,
       error,
       pendingItemKey,
+      isCheckoutUpdating,
       addItem,
       updateItem,
       removeItem,
+      updateCustomerAddress,
+      selectShippingRate,
+      calculateShippingPostcode,
       openCart: () => setIsOpen(true),
       closeCart: () => setIsOpen(false),
     }),
@@ -222,9 +396,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       isHydrated,
       isLoading,
       isOpen,
+      isCheckoutUpdating,
       pendingItemKey,
       removeItem,
+      selectShippingRate,
+      calculateShippingPostcode,
       updateItem,
+      updateCustomerAddress,
     ],
   );
 
