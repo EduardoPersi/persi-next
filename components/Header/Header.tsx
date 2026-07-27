@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Heart,
@@ -13,6 +14,8 @@ import {
   X,
 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
+import { AccountProvider, useAccount } from "@/hooks/useAccount";
+import type { AccountSessionResult } from "@/lib/account/validation";
 import { AccountDrawer } from "@/components/Account/AccountDrawer";
 import { MiniCart } from "./MiniCart";
 import { MobileMenu } from "./MobileMenu";
@@ -55,17 +58,21 @@ function HeaderLogo({ compact = false }: HeaderLogoProps) {
 
 interface HeaderActionsProps {
   itemsCount: number;
+  isCartPage: boolean;
   isCartOpen: boolean;
   onOpenCart: () => void;
   onOpenAccount: () => void;
+  accountLabel: string;
   compact?: boolean;
 }
 
 function HeaderActions({
   itemsCount,
+  isCartPage,
   isCartOpen,
   onOpenCart,
   onOpenAccount,
+  accountLabel,
   compact = false,
 }: HeaderActionsProps) {
   return (
@@ -88,13 +95,13 @@ function HeaderActions({
       <button
         type="button"
         onClick={onOpenAccount}
-        aria-label="Login ou cadastro"
+        aria-label={accountLabel}
         className="flex h-10 items-center justify-center gap-2 rounded-md px-2 transition hover:bg-white/10 xl:px-3"
       >
         <User size={compact ? 21 : 23} className="shrink-0" />
         {!compact ? (
           <span className="hidden whitespace-nowrap text-sm font-semibold xl:inline">
-            Login / Registrar
+            {accountLabel}
           </span>
         ) : null}
       </button>
@@ -110,9 +117,11 @@ function HeaderActions({
       <button
         type="button"
         onClick={onOpenCart}
-        aria-label="Abrir mini carrinho"
-        aria-expanded={isCartOpen}
-        aria-controls="mini-cart-drawer"
+        aria-label={
+          isCartPage ? "Atualizar página do carrinho" : "Abrir mini carrinho"
+        }
+        aria-expanded={isCartPage ? undefined : isCartOpen}
+        aria-controls={isCartPage ? undefined : "mini-cart-drawer"}
         className="relative flex h-10 w-10 items-center justify-center p-2 transition hover:text-white/80"
       >
         <ShoppingCart className={compact ? "h-6 w-6" : "h-7 w-7"} />
@@ -124,18 +133,34 @@ function HeaderActions({
   );
 }
 
-export function Header() {
+function HeaderContent() {
+  const pathname = usePathname();
   const fullHeaderRef = useRef<HTMLElement>(null);
   const lastScrollYRef = useRef(0);
   const frameRef = useRef<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [showCompactHeader, setShowCompactHeader] = useState(false);
-  const { cart, isOpen: isCartOpen, openCart } = useCart();
+  const { cart, closeCart, isOpen: isCartOpen, openCart } = useCart();
+  const { status: accountStatus, customer } = useAccount();
+  const isCartPage = pathname === "/carrinho";
   const itemsCount = cart?.itemsCount ?? 0;
+  const accountLabel =
+    accountStatus === "authenticated"
+      ? customer?.firstName || customer?.displayName || "Minha conta"
+      : "Login / Registrar";
   const openAccount = useCallback(() => setAccountOpen(true), []);
   const closeAccount = useCallback(() => setAccountOpen(false), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const handleCartClick = useCallback(() => {
+    if (!isCartPage) {
+      openCart();
+      return;
+    }
+
+    closeCart();
+    window.location.reload();
+  }, [closeCart, isCartPage, openCart]);
 
   useEffect(() => {
     lastScrollYRef.current = window.scrollY;
@@ -201,9 +226,11 @@ export function Header() {
             <ProductSearch variant="desktop" />
             <HeaderActions
               itemsCount={itemsCount}
+              isCartPage={isCartPage}
               isCartOpen={isCartOpen}
-              onOpenCart={openCart}
+              onOpenCart={handleCartClick}
               onOpenAccount={openAccount}
+              accountLabel={accountLabel}
             />
           </div>
           <ProductSearch variant="mobile" />
@@ -258,9 +285,11 @@ export function Header() {
             <ProductSearch variant="desktop" />
             <HeaderActions
               itemsCount={itemsCount}
+              isCartPage={isCartPage}
               isCartOpen={isCartOpen}
-              onOpenCart={openCart}
+              onOpenCart={handleCartClick}
               onOpenAccount={openAccount}
+              accountLabel={accountLabel}
               compact
             />
           </div>
@@ -276,5 +305,17 @@ export function Header() {
       <AccountDrawer open={accountOpen} onClose={closeAccount} />
       <MiniCart />
     </header>
+  );
+}
+
+export function Header({
+  initialAccountSession,
+}: {
+  initialAccountSession?: AccountSessionResult;
+}) {
+  return (
+    <AccountProvider initialSession={initialAccountSession}>
+      <HeaderContent />
+    </AccountProvider>
   );
 }

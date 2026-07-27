@@ -7,7 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "check:account-config": "node --env-file=.env.local scripts/check-account-config.mjs",
+    "test:cart:hostinger": "node tests/cart-hostinger-smoke.mjs",
+    "test:cart:isolation": "node tests/cart-isolation.mjs",
+    "test:cart:isolation:direct": "node tests/cart-isolation.mjs",
+    "test:cart:isolation:hostinger": "node tests/cart-isolation.mjs",
+    "test:checkout:shipping": "node tests/checkout-shipping-smoke.mjs",
+    "audit:checkout:gateways": "node --env-file=.env.local tests/gateway-audit.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

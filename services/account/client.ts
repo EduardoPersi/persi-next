@@ -1,0 +1,148 @@
+import {
+  signAccountRequest,
+  type AccountHmacConfig,
+  type AccountHttpMethod,
+} from "../../lib/account/hmac.ts";
+
+export const ACCOUNT_REST_BASE_PATH = "/wp-json/persi-account/v1";
+
+export interface AccountClientConfig extends AccountHmacConfig {
+  endpoint: string;
+}
+
+export class AccountServiceError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "AccountServiceError";
+    this.status = status;
+  }
+}
+
+function requireEnvironmentValue(
+  environment: NodeJS.ProcessEnv,
+  name:
+    | "PERSI_HEADLESS_ACCOUNT_HMAC_SECRET"
+    | "PERSI_HEADLESS_ACCOUNT_HMAC_KEY_ID"
+    | "PERSI_HEADLESS_ACCOUNT_ORIGIN"
+    | "PERSI_HEADLESS_ACCOUNT_ENDPOINT",
+): string {
+  const value = environment[name]?.trim();
+  if (!value) throw new AccountServiceError(503, "Missing account configuration");
+  return value;
+}
+
+function validateOrigin(value: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new AccountServiceError(503, "Invalid account origin");
+  }
+  if (
+    parsed.protocol !== "https:" ||
+    parsed.origin !== value.replace(/\/$/, "") ||
+    parsed.pathname !== "/" ||
+    parsed.search ||
+    parsed.hash ||
+    parsed.username ||
+    parsed.password
+  ) {
+    throw new AccountServiceError(503, "Invalid account origin");
+  }
+  return parsed.origin;
+}
+
+function validateEndpoint(value: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new AccountServiceError(503, "Invalid account endpoint");
+  }
+  if (
+    parsed.protocol !== "https:" ||
+    parsed.hostname !== "persimateriais.com.br" ||
+    parsed.pathname.replace(/\/$/, "") !== ACCOUNT_REST_BASE_PATH ||
+    parsed.search ||
+    parsed.hash ||
+    parsed.username ||
+    parsed.password
+  ) {
+    throw new AccountServiceError(503, "Invalid account endpoint");
+  }
+  return `${parsed.origin}${ACCOUNT_REST_BASE_PATH}`;
+}
+
+export function getAccountClientConfig(
+  environment: NodeJS.ProcessEnv = process.env,
+): AccountClientConfig {
+  const keyId = requireEnvironmentValue(
+    environment,
+    "PERSI_HEADLESS_ACCOUNT_HMAC_KEY_ID",
+  );
+  if (!/^[A-Za-z0-9._-]{1,40}$/.test(keyId)) {
+    throw new AccountServiceError(503, "Invalid account key id");
+  }
+
+  return {
+    secret: requireEnvironmentValue(
+      environment,
+      "PERSI_HEADLESS_ACCOUNT_HMAC_SECRET",
+    ),
+    keyId,
+    origin: validateOrigin(
+      requireEnvironmentValue(
+        environment,
+        "PERSI_HEADLESS_ACCOUNT_ORIGIN",
+      ),
+    ),
+    endpoint: validateEndpoint(
+      requireEnvironmentValue(
+        environment,
+        "PERSI_HEADLESS_ACCOUNT_ENDPOINT",
+      ),
+    ),
+  };
+}
+
+export async function requestAccountEndpoint(input: {
+  config: AccountClientConfig;
+  method: AccountHttpMethod;
+  route: "/login" | "/session" | "/logout";
+  rawBody: string;
+  sessionToken?: string;
+  fetchImplementation?: typeof fetch;
+}): Promise<{ status: number; body: unknown; retryAfter?: string }> {
+  const path = `${ACCOUNT_REST_BASE_PATH}${input.route}`;
+  const signed = signAccountRequest(
+    { method: input.method, path, rawBody: input.rawBody },
+    input.config,
+  );
+  const headers: Record<string, string> = { ...signed.headers };
+  if (input.rawBody) headers["Content-Type"] = "application/json";
+  if (input.sessionToken) headers["X-Persi-Session"] = input.sessionToken;
+
+  let response: Response;
+  try {
+    response = await (input.fetchImplementation ?? fetch)(
+      `${input.config.endpoint}${input.route}`,
+      {
+        method: input.method,
+        headers,
+        body: input.method === "POST" ? input.rawBody || undefined : undefined,
+        cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+  } catch {
+    throw new AccountServiceError(502, "Account service unavailable");
+  }
+
+  return {
+    status: response.status,
+    body: await response.json().catch(() => null),
+    retryAfter: response.headers.get("retry-after") ?? undefined,
+  };
+}

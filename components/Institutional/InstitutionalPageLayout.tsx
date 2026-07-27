@@ -1,20 +1,23 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type { AccountSessionResult } from "@/lib/account/validation";
 import { Header } from "@/components/Header/Header";
 import { Container } from "@/components/UI/Container";
 
 type InstitutionalPageLayoutProps = {
   title: string;
   children: ReactNode;
+  accountSession?: AccountSessionResult;
 };
 
 export function InstitutionalPageLayout({
   title,
   children,
+  accountSession,
 }: InstitutionalPageLayoutProps) {
   return (
     <>
-      <Header />
+      <Header initialAccountSession={accountSession} />
       <main className="py-5 sm:py-8 lg:py-10">
         <Container size="md">
           <nav aria-label="Breadcrumb">

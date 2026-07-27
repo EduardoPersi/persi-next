@@ -1,16 +1,12 @@
-"use client";
-
-import { useState } from "react";
-import { AccountDrawer } from "@/components/Account/AccountDrawer";
-import { Button } from "@/components/UI/Button";
+import Link from "next/link";
 
 export function AccountPageAccess() {
-  const [open, setOpen] = useState(false);
-
   return (
-    <>
-      <Button onClick={() => setOpen(true)}>Entrar ou criar conta</Button>
-      <AccountDrawer open={open} onClose={() => setOpen(false)} />
-    </>
+    <Link
+      href="/entrar"
+      className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0c2d72] px-4 py-2 font-medium text-white hover:bg-[#071f5c]"
+    >
+      Entrar na minha conta
+    </Link>
   );
 }
