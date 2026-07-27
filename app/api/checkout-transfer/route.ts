@@ -58,6 +58,12 @@ function getErrorStatus(error: unknown): number {
   return 500;
 }
 
+function getDiagnosticCode(error: unknown): string {
+  if (error instanceof CheckoutTransferError) return error.diagnosticCode;
+  if (error instanceof CartServiceError) return "CHECKOUT_CART_FETCH_FAILED";
+  return "CHECKOUT_RESPONSE_INVALID";
+}
+
 export async function POST() {
   let activeCartToken = (await cookies()).get(CART_TOKEN_COOKIE)?.value;
 
@@ -84,9 +90,14 @@ export async function POST() {
       activeCartToken,
     );
   } catch (error) {
+    const status = getErrorStatus(error);
+    console.error("[checkout-transfer]", {
+      code: getDiagnosticCode(error),
+      status,
+    });
     return createPrivateResponse(
       { message: GENERIC_ERROR_MESSAGE },
-      getErrorStatus(error),
+      status,
       activeCartToken,
     );
   }

@@ -44,13 +44,28 @@ export interface CheckoutTransferSuccess {
 
 export class CheckoutTransferError extends Error {
   readonly status: number;
+  readonly diagnosticCode: CheckoutDiagnosticCode;
 
-  constructor(status: number, message: string) {
+  constructor(
+    status: number,
+    message: string,
+    diagnosticCode: CheckoutDiagnosticCode = "CHECKOUT_RESPONSE_INVALID",
+  ) {
     super(message);
     this.status = status;
+    this.diagnosticCode = diagnosticCode;
     this.name = "CheckoutTransferError";
   }
 }
+
+export type CheckoutDiagnosticCode =
+  | "CHECKOUT_CONFIG_MISSING"
+  | "CHECKOUT_ORIGIN_INVALID"
+  | "CHECKOUT_WORDPRESS_401"
+  | "CHECKOUT_WORDPRESS_403"
+  | "CHECKOUT_WORDPRESS_404"
+  | "CHECKOUT_WORDPRESS_UNAVAILABLE"
+  | "CHECKOUT_RESPONSE_INVALID";
 
 function requireEnvironmentValue(
   environment: NodeJS.ProcessEnv,
@@ -58,7 +73,11 @@ function requireEnvironmentValue(
 ): string {
   const value = environment[name]?.trim();
   if (!value) {
-    throw new CheckoutTransferError(503, `Missing server configuration: ${name}`);
+    throw new CheckoutTransferError(
+      503,
+      `Missing server configuration: ${name}`,
+      "CHECKOUT_CONFIG_MISSING",
+    );
   }
   return value;
 }
@@ -68,7 +87,11 @@ function validateEndpoint(value: string): string {
   try {
     endpoint = new URL(value);
   } catch {
-    throw new CheckoutTransferError(503, "Invalid checkout transfer endpoint");
+    throw new CheckoutTransferError(
+      503,
+      "Invalid checkout transfer endpoint",
+      "CHECKOUT_CONFIG_MISSING",
+    );
   }
 
   if (
@@ -80,7 +103,11 @@ function validateEndpoint(value: string): string {
     endpoint.username ||
     endpoint.password
   ) {
-    throw new CheckoutTransferError(503, "Invalid checkout transfer endpoint");
+    throw new CheckoutTransferError(
+      503,
+      "Invalid checkout transfer endpoint",
+      "CHECKOUT_CONFIG_MISSING",
+    );
   }
 
   return endpoint.toString();
@@ -91,7 +118,11 @@ function validateOrigin(value: string): string {
   try {
     origin = new URL(value);
   } catch {
-    throw new CheckoutTransferError(503, "Invalid checkout transfer origin");
+    throw new CheckoutTransferError(
+      503,
+      "Invalid checkout transfer origin",
+      "CHECKOUT_ORIGIN_INVALID",
+    );
   }
 
   if (
@@ -100,7 +131,11 @@ function validateOrigin(value: string): string {
     origin.username ||
     origin.password
   ) {
-    throw new CheckoutTransferError(503, "Invalid checkout transfer origin");
+    throw new CheckoutTransferError(
+      503,
+      "Invalid checkout transfer origin",
+      "CHECKOUT_ORIGIN_INVALID",
+    );
   }
 
   return origin.origin;
@@ -127,7 +162,11 @@ export function getCheckoutTransferConfig(
   );
 
   if (!/^[A-Za-z0-9._-]{1,40}$/.test(keyId)) {
-    throw new CheckoutTransferError(503, "Invalid checkout transfer key id");
+    throw new CheckoutTransferError(
+      503,
+      "Invalid checkout transfer key id",
+      "CHECKOUT_CONFIG_MISSING",
+    );
   }
 
   return {
@@ -234,7 +273,11 @@ export function parseCheckoutTransferResponse(
   value: unknown,
 ): CheckoutTransferSuccess {
   if (!value || typeof value !== "object") {
-    throw new CheckoutTransferError(502, "Invalid checkout transfer response");
+    throw new CheckoutTransferError(
+      502,
+      "Invalid checkout transfer response",
+      "CHECKOUT_RESPONSE_INVALID",
+    );
   }
 
   const response = value as Record<string, unknown>;
@@ -246,7 +289,11 @@ export function parseCheckoutTransferResponse(
       : null;
 
   if (!transferUrl || !expiresAt) {
-    throw new CheckoutTransferError(502, "Invalid checkout transfer response");
+    throw new CheckoutTransferError(
+      502,
+      "Invalid checkout transfer response",
+      "CHECKOUT_RESPONSE_INVALID",
+    );
   }
 
   return { transferUrl, expiresAt };
@@ -269,7 +316,11 @@ export async function createCheckoutTransfer(
       signal: AbortSignal.timeout(10_000),
     });
   } catch {
-    throw new CheckoutTransferError(502, "Checkout transfer request failed");
+    throw new CheckoutTransferError(
+      502,
+      "Checkout transfer request failed",
+      "CHECKOUT_WORDPRESS_UNAVAILABLE",
+    );
   }
 
   const responseBody = await response.json().catch(() => null);
@@ -278,7 +329,19 @@ export async function createCheckoutTransfer(
     const status = [401, 409, 422, 503].includes(response.status)
       ? response.status
       : 502;
-    throw new CheckoutTransferError(status, "Checkout transfer was rejected");
+    const diagnosticCode =
+      response.status === 401
+        ? "CHECKOUT_WORDPRESS_401"
+        : response.status === 403
+          ? "CHECKOUT_WORDPRESS_403"
+          : response.status === 404
+            ? "CHECKOUT_WORDPRESS_404"
+            : "CHECKOUT_RESPONSE_INVALID";
+    throw new CheckoutTransferError(
+      status,
+      "Checkout transfer was rejected",
+      diagnosticCode,
+    );
   }
 
   return parseCheckoutTransferResponse(responseBody);

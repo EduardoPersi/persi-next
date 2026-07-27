@@ -181,6 +181,25 @@ for (const status of [401, 409, 422, 503]) {
   });
 }
 
+test("diagnóstico diferencia 401 do WordPress sem expor resposta remota", async () => {
+  await assert.rejects(
+    createCheckoutTransfer(
+      simplePayload,
+      config,
+      async () =>
+        new Response(JSON.stringify({ code: "authentication_failed" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+    ),
+    (error) =>
+      error instanceof CheckoutTransferError &&
+      error.status === 401 &&
+      error.diagnosticCode === "CHECKOUT_WORDPRESS_401" &&
+      !error.message.includes("authentication_failed"),
+  );
+});
+
 test("cliente rejeita resposta sem URL e não depende de payload do carrinho", async () => {
   let request;
   const fetchMock = async (url, options) => {
