@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Persi Headless
  * Description: API pública e módulos de integração entre WooCommerce e o frontend headless da Persi.
- * Version: 0.1.0
+ * Version: 0.2.0
  * Requires at least: 6.4
  * Requires PHP: 7.4
  * WC requires at least: 8.2
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'PERSI_HEADLESS_VERSION', '0.1.0' );
+define( 'PERSI_HEADLESS_VERSION', '0.2.0' );
 define( 'PERSI_HEADLESS_FILE', __FILE__ );
 define( 'PERSI_HEADLESS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'PERSI_HEADLESS_URL', plugin_dir_url( __FILE__ ) );

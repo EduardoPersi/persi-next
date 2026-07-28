@@ -23,6 +23,7 @@ class Persi_Headless_Activator {
 			'double_opt_in' => true,
 			'batch_size'    => 25,
 			'logging'       => false,
+			'retention'     => array( 'pending' => 7, 'sent' => 90, 'failed' => 30, 'unsubscribed' => 30, 'confirmed' => 180 ),
 		);
 
 		if ( false === get_option( 'persi_headless_settings', false ) ) {

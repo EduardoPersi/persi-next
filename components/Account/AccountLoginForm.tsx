@@ -4,6 +4,7 @@ import { useId, useState, type FormEvent } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/UI/Button";
+import Link from "next/link";
 import { useAccount } from "@/hooks/useAccount";
 
 const inputClassName =
@@ -124,8 +125,8 @@ export function AccountLoginForm({
       </Button>
 
       <div className="space-y-2 border-t border-slate-200 pt-5 text-center text-sm text-slate-600">
-        <p>Criação de conta estará disponível em uma próxima etapa.</p>
-        <p>Recuperação de senha estará disponível em uma próxima etapa.</p>
+        <p><Link href="/criar-conta" className="font-semibold text-[#0c2d72] hover:underline">Criar conta</Link></p>
+        <p><Link href="/esqueci-minha-senha" className="font-semibold text-[#0c2d72] hover:underline">Esqueci minha senha</Link></p>
       </div>
     </form>
   );

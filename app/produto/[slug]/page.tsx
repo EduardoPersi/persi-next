@@ -25,6 +25,7 @@ import {
   getProductsByCategory,
 } from "@/services/woocommerce/products";
 import type { Product } from "@/types/product";
+import { getStockNotificationEndpoint } from "@/services/woocommerce/stockNotifications";
 
 interface ProductPageProps {
   params: Promise<{
@@ -215,9 +216,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 brand={brand}
                 boughtTogetherItems={boughtTogether}
                 productFamily={productFamily}
-                stockNotificationEnabled={Boolean(
-                  process.env.WORDPRESS_STOCK_NOTIFICATION_ENDPOINT,
-                )}
+                stockNotificationEnabled={Boolean(getStockNotificationEndpoint())}
               />
             </div>
           </div>

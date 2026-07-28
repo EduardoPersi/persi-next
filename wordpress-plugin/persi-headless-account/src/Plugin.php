@@ -3,6 +3,8 @@
 namespace Persi\HeadlessAccount;
 
 use Persi\HeadlessAccount\Api\AuthController;
+use Persi\HeadlessAccount\Api\OrderController;
+use Persi\HeadlessAccount\Api\AccountAccessController;
 use Persi\HeadlessAccount\Auth\CredentialsAuthenticator;
 use Persi\HeadlessAccount\Auth\SessionRepository;
 use Persi\HeadlessAccount\Auth\SessionService;
@@ -11,9 +13,12 @@ use Persi\HeadlessAccount\Security\ClientFingerprint;
 use Persi\HeadlessAccount\Security\NonceRepository;
 use Persi\HeadlessAccount\Security\RateLimiter;
 use Persi\HeadlessAccount\Security\RequestAuthenticator;
+use Persi\HeadlessAccount\Orders\OrderPresenter;
+use Persi\HeadlessAccount\Orders\OrderService;
 use Persi\HeadlessAccount\Support\Configuration;
 use Persi\HeadlessAccount\Support\Logger;
 use Persi\HeadlessAccount\Validation\LoginPayloadValidator;
+use Persi\HeadlessAccount\Validation\AccountAccessPayloadValidator;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -37,11 +42,12 @@ final class Plugin {
 			new SessionRepository( $wpdb ),
 			new SessionToken()
 		);
+		$request_authenticator = new RequestAuthenticator(
+			$configuration,
+			new NonceRepository( $wpdb )
+		);
 		$controller = new AuthController(
-			new RequestAuthenticator(
-				$configuration,
-				new NonceRepository( $wpdb )
-			),
+			$request_authenticator,
 			new CredentialsAuthenticator(),
 			$sessions,
 			new RateLimiter( $wpdb ),
@@ -51,6 +57,21 @@ final class Plugin {
 			new Logger()
 		);
 		add_action( 'rest_api_init', array( $controller, 'register_routes' ) );
+		$order_controller = new OrderController(
+			$request_authenticator,
+			$sessions,
+			new OrderService( new OrderPresenter() ),
+			new Logger()
+		);
+		add_action( 'rest_api_init', array( $order_controller, 'register_routes' ) );
+		$access_controller = new AccountAccessController(
+			$request_authenticator,
+			new RateLimiter( $wpdb ),
+			new ClientFingerprint( $configuration->secret() ),
+			$configuration,
+			new AccountAccessPayloadValidator()
+		);
+		add_action( 'rest_api_init', array( $access_controller, 'register_routes' ) );
 	}
 
 	public static function woocommerce_notice(): void {

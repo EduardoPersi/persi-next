@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AccountLogoutButton } from "@/components/Account/AccountLogoutButton";
+import { AccountNavigation } from "@/components/Account/AccountNavigation";
 import { InstitutionalPageLayout } from "@/components/Institutional/InstitutionalPageLayout";
 import { getServerAccountSession } from "@/services/account/serverSession";
 
@@ -14,10 +15,6 @@ export const metadata: Metadata = {
 };
 
 const futureSections = [
-  {
-    title: "Pedidos",
-    description: "A consulta de pedidos estará disponível em uma próxima etapa.",
-  },
   {
     title: "Endereços",
     description: "O gerenciamento de endereços estará disponível em uma próxima etapa.",
@@ -37,6 +34,7 @@ export default async function AccountPage() {
 
   return (
     <InstitutionalPageLayout title="Minha conta" accountSession={session}>
+      <AccountNavigation />
       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
         <div>
           <p className="text-lg font-semibold text-[#071f5c]">Olá, {name}.</p>

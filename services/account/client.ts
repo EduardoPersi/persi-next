@@ -110,7 +110,8 @@ export function getAccountClientConfig(
 export async function requestAccountEndpoint(input: {
   config: AccountClientConfig;
   method: AccountHttpMethod;
-  route: "/login" | "/session" | "/logout";
+  route: "/login" | "/session" | "/logout" | "/register" | "/forgot-password" | "/reset-password" | "/orders" | `/orders/${number}`;
+  query?: string;
   rawBody: string;
   sessionToken?: string;
   fetchImplementation?: typeof fetch;
@@ -127,7 +128,7 @@ export async function requestAccountEndpoint(input: {
   let response: Response;
   try {
     response = await (input.fetchImplementation ?? fetch)(
-      `${input.config.endpoint}${input.route}`,
+      `${input.config.endpoint}${input.route}${input.query ? `?${input.query}` : ""}`,
       {
         method: input.method,
         headers,

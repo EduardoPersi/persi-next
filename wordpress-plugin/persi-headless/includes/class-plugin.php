@@ -15,6 +15,11 @@ final class Persi_Headless_Plugin {
 	public function run() {
 		require_once PERSI_HEADLESS_PATH . 'includes/class-settings.php';
 		require_once PERSI_HEADLESS_PATH . 'includes/cache/class-cache.php';
+		if ( get_option( 'persi_headless_db_version' ) !== PERSI_HEADLESS_VERSION ) {
+			require_once PERSI_HEADLESS_PATH . 'includes/stock-notifications/class-repository.php';
+			Persi_Headless_Stock_Repository::install();
+			update_option( 'persi_headless_db_version', PERSI_HEADLESS_VERSION, false );
+		}
 
 		if ( ! class_exists( 'WooCommerce' ) ) {
 			add_action( 'admin_notices', array( $this, 'woocommerce_notice' ) );

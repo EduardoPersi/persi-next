@@ -3,26 +3,38 @@ Contributors: persi
 Requires at least: 6.4
 Requires PHP: 8.1
 WC requires at least: 8.2
-Stable tag: 0.1.0
+Stable tag: 0.3.0
 License: Proprietary
 
 Núcleo de autenticação e sessões opacas para a futura Área da Conta headless.
 
-== Escopo da versão 0.1.0 ==
+== Escopo da versão 0.3.0 ==
 
 Esta fase fornece exclusivamente:
 
 * POST /wp-json/persi-account/v1/login
 * GET /wp-json/persi-account/v1/session
 * POST /wp-json/persi-account/v1/logout
+* GET /wp-json/persi-account/v1/orders
+* GET /wp-json/persi-account/v1/orders/{id}
+* POST /wp-json/persi-account/v1/register
+* POST /wp-json/persi-account/v1/forgot-password
+* POST /wp-json/persi-account/v1/reset-password
 * autenticação HMAC entre servidores;
 * proteção contra replay;
 * limitação progressiva de tentativas de login;
 * sessões opacas revogáveis;
 * compatibilidade declarada com HPOS.
 
-Não fornece telas no Next.js, cadastro, recuperação de senha, perfil, endereços,
-pedidos, checkout ou integração com gateways.
+Não fornece cadastro, recuperação de senha, edição de perfil ou endereços,
+checkout ou integração com gateways. A consulta de pedidos é somente leitura.
+
+== Pedidos ==
+
+Os endpoints de pedidos exigem HMAC e X-Persi-Session. O usuário é resolvido pela
+sessão opaca e nunca por customer_id enviado pelo navegador. A listagem usa
+wc_get_orders e o detalhe usa wc_get_order, preservando compatibilidade com HPOS.
+Pedidos de convidado e pedidos pertencentes a outro usuário não são retornados.
 
 == Configuração ==
 
@@ -37,6 +49,7 @@ define(
 
 O segredo deve ser diferente do segredo do Persi Headless Checkout e nunca deve
 usar prefixo NEXT_PUBLIC_. Sem segredo ou key ID, os endpoints recusam a operação.
+O Key ID não diferencia letras maiúsculas e minúsculas.
 
 PERSI_HEADLESS_ACCOUNT_ALLOWED_ORIGINS aceita uma lista separada por vírgulas.
 Cada origem deve conter apenas esquema HTTP/HTTPS, host e porta opcional, sem

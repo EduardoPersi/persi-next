@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { parseForgotPayload, parseRegisterPayload, RECOVERY_MESSAGE } from "../lib/account/access.ts";
+import { registerAccount, forgotAccountPassword } from "../services/account/access.ts";
+import { AccountServiceError } from "../services/account/client.ts";
+const config={endpoint:"https://persimateriais.com.br/wp-json/persi-account/v1",keyId:"primary",origin:"https://yellowgreen-ram-345959.hostingersite.com",secret:"test-secret"};
+const valid={name:"Ana Cliente",email:"ana@example.test",phone:"",cpf:"",password:"segura123",passwordConfirmation:"segura123",acceptTerms:true};
+test("cadastro válido usa contrato fechado",()=>{assert.deepEqual(parseRegisterPayload(JSON.stringify(valid)),valid);assert.throws(()=>parseRegisterPayload(JSON.stringify({...valid,role:"admin"})));});
+test("senha fraca e confirmação diferente falham",()=>{assert.throws(()=>parseRegisterPayload(JSON.stringify({...valid,password:"curta",passwordConfirmation:"curta"})));assert.throws(()=>parseRegisterPayload(JSON.stringify({...valid,passwordConfirmation:"outra123"})));});
+test("recuperação valida e-mail",()=>{assert.deepEqual(parseForgotPayload('{"email":"ANA@example.test"}'),{email:"ana@example.test"});assert.throws(()=>parseForgotPayload('{"email":"invalido"}'));});
+test("cadastro não retorna IDs ou token e preserva duplicidade",async()=>{const result=await registerAccount(valid,{config,fetchImplementation:async()=>Response.json({registered:true},{status:201})});assert.deepEqual(result,{registered:true});assert.equal(JSON.stringify(result).match(/user|customer|token/i),null);await assert.rejects(registerAccount(valid,{config,fetchImplementation:async()=>Response.json({}, {status:409})}),(error)=>error instanceof AccountServiceError&&error.status===409);});
+test("recuperação existente ou inexistente tem resposta genérica",async()=>{for(const status of [200,200]){const result=await forgotAccountPassword("ana@example.test",{config,fetchImplementation:async()=>Response.json({message:"interno"},{status})});assert.equal(result.message,RECOVERY_MESSAGE);}});
+test("rate limit remoto é preservado",async()=>{await assert.rejects(registerAccount(valid,{config,fetchImplementation:async()=>Response.json({}, {status:429})}),(error)=>error instanceof AccountServiceError&&error.status===429);});

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AccountLoginForm } from "@/components/Account/AccountLoginForm";
+import { SocialLoginButtons } from "@/components/Account/SocialLoginButtons";
 import { InstitutionalPageLayout } from "@/components/Institutional/InstitutionalPageLayout";
 import { AccountProvider } from "@/hooks/useAccount";
 import { getServerAccountSession } from "@/services/account/serverSession";
@@ -29,6 +30,10 @@ export default async function LoginPage() {
         </p>
         <AccountProvider initialSession={{ authenticated: false }}>
           <AccountLoginForm />
+          <div className="mt-6">
+            <SocialLoginButtons descriptionId="social-login-status" />
+            <p id="social-login-status" className="mt-2 text-center text-xs text-slate-500">Login social estará disponível em breve.</p>
+          </div>
         </AccountProvider>
       </div>
     </InstitutionalPageLayout>

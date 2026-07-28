@@ -182,6 +182,9 @@ $load( 'Auth/CredentialsAuthenticator.php' );
 $load( 'Auth/SessionService.php' );
 $load( 'Validation/ValidationException.php' );
 $load( 'Validation/LoginPayloadValidator.php' );
+$load( 'Validation/AccountAccessPayloadValidator.php' );
+$load( 'Orders/OrderPresenter.php' );
+$load( 'Orders/OrderService.php' );
 
 use Persi\HeadlessAccount\Auth\CredentialsAuthenticator;
 use Persi\HeadlessAccount\Auth\SessionRepository;
@@ -195,6 +198,7 @@ use Persi\HeadlessAccount\Support\Configuration;
 use Persi\HeadlessAccount\Support\OriginNormalizer;
 use Persi\HeadlessAccount\Validation\LoginPayloadValidator;
 use Persi\HeadlessAccount\Validation\ValidationException;
+use Persi\HeadlessAccount\Orders\OrderPresenter;
 
 $tests = array();
 $test = static function ( string $name, callable $callback ) use ( &$tests ): void {
@@ -284,7 +288,26 @@ $test( 'HMAC válido passa e replay, adulteração, timestamp, origem e key ID f
 
 	foreach ( array(
 		array( 'body' => $body . ' ', 'headers' => $headers, 'now' => $now ),
-		array( 'body' => $body, 'headers' => array_merge( $headers, array( 'x-persi-key-id' => 'other' ) ), 'now' => $now ),
+		array(
+			'body' => $body,
+			'headers' => array_merge(
+				$headers,
+				array(
+					'x-persi-nonce' => 'wrongsecretabcdefghijkl',
+					'x-persi-signature' => 'v1=' . hash_hmac( 'sha256', RequestAuthenticator::canonical(
+						'POST',
+						'/wp-json/persi-account/v1/login',
+						(string) $now,
+						'wrongsecretabcdefghijkl',
+						'https://frontend.test',
+						$body
+					), 'incorrect-secret' ),
+				)
+			),
+			'now' => $now,
+		),
+		array( 'body' => $body, 'headers' => array_merge( $headers, array( 'x-persi-signature' => 'v1=' . str_repeat( '0', 64 ) ) ), 'now' => $now ),
+		array( 'body' => $body, 'headers' => array_merge( $headers, array( 'x-persi-key-id' => 'keyid2' ) ), 'now' => $now ),
 		array( 'body' => $body, 'headers' => array_merge( $headers, array( 'x-persi-origin' => 'https://evil.test' ) ), 'now' => $now ),
 		array( 'body' => $body, 'headers' => $headers, 'now' => $now + 121 ),
 	) as $case ) {
@@ -299,6 +322,34 @@ $test( 'HMAC válido passa e replay, adulteração, timestamp, origem e key ID f
 			),
 			AuthenticationException::class
 		);
+	}
+} );
+
+$test( 'Key ID HMAC não diferencia maiúsculas e minúsculas', static function () use ( $assert ): void {
+	$config = new Configuration();
+	$now = 1800000000;
+	$body = '{"identifier":"u","password":"p","remember":false}';
+
+	foreach ( array( 'primary', 'PRIMARY', 'Primary', 'PrImArY' ) as $index => $key_id ) {
+		$nonce = 'caseinsensitivekeyid0' . $index;
+		$canonical = RequestAuthenticator::canonical(
+			'POST',
+			'/wp-json/persi-account/v1/login',
+			(string) $now,
+			$nonce,
+			'https://frontend.test',
+			$body
+		);
+		$headers = array(
+			'x-persi-key-id' => $key_id,
+			'x-persi-timestamp' => (string) $now,
+			'x-persi-nonce' => $nonce,
+			'x-persi-origin' => 'https://frontend.test',
+			'x-persi-signature' => 'v1=' . hash_hmac( 'sha256', $canonical, PERSI_HEADLESS_ACCOUNT_HMAC_SECRET ),
+		);
+		$auth = new RequestAuthenticator( $config, new NonceRepository( new FakeWpdb() ) );
+		$result = $auth->authenticate( 'POST', '/wp-json/persi-account/v1/login', $headers, $body, $now );
+		$assert( $key_id === $result->key_id );
 	}
 } );
 
@@ -362,6 +413,40 @@ $test( 'fontes não expõem customerId nem registram dados sensíveis', static f
 	$assert( str_contains( $schema, 'UNIQUE KEY token_hash' ) );
 	$assert( ! str_contains( $schema, 'password' ) );
 	$assert( ! str_contains( $schema, 'email' ) );
+} );
+
+$test( 'pedidos usam CRUD HPOS, contrato fechado e autorização por propriedade', static function () use ( $root, $assert ): void {
+	$controller = file_get_contents( $root . '/src/Api/OrderController.php' );
+	$service = file_get_contents( $root . '/src/Orders/OrderService.php' );
+	$presenter = file_get_contents( $root . '/src/Orders/OrderPresenter.php' );
+	$assert( str_contains( $service, 'wc_get_orders' ) );
+	$assert( str_contains( $service, 'wc_get_order' ) );
+	$assert( ! str_contains( $service, 'get_posts' ) );
+	$assert( ! str_contains( $service, 'postmeta' ) );
+	$assert( str_contains( $service, 'get_customer_id()' ) );
+	$assert( str_contains( $controller, "array( 'page', 'per_page', 'status' )" ) );
+	$assert( str_contains( $controller, 'Pedido não encontrado.' ) );
+	foreach ( array( 'customer_id', 'transaction_id', 'meta_data' ) as $sensitive ) {
+		$assert( ! str_contains( $presenter, "'{$sensitive}'" ) );
+	}
+	$assert( OrderPresenter::allowed_statuses() === array(
+		'pending', 'processing', 'on-hold', 'completed', 'cancelled', 'refunded', 'failed',
+	) );
+} );
+
+$test( 'cadastro e recuperação usam APIs nativas e resposta sem enumeração', static function () use ( $root, $assert ): void {
+	$controller = file_get_contents( $root . '/src/Api/AccountAccessController.php' );
+	$validator = file_get_contents( $root . '/src/Validation/AccountAccessPayloadValidator.php' );
+	$assert( str_contains( $controller, 'wp_insert_user' ) );
+	$assert( str_contains( $controller, "'role' => 'customer'" ) );
+	$assert( str_contains( $controller, 'retrieve_password' ) );
+	$assert( str_contains( $controller, 'check_password_reset_key' ) );
+	$assert( str_contains( $controller, 'reset_password' ) );
+	$assert( str_contains( $controller, 'Se existir uma conta com este e-mail' ) );
+	$assert( str_contains( $controller, 'RateLimiter' ) );
+	$assert( str_contains( $validator, 'array_diff' ) );
+	$assert( ! str_contains( $controller, "'user_id' =>" ) );
+	$assert( ! str_contains( $controller, "'customer_id' =>" ) );
 } );
 
 $failures = 0;

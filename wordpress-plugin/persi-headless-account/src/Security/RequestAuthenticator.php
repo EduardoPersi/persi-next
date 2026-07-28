@@ -38,8 +38,8 @@ final class RequestAuthenticator {
 		$signature = $this->header( $headers, 'x-persi-signature' );
 
 		if (
-			$key_id !== $this->configuration->key_id() ||
 			! preg_match( '/^[A-Za-z0-9._-]{1,40}$/', $key_id ) ||
+			strtolower( $key_id ) !== strtolower( $this->configuration->key_id() ) ||
 			! preg_match( '/^[0-9]{10,13}$/', $timestamp ) ||
 			abs( $now - (int) $timestamp ) > Configuration::CLOCK_SKEW_SECONDS ||
 			! preg_match( '/^[A-Za-z0-9_-]{22,128}$/', $nonce ) ||

@@ -3,57 +3,16 @@ import {
   StockNotificationError,
   subscribeToBackInStockNotification,
 } from "@/services/woocommerce/stockNotifications";
+import {
+  parseBrowserStockSubscription,
+  STOCK_POLICY_PATH,
+  STOCK_POLICY_VERSION,
+} from "@/lib/stock-notifications/validation";
+import { getStockHmacConfig } from "@/services/woocommerce/stockNotifications";
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 5;
 const requestLog = new Map<string, number[]>();
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-interface ParsedSubscription {
-  productId: number;
-  variationId?: number;
-  email: string;
-  consent: true;
-  website: string;
-}
-
-function parsePositiveInteger(value: unknown): number | undefined {
-  return typeof value === "number" &&
-    Number.isInteger(value) &&
-    value > 0
-    ? value
-    : undefined;
-}
-
-function parseSubscription(value: unknown): ParsedSubscription | undefined {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-
-  const body = value as Record<string, unknown>;
-  const productId = parsePositiveInteger(body.productId);
-  const variationId =
-    body.variationId === undefined
-      ? undefined
-      : parsePositiveInteger(body.variationId);
-  const email =
-    typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  const website =
-    typeof body.website === "string" ? body.website.slice(0, 200) : "";
-
-  if (
-    !productId ||
-    (body.variationId !== undefined && !variationId) ||
-    email.length > 254 ||
-    !EMAIL_PATTERN.test(email) ||
-    body.consent !== true
-  ) {
-    return undefined;
-  }
-
-  return { productId, variationId, email, website, consent: true };
-}
-
 function isRateLimited(request: NextRequest): boolean {
   const now = Date.now();
   const ip =
@@ -92,7 +51,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const subscription = parseSubscription(body);
+  let subscription;
+  try {
+    const parsed = parseBrowserStockSubscription(body);
+    const origin = getStockHmacConfig().origin;
+    subscription = {
+      ...parsed,
+      privacyPolicyVersion: STOCK_POLICY_VERSION,
+      privacyPolicyUrl: `${origin}${STOCK_POLICY_PATH}`,
+    };
+  } catch {
+    subscription = undefined;
+  }
 
   if (!subscription) {
     return NextResponse.json(

@@ -28,7 +28,7 @@ export function SocialLoginButtons({
         <span aria-hidden="true" className="text-base font-semibold">
           G
         </span>
-        Continuar com Google
+        Entrar com Google — Em breve
       </Button>
       <Button
         variant="outline"
@@ -39,7 +39,7 @@ export function SocialLoginButtons({
         <span aria-hidden="true" className="text-base font-semibold">
           f
         </span>
-        Continuar com Facebook
+        Entrar com Facebook — Em breve
       </Button>
     </div>
   );

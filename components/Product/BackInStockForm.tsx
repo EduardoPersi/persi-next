@@ -146,7 +146,7 @@ export function BackInStockForm({
           <span>
             Li e aceito a{" "}
             <Link
-              href="/politica-de-privacidade"
+              href="/politica-de-privacidade-e-seguranca"
               className="font-medium text-[#0c2d72] underline hover:text-[#ff6a00]"
             >
               Política de Privacidade

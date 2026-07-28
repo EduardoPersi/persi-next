@@ -4,6 +4,7 @@ defined( 'ABSPATH' ) || exit;
 
 class Persi_Headless_Admin {
 	public function register() {
+		require_once PERSI_HEADLESS_PATH . 'includes/stock-notifications/class-configuration.php';
 		add_action( 'admin_menu', array( $this, 'menu' ), 60 );
 		add_action( 'admin_init', array( $this, 'settings' ) );
 		add_action( 'admin_post_persi_headless_clear_cache', array( $this, 'clear_cache' ) );
@@ -32,6 +33,13 @@ class Persi_Headless_Admin {
 			'double_opt_in' => ! empty( $input['double_opt_in'] ),
 			'batch_size' => min( 100, max( 1, absint( $input['batch_size'] ?? 25 ) ) ),
 			'logging' => ! empty( $input['logging'] ),
+			'retention' => array(
+				'pending' => min( 30, max( 1, absint( $input['retention']['pending'] ?? 7 ) ) ),
+				'sent' => min( 365, max( 1, absint( $input['retention']['sent'] ?? 90 ) ) ),
+				'failed' => min( 180, max( 1, absint( $input['retention']['failed'] ?? 30 ) ) ),
+				'unsubscribed' => min( 180, max( 1, absint( $input['retention']['unsubscribed'] ?? 30 ) ) ),
+				'confirmed' => min( 365, max( 1, absint( $input['retention']['confirmed'] ?? 180 ) ) ),
+			),
 		);
 	}
 
@@ -56,6 +64,9 @@ class Persi_Headless_Admin {
 					<tr><th>WooCommerce</th><td><?php echo class_exists( 'WooCommerce' ) ? esc_html__( 'Disponível', 'persi-headless' ) : esc_html__( 'Indisponível', 'persi-headless' ); ?></td></tr>
 					<tr><th>Action Scheduler</th><td><?php echo function_exists( 'as_schedule_single_action' ) ? esc_html__( 'Disponível', 'persi-headless' ) : esc_html__( 'Indisponível', 'persi-headless' ); ?></td></tr>
 					<tr><th><?php esc_html_e( 'Grupo da fila', 'persi-headless' ); ?></th><td><code>persi-headless-stock-notifications</code> — <a href="<?php echo esc_url( admin_url( 'admin.php?page=wc-status&tab=action-scheduler' ) ); ?>"><?php esc_html_e( 'Ações agendadas', 'persi-headless' ); ?></a></td></tr>
+					<tr><th>HMAC de estoque</th><td><?php echo Persi_Headless_Stock_Configuration::secret() ? 'Configurado' : 'Não configurado'; ?></td></tr>
+					<tr><th>Origens HMAC</th><td><?php echo esc_html( implode( ', ', Persi_Headless_Stock_Configuration::origins() ) ); ?></td></tr>
+					<tr><th>Última falha segura</th><td><code><?php $failure = get_option( 'persi_headless_stock_last_failure', array() ); echo esc_html( $failure['code'] ?? 'nenhuma' ); ?></code></td></tr>
 				</tbody>
 			</table>
 			<form method="post" action="options.php">
@@ -69,6 +80,10 @@ class Persi_Headless_Admin {
 				<p><label><?php esc_html_e( 'Origens do frontend (uma por linha)', 'persi-headless' ); ?><br><textarea class="large-text" rows="4" name="<?php echo esc_attr( Persi_Headless_Settings::OPTION ); ?>[frontend_urls_text]"><?php echo esc_textarea( implode( "\n", $settings['frontend_urls'] ?? array() ) ); ?></textarea></label></p>
 				<p><label><input type="checkbox" name="<?php echo esc_attr( Persi_Headless_Settings::OPTION ); ?>[double_opt_in]" value="1" <?php checked( ! empty( $settings['double_opt_in'] ) ); ?>> <?php esc_html_e( 'Exigir confirmação por e-mail', 'persi-headless' ); ?></label></p>
 				<p><label><?php esc_html_e( 'Tamanho do lote', 'persi-headless' ); ?> <input type="number" min="1" max="100" name="<?php echo esc_attr( Persi_Headless_Settings::OPTION ); ?>[batch_size]" value="<?php echo esc_attr( $settings['batch_size'] ?? 25 ); ?>"></label></p>
+				<h3>Retenção antes da anonimização (dias)</h3>
+				<?php foreach ( array( 'pending' => 7, 'sent' => 90, 'failed' => 30, 'unsubscribed' => 30, 'confirmed' => 180 ) as $status => $default ) : ?>
+					<label><?php echo esc_html( $status ); ?> <input type="number" min="1" max="365" name="<?php echo esc_attr( Persi_Headless_Settings::OPTION ); ?>[retention][<?php echo esc_attr( $status ); ?>]" value="<?php echo esc_attr( $settings['retention'][ $status ] ?? $default ); ?>"></label>&nbsp;
+				<?php endforeach; ?>
 				<?php submit_button(); ?>
 			</form>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">

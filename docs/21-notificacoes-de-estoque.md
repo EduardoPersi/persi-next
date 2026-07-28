@@ -29,7 +29,7 @@ do WordPress é criado por esta implementação.
 Defina apenas no servidor:
 
 ```dotenv
-WORDPRESS_STOCK_NOTIFICATION_ENDPOINT=https://exemplo.com/wp-json/namespace/v1/stock-notifications
+WORDPRESS_STOCK_NOTIFICATION_ENDPOINT=https://persimateriais.com.br/wp-json/persi/v1/stock-notifications/subscribe
 ```
 
 O navegador envia os dados para `POST /api/stock-notifications`. A rota valida
@@ -38,8 +38,22 @@ expor URL privada, credenciais ou tokens. A limitação em memória é apenas um
 proteção complementar; ambientes com múltiplas instâncias devem aplicar rate
 limit compartilhado na infraestrutura e também no WordPress.
 
-Sem `WORDPRESS_STOCK_NOTIFICATION_ENDPOINT`, o formulário continua visível,
-mas o botão fica desabilitado e nenhuma confirmação falsa é exibida.
+Quando a variável não é definida, a aplicação usa o endpoint oficial acima.
+Um valor configurado é aceito somente no domínio da Persi e no caminho exato
+do endpoint, evitando encaminhamento de dados para destinos arbitrários.
+
+O servidor Next.js adiciona a versão e a URL da política e assina o corpo bruto
+com HMAC SHA-256 usando configuração exclusiva:
+
+```dotenv
+PERSI_HEADLESS_STOCK_HMAC_SECRET=
+PERSI_HEADLESS_STOCK_HMAC_KEY_ID=primary
+PERSI_HEADLESS_STOCK_ORIGIN=https://yellowgreen-ram-345959.hostingersite.com
+```
+
+Confirmação e remoção usam páginas headless, tokens de uso único, respostas
+`no-store` e `Referrer-Policy: no-referrer`. A tabela mantém ciclos históricos;
+depois dos prazos configurados, e-mail criptografado e tokens são anonimizados.
 
 ## Contrato enviado
 
