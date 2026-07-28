@@ -34,12 +34,29 @@ final class AccountAccessController {
 	public function register( \WP_REST_Request $request ): \WP_REST_Response {
 		$auth = $this->authenticate( $request, '/register' );
 		if ( $auth ) return $auth;
-		try { $input = $this->validator->register( $request->get_body() ); } catch ( ValidationException $error ) { return Response::json( array( 'message' => 'Confira os dados informados.' ), 400 ); }
+		try {
+			$input = $this->validator->register( $request->get_body() );
+		} catch ( ValidationException $error ) {
+			$codes = array(
+				'phone_invalid' => 'ACCOUNT_REGISTER_PHONE_INVALID',
+				'cpf_invalid' => 'ACCOUNT_REGISTER_CPF_FIELD_MISSING',
+				'password_invalid' => 'ACCOUNT_REGISTER_PASSWORD_INVALID',
+				'password_mismatch' => 'ACCOUNT_REGISTER_PASSWORD_MISMATCH',
+				'terms_required' => 'ACCOUNT_REGISTER_TERMS_REQUIRED',
+			);
+			return Response::json(
+				array(
+					'message' => 'Confira os dados informados.',
+					'code' => $codes[ $error->getMessage() ] ?? 'ACCOUNT_REGISTER_PAYLOAD_INVALID',
+				),
+				400
+			);
+		}
 		$buckets = $this->buckets( 'register', $input['email'] );
 		$retry = $this->limiter->retry_after( $buckets );
 		if ( $retry > 0 ) return Response::json( array( 'message' => 'Muitas tentativas.' ), 429, $retry );
 		foreach ( $buckets as $bucket ) $this->limiter->record_failure( $bucket );
-		if ( email_exists( $input['email'] ) ) return Response::json( array( 'message' => 'Não foi possível criar a conta com os dados informados.' ), 409 );
+		if ( email_exists( $input['email'] ) ) return Response::json( array( 'message' => 'Não foi possível criar a conta com os dados informados.', 'code' => 'ACCOUNT_REGISTER_EMAIL_EXISTS' ), 409 );
 		$parts = preg_split( '/\s+/', $input['name'], 2 );
 		$username = $this->username( $input['email'] );
 		$user_id = wp_insert_user( array(

@@ -44,6 +44,20 @@ function is_wp_error( $value ): bool {
 	return $value instanceof WP_Error;
 }
 
+function sanitize_email( string $email ): string {
+	return filter_var( $email, FILTER_SANITIZE_EMAIL );
+}
+
+function is_email( string $email ): bool {
+	return false !== filter_var( $email, FILTER_VALIDATE_EMAIL );
+}
+
+if ( ! function_exists( 'mb_strlen' ) ) {
+	function mb_strlen( string $value ): int {
+		return strlen( $value );
+	}
+}
+
 final class FakeWpdb {
 	public string $prefix = 'wp_';
 	public array $sessions = array();
@@ -197,6 +211,7 @@ use Persi\HeadlessAccount\Security\RequestAuthenticator;
 use Persi\HeadlessAccount\Support\Configuration;
 use Persi\HeadlessAccount\Support\OriginNormalizer;
 use Persi\HeadlessAccount\Validation\LoginPayloadValidator;
+use Persi\HeadlessAccount\Validation\AccountAccessPayloadValidator;
 use Persi\HeadlessAccount\Validation\ValidationException;
 use Persi\HeadlessAccount\Orders\OrderPresenter;
 
@@ -447,6 +462,36 @@ $test( 'cadastro e recuperação usam APIs nativas e resposta sem enumeração',
 	$assert( str_contains( $validator, 'array_diff' ) );
 	$assert( ! str_contains( $controller, "'user_id' =>" ) );
 	$assert( ! str_contains( $controller, "'customer_id' =>" ) );
+} );
+
+$test( 'cadastro aceita CPF e telefone opcionais e valida campos obrigatórios', static function () use ( $assert, $throws ): void {
+	$validator = new AccountAccessPayloadValidator();
+	$base = array(
+		'name' => 'Ana Cliente',
+		'email' => 'ana@example.test',
+		'password' => '12345678',
+		'passwordConfirmation' => '12345678',
+		'acceptTerms' => true,
+	);
+	$without_optionals = $validator->register( (string) json_encode( $base ) );
+	$assert( '' === $without_optionals['phone'] && '' === $without_optionals['cpf'] );
+
+	foreach ( array( '', '1133334444', '11999998888' ) as $phone ) {
+		$value = $validator->register( (string) json_encode( array_merge( $base, array( 'phone' => $phone, 'cpf' => '' ) ) ) );
+		$assert( $phone === $value['phone'] );
+	}
+
+	foreach ( array(
+		array_merge( $base, array( 'password' => '1234567', 'passwordConfirmation' => '1234567' ) ),
+		array_merge( $base, array( 'passwordConfirmation' => '87654321' ) ),
+		array_merge( $base, array( 'acceptTerms' => false ) ),
+		array_merge( $base, array( 'role' => 'administrator' ) ),
+	) as $invalid ) {
+		$throws(
+			static fn() => $validator->register( (string) json_encode( $invalid ) ),
+			ValidationException::class
+		);
+	}
 } );
 
 $failures = 0;

@@ -21,17 +21,29 @@ final class AccountAccessPayloadValidator {
 		$value['cpf'] = $value['cpf'] ?? '';
 		$name = trim( (string) $value['name'] );
 		$email = sanitize_email( (string) $value['email'] );
-		if (
-			mb_strlen( $name ) < 3 || ! is_email( $email ) ||
-			! is_string( $value['password'] ) || strlen( $value['password'] ) < 8 ||
-			$value['password'] !== $value['passwordConfirmation'] ||
-			! is_string( $value['phone'] ) || mb_strlen( $value['phone'] ) > 30 ||
-			! is_string( $value['cpf'] ) || mb_strlen( $value['cpf'] ) > 20 ||
-			true !== $value['acceptTerms']
-		) {
+		if ( mb_strlen( $name ) < 3 || ! is_email( $email ) ) {
 			throw new ValidationException( 'invalid_payload' );
 		}
-		return array( 'name' => $name, 'email' => $email, 'phone' => trim( $value['phone'] ), 'cpf' => trim( $value['cpf'] ), 'password' => $value['password'] );
+		if ( ! is_string( $value['phone'] ) || 1 !== preg_match( '/^[0-9\s()+.\-]*$/', $value['phone'] ) ) {
+			throw new ValidationException( 'phone_invalid' );
+		}
+		$phone = preg_replace( '/\D+/', '', $value['phone'] );
+		if ( '' !== $phone && ! in_array( strlen( $phone ), array( 10, 11 ), true ) ) {
+			throw new ValidationException( 'phone_invalid' );
+		}
+		if ( ! is_string( $value['cpf'] ) || mb_strlen( $value['cpf'] ) > 20 ) {
+			throw new ValidationException( 'cpf_invalid' );
+		}
+		if ( ! is_string( $value['password'] ) || strlen( $value['password'] ) < 8 ) {
+			throw new ValidationException( 'password_invalid' );
+		}
+		if ( ! is_string( $value['passwordConfirmation'] ) || $value['password'] !== $value['passwordConfirmation'] ) {
+			throw new ValidationException( 'password_mismatch' );
+		}
+		if ( true !== $value['acceptTerms'] ) {
+			throw new ValidationException( 'terms_required' );
+		}
+		return array( 'name' => $name, 'email' => $email, 'phone' => $phone, 'cpf' => trim( $value['cpf'] ), 'password' => $value['password'] );
 	}
 
 	public function forgot( string $raw_body ): string {

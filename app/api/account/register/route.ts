@@ -9,11 +9,47 @@ const response = (body: object, status: number) => NextResponse.json(body, { sta
 export async function POST(request: Request) {
   try {
     const config = getAccountClientConfig();
-    if (!validateMutationSource(request.headers, config.origin) || !isJsonContentType(request.headers.get("content-type"))) throw new AccountValidationError();
+    if (!validateMutationSource(request.headers, config.origin)) {
+      throw new AccountValidationError(
+        "Invalid account source",
+        "ACCOUNT_REGISTER_SOURCE_INVALID",
+      );
+    }
+    if (!isJsonContentType(request.headers.get("content-type"))) {
+      throw new AccountValidationError(
+        "Invalid account content type",
+        "ACCOUNT_REGISTER_PAYLOAD_INVALID",
+      );
+    }
     return response(await registerAccount(parseRegisterPayload(await request.text()), { config }), 201);
   } catch (error) {
-    const status = error instanceof AccountValidationError ? 400 : error instanceof AccountServiceError && [400,409,429,503].includes(error.status) ? error.status : 502;
-    const message = status === 409 ? "Não foi possível criar a conta com os dados informados." : status === 429 ? "Muitas tentativas. Aguarde e tente novamente." : status === 400 ? "Confira os dados informados." : "Não foi possível criar a conta agora.";
-    return response({ message }, status);
+    const status =
+      error instanceof AccountValidationError
+        ? 400
+        : error instanceof AccountServiceError &&
+            [400, 401, 409, 429, 503].includes(error.status)
+          ? error.status
+          : 502;
+    const code =
+      error instanceof AccountValidationError
+        ? error.code
+        : status === 401
+          ? "ACCOUNT_REGISTER_WORDPRESS_401"
+          : status === 409
+            ? "ACCOUNT_REGISTER_EMAIL_EXISTS"
+            : "ACCOUNT_REGISTER_REMOTE_ERROR";
+    const message =
+      code === "ACCOUNT_REGISTER_PASSWORD_INVALID"
+        ? "A senha deve ter pelo menos 8 caracteres."
+        : code === "ACCOUNT_REGISTER_PASSWORD_MISMATCH"
+          ? "As senhas não coincidem."
+          : code === "ACCOUNT_REGISTER_TERMS_REQUIRED"
+            ? "Aceite os termos e a Política de Privacidade."
+            : status === 409
+              ? "Já existe uma conta com este e-mail. Tente entrar ou recuperar sua senha."
+              : status === 429
+                ? "Muitas tentativas. Aguarde e tente novamente."
+                : "Não foi possível criar sua conta agora.";
+    return response({ message, code }, status);
   }
 }

@@ -27,9 +27,15 @@ export interface AccountLoginPayload {
 }
 
 export class AccountValidationError extends Error {
-  constructor(message = "Invalid account data") {
+  readonly code: string;
+
+  constructor(
+    message = "Invalid account data",
+    code = "ACCOUNT_PAYLOAD_INVALID",
+  ) {
     super(message);
     this.name = "AccountValidationError";
+    this.code = code;
   }
 }
 
