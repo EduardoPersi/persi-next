@@ -20,6 +20,7 @@ import {
   validateGoogleOAuthCallbackInput,
   validateGoogleIdToken,
 } from "../lib/account/googleOAuth.ts";
+import { getGoogleStartConfigurationCodes } from "../lib/account/googleStartDiagnostics.ts";
 import { createGoogleAccountSession } from "../services/account/googleAuth.ts";
 
 const config = {
@@ -324,4 +325,48 @@ test("rotas consomem cookies, não expõem tokens e usam erro público seguro", 
   assert.equal(callbackRoute.includes("id_token"), false);
   assert.match(loginPage, /Não foi possível entrar com o Google/);
   assert.equal(GOOGLE_OAUTH_CALLBACK_PATH, "/api/auth/google/callback");
+});
+
+test("start diferencia variáveis ausentes e redirect URI inválida", () => {
+  assert.deepEqual(getGoogleStartConfigurationCodes({}), [
+    "GOOGLE_START_CONFIG_MISSING",
+    "GOOGLE_START_CLIENT_ID_MISSING",
+    "GOOGLE_START_SECRET_MISSING",
+    "GOOGLE_START_REDIRECT_URI_MISSING",
+  ]);
+  assert.deepEqual(
+    getGoogleStartConfigurationCodes({
+      GOOGLE_CLIENT_ID: config.clientId,
+      GOOGLE_CLIENT_SECRET: config.clientSecret,
+      GOOGLE_OAUTH_REDIRECT_URI: "https://evil.test/callback",
+    }),
+    ["GOOGLE_START_REDIRECT_URI_INVALID"],
+  );
+  assert.deepEqual(
+    getGoogleStartConfigurationCodes({
+      GOOGLE_CLIENT_ID: config.clientId,
+      GOOGLE_CLIENT_SECRET: config.clientSecret,
+      GOOGLE_OAUTH_REDIRECT_URI: config.redirectUri,
+    }),
+    [],
+  );
+});
+
+test("start registra somente códigos e mantém redirect de erro explícito", async () => {
+  const diagnostics = await readFile(
+    new URL("../lib/account/googleStartDiagnostics.ts", import.meta.url),
+    "utf8",
+  );
+  const startRoute = await readFile(
+    new URL("../app/api/auth/google/start/route.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(diagnostics, /source: "persi-google-start"/);
+  assert.equal(diagnostics.includes("clientSecret"), false);
+  assert.equal(diagnostics.includes("state,"), false);
+  assert.equal(diagnostics.includes("codeVerifier"), false);
+  assert.match(startRoute, /GOOGLE_START_STATE_FAILED/);
+  assert.match(startRoute, /GOOGLE_START_PKCE_FAILED/);
+  assert.match(startRoute, /GOOGLE_START_URL_CREATED/);
+  assert.match(startRoute, /new URL\("\/entrar\?erro=google"/);
 });

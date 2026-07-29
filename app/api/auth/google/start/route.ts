@@ -10,19 +10,60 @@ import {
   GOOGLE_OAUTH_STATE_COOKIE,
   GOOGLE_OAUTH_VERIFIER_COOKIE,
 } from "@/lib/account/googleOAuth";
+import {
+  getGoogleStartConfigurationCodes,
+  writeGoogleStartDiagnostic,
+} from "@/lib/account/googleStartDiagnostics";
 import { getPrivateAccountHeaders } from "@/lib/account/responsePolicy";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const runtime = "nodejs";
 
+function redirectToGoogleError(): NextResponse {
+  return NextResponse.redirect(
+    new URL("/entrar?erro=google", getGoogleOAuthErrorOrigin()),
+    { headers: getPrivateAccountHeaders() },
+  );
+}
+
 export async function GET() {
+  const configurationCodes = getGoogleStartConfigurationCodes();
+  if (configurationCodes.length > 0) {
+    configurationCodes.forEach(writeGoogleStartDiagnostic);
+    return redirectToGoogleError();
+  }
+
+  let config;
   try {
-    const config = getGoogleOAuthConfig();
-    const state = generateGoogleOAuthValue();
-    const nonce = generateGoogleOAuthValue();
-    const { codeChallenge, codeVerifier } = createGooglePkce();
-    const response = NextResponse.redirect(
+    config = getGoogleOAuthConfig();
+  } catch {
+    writeGoogleStartDiagnostic("GOOGLE_START_REDIRECT_URI_INVALID");
+    return redirectToGoogleError();
+  }
+
+  let state: string;
+  let nonce: string;
+  try {
+    state = generateGoogleOAuthValue();
+    nonce = generateGoogleOAuthValue();
+  } catch {
+    writeGoogleStartDiagnostic("GOOGLE_START_STATE_FAILED");
+    return redirectToGoogleError();
+  }
+
+  let codeChallenge: string;
+  let codeVerifier: string;
+  try {
+    ({ codeChallenge, codeVerifier } = createGooglePkce());
+  } catch {
+    writeGoogleStartDiagnostic("GOOGLE_START_PKCE_FAILED");
+    return redirectToGoogleError();
+  }
+
+  let response: NextResponse;
+  try {
+    response = NextResponse.redirect(
       buildGoogleAuthorizationUrl({
         codeChallenge,
         config,
@@ -31,17 +72,23 @@ export async function GET() {
       }),
       { headers: getPrivateAccountHeaders() },
     );
+  } catch {
+    writeGoogleStartDiagnostic("GOOGLE_START_REDIRECT_URI_INVALID");
+    return redirectToGoogleError();
+  }
+
+  try {
     const options = getGoogleOAuthCookieOptions(
       process.env.NODE_ENV === "production",
     );
     response.cookies.set(GOOGLE_OAUTH_STATE_COOKIE, state, options);
     response.cookies.set(GOOGLE_OAUTH_NONCE_COOKIE, nonce, options);
     response.cookies.set(GOOGLE_OAUTH_VERIFIER_COOKIE, codeVerifier, options);
-    return response;
   } catch {
-    return NextResponse.redirect(
-      new URL("/entrar?erro=google", getGoogleOAuthErrorOrigin()),
-      { headers: getPrivateAccountHeaders() },
-    );
+    writeGoogleStartDiagnostic("GOOGLE_START_COOKIE_FAILED");
+    return redirectToGoogleError();
   }
+
+  writeGoogleStartDiagnostic("GOOGLE_START_URL_CREATED");
+  return response;
 }
