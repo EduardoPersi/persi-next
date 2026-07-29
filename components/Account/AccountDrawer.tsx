@@ -7,6 +7,7 @@ import { Drawer } from "@/components/Header/Drawer";
 import { useAccount } from "@/hooks/useAccount";
 import { AccountDrawerHeader } from "./AccountDrawerHeader";
 import { AccountLoginForm } from "./AccountLoginForm";
+import { SocialLoginButtons } from "./SocialLoginButtons";
 
 type AccountDrawerProps = {
   open: boolean;
@@ -15,6 +16,7 @@ type AccountDrawerProps = {
 
 export function AccountDrawer({ open, onClose }: AccountDrawerProps) {
   const titleId = useId();
+  const socialLoginStatusId = useId();
   const { status, customer, logout } = useAccount();
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -79,7 +81,20 @@ export function AccountDrawer({ open, onClose }: AccountDrawerProps) {
               </Button>
             </div>
           ) : (
-            <AccountLoginForm onSuccess={onClose} />
+            <>
+              <AccountLoginForm onSuccess={onClose} />
+              <div className="mt-6">
+                <SocialLoginButtons
+                  descriptionId={socialLoginStatusId}
+                />
+                <p
+                  id={socialLoginStatusId}
+                  className="mt-2 text-center text-xs text-slate-500"
+                >
+                  O login com Facebook estará disponível em breve.
+                </p>
+              </div>
+            </>
           )}
         </div>
       </div>
