@@ -9,6 +9,7 @@ import {
   ACCOUNT_SESSION_COOKIE,
   getAccountSessionCookieOptions,
 } from "../lib/account/sessionCookie.ts";
+import { getAccountGreetingName } from "../lib/account/display.ts";
 import {
   parseAccountLoginPayload,
   validateMutationSource,
@@ -311,6 +312,57 @@ test("interface possui formulário acessível, loading e proteção server-side"
   assert.match(form, /Entrando\.\.\./);
   assert.match(form, /role="alert"/);
   assert.match(form, /router\.push\(callbackPath === "\/minha-conta"/);
+  assert.match(privatePage, /getServerAccountSession/);
+  assert.match(privatePage, /redirect\("\/entrar"\)/);
+});
+
+test("saudação da conta prioriza primeiro nome e possui fallbacks seguros", () => {
+  assert.equal(
+    getAccountGreetingName({ firstName: "Eduardo", displayName: "Eduardo Persi" }),
+    "Eduardo",
+  );
+  assert.equal(
+    getAccountGreetingName({ firstName: " ", displayName: "Cliente Persi" }),
+    "Cliente Persi",
+  );
+  assert.equal(
+    getAccountGreetingName({ firstName: "", displayName: "" }),
+    "",
+  );
+});
+
+test("painel da conta possui seis cards sem simular recursos futuros", async () => {
+  const dashboard = await readFile(
+    new URL("../components/Account/AccountDashboard.tsx", import.meta.url),
+    "utf8",
+  );
+  const dashboardCard = await readFile(
+    new URL("../components/Account/AccountDashboardCard.tsx", import.meta.url),
+    "utf8",
+  );
+  const privatePage = await readFile(
+    new URL("../app/(institutional)/minha-conta/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  for (const title of [
+    "Pedidos",
+    "Endereços",
+    "Dados pessoais",
+    "Lista de espera",
+    "Favoritos",
+  ]) {
+    assert.match(dashboard, new RegExp(title));
+  }
+  assert.match(dashboard, /href: "\/minha-conta\/pedidos"/);
+  assert.match(dashboard, /<AccountLogoutButton variant="dashboard" \/>/);
+  assert.match(dashboardCard, /Em breve/);
+  assert.match(dashboardCard, /aria-disabled="true"/);
+  assert.match(dashboard, /grid-cols-1/);
+  assert.match(dashboard, /sm:grid-cols-2/);
+  assert.match(dashboard, /lg:grid-cols-3/);
+  assert.equal(privatePage.includes("AccountNavigation"), false);
+  assert.equal((privatePage.match(/AccountLogoutButton/g) ?? []).length, 0);
   assert.match(privatePage, /getServerAccountSession/);
   assert.match(privatePage, /redirect\("\/entrar"\)/);
 });

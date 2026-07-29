@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useId, useState } from "react";
+import { UserRound } from "lucide-react";
 import { Button } from "@/components/UI/Button";
 import { Drawer } from "@/components/Header/Drawer";
 import { useAccount } from "@/hooks/useAccount";
@@ -82,17 +83,34 @@ export function AccountDrawer({ open, onClose }: AccountDrawerProps) {
             </div>
           ) : (
             <>
-              <AccountLoginForm onSuccess={onClose} />
+              <AccountLoginForm onSuccess={onClose} variant="drawer" />
               <div className="mt-6">
                 <SocialLoginButtons
                   descriptionId={socialLoginStatusId}
+                  stacked
                 />
                 <p
                   id={socialLoginStatusId}
-                  className="mt-2 text-center text-xs text-slate-500"
+                  className="sr-only"
                 >
                   O login com Facebook estará disponível em breve.
                 </p>
+              </div>
+              <div className="mt-6 border-t border-slate-200 py-7 text-center">
+                <UserRound
+                  className="mx-auto size-14 stroke-1 text-slate-200"
+                  aria-hidden="true"
+                />
+                <p className="mt-5 text-sm font-semibold text-slate-900">
+                  Ainda não possui uma conta?
+                </p>
+                <Link
+                  href="/criar-conta"
+                  onClick={onClose}
+                  className="mt-8 inline-block text-sm font-medium uppercase text-[#0c2d72] underline underline-offset-4"
+                >
+                  Crie uma conta
+                </Link>
               </div>
             </>
           )}
