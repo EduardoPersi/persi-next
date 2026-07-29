@@ -8,6 +8,8 @@ import {
   type TouchEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { useClickOutside } from "@/hooks/useClickOutside";
+import { useOverlayManager } from "@/hooks/useOverlayManager";
 import type { ProductImage } from "@/types/product";
 
 interface ProductImageLightboxProps {
@@ -26,17 +28,28 @@ export function ProductImageLightbox({
   onClose,
 }: ProductImageLightboxProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
   const selectedIndexRef = useRef(selectedIndex);
   const onIndexChangeRef = useRef(onIndexChange);
-  const onCloseRef = useRef(onClose);
   const hasMultipleImages = images.length > 1;
+
+  useOverlayManager({
+    id: "product-image-lightbox",
+    isOpen: true,
+    onClose,
+  });
+  useClickOutside({
+    isOpen: true,
+    refs: [imageRef],
+    onOutside: onClose,
+    ignoreSelectors: ["[data-lightbox-control]"],
+  });
 
   useEffect(() => {
     selectedIndexRef.current = selectedIndex;
     onIndexChangeRef.current = onIndexChange;
-    onCloseRef.current = onClose;
-  }, [onClose, onIndexChange, selectedIndex]);
+  }, [onIndexChange, selectedIndex]);
 
   function showPrevious() {
     onIndexChange(
@@ -71,11 +84,6 @@ export function ProductImageLightbox({
     dialogRef.current?.focus();
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onCloseRef.current();
-        return;
-      }
       if (event.key === "ArrowLeft" && hasMultipleImages) {
         event.preventDefault();
         onIndexChangeRef.current(
@@ -138,6 +146,7 @@ export function ProductImageLightbox({
       onTouchEnd={handleTouchEnd}
     >
       <button
+        data-lightbox-control
         type="button"
         onClick={onClose}
         aria-label="Fechar galeria"
@@ -146,7 +155,10 @@ export function ProductImageLightbox({
         <X className="h-6 w-6" aria-hidden="true" />
       </button>
 
-      <div className="relative h-[calc(100dvh-7rem)] w-full max-w-6xl">
+      <div
+        ref={imageRef}
+        className="relative h-[calc(100dvh-7rem)] w-full max-w-6xl"
+      >
         <Image
           src={currentImage.src}
           alt={currentImage.alt || productName}
@@ -160,6 +172,7 @@ export function ProductImageLightbox({
       {hasMultipleImages ? (
         <>
           <button
+            data-lightbox-control
             type="button"
             onClick={showPrevious}
             aria-label="Imagem anterior"
@@ -168,6 +181,7 @@ export function ProductImageLightbox({
             <ChevronLeft className="h-7 w-7" aria-hidden="true" />
           </button>
           <button
+            data-lightbox-control
             type="button"
             onClick={showNext}
             aria-label="Próxima imagem"
@@ -179,6 +193,7 @@ export function ProductImageLightbox({
       ) : null}
 
       <p
+        data-lightbox-control
         className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-2 text-sm font-medium text-white"
         aria-live="polite"
       >

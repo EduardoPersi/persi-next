@@ -20,6 +20,8 @@ import {
   type KeyboardEvent,
 } from "react";
 import type { HeaderAccountStatus } from "@/lib/account/headerNavigation";
+import { useClickOutside } from "@/hooks/useClickOutside";
+import { useOverlayManager } from "@/hooks/useOverlayManager";
 
 interface AccountDropdownProps {
   status: HeaderAccountStatus;
@@ -175,6 +177,18 @@ export function AccountDropdown({
     closeDropdown();
     onOpenDrawer();
   }
+
+  useOverlayManager({
+    id: dropdownId,
+    isOpen: open,
+    onClose: closeDropdown,
+    returnFocusRef: triggerRef,
+  });
+  useClickOutside({
+    isOpen: open,
+    refs: [containerRef],
+    onOutside: closeDropdown,
+  });
 
   async function handleLogout() {
     if (loggingOut) return;

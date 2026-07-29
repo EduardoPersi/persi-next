@@ -7,6 +7,7 @@ import {
   X,
 } from "lucide-react";
 import { useId, useRef, useState } from "react";
+import { useOverlayManager } from "@/hooks/useOverlayManager";
 import type { ProductPaymentInfo } from "@/lib/commerce/productPayment";
 import { PixIcon } from "./PixIcon";
 
@@ -31,7 +32,9 @@ export function ProductPaymentMethods({
   currencyCode,
 }: ProductPaymentMethodsProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeMethod, setActiveMethod] =
     useState<PaymentMethod>("credit-card");
   const currencyFormatter = new Intl.NumberFormat("pt-BR", {
@@ -39,17 +42,28 @@ export function ProductPaymentMethods({
     currency: currencyCode,
   });
 
+  useOverlayManager({
+    id: `product-payment-methods-${titleId}`,
+    isOpen: isDialogOpen,
+    onClose: closeDialog,
+    returnFocusRef: triggerRef,
+    closeOnEscape: false,
+  });
+
   function openDialog() {
     dialogRef.current?.showModal();
+    setIsDialogOpen(true);
   }
 
   function closeDialog() {
     dialogRef.current?.close();
+    setIsDialogOpen(false);
   }
 
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={openDialog}
         className="mt-5 flex min-h-12 w-full items-center gap-2 border-t border-slate-200 pt-4 text-left text-sm font-medium text-slate-800 transition-colors hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
@@ -67,6 +81,7 @@ export function ProductPaymentMethods({
       <dialog
         ref={dialogRef}
         aria-labelledby={titleId}
+        onClose={() => setIsDialogOpen(false)}
         onClick={(event) => {
           if (event.target === event.currentTarget) closeDialog();
         }}

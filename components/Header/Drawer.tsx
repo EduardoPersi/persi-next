@@ -1,6 +1,7 @@
 "use client";
 
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useId, useRef } from "react";
+import { useOverlayManager } from "@/hooks/useOverlayManager";
 
 type DrawerProps = {
   id?: string;
@@ -22,6 +23,14 @@ export function Drawer({
   children,
 }: DrawerProps) {
   const panelRef = useRef<HTMLElement>(null);
+  const generatedId = useId();
+
+  useOverlayManager({
+    id: id ?? `drawer-${generatedId}`,
+    isOpen: open,
+    onClose,
+    closeOnEscape: false,
+  });
 
   useEffect(() => {
     const previouslyFocusedElement = document.activeElement;

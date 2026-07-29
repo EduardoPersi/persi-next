@@ -7,6 +7,8 @@ import {
   useTransition,
   type FormEvent,
 } from "react";
+import { useClickOutside } from "@/hooks/useClickOutside";
+import { useOverlayManager } from "@/hooks/useOverlayManager";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Search, SlidersHorizontal, X } from "lucide-react";
@@ -447,6 +449,24 @@ export function CategoryFilters(props: CategoryFiltersProps) {
   const floatingButtonRef = useRef<HTMLButtonElement>(null);
   const lastOpenButtonRef = useRef<HTMLButtonElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
+
+  function closeDrawer() {
+    setIsOpen(false);
+    lastOpenButtonRef.current?.focus({ preventScroll: true });
+  }
+
+  useOverlayManager({
+    id: "category-filters",
+    isOpen,
+    onClose: closeDrawer,
+    returnFocusRef: lastOpenButtonRef,
+  });
+  useClickOutside({
+    isOpen,
+    refs: [drawerRef],
+    onOutside: closeDrawer,
+  });
 
   useEffect(() => {
     if (mode === "desktop" || !openButtonRef.current) return;
@@ -466,24 +486,10 @@ export function CategoryFilters(props: CategoryFiltersProps) {
     document.body.style.overflow = "hidden";
     closeButtonRef.current?.focus();
 
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-        lastOpenButtonRef.current?.focus({ preventScroll: true });
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen]);
-
-  function closeDrawer() {
-    setIsOpen(false);
-    lastOpenButtonRef.current?.focus({ preventScroll: true });
-  }
 
   function openDrawer(button: HTMLButtonElement) {
     lastOpenButtonRef.current = button;
@@ -538,6 +544,7 @@ export function CategoryFilters(props: CategoryFiltersProps) {
             aria-label="Fechar filtros"
           />
           <aside
+            ref={drawerRef}
             id="category-filter-drawer"
             role="dialog"
             aria-modal="true"

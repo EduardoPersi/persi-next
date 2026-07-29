@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { CartProvider } from "@/components/Cart/CartProvider";
 import { Footer } from "@/components/Footer/Footer";
 import { BackToTopButton } from "@/components/UI/BackToTopButton";
+import { OverlayManagerProvider } from "@/context/OverlayManager";
 import "./globals.css";
 
 const PERSI_HEADER_COLOR = "#0c2d72";
@@ -41,11 +42,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <CartProvider>
-          <div className="flex-1">{children}</div>
-          <Footer />
-          <BackToTopButton />
-        </CartProvider>
+        <OverlayManagerProvider>
+          <CartProvider>
+            <div className="flex-1">{children}</div>
+            <Footer />
+            <BackToTopButton />
+          </CartProvider>
+        </OverlayManagerProvider>
       </body>
     </html>
   );

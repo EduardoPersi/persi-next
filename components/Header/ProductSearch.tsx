@@ -16,6 +16,8 @@ import type {
   ProductSearchSuggestion,
   ProductSearchSuggestionsResponse,
 } from "@/types/search";
+import { useClickOutside } from "@/hooks/useClickOutside";
+import { useOverlayManager } from "@/hooks/useOverlayManager";
 
 interface ProductSearchProps {
   variant: "desktop" | "mobile";
@@ -96,20 +98,21 @@ export function ProductSearch({
     };
   }, [canSuggest, trimmedQuery]);
 
-  useEffect(() => {
-    function handleOutsideClick(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-        setIsFocused(false);
-      }
-    }
+  function closeSearch() {
+    setIsOpen(false);
+    setIsFocused(false);
+  }
 
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, []);
+  useOverlayManager({
+    id: `product-search-${resultsId}`,
+    isOpen: isSearchActive,
+    onClose: closeSearch,
+  });
+  useClickOutside({
+    isOpen: isSearchActive,
+    refs: [containerRef],
+    onOutside: closeSearch,
+  });
 
   useEffect(() => {
     if (!isSearchActive) return;
@@ -144,15 +147,13 @@ export function ProductSearch({
     event.preventDefault();
     if (!trimmedQuery) return;
 
-    setIsOpen(false);
-    setIsFocused(false);
+    closeSearch();
     router.push(`/busca?q=${encodeURIComponent(trimmedQuery)}`);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Escape") {
-      setIsOpen(false);
-      setIsFocused(false);
+      closeSearch();
       event.currentTarget.blur();
     }
   }

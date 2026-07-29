@@ -22,6 +22,8 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperInstance } from "swiper";
 import type { ProductImage } from "@/types/product";
 import { FacebookIcon, WhatsAppIcon } from "@/components/UI/SocialIcons";
+import { useClickOutside } from "@/hooks/useClickOutside";
+import { useOverlayManager } from "@/hooks/useOverlayManager";
 import { ProductImageLightbox } from "./ProductImageLightbox";
 import "swiper/css";
 import "swiper/css/pagination";
@@ -46,6 +48,8 @@ export function ProductGallery({
 }: ProductGalleryProps) {
   const galleryImages = images.length > 0 ? images : [fallbackImage];
   const swiperRef = useRef<SwiperInstance | null>(null);
+  const shareMenuRef = useRef<HTMLDivElement>(null);
+  const shareTriggerRef = useRef<HTMLButtonElement>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
@@ -63,6 +67,22 @@ export function ProductGallery({
     () => false,
   );
   const hasMultipleImages = galleryImages.length > 1;
+
+  function closeShareMenu() {
+    setIsShareMenuOpen(false);
+  }
+
+  useOverlayManager({
+    id: "product-share-menu",
+    isOpen: isShareMenuOpen,
+    onClose: closeShareMenu,
+    returnFocusRef: shareTriggerRef,
+  });
+  useClickOutside({
+    isOpen: isShareMenuOpen,
+    refs: [shareMenuRef],
+    onOutside: closeShareMenu,
+  });
 
   function supportsImageZoom() {
     return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
@@ -195,8 +215,12 @@ export function ProductGallery({
           ))}
         </Swiper>
 
-        <div className="absolute right-3 top-3 z-20">
+        <div
+          ref={shareMenuRef}
+          className="absolute right-3 top-3 z-20"
+        >
           <button
+            ref={shareTriggerRef}
             type="button"
             onClick={() => setIsShareMenuOpen((current) => !current)}
             aria-label={`Compartilhar ${productName}`}

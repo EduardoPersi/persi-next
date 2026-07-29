@@ -12,6 +12,8 @@ import {
 import { createPortal } from "react-dom";
 import { Button } from "@/components/UI/Button";
 import { useCart } from "@/hooks/useCart";
+import { useClickOutside } from "@/hooks/useClickOutside";
+import { useOverlayManager } from "@/hooks/useOverlayManager";
 import type { Product } from "@/types/product";
 import { ProductQuantity } from "./ProductQuantity";
 
@@ -37,6 +39,18 @@ export function QuickViewModal({
   const [cartMessage, setCartMessage] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const { addItem } = useCart();
+
+  useOverlayManager({
+    id: "product-quick-view",
+    isOpen: true,
+    onClose,
+    returnFocusRef,
+  });
+  useClickOutside({
+    isOpen: true,
+    refs: [dialogRef],
+    onOutside: onClose,
+  });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -73,12 +87,6 @@ export function QuickViewModal({
     });
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-
       if (event.key !== "Tab" || !dialogRef.current) return;
 
       const focusableElements = Array.from(
@@ -147,9 +155,6 @@ export function QuickViewModal({
   return createPortal(
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-2 sm:p-4"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
     >
       <div
         ref={dialogRef}
