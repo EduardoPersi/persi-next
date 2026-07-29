@@ -6,6 +6,7 @@ defined( 'ABSPATH' ) || exit;
 
 final class GoogleIdentityService {
 	private string $last_code = '';
+	private bool $user_created = false;
 
 	public function __construct(
 		private readonly IdentityRepository $identities,
@@ -14,6 +15,7 @@ final class GoogleIdentityService {
 
 	public function resolve( array $identity, ?int $now = null ): ?\WP_User {
 		$this->last_code = '';
+		$this->user_created = false;
 		$subject_hash = hash_hmac(
 			'sha256',
 			'google|subject|' . $identity['subject'],
@@ -62,6 +64,7 @@ final class GoogleIdentityService {
 					$this->last_code = 'ACCOUNT_GOOGLE_USER_CREATE_FAILED';
 					return null;
 				}
+				$this->user_created = true;
 			}
 
 			$now_sql = gmdate( 'Y-m-d H:i:s', $now ?? time() );
@@ -85,6 +88,7 @@ final class GoogleIdentityService {
 					return null;
 				}
 				$user = $concurrent_user;
+				$this->user_created = false;
 			}
 
 			$this->last_code = 'ACCOUNT_GOOGLE_LINK_CREATED';
@@ -96,6 +100,10 @@ final class GoogleIdentityService {
 
 	public function last_code(): string {
 		return $this->last_code;
+	}
+
+	public function user_was_created(): bool {
+		return $this->user_created;
 	}
 
 	private function create_customer( array $identity ): ?\WP_User {

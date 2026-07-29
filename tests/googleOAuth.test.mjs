@@ -111,6 +111,7 @@ test("redirect Google usa callback exato, PKCE e somente escopos mínimos", () =
   assert.equal(url.searchParams.get("scope"), "openid email profile");
   assert.equal(url.searchParams.get("response_type"), "code");
   assert.equal(url.searchParams.get("code_challenge_method"), "S256");
+  assert.equal(url.searchParams.get("prompt"), "select_account");
   assert.equal(url.searchParams.has("access_type"), false);
   assert.equal(url.searchParams.has("include_granted_scopes"), false);
 });
@@ -320,6 +321,9 @@ test("rotas consomem cookies, não expõem tokens e usam erro público seguro", 
   }
   assert.match(callbackRoute, /maxAge: 0/);
   assert.match(callbackRoute, /ACCOUNT_SESSION_COOKIE/);
+  assert.match(callbackRoute, /logoutAccount\(previousSessionToken\)/);
+  assert.match(callbackRoute, /GOOGLE_SESSION_COOKIE_UPDATED/);
+  assert.match(callbackRoute, /GOOGLE_SESSION_REUSED/);
   assert.equal(callbackRoute.includes("access_token"), false);
   assert.equal(callbackRoute.includes("refresh_token"), false);
   assert.equal(callbackRoute.includes("id_token"), false);

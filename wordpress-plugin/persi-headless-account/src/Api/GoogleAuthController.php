@@ -81,6 +81,13 @@ final class GoogleAuthController {
 			return Response::json( array( 'message' => 'Dados inválidos.' ), 400 );
 		}
 
+		$this->logger->write(
+			'info',
+			'google_email_received',
+			'GOOGLE_EMAIL_RECEIVED',
+			$auth->key_id
+		);
+
 		$buckets = $this->buckets( $identity );
 		$retry_after = $this->rate_limiter->retry_after( $buckets );
 		if ( $retry_after > 0 ) {
@@ -104,6 +111,14 @@ final class GoogleAuthController {
 			return Response::json( array( 'message' => 'Não foi possível entrar com o Google.' ), 403 );
 		}
 
+		$user_created = $this->identities->user_was_created();
+		$this->logger->write(
+			'info',
+			$user_created ? 'google_user_created' : 'google_user_found',
+			$user_created ? 'GOOGLE_USER_CREATED' : 'GOOGLE_USER_FOUND',
+			$auth->key_id
+		);
+
 		$session = $this->sessions->create(
 			$user,
 			false,
@@ -123,7 +138,7 @@ final class GoogleAuthController {
 		$this->logger->write(
 			'info',
 			'google_session_created',
-			'ACCOUNT_GOOGLE_SESSION_CREATED',
+			'GOOGLE_SESSION_CREATED',
 			$auth->key_id
 		);
 		return Response::json(

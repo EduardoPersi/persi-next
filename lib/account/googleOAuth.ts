@@ -147,6 +147,7 @@ export function buildGoogleAuthorizationUrl(input: {
     nonce: input.nonce,
     code_challenge: input.codeChallenge,
     code_challenge_method: "S256",
+    prompt: "select_account",
   }).toString();
   return url;
 }

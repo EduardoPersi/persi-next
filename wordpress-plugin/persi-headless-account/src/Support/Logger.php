@@ -20,6 +20,9 @@ final class Logger {
 		'google_identity_rejected',
 		'google_session_failed',
 		'google_session_created',
+		'google_email_received',
+		'google_user_found',
+		'google_user_created',
 	);
 
 	public function write(

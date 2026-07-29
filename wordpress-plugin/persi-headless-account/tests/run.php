@@ -580,6 +580,7 @@ $test( 'Google vincula cliente, reutiliza subject e bloqueia papel privilegiado'
 	);
 	$created = $service->resolve( $identity, 1800000000 );
 	$assert( $created instanceof WP_User );
+	$assert( true === $service->user_was_created() );
 	$assert( in_array( 'customer', $created->roles, true ) );
 	$assert( 1 === count( $db->identities ) );
 	$assert( ! isset( $db->identities[0]['subject'] ) );
@@ -590,6 +591,7 @@ $test( 'Google vincula cliente, reutiliza subject e bloqueia papel privilegiado'
 		1800000060
 	);
 	$assert( $linked instanceof WP_User && $linked->ID === $created->ID );
+	$assert( false === $service->user_was_created() );
 	$assert( 1 === count( $db->identities ) );
 
 	$admin = new WP_User( 50, array( 'administrator' ), 'admin@example.test' );
@@ -629,6 +631,7 @@ $test( 'Google vincula e-mail verificado existente e impede identidade duplicada
 	);
 	$linked = $service->resolve( $identity, 1800000000 );
 	$assert( $linked instanceof WP_User && 70 === $linked->ID );
+	$assert( false === $service->user_was_created() );
 	$assert( 1 === count( $db->identities ) );
 
 	$duplicate = $service->resolve(
@@ -683,6 +686,9 @@ $test( 'fontes não expõem customerId nem registram dados sensíveis', static f
 	foreach ( array( 'access_token', 'refresh_token', 'id_token', 'client_secret' ) as $forbidden ) {
 		$assert( ! str_contains( $google_controller, $forbidden ) );
 		$assert( ! str_contains( $identity_repository, $forbidden ) );
+	}
+	foreach ( array( 'GOOGLE_EMAIL_RECEIVED', 'GOOGLE_USER_FOUND', 'GOOGLE_USER_CREATED', 'GOOGLE_SESSION_CREATED' ) as $diagnostic ) {
+		$assert( str_contains( $google_controller, $diagnostic ) );
 	}
 	$assert( str_contains( $schema, 'UNIQUE KEY provider_subject' ) );
 	$assert( str_contains( $schema, 'UNIQUE KEY provider_email' ) );
