@@ -5,7 +5,13 @@ namespace Persi\HeadlessAccount;
 defined( 'ABSPATH' ) || exit;
 
 final class Activator {
-	public const DATABASE_VERSION = '1';
+	public const DATABASE_VERSION = '2';
+
+	public static function maybe_upgrade(): void {
+		if ( self::DATABASE_VERSION !== get_option( 'persi_headless_account_db_version' ) ) {
+			self::activate();
+		}
+	}
 
 	public static function activate(): void {
 		global $wpdb;
@@ -62,6 +68,23 @@ final class Activator {
 				UNIQUE KEY bucket_hash (bucket_hash),
 				KEY blocked_until (blocked_until),
 				KEY updated_at (updated_at)
+			) {$charset};"
+		);
+
+		dbDelta(
+			"CREATE TABLE {$prefix}persi_account_identities (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				user_id bigint(20) unsigned NOT NULL,
+				provider varchar(20) NOT NULL,
+				provider_subject_hash char(64) NOT NULL,
+				email_hash char(64) NOT NULL,
+				created_at datetime NOT NULL,
+				updated_at datetime NOT NULL,
+				last_login_at datetime NOT NULL,
+				PRIMARY KEY  (id),
+				UNIQUE KEY provider_subject (provider, provider_subject_hash),
+				UNIQUE KEY provider_email (provider, email_hash),
+				KEY user_provider (user_id, provider)
 			) {$charset};"
 		);
 

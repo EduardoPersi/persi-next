@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Persi Headless Account
  * Description: Autenticação e sessões opacas para a área da conta headless da Persi.
- * Version: 0.3.1
+ * Version: 0.3.2
  * Requires at least: 6.4
  * Requires PHP: 8.1
  * WC requires at least: 8.2
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'PERSI_HEADLESS_ACCOUNT_VERSION', '0.3.1' );
+define( 'PERSI_HEADLESS_ACCOUNT_VERSION', '0.3.2' );
 define( 'PERSI_HEADLESS_ACCOUNT_FILE', __FILE__ );
 define( 'PERSI_HEADLESS_ACCOUNT_PATH', plugin_dir_path( __FILE__ ) );
 

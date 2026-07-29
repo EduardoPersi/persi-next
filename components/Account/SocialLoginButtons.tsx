@@ -1,5 +1,4 @@
-"use client";
-
+import Link from "next/link";
 import { Button } from "@/components/UI/Button";
 
 type SocialLoginButtonsProps = {
@@ -19,17 +18,16 @@ export function SocialLoginButtons({
         <span className="h-px flex-1 bg-slate-200" />
       </div>
 
-      <Button
-        variant="outline"
-        className="w-full border-slate-300 text-slate-800"
-        disabled
+      <Link
+        href="/api/auth/google/start"
+        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2 font-medium text-slate-800 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         aria-describedby={descriptionId}
       >
         <span aria-hidden="true" className="text-base font-semibold">
           G
         </span>
-        Entrar com Google — Em breve
-      </Button>
+        Entrar com Google
+      </Link>
       <Button
         variant="outline"
         className="w-full border-slate-300 text-slate-800"

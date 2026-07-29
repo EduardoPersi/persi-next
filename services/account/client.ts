@@ -116,7 +116,7 @@ export function getAccountClientConfig(
 export async function requestAccountEndpoint(input: {
   config: AccountClientConfig;
   method: AccountHttpMethod;
-  route: "/login" | "/session" | "/logout" | "/register" | "/forgot-password" | "/reset-password" | "/orders" | `/orders/${number}`;
+  route: "/login" | "/google-login" | "/session" | "/logout" | "/register" | "/forgot-password" | "/reset-password" | "/orders" | `/orders/${number}`;
   query?: string;
   rawBody: string;
   sessionToken?: string;

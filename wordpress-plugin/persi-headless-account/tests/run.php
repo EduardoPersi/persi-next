@@ -31,9 +31,18 @@ final class WP_Error {}
 
 $GLOBALS['test_users'] = array();
 $GLOBALS['auth_result'] = null;
+$GLOBALS['inserted_users'] = array();
 
-function get_user_by( string $field, int $id ) {
-	return $GLOBALS['test_users'][ $id ] ?? false;
+function get_user_by( string $field, $value ) {
+	if ( 'id' === $field ) {
+		return $GLOBALS['test_users'][ (int) $value ] ?? false;
+	}
+	if ( 'email' === $field ) {
+		foreach ( $GLOBALS['test_users'] as $user ) {
+			if ( $user->user_email === $value ) return $user;
+		}
+	}
+	return false;
 }
 
 function wp_authenticate( string $identifier, string $password ) {
@@ -52,6 +61,31 @@ function is_email( string $email ): bool {
 	return false !== filter_var( $email, FILTER_VALIDATE_EMAIL );
 }
 
+function wp_parse_url( string $url ) {
+	return parse_url( $url );
+}
+
+function wp_generate_password( int $length, bool $special, bool $extra ): string {
+	return str_repeat( 'x', $length );
+}
+
+function sanitize_user( string $value, bool $strict ): string {
+	return preg_replace( '/[^a-z0-9._-]/i', '', $value );
+}
+
+function username_exists( string $username ): bool {
+	return isset( $GLOBALS['inserted_users'][ $username ] );
+}
+
+function wp_insert_user( array $data ) {
+	$id = count( $GLOBALS['test_users'] ) + 100;
+	$user = new WP_User( $id, array( $data['role'] ), $data['user_email'] );
+	$user->display_name = $data['display_name'];
+	$GLOBALS['test_users'][ $id ] = $user;
+	$GLOBALS['inserted_users'][ $data['user_login'] ] = $id;
+	return $id;
+}
+
 if ( ! function_exists( 'mb_strlen' ) ) {
 	function mb_strlen( string $value ): int {
 		return strlen( $value );
@@ -63,6 +97,7 @@ final class FakeWpdb {
 	public array $sessions = array();
 	public array $nonces = array();
 	public array $limits = array();
+	public array $identities = array();
 	public bool $fail_session_insert = false;
 	private int $next_id = 1;
 
@@ -82,6 +117,22 @@ final class FakeWpdb {
 			}
 			$data['id'] = $this->next_id++;
 			$this->sessions[] = $data;
+			return 1;
+		}
+		if ( str_contains( $table, 'identities' ) ) {
+			foreach ( $this->identities as $identity ) {
+				if (
+					$identity['provider'] === $data['provider'] &&
+					(
+						$identity['provider_subject_hash'] === $data['provider_subject_hash'] ||
+						$identity['email_hash'] === $data['email_hash']
+					)
+				) {
+					return false;
+				}
+			}
+			$data['id'] = $this->next_id++;
+			$this->identities[] = $data;
 			return 1;
 		}
 		return false;
@@ -158,6 +209,17 @@ final class FakeWpdb {
 		if ( str_contains( $query, 'rate_limits' ) ) {
 			return $this->limits[ $args[0] ] ?? null;
 		}
+		if ( str_contains( $query, 'persi_account_identities' ) ) {
+			foreach ( $this->identities as $identity ) {
+				if (
+					'google' === $identity['provider'] &&
+					$identity['provider_subject_hash'] === $args[0]
+				) {
+					return $identity;
+				}
+			}
+			return null;
+		}
 		foreach ( $this->sessions as $row ) {
 			if ( $row['token_hash'] === $args[0] && 'active' === $row['status'] ) {
 				return $row;
@@ -168,6 +230,9 @@ final class FakeWpdb {
 
 	public function get_var( $statement ) {
 		[ $query, $args ] = $statement;
+		if ( str_contains( $query, 'GET_LOCK' ) || str_contains( $query, 'RELEASE_LOCK' ) ) {
+			return 1;
+		}
 		if ( str_contains( $query, 'persi_account_sessions' ) ) {
 			foreach ( $this->sessions as $row ) {
 				if (
@@ -186,6 +251,15 @@ final class FakeWpdb {
 	}
 
 	public function update( string $table, array $data, array $where ) {
+		if ( str_contains( $table, 'identities' ) ) {
+			foreach ( $this->identities as &$identity ) {
+				if ( $identity['id'] === $where['id'] ) {
+					$identity = array_merge( $identity, $data );
+					return 1;
+				}
+			}
+			return 0;
+		}
 		$this->limits[ $where['bucket_hash'] ] = array_merge(
 			$this->limits[ $where['bucket_hash'] ],
 			$data
@@ -215,9 +289,12 @@ $load( 'Auth/SessionToken.php' );
 $load( 'Auth/SessionRepository.php' );
 $load( 'Auth/CredentialsAuthenticator.php' );
 $load( 'Auth/SessionService.php' );
+$load( 'Auth/IdentityRepository.php' );
+$load( 'Auth/GoogleIdentityService.php' );
 $load( 'Validation/ValidationException.php' );
 $load( 'Validation/LoginPayloadValidator.php' );
 $load( 'Validation/AccountAccessPayloadValidator.php' );
+$load( 'Validation/GoogleLoginPayloadValidator.php' );
 $load( 'Orders/OrderPresenter.php' );
 $load( 'Orders/OrderService.php' );
 
@@ -225,6 +302,8 @@ use Persi\HeadlessAccount\Auth\CredentialsAuthenticator;
 use Persi\HeadlessAccount\Auth\SessionRepository;
 use Persi\HeadlessAccount\Auth\SessionService;
 use Persi\HeadlessAccount\Auth\SessionToken;
+use Persi\HeadlessAccount\Auth\IdentityRepository;
+use Persi\HeadlessAccount\Auth\GoogleIdentityService;
 use Persi\HeadlessAccount\Security\AuthenticationException;
 use Persi\HeadlessAccount\Security\NonceRepository;
 use Persi\HeadlessAccount\Security\RateLimiter;
@@ -233,6 +312,7 @@ use Persi\HeadlessAccount\Support\Configuration;
 use Persi\HeadlessAccount\Support\OriginNormalizer;
 use Persi\HeadlessAccount\Validation\LoginPayloadValidator;
 use Persi\HeadlessAccount\Validation\AccountAccessPayloadValidator;
+use Persi\HeadlessAccount\Validation\GoogleLoginPayloadValidator;
 use Persi\HeadlessAccount\Validation\ValidationException;
 use Persi\HeadlessAccount\Orders\OrderPresenter;
 
@@ -452,6 +532,114 @@ $test( 'sessão renova inatividade, expira, revoga e não armazena token bruto',
 	$assert( 'ACCOUNT_SESSION_INSERT_FAILED' === $failed_service->last_code() );
 } );
 
+$test( 'payload Google é fechado, verificado e aceita somente provider google', static function () use ( $assert, $throws ): void {
+	$validator = new GoogleLoginPayloadValidator();
+	$payload = array(
+		'provider' => 'google',
+		'subject' => 'google-subject-1',
+		'email' => 'google@example.test',
+		'emailVerified' => true,
+		'firstName' => 'Google',
+		'lastName' => 'Cliente',
+		'displayName' => 'Google Cliente',
+		'picture' => 'https://example.test/avatar.jpg',
+	);
+	$validated = $validator->validate( (string) json_encode( $payload ) );
+	$assert( 'google' === $validated['provider'] );
+	$assert( true === $validated['email_verified'] );
+	$without_picture = $payload;
+	unset( $without_picture['picture'] );
+	$assert( '' === $validator->validate( (string) json_encode( $without_picture ) )['picture'] );
+	foreach ( array(
+		array_merge( $payload, array( 'provider' => 'facebook' ) ),
+		array_merge( $payload, array( 'emailVerified' => false ) ),
+		array_merge( $payload, array( 'subject' => '' ) ),
+		array_merge( $payload, array( 'accessToken' => 'forbidden' ) ),
+	) as $invalid ) {
+		$throws(
+			static fn() => $validator->validate( (string) json_encode( $invalid ) ),
+			ValidationException::class
+		);
+	}
+} );
+
+$test( 'Google vincula cliente, reutiliza subject e bloqueia papel privilegiado', static function () use ( $assert ): void {
+	$GLOBALS['test_users'] = array();
+	$GLOBALS['inserted_users'] = array();
+	$db = new FakeWpdb();
+	$service = new GoogleIdentityService(
+		new IdentityRepository( $db ),
+		PERSI_HEADLESS_ACCOUNT_HMAC_SECRET
+	);
+	$identity = array(
+		'subject' => 'google-subject-1',
+		'email' => 'novo@example.test',
+		'first_name' => 'Novo',
+		'last_name' => 'Cliente',
+		'display_name' => 'Novo Cliente',
+	);
+	$created = $service->resolve( $identity, 1800000000 );
+	$assert( $created instanceof WP_User );
+	$assert( in_array( 'customer', $created->roles, true ) );
+	$assert( 1 === count( $db->identities ) );
+	$assert( ! isset( $db->identities[0]['subject'] ) );
+	$assert( 64 === strlen( $db->identities[0]['provider_subject_hash'] ) );
+
+	$linked = $service->resolve(
+		array_merge( $identity, array( 'email' => 'alterado@example.test' ) ),
+		1800000060
+	);
+	$assert( $linked instanceof WP_User && $linked->ID === $created->ID );
+	$assert( 1 === count( $db->identities ) );
+
+	$admin = new WP_User( 50, array( 'administrator' ), 'admin@example.test' );
+	$GLOBALS['test_users'][50] = $admin;
+	$blocked = $service->resolve(
+		array_merge(
+			$identity,
+			array( 'subject' => 'google-admin', 'email' => 'admin@example.test' )
+		),
+		1800000120
+	);
+	$assert( null === $blocked );
+	$assert( 'ACCOUNT_GOOGLE_USER_REJECTED' === $service->last_code() );
+
+	unset( $GLOBALS['test_users'][ $created->ID ] );
+	$deleted = $service->resolve( $identity, 1800000180 );
+	$assert( null === $deleted );
+	$assert( 'ACCOUNT_GOOGLE_USER_REJECTED' === $service->last_code() );
+} );
+
+$test( 'Google vincula e-mail verificado existente e impede identidade duplicada', static function () use ( $assert ): void {
+	$GLOBALS['test_users'] = array();
+	$GLOBALS['inserted_users'] = array();
+	$existing = new WP_User( 70, array( 'customer' ), 'existente@example.test' );
+	$GLOBALS['test_users'][70] = $existing;
+	$db = new FakeWpdb();
+	$service = new GoogleIdentityService(
+		new IdentityRepository( $db ),
+		PERSI_HEADLESS_ACCOUNT_HMAC_SECRET
+	);
+	$identity = array(
+		'subject' => 'google-existing',
+		'email' => 'existente@example.test',
+		'first_name' => 'Cliente',
+		'last_name' => 'Existente',
+		'display_name' => 'Cliente Existente',
+	);
+	$linked = $service->resolve( $identity, 1800000000 );
+	$assert( $linked instanceof WP_User && 70 === $linked->ID );
+	$assert( 1 === count( $db->identities ) );
+
+	$duplicate = $service->resolve(
+		array_merge( $identity, array( 'subject' => 'google-other-subject' ) ),
+		1800000060
+	);
+	$assert( null === $duplicate );
+	$assert( 'ACCOUNT_GOOGLE_LINK_CREATE_FAILED' === $service->last_code() );
+	$assert( 1 === count( $db->identities ) );
+} );
+
 $test( 'rate limit aplica Retry-After, expira e pode ser limpo', static function () use ( $assert ): void {
 	$db = new FakeWpdb();
 	$limiter = new RateLimiter( $db );
@@ -473,6 +661,8 @@ $test( 'fontes não expõem customerId nem registram dados sensíveis', static f
 	$schema = file_get_contents( $root . '/src/Activator.php' );
 	$repository = file_get_contents( $root . '/src/Auth/SessionRepository.php' );
 	$token = file_get_contents( $root . '/src/Auth/SessionToken.php' );
+	$google_controller = file_get_contents( $root . '/src/Api/GoogleAuthController.php' );
+	$identity_repository = file_get_contents( $root . '/src/Auth/IdentityRepository.php' );
 	$assert( ! str_contains( $controller, "'customerId'" ) );
 	$assert( ! str_contains( $controller, "'code' =>" ) );
 	$assert( ! str_contains( $controller, "'code'    =>" ) );
@@ -487,6 +677,15 @@ $test( 'fontes não expõem customerId nem registram dados sensíveis', static f
 	$assert( str_contains( $repository, "\$database->prefix . 'persi_account_sessions'" ) );
 	$assert( str_contains( $repository, 'WHERE token_hash = %s' ) );
 	$assert( str_contains( $token, "hash( 'sha256', \$token )" ) );
+	$assert( str_contains( $google_controller, 'RequestAuthenticator' ) );
+	$assert( str_contains( $google_controller, "'sessionToken'" ) );
+	$assert( ! str_contains( $google_controller, "'customerId'" ) );
+	foreach ( array( 'access_token', 'refresh_token', 'id_token', 'client_secret' ) as $forbidden ) {
+		$assert( ! str_contains( $google_controller, $forbidden ) );
+		$assert( ! str_contains( $identity_repository, $forbidden ) );
+	}
+	$assert( str_contains( $schema, 'UNIQUE KEY provider_subject' ) );
+	$assert( str_contains( $schema, 'UNIQUE KEY provider_email' ) );
 	$assert( ! str_contains( $schema, 'password' ) );
 	$assert( ! str_contains( $schema, 'email' ) );
 } );

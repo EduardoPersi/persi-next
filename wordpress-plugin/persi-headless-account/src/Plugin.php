@@ -3,9 +3,12 @@
 namespace Persi\HeadlessAccount;
 
 use Persi\HeadlessAccount\Api\AuthController;
+use Persi\HeadlessAccount\Api\GoogleAuthController;
 use Persi\HeadlessAccount\Api\OrderController;
 use Persi\HeadlessAccount\Api\AccountAccessController;
 use Persi\HeadlessAccount\Auth\CredentialsAuthenticator;
+use Persi\HeadlessAccount\Auth\GoogleIdentityService;
+use Persi\HeadlessAccount\Auth\IdentityRepository;
 use Persi\HeadlessAccount\Auth\SessionRepository;
 use Persi\HeadlessAccount\Auth\SessionService;
 use Persi\HeadlessAccount\Auth\SessionToken;
@@ -19,6 +22,7 @@ use Persi\HeadlessAccount\Support\Configuration;
 use Persi\HeadlessAccount\Support\Logger;
 use Persi\HeadlessAccount\Validation\LoginPayloadValidator;
 use Persi\HeadlessAccount\Validation\AccountAccessPayloadValidator;
+use Persi\HeadlessAccount\Validation\GoogleLoginPayloadValidator;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -28,6 +32,8 @@ final class Plugin {
 			add_action( 'admin_notices', array( self::class, 'woocommerce_notice' ) );
 			return;
 		}
+
+		Activator::maybe_upgrade();
 
 		$configuration = new Configuration();
 		if (
@@ -57,6 +63,20 @@ final class Plugin {
 			new Logger()
 		);
 		add_action( 'rest_api_init', array( $controller, 'register_routes' ) );
+		$google_controller = new GoogleAuthController(
+			$request_authenticator,
+			new GoogleLoginPayloadValidator(),
+			new GoogleIdentityService(
+				new IdentityRepository( $wpdb ),
+				$configuration->secret()
+			),
+			$sessions,
+			new RateLimiter( $wpdb ),
+			new ClientFingerprint( $configuration->secret() ),
+			$configuration,
+			new Logger()
+		);
+		add_action( 'rest_api_init', array( $google_controller, 'register_routes' ) );
 		$order_controller = new OrderController(
 			$request_authenticator,
 			$sessions,

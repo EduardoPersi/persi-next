@@ -3,12 +3,12 @@ Contributors: persi
 Requires at least: 6.4
 Requires PHP: 8.1
 WC requires at least: 8.2
-Stable tag: 0.3.1
+Stable tag: 0.3.2
 License: Proprietary
 
 Núcleo de autenticação e sessões opacas para a futura Área da Conta headless.
 
-== Escopo da versão 0.3.1 ==
+== Escopo da versão 0.3.2 ==
 
 Esta fase fornece exclusivamente:
 
@@ -20,6 +20,7 @@ Esta fase fornece exclusivamente:
 * POST /wp-json/persi-account/v1/register
 * POST /wp-json/persi-account/v1/forgot-password
 * POST /wp-json/persi-account/v1/reset-password
+* POST /wp-json/persi-account/v1/google-login
 * autenticação HMAC entre servidores;
 * proteção contra replay;
 * limitação progressiva de tentativas de login;
@@ -50,6 +51,11 @@ define(
 O segredo deve ser diferente do segredo do Persi Headless Checkout e nunca deve
 usar prefixo NEXT_PUBLIC_. Sem segredo ou key ID, os endpoints recusam a operação.
 O Key ID não diferencia letras maiúsculas e minúsculas.
+
+O login Google usa o `sub` validado pelo Next.js como identificador permanente.
+O plugin armazena somente HMAC-SHA256 determinístico do `sub` e do e-mail na
+tabela dedicada de identidades. Nenhum access token, refresh token, ID token ou
+Client Secret do Google é recebido ou persistido pelo WordPress.
 
 PERSI_HEADLESS_ACCOUNT_ALLOWED_ORIGINS aceita uma lista separada por vírgulas.
 Cada origem deve conter apenas esquema HTTP/HTTPS, host e porta opcional, sem

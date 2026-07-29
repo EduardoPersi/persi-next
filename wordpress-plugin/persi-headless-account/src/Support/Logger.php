@@ -15,6 +15,11 @@ final class Logger {
 		'session_invalid',
 		'session_valid',
 		'session_revoked',
+		'google_hmac_rejected',
+		'google_payload_rejected',
+		'google_identity_rejected',
+		'google_session_failed',
+		'google_session_created',
 	);
 
 	public function write(
