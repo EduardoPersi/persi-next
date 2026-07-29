@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Heart,
@@ -18,6 +18,7 @@ import { AccountProvider, useAccount } from "@/hooks/useAccount";
 import { getHeaderAccountAction } from "@/lib/account/headerNavigation";
 import type { AccountSessionResult } from "@/lib/account/validation";
 import { AccountDrawer } from "@/components/Account/AccountDrawer";
+import { AccountDropdown } from "@/components/Account/AccountDropdown";
 import { MiniCart } from "./MiniCart";
 import { MobileMenu } from "./MobileMenu";
 import { ProductSearch } from "./ProductSearch";
@@ -63,10 +64,13 @@ interface HeaderActionsProps {
   isCartOpen: boolean;
   onOpenCart: () => void;
   accountDrawerOpen: boolean;
-  accountHref?: "/entrar" | "/minha-conta";
   canOpenAccountDrawer: boolean;
   onAccountAction: () => void;
   accountLabel: string;
+  accountStatus: "loading" | "authenticated" | "anonymous";
+  customerName: string;
+  customerEmail: string;
+  onLogout: () => Promise<void>;
   compact?: boolean;
 }
 
@@ -76,10 +80,13 @@ function HeaderActions({
   isCartOpen,
   onOpenCart,
   accountDrawerOpen,
-  accountHref,
   canOpenAccountDrawer,
   onAccountAction,
   accountLabel,
+  accountStatus,
+  customerName,
+  customerEmail,
+  onLogout,
   compact = false,
 }: HeaderActionsProps) {
   return (
@@ -99,37 +106,32 @@ function HeaderActions({
         </>
       ) : null}
 
-      {accountHref ? (
-        <Link
-          href={accountHref}
-          aria-label={accountLabel}
-          className="flex h-10 items-center justify-center gap-2 rounded-md px-2 transition hover:bg-white/10 xl:px-3"
-        >
-          <User size={compact ? 21 : 23} className="shrink-0" />
-          {!compact ? (
-            <span className="hidden whitespace-nowrap text-sm font-semibold xl:inline">
-              {accountLabel}
-            </span>
-          ) : null}
-        </Link>
-      ) : (
+      <div className="md:hidden">
         <button
           type="button"
           onClick={onAccountAction}
           disabled={!canOpenAccountDrawer}
           aria-label={accountLabel}
-          aria-expanded={canOpenAccountDrawer ? accountDrawerOpen : undefined}
-          aria-controls={canOpenAccountDrawer ? "account-drawer" : undefined}
-          className="flex h-10 items-center justify-center gap-2 rounded-md px-2 transition hover:bg-white/10 disabled:cursor-wait disabled:opacity-70 xl:px-3"
+          aria-expanded={
+            canOpenAccountDrawer ? accountDrawerOpen : undefined
+          }
+          aria-controls={
+            canOpenAccountDrawer ? "account-drawer" : undefined
+          }
+          className="flex h-10 items-center justify-center rounded-md px-2 transition hover:bg-white/10 disabled:cursor-wait disabled:opacity-70"
         >
           <User size={compact ? 21 : 23} className="shrink-0" />
-          {!compact ? (
-            <span className="hidden whitespace-nowrap text-sm font-semibold xl:inline">
-              {accountLabel}
-            </span>
-          ) : null}
         </button>
-      )}
+      </div>
+
+      <AccountDropdown
+        status={accountStatus}
+        customerName={customerName}
+        customerEmail={customerEmail}
+        onOpenDrawer={onAccountAction}
+        onLogout={onLogout}
+        compact={compact}
+      />
 
       <a
         href="#"
@@ -160,7 +162,6 @@ function HeaderActions({
 
 function HeaderContent() {
   const pathname = usePathname();
-  const router = useRouter();
   const fullHeaderRef = useRef<HTMLElement>(null);
   const lastScrollYRef = useRef(0);
   const frameRef = useRef<number | null>(null);
@@ -170,7 +171,7 @@ function HeaderContent() {
   >(null);
   const [showCompactHeader, setShowCompactHeader] = useState(false);
   const { cart, closeCart, isOpen: isCartOpen, openCart } = useCart();
-  const { status: accountStatus, customer } = useAccount();
+  const { status: accountStatus, customer, logout } = useAccount();
   const isCartPage = pathname === "/carrinho";
   const itemsCount = cart?.itemsCount ?? 0;
   const accountLabel =
@@ -185,21 +186,13 @@ function HeaderContent() {
       : accountAction === "go-to-login"
         ? "/entrar"
         : undefined;
-  const canOpenAccountDrawer = accountAction === "open-drawer";
+  const canOpenAccountDrawer = accountStatus !== "loading";
   const accountOpen =
     canOpenAccountDrawer && accountDrawerPathname === pathname;
   const handleAccountAction = useCallback(() => {
-    if (accountAction === "open-drawer") {
-      setAccountDrawerPathname(pathname);
-      return;
-    }
-    setAccountDrawerPathname(null);
-    if (accountAction === "go-to-account" && pathname !== "/minha-conta") {
-      router.push("/minha-conta");
-    } else if (accountAction === "go-to-login" && pathname !== "/entrar") {
-      router.push("/entrar");
-    }
-  }, [accountAction, pathname, router]);
+    if (accountStatus === "loading") return;
+    setAccountDrawerPathname(pathname);
+  }, [accountStatus, pathname]);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const handleCartClick = useCallback(() => {
     if (!isCartPage) {
@@ -279,10 +272,15 @@ function HeaderContent() {
               isCartOpen={isCartOpen}
               onOpenCart={handleCartClick}
               accountDrawerOpen={accountOpen}
-              accountHref={accountHref}
               canOpenAccountDrawer={canOpenAccountDrawer}
               onAccountAction={handleAccountAction}
               accountLabel={accountLabel}
+              accountStatus={accountStatus}
+              customerName={
+                customer?.firstName || customer?.displayName || ""
+              }
+              customerEmail={customer?.email || ""}
+              onLogout={logout}
             />
           </div>
           <ProductSearch variant="mobile" />
@@ -341,10 +339,15 @@ function HeaderContent() {
               isCartOpen={isCartOpen}
               onOpenCart={handleCartClick}
               accountDrawerOpen={accountOpen}
-              accountHref={accountHref}
               canOpenAccountDrawer={canOpenAccountDrawer}
               onAccountAction={handleAccountAction}
               accountLabel={accountLabel}
+              accountStatus={accountStatus}
+              customerName={
+                customer?.firstName || customer?.displayName || ""
+              }
+              customerEmail={customer?.email || ""}
+              onLogout={logout}
               compact
             />
           </div>
