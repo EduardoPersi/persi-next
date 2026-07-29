@@ -26,7 +26,7 @@ export function ZipCodeInput({
       <label htmlFor={id} className="block text-sm font-medium text-slate-700">
         CEP
       </label>
-      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-2 grid items-stretch gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
         <input
           id={id}
           name="postcode"
@@ -37,13 +37,13 @@ export function ZipCodeInput({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           aria-describedby={`${id}-hint`}
-          className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20"
+          className="block min-h-11 w-full min-w-0 appearance-none rounded-xl border border-slate-200 bg-white px-4 py-2.5 leading-5 text-slate-900 outline-none transition focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20"
         />
         <Button
           type="submit"
           variant="outline"
           disabled={isLoading}
-          className="h-11 w-full sm:w-auto"
+          className="min-h-11 w-full sm:w-auto"
         >
           {isLoading ? "Calculando..." : "Calcular frete"}
         </Button>
