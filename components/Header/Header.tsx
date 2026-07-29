@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Heart,
@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { AccountProvider, useAccount } from "@/hooks/useAccount";
+import { getHeaderAccountAction } from "@/lib/account/headerNavigation";
 import type { AccountSessionResult } from "@/lib/account/validation";
 import { AccountDrawer } from "@/components/Account/AccountDrawer";
 import { MiniCart } from "./MiniCart";
@@ -61,7 +62,10 @@ interface HeaderActionsProps {
   isCartPage: boolean;
   isCartOpen: boolean;
   onOpenCart: () => void;
-  onOpenAccount: () => void;
+  accountDrawerOpen: boolean;
+  accountHref?: "/entrar" | "/minha-conta";
+  canOpenAccountDrawer: boolean;
+  onAccountAction: () => void;
   accountLabel: string;
   compact?: boolean;
 }
@@ -71,7 +75,10 @@ function HeaderActions({
   isCartPage,
   isCartOpen,
   onOpenCart,
-  onOpenAccount,
+  accountDrawerOpen,
+  accountHref,
+  canOpenAccountDrawer,
+  onAccountAction,
   accountLabel,
   compact = false,
 }: HeaderActionsProps) {
@@ -92,19 +99,37 @@ function HeaderActions({
         </>
       ) : null}
 
-      <button
-        type="button"
-        onClick={onOpenAccount}
-        aria-label={accountLabel}
-        className="flex h-10 items-center justify-center gap-2 rounded-md px-2 transition hover:bg-white/10 xl:px-3"
-      >
-        <User size={compact ? 21 : 23} className="shrink-0" />
-        {!compact ? (
-          <span className="hidden whitespace-nowrap text-sm font-semibold xl:inline">
-            {accountLabel}
-          </span>
-        ) : null}
-      </button>
+      {accountHref ? (
+        <Link
+          href={accountHref}
+          aria-label={accountLabel}
+          className="flex h-10 items-center justify-center gap-2 rounded-md px-2 transition hover:bg-white/10 xl:px-3"
+        >
+          <User size={compact ? 21 : 23} className="shrink-0" />
+          {!compact ? (
+            <span className="hidden whitespace-nowrap text-sm font-semibold xl:inline">
+              {accountLabel}
+            </span>
+          ) : null}
+        </Link>
+      ) : (
+        <button
+          type="button"
+          onClick={onAccountAction}
+          disabled={!canOpenAccountDrawer}
+          aria-label={accountLabel}
+          aria-expanded={canOpenAccountDrawer ? accountDrawerOpen : undefined}
+          aria-controls={canOpenAccountDrawer ? "account-drawer" : undefined}
+          className="flex h-10 items-center justify-center gap-2 rounded-md px-2 transition hover:bg-white/10 disabled:cursor-wait disabled:opacity-70 xl:px-3"
+        >
+          <User size={compact ? 21 : 23} className="shrink-0" />
+          {!compact ? (
+            <span className="hidden whitespace-nowrap text-sm font-semibold xl:inline">
+              {accountLabel}
+            </span>
+          ) : null}
+        </button>
+      )}
 
       <a
         href="#"
@@ -135,11 +160,14 @@ function HeaderActions({
 
 function HeaderContent() {
   const pathname = usePathname();
+  const router = useRouter();
   const fullHeaderRef = useRef<HTMLElement>(null);
   const lastScrollYRef = useRef(0);
   const frameRef = useRef<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
+  const [accountDrawerPathname, setAccountDrawerPathname] = useState<
+    string | null
+  >(null);
   const [showCompactHeader, setShowCompactHeader] = useState(false);
   const { cart, closeCart, isOpen: isCartOpen, openCart } = useCart();
   const { status: accountStatus, customer } = useAccount();
@@ -149,8 +177,29 @@ function HeaderContent() {
     accountStatus === "authenticated"
       ? customer?.firstName || customer?.displayName || "Minha conta"
       : "Login / Registrar";
-  const openAccount = useCallback(() => setAccountOpen(true), []);
-  const closeAccount = useCallback(() => setAccountOpen(false), []);
+  const closeAccount = useCallback(() => setAccountDrawerPathname(null), []);
+  const accountAction = getHeaderAccountAction(accountStatus, pathname);
+  const accountHref =
+    accountAction === "go-to-account"
+      ? "/minha-conta"
+      : accountAction === "go-to-login"
+        ? "/entrar"
+        : undefined;
+  const canOpenAccountDrawer = accountAction === "open-drawer";
+  const accountOpen =
+    canOpenAccountDrawer && accountDrawerPathname === pathname;
+  const handleAccountAction = useCallback(() => {
+    if (accountAction === "open-drawer") {
+      setAccountDrawerPathname(pathname);
+      return;
+    }
+    setAccountDrawerPathname(null);
+    if (accountAction === "go-to-account" && pathname !== "/minha-conta") {
+      router.push("/minha-conta");
+    } else if (accountAction === "go-to-login" && pathname !== "/entrar") {
+      router.push("/entrar");
+    }
+  }, [accountAction, pathname, router]);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const handleCartClick = useCallback(() => {
     if (!isCartPage) {
@@ -229,7 +278,10 @@ function HeaderContent() {
               isCartPage={isCartPage}
               isCartOpen={isCartOpen}
               onOpenCart={handleCartClick}
-              onOpenAccount={openAccount}
+              accountDrawerOpen={accountOpen}
+              accountHref={accountHref}
+              canOpenAccountDrawer={canOpenAccountDrawer}
+              onAccountAction={handleAccountAction}
               accountLabel={accountLabel}
             />
           </div>
@@ -288,7 +340,10 @@ function HeaderContent() {
               isCartPage={isCartPage}
               isCartOpen={isCartOpen}
               onOpenCart={handleCartClick}
-              onOpenAccount={openAccount}
+              accountDrawerOpen={accountOpen}
+              accountHref={accountHref}
+              canOpenAccountDrawer={canOpenAccountDrawer}
+              onAccountAction={handleAccountAction}
               accountLabel={accountLabel}
               compact
             />
@@ -300,9 +355,14 @@ function HeaderContent() {
       <MobileMenu
         open={menuOpen}
         onClose={closeMenu}
-        onOpenAccount={openAccount}
+        accountHref={accountHref}
+        accountStatus={accountStatus}
+        onAccountAction={handleAccountAction}
       />
-      <AccountDrawer open={accountOpen} onClose={closeAccount} />
+      <AccountDrawer
+        open={accountOpen && canOpenAccountDrawer}
+        onClose={closeAccount}
+      />
       <MiniCart />
     </header>
   );

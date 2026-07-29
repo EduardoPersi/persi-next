@@ -15,7 +15,9 @@ import { Drawer } from "./Drawer";
 type MobileMenuProps = {
   open: boolean;
   onClose: () => void;
-  onOpenAccount: () => void;
+  accountHref?: "/entrar" | "/minha-conta";
+  accountStatus: "loading" | "authenticated" | "anonymous";
+  onAccountAction: () => void;
 };
 
 const categories = [
@@ -33,7 +35,9 @@ const categories = [
 export function MobileMenu({
   open,
   onClose,
-  onOpenAccount,
+  accountHref,
+  accountStatus,
+  onAccountAction,
 }: MobileMenuProps) {
   return (
     <Drawer open={open} onClose={onClose} side="left">
@@ -55,17 +59,29 @@ export function MobileMenu({
         </header>
 
         <div className="border-b px-3 py-3">
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              onOpenAccount();
-            }}
-            className="flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition hover:bg-slate-100"
-          >
-            <User size={20} />
-            Minha Conta
-          </button>
+          {accountHref ? (
+            <Link
+              href={accountHref}
+              onClick={onClose}
+              className="flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition hover:bg-slate-100"
+            >
+              <User size={20} />
+              Minha Conta
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled={accountStatus === "loading"}
+              onClick={() => {
+                onClose();
+                onAccountAction();
+              }}
+              className="flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition hover:bg-slate-100 disabled:cursor-wait disabled:opacity-60"
+            >
+              <User size={20} />
+              Minha Conta
+            </button>
+          )}
 
           <a
             href="#"

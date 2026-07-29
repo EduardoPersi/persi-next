@@ -11,6 +11,11 @@ import {
 } from "../lib/account/sessionCookie.ts";
 import { getAccountGreetingName } from "../lib/account/display.ts";
 import {
+  getHeaderAccountAction,
+  isAccountRoute,
+  isPublicAccountAuthRoute,
+} from "../lib/account/headerNavigation.ts";
+import {
   parseAccountLoginPayload,
   validateMutationSource,
 } from "../lib/account/validation.ts";
@@ -365,4 +370,51 @@ test("painel da conta possui seis cards sem simular recursos futuros", async () 
   assert.equal((privatePage.match(/AccountLogoutButton/g) ?? []).length, 0);
   assert.match(privatePage, /getServerAccountSession/);
   assert.match(privatePage, /redirect\("\/entrar"\)/);
+});
+
+test("ação da conta no cabeçalho respeita sessão e rota atual", () => {
+  assert.equal(getHeaderAccountAction("anonymous", "/"), "open-drawer");
+  assert.equal(getHeaderAccountAction("anonymous", "/entrar"), "go-to-login");
+  assert.equal(
+    getHeaderAccountAction("anonymous", "/criar-conta"),
+    "go-to-login",
+  );
+  assert.equal(
+    getHeaderAccountAction("authenticated", "/"),
+    "go-to-account",
+  );
+  assert.equal(
+    getHeaderAccountAction("authenticated", "/minha-conta"),
+    "go-to-account",
+  );
+  assert.equal(
+    getHeaderAccountAction("authenticated", "/minha-conta/pedidos/10"),
+    "go-to-account",
+  );
+  assert.equal(getHeaderAccountAction("loading", "/"), "wait");
+  assert.equal(isAccountRoute("/minha-conta/pedidos"), true);
+  assert.equal(isAccountRoute("/minha-contabilidade"), false);
+  assert.equal(isPublicAccountAuthRoute("/redefinir-senha"), true);
+});
+
+test("desktop e mobile compartilham a ação e o drawer fecha com rota ou login", async () => {
+  const header = await readFile(
+    new URL("../components/Header/Header.tsx", import.meta.url),
+    "utf8",
+  );
+  const mobileMenu = await readFile(
+    new URL("../components/Header/MobileMenu.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(header, /getHeaderAccountAction\(accountStatus, pathname\)/);
+  assert.match(header, /accountDrawerPathname === pathname/);
+  assert.match(header, /setAccountDrawerPathname\(pathname\)/);
+  assert.match(header, /setAccountDrawerPathname\(null\)/);
+  assert.match(header, /open=\{accountOpen && canOpenAccountDrawer\}/);
+  assert.match(header, /accountHref=\{accountHref\}/);
+  assert.match(header, /onAccountAction=\{handleAccountAction\}/);
+  assert.match(mobileMenu, /accountHref/);
+  assert.match(mobileMenu, /onAccountAction/);
+  assert.equal((header.match(/<AccountDrawer/g) ?? []).length, 1);
 });

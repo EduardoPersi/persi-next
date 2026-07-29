@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useRef } from "react";
 
 type DrawerProps = {
+  id?: string;
   open: boolean;
   onClose: () => void;
   side?: "left" | "right";
@@ -12,6 +13,7 @@ type DrawerProps = {
 };
 
 export function Drawer({
+  id,
   open,
   onClose,
   side = "right",
@@ -94,6 +96,7 @@ export function Drawer({
       />
 
       <aside
+        id={id}
         ref={panelRef}
         role="dialog"
         aria-modal="true"

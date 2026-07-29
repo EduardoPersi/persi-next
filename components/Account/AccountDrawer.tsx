@@ -37,6 +37,7 @@ export function AccountDrawer({ open, onClose }: AccountDrawerProps) {
 
   return (
     <Drawer
+      id="account-drawer"
       open={open}
       onClose={onClose}
       side="right"
