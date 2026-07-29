@@ -12,7 +12,7 @@ final class SessionRepository {
 	}
 
 	public function create( array $record ): bool {
-		return false !== $this->database->insert(
+		return 1 === $this->database->insert(
 			$this->table,
 			array(
 				'token_hash'          => $record['token_hash'],
@@ -69,7 +69,30 @@ final class SessionRepository {
 				$now
 			)
 		);
-		return 1 === $result;
+		if ( 1 === $result ) {
+			return true;
+		}
+		if ( false === $result ) {
+			return false;
+		}
+
+		// MySQL returns zero when a valid same-second touch changes no values.
+		return 1 === (int) $this->database->get_var(
+			$this->database->prepare(
+				"SELECT 1
+				FROM {$this->table}
+				WHERE id = %d
+					AND token_hash = %s
+					AND status = 'active'
+					AND idle_expires_at > %s
+					AND absolute_expires_at > %s
+				LIMIT 1",
+				$id,
+				$token_hash,
+				$now,
+				$now
+			)
+		);
 	}
 
 	public function revoke( string $token_hash, string $now ): void {

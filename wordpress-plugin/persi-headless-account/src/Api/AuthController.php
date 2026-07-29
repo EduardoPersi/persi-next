@@ -139,7 +139,7 @@ final class AuthController {
 			$this->logger->write(
 				'error',
 				'session_storage_failed',
-				'ACCOUNT_LOGIN_SESSION_CREATE_FAILED',
+				$this->sessions->last_code(),
 				$auth->key_id
 			);
 			return Response::json(
@@ -173,10 +173,21 @@ final class AuthController {
 			trim( (string) $request->get_header( 'x-persi-session' ) )
 		);
 		if ( null === $result ) {
-			$this->logger->write( 'info', 'session_invalid', 'invalid', $auth->key_id );
+			$this->logger->write(
+				'info',
+				'session_invalid',
+				$this->sessions->last_code(),
+				$auth->key_id
+			);
 			return Response::json( array( 'authenticated' => false ) );
 		}
 
+		$this->logger->write(
+			'info',
+			'session_valid',
+			$this->sessions->last_code(),
+			$auth->key_id
+		);
 		return Response::json(
 			array(
 				'authenticated' => true,

@@ -13,6 +13,7 @@ final class Logger {
 		'session_created',
 		'session_storage_failed',
 		'session_invalid',
+		'session_valid',
 		'session_revoked',
 	);
 

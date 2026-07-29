@@ -7,6 +7,8 @@ use Persi\HeadlessAccount\Support\Configuration;
 defined( 'ABSPATH' ) || exit;
 
 final class SessionService {
+	private string $last_code = '';
+
 	public function __construct(
 		private readonly SessionRepository $repository,
 		private readonly SessionToken $tokens
@@ -19,6 +21,7 @@ final class SessionService {
 		?string $user_agent_hash,
 		?int $now = null
 	): ?array {
+		$this->last_code = '';
 		$now      = $now ?? time();
 		$idle     = $remember
 			? Configuration::REMEMBER_IDLE_SECONDS
@@ -42,16 +45,22 @@ final class SessionService {
 			)
 		);
 
-		return $created
-			? array(
-				'token'      => $token,
-				'expires_at' => gmdate( 'c', $expires ),
-			)
-			: null;
+		if ( ! $created ) {
+			$this->last_code = 'ACCOUNT_SESSION_INSERT_FAILED';
+			return null;
+		}
+
+		$this->last_code = 'ACCOUNT_SESSION_VALID';
+		return array(
+			'token'      => $token,
+			'expires_at' => gmdate( 'c', $expires ),
+		);
 	}
 
 	public function resolve( string $token, ?int $now = null ): ?array {
+		$this->last_code = '';
 		if ( ! $this->tokens->is_valid( $token ) ) {
+			$this->last_code = 'ACCOUNT_SESSION_HASH_MISMATCH';
 			return null;
 		}
 
@@ -60,6 +69,7 @@ final class SessionService {
 		$token_hash = $this->tokens->hash( $token );
 		$record     = $this->repository->find_active( $token_hash );
 		if ( null === $record ) {
+			$this->last_code = 'ACCOUNT_SESSION_NOT_FOUND';
 			return null;
 		}
 
@@ -71,6 +81,7 @@ final class SessionService {
 				$absolute <= $now ? 'absolute_expired' : 'idle_expired',
 				$now_sql
 			);
+			$this->last_code = 'ACCOUNT_SESSION_EXPIRED';
 			return null;
 		}
 
@@ -80,6 +91,7 @@ final class SessionService {
 			! CredentialsAuthenticator::is_allowed_user( $user )
 		) {
 			$this->repository->expire( (int) $record['id'], 'user_unavailable', $now_sql );
+			$this->last_code = 'ACCOUNT_SESSION_USER_INVALID';
 			return null;
 		}
 
@@ -103,13 +115,19 @@ final class SessionService {
 				$next_idle
 			)
 		) {
+			$this->last_code = 'ACCOUNT_SESSION_NOT_FOUND';
 			return null;
 		}
 
+		$this->last_code = 'ACCOUNT_SESSION_VALID';
 		return array(
 			'user'       => $user,
 			'expires_at' => gmdate( 'c', $absolute ),
 		);
+	}
+
+	public function last_code(): string {
+		return $this->last_code;
 	}
 
 	public function logout( string $token, ?int $now = null ): void {

@@ -63,6 +63,7 @@ final class FakeWpdb {
 	public array $sessions = array();
 	public array $nonces = array();
 	public array $limits = array();
+	public bool $fail_session_insert = false;
 	private int $next_id = 1;
 
 	public function prepare( string $query, ...$args ): array {
@@ -71,6 +72,9 @@ final class FakeWpdb {
 
 	public function insert( string $table, array $data, array $formats ) {
 		if ( str_contains( $table, 'sessions' ) ) {
+			if ( $this->fail_session_insert ) {
+				return false;
+			}
 			foreach ( $this->sessions as $row ) {
 				if ( $row['token_hash'] === $data['token_hash'] ) {
 					return false;
@@ -114,9 +118,12 @@ final class FakeWpdb {
 					$row['idle_expires_at'] > $args[4] &&
 					$row['absolute_expires_at'] > $args[5]
 				) {
+					$next_idle = min( $row['absolute_expires_at'], $args[1] );
+					$changed = $row['last_seen_at'] !== $args[0] ||
+						$row['idle_expires_at'] !== $next_idle;
 					$row['last_seen_at'] = $args[0];
-					$row['idle_expires_at'] = min( $row['absolute_expires_at'], $args[1] );
-					return 1;
+					$row['idle_expires_at'] = $next_idle;
+					return $changed ? 1 : 0;
 				}
 			}
 			return 0;
@@ -160,7 +167,21 @@ final class FakeWpdb {
 	}
 
 	public function get_var( $statement ) {
-		[ , $args ] = $statement;
+		[ $query, $args ] = $statement;
+		if ( str_contains( $query, 'persi_account_sessions' ) ) {
+			foreach ( $this->sessions as $row ) {
+				if (
+					$row['id'] === $args[0] &&
+					$row['token_hash'] === $args[1] &&
+					'active' === $row['status'] &&
+					$row['idle_expires_at'] > $args[2] &&
+					$row['absolute_expires_at'] > $args[3]
+				) {
+					return 1;
+				}
+			}
+			return null;
+		}
 		return $this->limits[ $args[0] ]['blocked_until'] ?? null;
 	}
 
@@ -397,21 +418,38 @@ $test( 'sessão renova inatividade, expira, revoga e não armazena token bruto',
 	$now = 1800000000;
 	$created = $service->create( $user, false, str_repeat( 'a', 64 ), str_repeat( 'b', 64 ), $now );
 	$assert( is_array( $created ) );
+	$assert( 'ACCOUNT_SESSION_VALID' === $service->last_code() );
 	$assert( ! isset( $db->sessions[0]['token'] ) );
 	$assert( $db->sessions[0]['token_hash'] === hash( 'sha256', $created['token'] ) );
+	$same_second = $service->resolve( $created['token'], $now );
+	$assert( is_array( $same_second ) && 'ACCOUNT_SESSION_VALID' === $service->last_code() );
 	$resolved = $service->resolve( $created['token'], $now + 60 );
 	$assert( is_array( $resolved ) && 10 === $resolved['user']->ID );
 	$service->logout( $created['token'], $now + 61 );
 	$assert( null === $service->resolve( $created['token'], $now + 62 ) );
+	$assert( 'ACCOUNT_SESSION_NOT_FOUND' === $service->last_code() );
 	$service->logout( $created['token'], $now + 63 );
 
 	$expired = $service->create( $user, false, null, null, $now );
 	$assert( null === $service->resolve( $expired['token'], $now + Configuration::IDLE_SECONDS + 1 ) );
+	$assert( 'ACCOUNT_SESSION_EXPIRED' === $service->last_code() );
 	$absolute = $service->create( $user, true, null, null, $now );
 	$assert( null === $service->resolve( $absolute['token'], $now + Configuration::REMEMBER_ABSOLUTE_SECONDS + 1 ) );
+	$assert( 'ACCOUNT_SESSION_EXPIRED' === $service->last_code() );
 	$missing = $service->create( new WP_User( 99 ), false, null, null, $now );
 	$assert( null === $service->resolve( $missing['token'], $now + 1 ) );
+	$assert( 'ACCOUNT_SESSION_USER_INVALID' === $service->last_code() );
 	$assert( null === $service->resolve( 'malformed', $now ) );
+	$assert( 'ACCOUNT_SESSION_HASH_MISMATCH' === $service->last_code() );
+
+	$failed_db = new FakeWpdb();
+	$failed_db->fail_session_insert = true;
+	$failed_service = new SessionService(
+		new SessionRepository( $failed_db ),
+		new SessionToken()
+	);
+	$assert( null === $failed_service->create( $user, false, null, null, $now ) );
+	$assert( 'ACCOUNT_SESSION_INSERT_FAILED' === $failed_service->last_code() );
 } );
 
 $test( 'rate limit aplica Retry-After, expira e pode ser limpo', static function () use ( $assert ): void {
@@ -433,6 +471,8 @@ $test( 'fontes não expõem customerId nem registram dados sensíveis', static f
 	$controller = file_get_contents( $root . '/src/Api/AuthController.php' );
 	$logger = file_get_contents( $root . '/src/Support/Logger.php' );
 	$schema = file_get_contents( $root . '/src/Activator.php' );
+	$repository = file_get_contents( $root . '/src/Auth/SessionRepository.php' );
+	$token = file_get_contents( $root . '/src/Auth/SessionToken.php' );
 	$assert( ! str_contains( $controller, "'customerId'" ) );
 	$assert( ! str_contains( $controller, "'code' =>" ) );
 	$assert( ! str_contains( $controller, "'code'    =>" ) );
@@ -441,6 +481,12 @@ $test( 'fontes não expõem customerId nem registram dados sensíveis', static f
 		$assert( ! str_contains( $logger, "'{$sensitive}'" ) );
 	}
 	$assert( str_contains( $schema, 'UNIQUE KEY token_hash' ) );
+	foreach ( array( 'persi_account_sessions', 'persi_account_nonces', 'persi_account_rate_limits' ) as $table ) {
+		$assert( str_contains( $schema, $table ) );
+	}
+	$assert( str_contains( $repository, "\$database->prefix . 'persi_account_sessions'" ) );
+	$assert( str_contains( $repository, 'WHERE token_hash = %s' ) );
+	$assert( str_contains( $token, "hash( 'sha256', \$token )" ) );
 	$assert( ! str_contains( $schema, 'password' ) );
 	$assert( ! str_contains( $schema, 'email' ) );
 } );
