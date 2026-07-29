@@ -15,7 +15,7 @@ export const GOOGLE_JWKS_ENDPOINT =
   "https://www.googleapis.com/oauth2/v3/certs";
 export const GOOGLE_OAUTH_CALLBACK_PATH = "/api/auth/google/callback";
 export const GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS = [
-  `https://yellowgreen-ram-345959.hostingersite.com${GOOGLE_OAUTH_CALLBACK_PATH}`,
+  `https://app.persimateriais.com.br${GOOGLE_OAUTH_CALLBACK_PATH}`,
   `https://persimateriais.com.br${GOOGLE_OAUTH_CALLBACK_PATH}`,
 ] as const;
 export const GOOGLE_OAUTH_COOKIE_MAX_AGE = 10 * 60;

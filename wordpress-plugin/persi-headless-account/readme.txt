@@ -45,7 +45,7 @@ define( 'PERSI_HEADLESS_ACCOUNT_HMAC_SECRET', 'substitua-por-um-segredo-aleatori
 define( 'PERSI_HEADLESS_ACCOUNT_HMAC_KEY_ID', 'primary' );
 define(
     'PERSI_HEADLESS_ACCOUNT_ALLOWED_ORIGINS',
-    'https://yellowgreen-ram-345959.hostingersite.com'
+    'https://app.persimateriais.com.br'
 );
 
 O segredo deve ser diferente do segredo do Persi Headless Checkout e nunca deve
@@ -90,7 +90,7 @@ POST
 /wp-json/persi-account/v1/login
 {timestamp}
 {nonce}
-https://yellowgreen-ram-345959.hostingersite.com
+https://app.persimateriais.com.br
 {body_sha256}
 
 A assinatura é HMAC-SHA256 hexadecimal minúscula e o header usa:

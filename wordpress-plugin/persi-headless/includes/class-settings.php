@@ -21,8 +21,8 @@ class Persi_Headless_Settings {
 	}
 
 	public static function frontend_url( $path = '' ) {
-		$urls = self::get( 'frontend_urls', array( 'https://persimateriais.com.br' ) );
-		$base = is_array( $urls ) && ! empty( $urls[0] ) ? $urls[0] : 'https://persimateriais.com.br';
+		$urls = self::get( 'frontend_urls', array( 'https://app.persimateriais.com.br' ) );
+		$base = is_array( $urls ) && ! empty( $urls[0] ) ? $urls[0] : 'https://app.persimateriais.com.br';
 		return untrailingslashit( esc_url_raw( $base ) ) . '/' . ltrim( $path, '/' );
 	}
 }

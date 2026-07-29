@@ -13,7 +13,7 @@ class Persi_Headless_Activator {
 		Persi_Headless_Stock_Repository::install();
 
 		$defaults = array(
-			'frontend_urls' => array( 'https://persimateriais.com.br' ),
+			'frontend_urls' => array( 'https://app.persimateriais.com.br' ),
 			'modules'       => array(
 				'product_families'   => true,
 				'bought_together'    => true,

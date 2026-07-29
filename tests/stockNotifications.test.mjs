@@ -14,12 +14,12 @@ const subscription = {
   website: "",
   privacyPolicyVersion: "2026-07",
   privacyPolicyUrl:
-    "https://yellowgreen-ram-345959.hostingersite.com/politica-de-privacidade-e-seguranca",
+    "https://app.persimateriais.com.br/politica-de-privacidade-e-seguranca",
 };
 const hmacConfig = {
   secret: "test-only-stock-secret",
   keyId: "primary",
-  origin: "https://yellowgreen-ram-345959.hostingersite.com",
+  origin: "https://app.persimateriais.com.br",
 };
 
 test("aviso de estoque usa endpoint oficial quando variável está ausente", () => {

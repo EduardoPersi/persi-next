@@ -5,7 +5,7 @@ import { AccountOrderValidationError, parseOrderId, parseOrdersQuery, parseOrder
 import { AccountServiceError } from "../services/account/client.ts";
 import { getAccountOrder, getAccountOrders } from "../services/account/orders.ts";
 
-const config = { endpoint: "https://persimateriais.com.br/wp-json/persi-account/v1", keyId: "primary", origin: "https://yellowgreen-ram-345959.hostingersite.com", secret: "test-only-account-secret" };
+const config = { endpoint: "https://persimateriais.com.br/wp-json/persi-account/v1", keyId: "primary", origin: "https://app.persimateriais.com.br", secret: "test-only-account-secret" };
 const token = "A".repeat(43);
 const money = { value: "156.90", currency: "BRL", formatted: "R$ 156,90" };
 const summary = { id: 1234, number: "1234", dateCreated: "2026-07-27T15:30:00-03:00", status: "processing", statusLabel: "Processando", total: money, itemCount: 3, paymentMethod: "pix", paymentMethodTitle: "Pix", shippingMethodTitle: "Melhor Envio", canOpen: true };

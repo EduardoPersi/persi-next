@@ -32,7 +32,7 @@ import {
 const config = {
   endpoint: "https://persimateriais.com.br/wp-json/persi-account/v1",
   keyId: "primary",
-  origin: "https://yellowgreen-ram-345959.hostingersite.com",
+  origin: "https://app.persimateriais.com.br",
   secret: "test-only-account-secret",
 };
 const token = "A".repeat(43);

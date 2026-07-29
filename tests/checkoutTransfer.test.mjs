@@ -22,7 +22,7 @@ const config = {
   endpoint:
     "https://persimateriais.com.br/wp-json/persi-headless/v1/checkout-transfer",
   keyId: "primary",
-  origin: "https://yellowgreen-ram-345959.hostingersite.com",
+  origin: "https://app.persimateriais.com.br",
   secret: "test-only-secret",
 };
 

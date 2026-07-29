@@ -140,7 +140,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   });
   const breadcrumbJsonLd = buildBreadcrumbListJsonLd(
     breadcrumbItems,
-    "https://persimateriais.com.br",
+    "https://app.persimateriais.com.br",
     `/produto/${product.slug}`,
   );
   const productNavigation = await getProductNavigation({

@@ -48,7 +48,7 @@ com HMAC SHA-256 usando configuração exclusiva:
 ```dotenv
 PERSI_HEADLESS_STOCK_HMAC_SECRET=
 PERSI_HEADLESS_STOCK_HMAC_KEY_ID=primary
-PERSI_HEADLESS_STOCK_ORIGIN=https://yellowgreen-ram-345959.hostingersite.com
+PERSI_HEADLESS_STOCK_ORIGIN=https://app.persimateriais.com.br
 ```
 
 Confirmação e remoção usam páginas headless, tokens de uso único, respostas

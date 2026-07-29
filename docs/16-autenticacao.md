@@ -23,7 +23,7 @@ Variáveis privadas obrigatórias:
 ```text
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-GOOGLE_OAUTH_REDIRECT_URI=https://yellowgreen-ram-345959.hostingersite.com/api/auth/google/callback
+GOOGLE_OAUTH_REDIRECT_URI=https://app.persimateriais.com.br/api/auth/google/callback
 ```
 
 Nenhuma delas deve usar `NEXT_PUBLIC_`.
@@ -31,7 +31,7 @@ Nenhuma delas deve usar `NEXT_PUBLIC_`.
 No cliente OAuth Web do Google Cloud, cadastrar exatamente:
 
 - homologação:
-  `https://yellowgreen-ram-345959.hostingersite.com/api/auth/google/callback`;
+  `https://app.persimateriais.com.br/api/auth/google/callback`;
 - produção futura:
   `https://persimateriais.com.br/api/auth/google/callback`.
 
@@ -41,7 +41,7 @@ Como o botão usa redirect server-side e não uma biblioteca JavaScript, origens
 JavaScript não são necessárias. Se uma configuração futura exigir origens,
 limitar a:
 
-- `https://yellowgreen-ram-345959.hostingersite.com`;
+- `https://app.persimateriais.com.br`;
 - `https://persimateriais.com.br`.
 
 São solicitados somente `openid`, `email` e `profile`, sem acesso offline. Tokens

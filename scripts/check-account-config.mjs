@@ -1,5 +1,5 @@
 const EXPECTED_ORIGIN =
-  "https://yellowgreen-ram-345959.hostingersite.com";
+  "https://app.persimateriais.com.br";
 const EXPECTED_ENDPOINT =
   "https://persimateriais.com.br/wp-json/persi-account/v1";
 

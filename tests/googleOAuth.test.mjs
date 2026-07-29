@@ -27,12 +27,12 @@ const config = {
   clientId: "google-client-id.apps.googleusercontent.com",
   clientSecret: "test-only-client-secret",
   redirectUri:
-    "https://yellowgreen-ram-345959.hostingersite.com/api/auth/google/callback",
+    "https://app.persimateriais.com.br/api/auth/google/callback",
 };
 const accountConfig = {
   endpoint: "https://persimateriais.com.br/wp-json/persi-account/v1",
   keyId: "primary",
-  origin: "https://yellowgreen-ram-345959.hostingersite.com",
+  origin: "https://app.persimateriais.com.br",
   secret: "test-only-account-secret",
 };
 const sessionToken = "S".repeat(43);
@@ -149,7 +149,7 @@ test("configuração aceita somente callbacks fixos e exige segredo privado", ()
     getGoogleOAuthErrorOrigin({
       GOOGLE_OAUTH_REDIRECT_URI: "https://evil.test/callback",
     }),
-    "https://yellowgreen-ram-345959.hostingersite.com",
+    "https://app.persimateriais.com.br",
   );
 });
 

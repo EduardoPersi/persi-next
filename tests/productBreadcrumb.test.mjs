@@ -215,7 +215,7 @@ test("BreadcrumbList JSON-LD possui a mesma ordem visual", () => {
   });
   const jsonLd = buildBreadcrumbListJsonLd(
     visual,
-    "https://persimateriais.com.br",
+    "https://app.persimateriais.com.br",
     "/produto/produto",
   );
   assert.deepEqual(
@@ -229,7 +229,7 @@ test("BreadcrumbList JSON-LD possui a mesma ordem visual", () => {
   );
   assert.equal(
     jsonLd.itemListElement.at(-1).item,
-    "https://persimateriais.com.br/produto/produto",
+    "https://app.persimateriais.com.br/produto/produto",
   );
 });
 
