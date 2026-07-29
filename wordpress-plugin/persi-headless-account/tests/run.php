@@ -374,8 +374,18 @@ $test( 'login aceita somente customer e subscriber', static function () use ( $a
 	$assert( $authenticator->authenticate( 'x', 'valid' ) instanceof WP_User );
 	$GLOBALS['auth_result'] = new WP_User( 2, array( 'administrator' ) );
 	$assert( null === $authenticator->authenticate( 'x', 'valid' ) );
+	$assert( 'ACCOUNT_LOGIN_ROLE_REJECTED' === $authenticator->error_code() );
 	$GLOBALS['auth_result'] = new WP_Error();
 	$assert( null === $authenticator->authenticate( 'missing', 'invalid' ) );
+	$assert( 'ACCOUNT_LOGIN_CREDENTIALS_REJECTED' === $authenticator->error_code() );
+} );
+
+$test( 'login encaminha e-mail, usuário e senha sem alteração ao wp_authenticate', static function () use ( $assert ): void {
+	$authenticator = new CredentialsAuthenticator();
+	foreach ( array( 'cliente@example.test', 'cliente' ) as $identifier ) {
+		$GLOBALS['auth_result'] = new WP_User( 3, array( 'customer' ) );
+		$assert( $authenticator->authenticate( $identifier, ' senha exata ' ) instanceof WP_User );
+	}
 } );
 
 $test( 'sessão renova inatividade, expira, revoga e não armazena token bruto', static function () use ( $assert ): void {
@@ -424,7 +434,12 @@ $test( 'fontes não expõem customerId nem registram dados sensíveis', static f
 	$logger = file_get_contents( $root . '/src/Support/Logger.php' );
 	$schema = file_get_contents( $root . '/src/Activator.php' );
 	$assert( ! str_contains( $controller, "'customerId'" ) );
+	$assert( ! str_contains( $controller, "'code' =>" ) );
+	$assert( ! str_contains( $controller, "'code'    =>" ) );
 	$assert( ! str_contains( $logger, 'password' ) );
+	foreach ( array( 'email', 'token', 'cookie', 'secret', 'signature', 'nonce', 'payload' ) as $sensitive ) {
+		$assert( ! str_contains( $logger, "'{$sensitive}'" ) );
+	}
 	$assert( str_contains( $schema, 'UNIQUE KEY token_hash' ) );
 	$assert( ! str_contains( $schema, 'password' ) );
 	$assert( ! str_contains( $schema, 'email' ) );
@@ -453,6 +468,9 @@ $test( 'cadastro e recuperação usam APIs nativas e resposta sem enumeração',
 	$controller = file_get_contents( $root . '/src/Api/AccountAccessController.php' );
 	$validator = file_get_contents( $root . '/src/Validation/AccountAccessPayloadValidator.php' );
 	$assert( str_contains( $controller, 'wp_insert_user' ) );
+	$assert( str_contains( $controller, "'user_pass' => \$input['password']" ) );
+	$assert( str_contains( $controller, "'user_email' => \$input['email']" ) );
+	$assert( str_contains( $controller, "'user_login' => \$username" ) );
 	$assert( str_contains( $controller, "'role' => 'customer'" ) );
 	$assert( str_contains( $controller, 'retrieve_password' ) );
 	$assert( str_contains( $controller, 'check_password_reset_key' ) );

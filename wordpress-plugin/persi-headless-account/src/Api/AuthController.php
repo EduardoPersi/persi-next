@@ -115,7 +115,12 @@ final class AuthController {
 					$this->rate_limiter->record_failure( $bucket )
 				);
 			}
-			$this->logger->write( 'warning', 'login_rejected', 'credentials', $auth->key_id );
+			$this->logger->write(
+				'warning',
+				'login_rejected',
+				$this->credentials->error_code(),
+				$auth->key_id
+			);
 			return Response::json(
 				array( 'message' => 'Não foi possível entrar com os dados informados.' ),
 				$retry_after > 0 ? 429 : 401,
@@ -131,8 +136,16 @@ final class AuthController {
 			$this->fingerprint->user_agent_hash( $_SERVER )
 		);
 		if ( null === $session ) {
-			$this->logger->write( 'error', 'session_storage_failed', 'storage', $auth->key_id );
-			return Response::json( array( 'message' => 'Serviço indisponível.' ), 503 );
+			$this->logger->write(
+				'error',
+				'session_storage_failed',
+				'ACCOUNT_LOGIN_SESSION_CREATE_FAILED',
+				$auth->key_id
+			);
+			return Response::json(
+				array( 'message' => 'Serviço indisponível.' ),
+				503
+			);
 		}
 
 		$this->logger->write( 'info', 'session_created', 'success', $auth->key_id );
@@ -211,7 +224,9 @@ final class AuthController {
 			$this->logger->write(
 				'warning',
 				'replay' === $code ? 'nonce_replay_rejected' : 'hmac_rejected',
-				$code
+				'replay' === $code
+					? 'ACCOUNT_LOGIN_REPLAY_REJECTED'
+					: 'ACCOUNT_LOGIN_HMAC_REJECTED'
 			);
 			return Response::json( array( 'message' => 'Requisição não autorizada.' ), $status );
 		}

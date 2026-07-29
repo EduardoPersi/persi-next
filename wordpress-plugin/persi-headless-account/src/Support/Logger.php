@@ -35,7 +35,7 @@ final class Logger {
 			$event,
 			array(
 				'source' => 'persi-headless-account',
-				'code'   => preg_replace( '/[^a-z0-9_-]/', '', strtolower( $code ) ),
+				'code'   => preg_replace( '/[^A-Z0-9_-]/', '', strtoupper( $code ) ),
 				'key_id' => preg_replace( '/[^A-Za-z0-9._-]/', '', $key_id ),
 			)
 		);

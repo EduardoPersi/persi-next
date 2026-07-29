@@ -169,6 +169,56 @@ test("login aceita sucesso, preserva token apenas na camada interna e mapeia fal
   );
 });
 
+test("login aceita e-mail e nome de usuário no mesmo contrato", async () => {
+  for (const identifier of ["ana@example.test", "ana"]) {
+    let sentBody;
+    await loginAccount(
+      { identifier, password: "senha-correta", remember: false },
+      {
+        config,
+        fetchImplementation: async (_url, init) => {
+          sentBody = JSON.parse(String(init.body));
+          return Response.json({
+            authenticated: true,
+            sessionToken: token,
+            expiresAt: "2030-01-01T00:00:00+00:00",
+            customer: profile,
+          });
+        },
+      },
+    );
+    assert.deepEqual(sentBody, {
+      identifier,
+      password: "senha-correta",
+      remember: false,
+    });
+  }
+});
+
+test("login preserva diagnóstico seguro do WordPress", async () => {
+  await assert.rejects(
+    loginAccount(
+      { identifier: "ana", password: "incorreta", remember: false },
+      {
+        config,
+        fetchImplementation: async () =>
+          Response.json(
+            {
+              message: "Resposta genérica",
+              code: "ACCOUNT_LOGIN_CREDENTIALS_REJECTED",
+            },
+            { status: 401 },
+          ),
+      },
+    ),
+    (error) =>
+      error instanceof AccountServiceError &&
+      error.status === 401 &&
+      error.code === "ACCOUNT_LOGIN_CREDENTIALS_REJECTED" &&
+      !error.message.includes("incorreta"),
+  );
+});
+
 test("sessão cobre válida e inválida sem devolver token", async () => {
   const valid = await getAccountSession(token, {
     config,
@@ -241,6 +291,7 @@ test("rotas públicas não expõem token e sempre removem cookie no logout", asy
     "utf8",
   );
   assert.equal(loginRoute.includes("sessionToken: result.sessionToken"), false);
+  assert.equal(loginRoute.includes("code }, status"), false);
   assert.equal(sessionRoute.includes("X-Persi-Session"), false);
   assert.match(logoutRoute, /getExpiredAccountSessionCookieOptions/);
   assert.match(logoutRoute, /catch \{/);
@@ -259,6 +310,7 @@ test("interface possui formulário acessível, loading e proteção server-side"
   assert.match(form, /autoComplete="current-password"/);
   assert.match(form, /Entrando\.\.\./);
   assert.match(form, /role="alert"/);
+  assert.match(form, /router\.push\(callbackPath === "\/minha-conta"/);
   assert.match(privatePage, /getServerAccountSession/);
   assert.match(privatePage, /redirect\("\/entrar"\)/);
 });

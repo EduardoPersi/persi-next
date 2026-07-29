@@ -64,6 +64,13 @@ export async function POST(request: Request) {
     );
     return nextResponse;
   } catch (error) {
+    const code =
+      error instanceof AccountValidationError
+        ? "ACCOUNT_LOGIN_PAYLOAD_INVALID"
+        : error instanceof AccountServiceError
+          ? error.code
+          : "ACCOUNT_LOGIN_RESPONSE_INVALID";
+    console.error(code);
     const status =
       error instanceof AccountValidationError
         ? 400

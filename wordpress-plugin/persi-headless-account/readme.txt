@@ -3,12 +3,12 @@ Contributors: persi
 Requires at least: 6.4
 Requires PHP: 8.1
 WC requires at least: 8.2
-Stable tag: 0.3.0
+Stable tag: 0.3.1
 License: Proprietary
 
 Núcleo de autenticação e sessões opacas para a futura Área da Conta headless.
 
-== Escopo da versão 0.3.0 ==
+== Escopo da versão 0.3.1 ==
 
 Esta fase fornece exclusivamente:
 
@@ -41,7 +41,7 @@ Pedidos de convidado e pedidos pertencentes a outro usuário não são retornado
 Configure no wp-config.php ou como variáveis de ambiente do servidor:
 
 define( 'PERSI_HEADLESS_ACCOUNT_HMAC_SECRET', 'substitua-por-um-segredo-aleatorio-forte' );
-define( 'PERSI_HEADLESS_ACCOUNT_HMAC_KEY_ID', 'next-primary' );
+define( 'PERSI_HEADLESS_ACCOUNT_HMAC_KEY_ID', 'primary' );
 define(
     'PERSI_HEADLESS_ACCOUNT_ALLOWED_ORIGINS',
     'https://yellowgreen-ram-345959.hostingersite.com'

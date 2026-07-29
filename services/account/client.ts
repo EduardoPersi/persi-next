@@ -12,11 +12,17 @@ export interface AccountClientConfig extends AccountHmacConfig {
 
 export class AccountServiceError extends Error {
   readonly status: number;
+  readonly code: string;
 
-  constructor(status: number, message: string) {
+  constructor(
+    status: number,
+    message: string,
+    code = "ACCOUNT_SERVICE_ERROR",
+  ) {
     super(message);
     this.name = "AccountServiceError";
     this.status = status;
+    this.code = code;
   }
 }
 
