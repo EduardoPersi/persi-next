@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import {
   INSTAGRAM_REVALIDATE_SECONDS,
-} from "@/services/instagram/client";
-import {
   getInstagramImageSource,
   getInstagramMedia,
-} from "@/services/instagram/media";
+} from "@/lib/social/instagram";
 
 interface InstagramMediaRouteProps {
   params: Promise<{ id: string }>;

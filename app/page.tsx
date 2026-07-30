@@ -3,14 +3,14 @@ import { BrandCarousel } from "@/components/Brand/BrandCarousel";
 import { HomeCategoryCarousel } from "@/components/Category/HomeCategoryCarousel";
 import { Header } from "@/components/Header/Header";
 import { HeroBanner } from "@/components/HeroBanner/HeroBanner";
-import { InstagramFeed } from "@/components/Instagram/InstagramFeed";
+import { InstagramFeed } from "@/components/home/InstagramFeed";
+import { InstagramSkeleton } from "@/components/home/InstagramSkeleton";
 import { ProductGrid } from "@/components/Product/ProductGrid";
 import { ProductGridSkeleton } from "@/components/Product/ProductGridSkeleton";
 import { RecentlyViewedProducts } from "@/components/Product/RecentlyViewedProducts";
 import { Container } from "@/components/UI/Container";
 import { getAllProductBrands } from "@/services/woocommerce/brands";
 import { getAllProductCategories } from "@/services/woocommerce/categories";
-import { getInstagramMedia } from "@/services/instagram/media";
 
 const HIDDEN_CATEGORY_SLUGS = new Set([
   "sem-categoria",
@@ -18,10 +18,9 @@ const HIDDEN_CATEGORY_SLUGS = new Set([
 ]);
 
 export default async function Home() {
-  const [allCategories, allBrands, instagramMedia] = await Promise.all([
+  const [allCategories, allBrands] = await Promise.all([
     getAllProductCategories().catch(() => []),
     getAllProductBrands().catch(() => []),
-    getInstagramMedia(),
   ]);
   const mainCategories = allCategories
     .filter(
@@ -52,16 +51,6 @@ export default async function Home() {
           }
         : undefined,
     }));
-  const instagramPosts = instagramMedia.map(
-    ({ id, caption, mediaType, permalink, timestamp }) => ({
-      id,
-      caption,
-      mediaType,
-      permalink,
-      timestamp,
-    }),
-  );
-
   return (
     <>
       <Header />
@@ -109,7 +98,9 @@ export default async function Home() {
             brands={brands}
             pathname="/busca"
           />
-          <InstagramFeed posts={instagramPosts} />
+          <Suspense fallback={<InstagramSkeleton />}>
+            <InstagramFeed />
+          </Suspense>
           <RecentlyViewedProducts />
         </Container>
       </section>
