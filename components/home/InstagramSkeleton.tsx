@@ -3,11 +3,11 @@ export function InstagramSkeleton() {
     <section className="mt-12" aria-label="Carregando publicações do Instagram">
       <div className="h-7 w-64 animate-pulse rounded bg-slate-200" />
       <div className="mt-3 h-5 w-full max-w-md animate-pulse rounded bg-slate-100" />
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        {Array.from({ length: 6 }, (_, index) => (
+      <div className="mt-6 flex gap-3 overflow-hidden sm:gap-4">
+        {Array.from({ length: 4 }, (_, index) => (
           <div
             key={index}
-            className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+            className="w-[83%] shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white min-[480px]:w-[calc(50%-0.375rem)] md:w-[calc(33.333%-0.667rem)]"
             aria-hidden="true"
           >
             <div className="aspect-square animate-pulse bg-slate-200" />

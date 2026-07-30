@@ -1,9 +1,9 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import {
-  getGoogleOAuthConfig,
-  getGoogleOAuthErrorOrigin,
-} from "@/lib/account/oauth/google";
+  getFacebookOAuthConfig,
+  getFacebookOAuthErrorOrigin,
+} from "@/lib/account/oauth/facebook";
 import {
   clearOAuthTransactionCookies,
   getOAuthCookieNames,
@@ -12,80 +12,73 @@ import { getOAuthProvider } from "@/lib/account/oauth/provider";
 import { createOAuthRedirect } from "@/lib/account/oauth/redirect";
 import {
   ACCOUNT_SESSION_COOKIE,
-  getExpiredAccountSessionCookieOptions,
   getAccountSessionCookieOptions,
+  getExpiredAccountSessionCookieOptions,
   replaceOAuthAccountSession,
 } from "@/lib/account/oauth/session";
 import { validateOAuthCallbackInput } from "@/lib/account/oauth/state";
-import { writeGoogleDiagnostic } from "@/lib/account/googleDiagnostics";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const runtime = "nodejs";
 
-const GOOGLE_ERROR_PATH = "/entrar?erro=google";
-
 function clearTemporaryCookies(response: NextResponse) {
   clearOAuthTransactionCookies(
     response,
-    "google",
+    "facebook",
     process.env.NODE_ENV === "production",
   );
 }
 
-function redirectResponse(origin: string, path: string): NextResponse {
-  return createOAuthRedirect(origin, path);
-}
-
 export async function GET(request: Request) {
-  let origin = getGoogleOAuthErrorOrigin();
+  let origin = getFacebookOAuthErrorOrigin();
   let previousSessionToken = "";
   try {
-    const config = getGoogleOAuthConfig();
+    const config = getFacebookOAuthConfig();
     origin = new URL(config.redirectUri).origin;
     const url = new URL(request.url);
-    const code = url.searchParams.get("code") ?? "";
-    const state = url.searchParams.get("state") ?? "";
+    if (url.searchParams.get("error") === "access_denied") {
+      const response = createOAuthRedirect(
+        origin,
+        "/entrar?erro=facebook_cancelado",
+      );
+      clearTemporaryCookies(response);
+      return response;
+    }
+
     const cookieStore = await cookies();
-    const oauthCookieNames = getOAuthCookieNames("google");
+    const names = getOAuthCookieNames("facebook");
     previousSessionToken =
       cookieStore.get(ACCOUNT_SESSION_COOKIE)?.value ?? "";
-    const expectedState =
-      cookieStore.get(oauthCookieNames.state)?.value ?? "";
-    const nonce = cookieStore.get(oauthCookieNames.nonce)?.value ?? "";
-    const codeVerifier =
-      cookieStore.get(oauthCookieNames.verifier)?.value ?? "";
+    const code = url.searchParams.get("code") ?? "";
+    const state = url.searchParams.get("state") ?? "";
+    const nonce = cookieStore.get(names.nonce)?.value ?? "";
+    const codeVerifier = cookieStore.get(names.verifier)?.value ?? "";
     validateOAuthCallbackInput({
       code,
       codeVerifier,
-      expectedState,
+      expectedState: cookieStore.get(names.state)?.value ?? "",
       nonce,
       state,
     });
 
-    const provider = getOAuthProvider("google");
-    const idToken = await provider.exchangeCode({
+    const provider = getOAuthProvider("facebook");
+    const token = await provider.exchangeCode({
       code,
       codeVerifier,
       config,
     });
-    const providerUser = await provider.getUser(idToken, {
-      config,
-      nonce,
-    });
+    const providerUser = await provider.getUser(token, { config, nonce });
     const identity = provider.normalizeUser(providerUser);
-    writeGoogleDiagnostic("GOOGLE_EMAIL_RECEIVED");
-
     const accountSession = await replaceOAuthAccountSession(
       identity,
       previousSessionToken,
     );
-    writeGoogleDiagnostic("GOOGLE_SESSION_CREATED");
     if (accountSession.sessionToken === previousSessionToken) {
-      writeGoogleDiagnostic("GOOGLE_SESSION_REUSED");
-      throw new Error("Google account session token was reused");
+      throw new Error("OAuth account session token was reused");
     }
-    const response = redirectResponse(origin, "/minha-conta");
+
+    const response = createOAuthRedirect(origin, "/minha-conta");
     clearTemporaryCookies(response);
     response.cookies.set(
       ACCOUNT_SESSION_COOKIE,
@@ -96,10 +89,9 @@ export async function GET(request: Request) {
         expiresAt: accountSession.expiresAt,
       }),
     );
-    writeGoogleDiagnostic("GOOGLE_SESSION_COOKIE_UPDATED");
     return response;
   } catch {
-    const response = redirectResponse(origin, GOOGLE_ERROR_PATH);
+    const response = createOAuthRedirect(origin, "/entrar?erro=facebook");
     clearTemporaryCookies(response);
     if (/^[A-Za-z0-9_-]{43}$/.test(previousSessionToken)) {
       response.cookies.set(

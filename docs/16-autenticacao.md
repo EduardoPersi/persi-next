@@ -8,7 +8,25 @@ Oferecer login simples e seguro.
 
 - E-mail e senha
 - Google
-- Facebook (futuro)
+- Facebook
+
+## OAuth social
+
+Google e Facebook usam a infraestrutura comum em `lib/account/oauth`. Depois
+da validação server-side do provedor, o Next.js envia somente a identidade
+normalizada e assinada por HMAC para:
+
+`POST /wp-json/persi-headless-account/v1/oauth-login`
+
+O plugin aceita inicialmente apenas `google` e `facebook`, vincula identidades
+distintas ao mesmo usuário WooCommerce pelo e-mail verificado e mantém a
+unicidade por `provider + providerId`. O endpoint legado
+`/wp-json/persi-account/v1/google-login` continua disponível como adaptador de
+compatibilidade e usa o mesmo serviço interno.
+
+A sessão permanece opaca e utiliza o cookie
+`__Host-persi_account_session`. Tokens dos provedores não são enviados ao
+WordPress nem ao navegador.
 
 ## Login com Google
 

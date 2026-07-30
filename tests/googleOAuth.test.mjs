@@ -311,17 +311,13 @@ test("rotas consomem cookies, não expõem tokens e usam erro público seguro", 
     new URL("../app/(institutional)/entrar/page.tsx", import.meta.url),
     "utf8",
   );
-  for (const constantName of [
-    "GOOGLE_OAUTH_STATE_COOKIE",
-    "GOOGLE_OAUTH_NONCE_COOKIE",
-    "GOOGLE_OAUTH_VERIFIER_COOKIE",
-  ]) {
-    assert.match(startRoute, new RegExp(constantName));
-    assert.match(callbackRoute, new RegExp(constantName));
-  }
-  assert.match(callbackRoute, /maxAge: 0/);
+  assert.match(startRoute, /setOAuthTransactionCookies/);
+  assert.match(callbackRoute, /getOAuthCookieNames\("google"\)/);
+  assert.match(callbackRoute, /clearOAuthTransactionCookies/);
   assert.match(callbackRoute, /ACCOUNT_SESSION_COOKIE/);
-  assert.match(callbackRoute, /logoutAccount\(previousSessionToken\)/);
+  assert.match(callbackRoute, /replaceOAuthAccountSession/);
+  assert.match(startRoute, /getOAuthProvider\("google"\)/);
+  assert.match(callbackRoute, /getOAuthProvider\("google"\)/);
   assert.match(callbackRoute, /GOOGLE_SESSION_COOKIE_UPDATED/);
   assert.match(callbackRoute, /GOOGLE_SESSION_REUSED/);
   assert.equal(callbackRoute.includes("access_token"), false);
@@ -372,5 +368,6 @@ test("start registra somente códigos e mantém redirect de erro explícito", as
   assert.match(startRoute, /GOOGLE_START_STATE_FAILED/);
   assert.match(startRoute, /GOOGLE_START_PKCE_FAILED/);
   assert.match(startRoute, /GOOGLE_START_URL_CREATED/);
-  assert.match(startRoute, /new URL\("\/entrar\?erro=google"/);
+  assert.match(startRoute, /createOAuthRedirect/);
+  assert.match(startRoute, /"\/entrar\?erro=google"/);
 });

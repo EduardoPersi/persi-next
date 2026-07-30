@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Button } from "@/components/UI/Button";
 
 type SocialLoginButtonsProps = {
   descriptionId: string;
@@ -65,9 +64,9 @@ export function SocialLoginButtons({
       </div>
 
       <div className={`grid gap-3 ${stacked ? "" : "sm:grid-cols-2"}`}>
-        <Button
-          className="relative w-full bg-[#4267a9] px-3 text-sm uppercase hover:bg-[#365899] disabled:opacity-70"
-          disabled
+        <Link
+          href="/api/auth/facebook/start"
+          className="relative inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#4267a9] px-3 text-sm font-medium uppercase !text-white !no-underline transition-colors hover:bg-[#365899] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           aria-describedby={descriptionId}
         >
           <span
@@ -76,8 +75,8 @@ export function SocialLoginButtons({
           >
             <FacebookIcon />
           </span>
-          Facebook <span className="sr-only">— Em breve</span>
-        </Button>
+          Facebook
+        </Link>
 
         <Link
           href="/api/auth/google/start"

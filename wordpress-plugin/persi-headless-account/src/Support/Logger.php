@@ -23,6 +23,14 @@ final class Logger {
 		'google_email_received',
 		'google_user_found',
 		'google_user_created',
+		'oauth_hmac_rejected',
+		'oauth_payload_rejected',
+		'oauth_identity_received',
+		'oauth_identity_rejected',
+		'oauth_user_found',
+		'oauth_user_created',
+		'oauth_session_failed',
+		'oauth_session_created',
 	);
 
 	public function write(

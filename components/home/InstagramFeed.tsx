@@ -1,6 +1,6 @@
 import { getInstagramMedia } from "@/lib/social/instagram";
 import type { InstagramFeedItem } from "@/types/instagram";
-import { InstagramCard } from "./InstagramCard";
+import { InstagramCarousel } from "./InstagramCarousel";
 import { InstagramIcon } from "./InstagramIcon";
 
 const INSTAGRAM_PROFILE_URL =
@@ -47,11 +47,7 @@ export async function InstagramFeed() {
         </a>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        {posts.map((post) => (
-          <InstagramCard key={post.id} post={post} />
-        ))}
-      </div>
+      <InstagramCarousel posts={posts} />
     </section>
   );
 }

@@ -22,7 +22,15 @@ export default async function LoginPage({
 }) {
   const session = await getServerAccountSession();
   if (session) redirect("/minha-conta");
-  const hasGoogleError = (await searchParams).erro === "google";
+  const error = (await searchParams).erro;
+  const errorMessage =
+    error === "google"
+      ? "Não foi possível entrar com o Google. Tente novamente."
+      : error === "facebook_cancelado"
+        ? "Login pelo Facebook cancelado."
+        : error === "facebook"
+          ? "Não foi possível entrar com o Facebook. Tente novamente."
+          : "";
 
   return (
     <InstitutionalPageLayout
@@ -34,20 +42,20 @@ export default async function LoginPage({
           Use o e-mail ou usuário cadastrado no site da Persi.
         </p>
         <AccountProvider initialSession={{ authenticated: false }}>
-          {hasGoogleError ? (
+          {errorMessage ? (
             <p
-              id="google-login-error"
+              id="social-login-error"
               role="alert"
               className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-800"
             >
-              Não foi possível entrar com o Google. Tente novamente.
+              {errorMessage}
             </p>
           ) : null}
           <AccountLoginForm />
           <div className="mt-6">
             <SocialLoginButtons descriptionId="social-login-status" />
             <p id="social-login-status" className="mt-2 text-center text-xs text-slate-500">
-              O login com Facebook estará disponível em breve.
+              Use Google ou Facebook para entrar com segurança.
             </p>
           </div>
         </AccountProvider>

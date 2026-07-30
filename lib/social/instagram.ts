@@ -7,7 +7,7 @@ import {
   normalizeInstagramResponse,
 } from "./instagramCore";
 
-const INSTAGRAM_GRAPH_API_URL = "https://graph.facebook.com/v23.0";
+const INSTAGRAM_GRAPH_API_URL = "https://graph.instagram.com/v23.0";
 export const INSTAGRAM_REVALIDATE_SECONDS = 60 * 60;
 const INSTAGRAM_REQUEST_TIMEOUT_MS = 10_000;
 const INSTAGRAM_FIELDS = [

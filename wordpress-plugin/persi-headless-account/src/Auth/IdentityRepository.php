@@ -11,23 +11,25 @@ final class IdentityRepository {
 		$this->table = $database->prefix . 'persi_account_identities';
 	}
 
-	public function find_google( string $subject_hash ): ?array {
+	public function find( string $provider, string $provider_id_hash ): ?array {
 		$row = $this->database->get_row(
 			$this->database->prepare(
 				"SELECT id, user_id, provider, provider_subject_hash, email_hash
 				FROM {$this->table}
-				WHERE provider = 'google' AND provider_subject_hash = %s
+				WHERE provider = %s AND provider_subject_hash = %s
 				LIMIT 1",
-				$subject_hash
+				$provider,
+				$provider_id_hash
 			),
 			ARRAY_A
 		);
 		return is_array( $row ) ? $row : null;
 	}
 
-	public function create_google(
+	public function create(
 		int $user_id,
-		string $subject_hash,
+		string $provider,
+		string $provider_id_hash,
 		string $email_hash,
 		string $now
 	): bool {
@@ -35,8 +37,8 @@ final class IdentityRepository {
 			$this->table,
 			array(
 				'user_id'               => $user_id,
-				'provider'              => 'google',
-				'provider_subject_hash' => $subject_hash,
+				'provider'              => $provider,
+				'provider_subject_hash' => $provider_id_hash,
 				'email_hash'            => $email_hash,
 				'created_at'            => $now,
 				'updated_at'            => $now,
@@ -61,7 +63,7 @@ final class IdentityRepository {
 
 	public function acquire_locks( array $hashes ): bool {
 		foreach ( array_unique( $hashes ) as $hash ) {
-			$name = 'persi_google_' . substr( $hash, 0, 48 );
+			$name = 'persi_oauth_' . substr( $hash, 0, 48 );
 			if (
 				1 !== (int) $this->database->get_var(
 					$this->database->prepare( 'SELECT GET_LOCK(%s, 5)', $name )
@@ -76,7 +78,7 @@ final class IdentityRepository {
 
 	public function release_locks( array $hashes ): void {
 		foreach ( array_unique( $hashes ) as $hash ) {
-			$name = 'persi_google_' . substr( $hash, 0, 48 );
+			$name = 'persi_oauth_' . substr( $hash, 0, 48 );
 			$this->database->get_var(
 				$this->database->prepare( 'SELECT RELEASE_LOCK(%s)', $name )
 			);

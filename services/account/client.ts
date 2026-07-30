@@ -5,6 +5,8 @@ import {
 } from "../../lib/account/hmac.ts";
 
 export const ACCOUNT_REST_BASE_PATH = "/wp-json/persi-account/v1";
+export const OAUTH_REST_BASE_PATH =
+  "/wp-json/persi-headless-account/v1";
 
 export interface AccountClientConfig extends AccountHmacConfig {
   endpoint: string;
@@ -116,13 +118,15 @@ export function getAccountClientConfig(
 export async function requestAccountEndpoint(input: {
   config: AccountClientConfig;
   method: AccountHttpMethod;
-  route: "/login" | "/google-login" | "/session" | "/logout" | "/register" | "/forgot-password" | "/reset-password" | "/orders" | `/orders/${number}`;
+  route: "/login" | "/google-login" | "/oauth-login" | "/session" | "/logout" | "/register" | "/forgot-password" | "/reset-password" | "/orders" | `/orders/${number}`;
+  basePath?: typeof ACCOUNT_REST_BASE_PATH | typeof OAUTH_REST_BASE_PATH;
   query?: string;
   rawBody: string;
   sessionToken?: string;
   fetchImplementation?: typeof fetch;
 }): Promise<{ status: number; body: unknown; retryAfter?: string }> {
-  const path = `${ACCOUNT_REST_BASE_PATH}${input.route}`;
+  const basePath = input.basePath ?? ACCOUNT_REST_BASE_PATH;
+  const path = `${basePath}${input.route}`;
   const signed = signAccountRequest(
     { method: input.method, path, rawBody: input.rawBody },
     input.config,
@@ -134,7 +138,7 @@ export async function requestAccountEndpoint(input: {
   let response: Response;
   try {
     response = await (input.fetchImplementation ?? fetch)(
-      `${input.config.endpoint}${input.route}${input.query ? `?${input.query}` : ""}`,
+      `${new URL(input.config.endpoint).origin}${path}${input.query ? `?${input.query}` : ""}`,
       {
         method: input.method,
         headers,

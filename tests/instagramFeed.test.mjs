@@ -94,13 +94,21 @@ test("segredos permanecem exclusivos do serviço servidor", async () => {
   assert.equal(route.includes("access_token"), false);
 });
 
-test("Home carrega feed em Suspense sem bloquear as demais fontes", async () => {
-  const home = await readFile(
-    new URL("../app/page.tsx", import.meta.url),
-    "utf8",
+test("Home carrega feed em Suspense e posts usam carrossel", async () => {
+  const [home, feed, carousel] = await Promise.all(
+    [
+      "../app/page.tsx",
+      "../components/home/InstagramFeed.tsx",
+      "../components/home/InstagramCarousel.tsx",
+    ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
   );
 
   assert.match(home, /<Suspense fallback={<InstagramSkeleton \/>}>/);
   assert.match(home, /<InstagramFeed \/>/);
   assert.equal(home.includes("getInstagramMedia()"), false);
+  assert.match(feed, /<InstagramCarousel posts={posts} \/>/);
+  assert.match(carousel, /<Swiper/);
+  assert.match(carousel, /slidesPerView={1\.2}/);
+  assert.match(carousel, /loop={posts\.length > 3}/);
+  assert.match(carousel, /1024: { slidesPerView: 3/);
 });

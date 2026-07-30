@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import {
-  buildGoogleAuthorizationUrl,
-  createGooglePkce,
-  generateGoogleOAuthValue,
   getGoogleOAuthConfig,
-  getGoogleOAuthCookieOptions,
   getGoogleOAuthErrorOrigin,
-  GOOGLE_OAUTH_NONCE_COOKIE,
-  GOOGLE_OAUTH_STATE_COOKIE,
-  GOOGLE_OAUTH_VERIFIER_COOKIE,
-} from "@/lib/account/googleOAuth";
+} from "@/lib/account/oauth/google";
+import { setOAuthTransactionCookies } from "@/lib/account/oauth/cookies";
+import { getOAuthProvider } from "@/lib/account/oauth/provider";
+import { createOAuthRedirect } from "@/lib/account/oauth/redirect";
+import {
+  createOAuthPkce,
+  generateOAuthValue,
+} from "@/lib/account/oauth/state";
 import {
   getGoogleStartConfigurationCodes,
   writeGoogleStartDiagnostic,
@@ -21,9 +21,9 @@ export const revalidate = 0;
 export const runtime = "nodejs";
 
 function redirectToGoogleError(): NextResponse {
-  return NextResponse.redirect(
-    new URL("/entrar?erro=google", getGoogleOAuthErrorOrigin()),
-    { headers: getPrivateAccountHeaders() },
+  return createOAuthRedirect(
+    getGoogleOAuthErrorOrigin(),
+    "/entrar?erro=google",
   );
 }
 
@@ -45,8 +45,8 @@ export async function GET() {
   let state: string;
   let nonce: string;
   try {
-    state = generateGoogleOAuthValue();
-    nonce = generateGoogleOAuthValue();
+    state = generateOAuthValue();
+    nonce = generateOAuthValue();
   } catch {
     writeGoogleStartDiagnostic("GOOGLE_START_STATE_FAILED");
     return redirectToGoogleError();
@@ -55,7 +55,7 @@ export async function GET() {
   let codeChallenge: string;
   let codeVerifier: string;
   try {
-    ({ codeChallenge, codeVerifier } = createGooglePkce());
+    ({ codeChallenge, codeVerifier } = createOAuthPkce());
   } catch {
     writeGoogleStartDiagnostic("GOOGLE_START_PKCE_FAILED");
     return redirectToGoogleError();
@@ -63,8 +63,9 @@ export async function GET() {
 
   let response: NextResponse;
   try {
+    const provider = getOAuthProvider("google");
     response = NextResponse.redirect(
-      buildGoogleAuthorizationUrl({
+      provider.buildAuthorizationUrl({
         codeChallenge,
         config,
         nonce,
@@ -78,12 +79,12 @@ export async function GET() {
   }
 
   try {
-    const options = getGoogleOAuthCookieOptions(
+    setOAuthTransactionCookies(
+      response,
+      "google",
+      { codeVerifier, nonce, state },
       process.env.NODE_ENV === "production",
     );
-    response.cookies.set(GOOGLE_OAUTH_STATE_COOKIE, state, options);
-    response.cookies.set(GOOGLE_OAUTH_NONCE_COOKIE, nonce, options);
-    response.cookies.set(GOOGLE_OAUTH_VERIFIER_COOKIE, codeVerifier, options);
   } catch {
     writeGoogleStartDiagnostic("GOOGLE_START_COOKIE_FAILED");
     return redirectToGoogleError();

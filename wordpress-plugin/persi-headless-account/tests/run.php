@@ -212,8 +212,8 @@ final class FakeWpdb {
 		if ( str_contains( $query, 'persi_account_identities' ) ) {
 			foreach ( $this->identities as $identity ) {
 				if (
-					'google' === $identity['provider'] &&
-					$identity['provider_subject_hash'] === $args[0]
+					$args[0] === $identity['provider'] &&
+					$identity['provider_subject_hash'] === $args[1]
 				) {
 					return $identity;
 				}
@@ -290,11 +290,13 @@ $load( 'Auth/SessionRepository.php' );
 $load( 'Auth/CredentialsAuthenticator.php' );
 $load( 'Auth/SessionService.php' );
 $load( 'Auth/IdentityRepository.php' );
+$load( 'Auth/OAuthIdentityService.php' );
 $load( 'Auth/GoogleIdentityService.php' );
 $load( 'Validation/ValidationException.php' );
 $load( 'Validation/LoginPayloadValidator.php' );
 $load( 'Validation/AccountAccessPayloadValidator.php' );
 $load( 'Validation/GoogleLoginPayloadValidator.php' );
+$load( 'Validation/OAuthLoginPayloadValidator.php' );
 $load( 'Orders/OrderPresenter.php' );
 $load( 'Orders/OrderService.php' );
 
@@ -304,6 +306,7 @@ use Persi\HeadlessAccount\Auth\SessionService;
 use Persi\HeadlessAccount\Auth\SessionToken;
 use Persi\HeadlessAccount\Auth\IdentityRepository;
 use Persi\HeadlessAccount\Auth\GoogleIdentityService;
+use Persi\HeadlessAccount\Auth\OAuthIdentityService;
 use Persi\HeadlessAccount\Security\AuthenticationException;
 use Persi\HeadlessAccount\Security\NonceRepository;
 use Persi\HeadlessAccount\Security\RateLimiter;
@@ -313,6 +316,7 @@ use Persi\HeadlessAccount\Support\OriginNormalizer;
 use Persi\HeadlessAccount\Validation\LoginPayloadValidator;
 use Persi\HeadlessAccount\Validation\AccountAccessPayloadValidator;
 use Persi\HeadlessAccount\Validation\GoogleLoginPayloadValidator;
+use Persi\HeadlessAccount\Validation\OAuthLoginPayloadValidator;
 use Persi\HeadlessAccount\Validation\ValidationException;
 use Persi\HeadlessAccount\Orders\OrderPresenter;
 
@@ -563,6 +567,85 @@ $test( 'payload Google é fechado, verificado e aceita somente provider google',
 	}
 } );
 
+$test( 'payload OAuth aceita Google e Facebook e rejeita provider inválido', static function () use ( $assert, $throws ): void {
+	$validator = new OAuthLoginPayloadValidator();
+	$base = array(
+		'provider' => 'google',
+		'providerId' => 'provider-subject-1',
+		'email' => 'oauth@example.test',
+		'name' => 'Cliente OAuth',
+		'avatar' => 'https://example.test/avatar.jpg',
+		'verifiedEmail' => true,
+	);
+	foreach ( array( 'google', 'facebook' ) as $provider ) {
+		$validated = $validator->validate(
+			(string) json_encode( array_merge( $base, array( 'provider' => $provider ) ) )
+		);
+		$assert( $provider === $validated['provider'] );
+		$assert( 'provider-subject-1' === $validated['provider_id'] );
+	}
+	foreach ( array(
+		array_merge( $base, array( 'provider' => 'github' ) ),
+		array_merge( $base, array( 'verifiedEmail' => false ) ),
+		array_merge( $base, array( 'accessToken' => 'forbidden' ) ),
+	) as $invalid ) {
+		$throws(
+			static fn() => $validator->validate( (string) json_encode( $invalid ) ),
+			ValidationException::class
+		);
+	}
+} );
+
+$test( 'OAuth vincula Google e Facebook ao mesmo usuário por e-mail', static function () use ( $assert ): void {
+	$GLOBALS['test_users'] = array();
+	$GLOBALS['inserted_users'] = array();
+	$existing = new WP_User( 80, array( 'customer' ), 'multisocial@example.test' );
+	$GLOBALS['test_users'][80] = $existing;
+	$db = new FakeWpdb();
+	$service = new OAuthIdentityService(
+		new IdentityRepository( $db ),
+		PERSI_HEADLESS_ACCOUNT_HMAC_SECRET
+	);
+	$base = array(
+		'provider_id' => 'subject-1',
+		'email' => 'multisocial@example.test',
+		'name' => 'Cliente Social',
+		'avatar' => '',
+		'first_name' => 'Cliente',
+		'last_name' => 'Social',
+	);
+	$google = $service->resolve(
+		array_merge( $base, array( 'provider' => 'google' ) ),
+		1800000000
+	);
+	$facebook = $service->resolve(
+		array_merge(
+			$base,
+			array( 'provider' => 'facebook', 'provider_id' => 'subject-2' )
+		),
+		1800000060
+	);
+	$assert( $google instanceof WP_User && 80 === $google->ID );
+	$assert( $facebook instanceof WP_User && 80 === $facebook->ID );
+	$assert( 2 === count( $db->identities ) );
+	$assert( 'google' === $db->identities[0]['provider'] );
+	$assert( 'facebook' === $db->identities[1]['provider'] );
+
+	$reused = $service->resolve(
+		array_merge(
+			$base,
+			array(
+				'provider' => 'facebook',
+				'provider_id' => 'subject-2',
+				'email' => 'changed@example.test',
+			)
+		),
+		1800000120
+	);
+	$assert( $reused instanceof WP_User && 80 === $reused->ID );
+	$assert( 2 === count( $db->identities ) );
+} );
+
 $test( 'Google vincula cliente, reutiliza subject e bloqueia papel privilegiado', static function () use ( $assert ): void {
 	$GLOBALS['test_users'] = array();
 	$GLOBALS['inserted_users'] = array();
@@ -664,7 +747,7 @@ $test( 'fontes não expõem customerId nem registram dados sensíveis', static f
 	$schema = file_get_contents( $root . '/src/Activator.php' );
 	$repository = file_get_contents( $root . '/src/Auth/SessionRepository.php' );
 	$token = file_get_contents( $root . '/src/Auth/SessionToken.php' );
-	$google_controller = file_get_contents( $root . '/src/Api/GoogleAuthController.php' );
+	$oauth_controller = file_get_contents( $root . '/src/Api/OAuthLoginController.php' );
 	$identity_repository = file_get_contents( $root . '/src/Auth/IdentityRepository.php' );
 	$assert( ! str_contains( $controller, "'customerId'" ) );
 	$assert( ! str_contains( $controller, "'code' =>" ) );
@@ -680,15 +763,15 @@ $test( 'fontes não expõem customerId nem registram dados sensíveis', static f
 	$assert( str_contains( $repository, "\$database->prefix . 'persi_account_sessions'" ) );
 	$assert( str_contains( $repository, 'WHERE token_hash = %s' ) );
 	$assert( str_contains( $token, "hash( 'sha256', \$token )" ) );
-	$assert( str_contains( $google_controller, 'RequestAuthenticator' ) );
-	$assert( str_contains( $google_controller, "'sessionToken'" ) );
-	$assert( ! str_contains( $google_controller, "'customerId'" ) );
+	$assert( str_contains( $oauth_controller, 'RequestAuthenticator' ) );
+	$assert( str_contains( $oauth_controller, 'legacy_google_login' ) );
+	$assert( ! str_contains( $oauth_controller, "'customerId'" ) );
 	foreach ( array( 'access_token', 'refresh_token', 'id_token', 'client_secret' ) as $forbidden ) {
-		$assert( ! str_contains( $google_controller, $forbidden ) );
+		$assert( ! str_contains( $oauth_controller, $forbidden ) );
 		$assert( ! str_contains( $identity_repository, $forbidden ) );
 	}
-	foreach ( array( 'GOOGLE_EMAIL_RECEIVED', 'GOOGLE_USER_FOUND', 'GOOGLE_USER_CREATED', 'GOOGLE_SESSION_CREATED' ) as $diagnostic ) {
-		$assert( str_contains( $google_controller, $diagnostic ) );
+	foreach ( array( 'OAUTH_HMAC_REJECTED', 'OAUTH_PAYLOAD_REJECTED' ) as $diagnostic ) {
+		$assert( str_contains( $oauth_controller, $diagnostic ) );
 	}
 	$assert( str_contains( $schema, 'UNIQUE KEY provider_subject' ) );
 	$assert( str_contains( $schema, 'UNIQUE KEY provider_email' ) );
