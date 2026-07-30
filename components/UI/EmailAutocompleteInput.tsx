@@ -79,7 +79,7 @@ export const EmailAutocompleteInput = forwardRef<
     setActiveIndex(-1);
   }
 
-  function selectDomain(domain: string) {
+  function selectDomain(domain: string, focusInput = true) {
     const input = inputRef.current;
     if (!input) return;
 
@@ -93,7 +93,7 @@ export const EmailAutocompleteInput = forwardRef<
     } as ChangeEvent<HTMLInputElement>);
     setSuggestions([]);
     setActiveIndex(-1);
-    input.focus();
+    if (focusInput) input.focus();
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -111,6 +111,14 @@ export const EmailAutocompleteInput = forwardRef<
     } else if (event.key === "Enter" && activeIndex >= 0) {
       event.preventDefault();
       selectDomain(suggestions[activeIndex]);
+    } else if (event.key === "Tab" && activeIndex >= 0) {
+      selectDomain(suggestions[activeIndex], false);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      setActiveIndex(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      setActiveIndex(suggestions.length - 1);
     } else if (event.key === "Escape") {
       setSuggestions([]);
       setActiveIndex(-1);
@@ -153,7 +161,7 @@ export const EmailAutocompleteInput = forwardRef<
           id={listboxId}
           role="listbox"
           aria-label="Sugestões de e-mail"
-          className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg"
+          className="absolute z-50 mt-1 max-h-56 w-full list-none overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg"
         >
           {suggestions.map((domain, index) => (
             <li
@@ -161,11 +169,16 @@ export const EmailAutocompleteInput = forwardRef<
               key={domain}
               role="option"
               aria-selected={index === activeIndex}
+              className={`rounded-lg ${
+                index === activeIndex
+                  ? "bg-blue-50 text-[#0c2d72] ring-1 ring-inset ring-[#0c2d72]/20"
+                  : "text-slate-700"
+              }`}
             >
               <button
                 type="button"
                 tabIndex={-1}
-                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-700 hover:bg-slate-100 aria-selected:bg-blue-50 aria-selected:text-[#0c2d72]"
+                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-inherit hover:bg-slate-100"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => selectDomain(domain)}
               >
