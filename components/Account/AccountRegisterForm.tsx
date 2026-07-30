@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/UI/Button";
+import { EmailAutocompleteInput } from "@/components/UI/EmailAutocompleteInput";
 import {
   formatBrazilianPhone,
   validateBrazilianPhone,
@@ -105,10 +106,9 @@ export function AccountRegisterForm() {
         <label htmlFor="register-email" className="mb-2 block font-medium">
           E-mail
         </label>
-        <input
+        <EmailAutocompleteInput
           id="register-email"
           name="email"
-          type="email"
           autoComplete="email"
           required
           className={input}

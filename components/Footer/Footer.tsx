@@ -7,6 +7,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { WhatsAppIcon } from "@/components/UI/SocialIcons";
+import { EmailAutocompleteInput } from "@/components/UI/EmailAutocompleteInput";
 
 import { Container } from "@/components/UI/Container";
 
@@ -101,10 +102,9 @@ export function Footer() {
             <label htmlFor="footer-email" className="sr-only">
               E-mail
             </label>
-            <input
+            <EmailAutocompleteInput
               id="footer-email"
               name="email"
-              type="email"
               placeholder="E-mail"
               autoComplete="email"
               className="box-border h-11 w-full min-w-0 rounded-[6px] border border-slate-200 bg-white px-4 text-sm leading-normal text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20 md:w-auto md:flex-1 md:rounded-md"

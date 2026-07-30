@@ -4,6 +4,7 @@ import { useId, useState, type FormEvent } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/UI/Button";
+import { EmailAutocompleteInput } from "@/components/UI/EmailAutocompleteInput";
 import Link from "next/link";
 import { useAccount } from "@/hooks/useAccount";
 
@@ -60,7 +61,7 @@ export function AccountLoginForm({
         <label htmlFor={identifierId} className="mb-2 block text-sm font-medium">
           E-mail ou usuário
         </label>
-        <input
+        <EmailAutocompleteInput
           id={identifierId}
           name="identifier"
           type="text"

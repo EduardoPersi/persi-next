@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { EmailAutocompleteInput } from "@/components/UI/EmailAutocompleteInput";
 
 interface BackInStockFormProps {
   productId: number;
@@ -126,10 +127,9 @@ export function BackInStockForm({
           >
             E-mail
           </label>
-          <input
+          <EmailAutocompleteInput
             id={`back-in-stock-email-${productId}`}
             name="email"
-            type="email"
             autoComplete="email"
             className="h-11 w-full min-w-0 max-w-full rounded-[6px] border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20"
             placeholder="seuemail@exemplo.com"

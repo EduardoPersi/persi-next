@@ -5,6 +5,7 @@ import type {
   HTMLInputTypeAttribute,
 } from "react";
 import type { UseFormRegisterReturn } from "react-hook-form";
+import { EmailAutocompleteInput } from "@/components/UI/EmailAutocompleteInput";
 
 interface CheckoutFieldProps {
   id: string;
@@ -32,13 +33,14 @@ export function CheckoutField({
   onChange,
 }: CheckoutFieldProps) {
   const errorId = `${id}-error`;
+  const InputComponent = type === "email" ? EmailAutocompleteInput : "input";
 
   return (
     <div>
       <label htmlFor={id} className="mb-2 block text-sm text-slate-800">
         {label}
       </label>
-      <input
+      <InputComponent
         {...registration}
         id={id}
         type={type}
