@@ -28,6 +28,23 @@ interface InstagramCredentials {
   businessAccountId: string;
 }
 
+function logInstagramEnvironmentStatus() {
+  const appIdLoaded = Boolean(process.env.INSTAGRAM_APP_ID?.trim());
+  const appSecretLoaded = Boolean(
+    process.env.INSTAGRAM_APP_SECRET?.trim(),
+  );
+  const accessTokenLoaded = Boolean(
+    process.env.INSTAGRAM_ACCESS_TOKEN?.trim(),
+  );
+  const businessAccountIdLoaded = Boolean(
+    process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID?.trim(),
+  );
+
+  console.info(
+    `INSTAGRAM_ENV_STATUS appIdLoaded=${appIdLoaded} appSecretLoaded=${appSecretLoaded} accessTokenLoaded=${accessTokenLoaded} businessAccountIdLoaded=${businessAccountIdLoaded}`,
+  );
+}
+
 function getInstagramCredentials(): InstagramCredentials | undefined {
   const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN?.trim();
   const businessAccountId =
@@ -38,12 +55,14 @@ function getInstagramCredentials(): InstagramCredentials | undefined {
 }
 
 function logInstagramFailure(code: string) {
-  console.error("INSTAGRAM_FEED_FETCH_FAILED", { code });
+  console.error(`INSTAGRAM_FEED_FETCH_FAILED code=${code}`);
 }
 
 async function requestInstagramMedia(): Promise<InstagramMedia[]> {
   const credentials = getInstagramCredentials();
   if (!credentials) return [];
+
+  console.info("INSTAGRAM_FETCH_STARTED");
 
   const url = new URL(
     `${INSTAGRAM_GRAPH_API_URL}/${encodeURIComponent(credentials.businessAccountId)}/media`,
@@ -62,7 +81,10 @@ async function requestInstagramMedia(): Promise<InstagramMedia[]> {
     throw new Error(`GRAPH_API_${response.status}`);
   }
 
-  return normalizeInstagramResponse(await response.json());
+  const media = normalizeInstagramResponse(await response.json());
+  console.info("INSTAGRAM_GRAPH_API_SUCCESS");
+  console.info(`INSTAGRAM_POSTS_RETURNED count=${media.length}`);
+  return media;
 }
 
 const getCachedInstagramMedia = unstable_cache(
@@ -75,11 +97,17 @@ const getCachedInstagramMedia = unstable_cache(
 );
 
 export async function getInstagramMedia(): Promise<InstagramMedia[]> {
-  if (!getInstagramCredentials()) return [];
+  logInstagramEnvironmentStatus();
+
+  if (!getInstagramCredentials()) {
+    logInstagramFailure("MISSING_REQUIRED_ENV");
+    return [];
+  }
 
   try {
     const media = await getCachedInstagramMedia();
     lastSuccessfulMedia = media;
+    console.info(`INSTAGRAM_CACHE_RESULT count=${media.length}`);
     return media;
   } catch (error) {
     const code =

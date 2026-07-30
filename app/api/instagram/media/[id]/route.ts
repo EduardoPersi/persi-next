@@ -50,6 +50,9 @@ export async function GET(
       },
     });
   } catch {
+    console.error(
+      "INSTAGRAM_MEDIA_PROXY_FAILED code=IMAGE_UNAVAILABLE",
+    );
     return NextResponse.json(
       { message: "Não foi possível carregar a mídia." },
       { status: 502 },

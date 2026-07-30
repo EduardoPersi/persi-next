@@ -84,6 +84,11 @@ test("segredos permanecem exclusivos do serviço servidor", async () => {
   assert.match(service, /INSTAGRAM_BUSINESS_ACCOUNT_ID/);
   assert.match(service, /revalidate: INSTAGRAM_REVALIDATE_SECONDS/);
   assert.match(service, /lastSuccessfulMedia/);
+  assert.match(service, /INSTAGRAM_ENV_STATUS/);
+  assert.match(service, /INSTAGRAM_FETCH_STARTED/);
+  assert.match(service, /INSTAGRAM_GRAPH_API_SUCCESS/);
+  assert.match(service, /INSTAGRAM_POSTS_RETURNED/);
+  assert.match(service, /MISSING_REQUIRED_ENV/);
   assert.equal(feed.includes("process.env"), false);
   assert.equal(card.includes("mediaUrl"), false);
   assert.equal(route.includes("access_token"), false);
