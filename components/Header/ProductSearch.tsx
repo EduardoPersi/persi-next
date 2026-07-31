@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { LoaderCircle, Search } from "lucide-react";
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -264,10 +264,15 @@ export function ProductSearch({
               : "flex items-center justify-center px-4 text-[#0c2d72]"
           }
         >
-          <Search
-            size={isDesktop ? 23 : 22}
-            className={isLoading ? "animate-spin" : undefined}
-          />
+          {isLoading ? (
+            <LoaderCircle
+              size={isDesktop ? 23 : 22}
+              className="animate-spin text-[#0c2d72]"
+              aria-hidden="true"
+            />
+          ) : (
+            <Search size={isDesktop ? 23 : 22} aria-hidden="true" />
+          )}
         </button>
       </form>
 
