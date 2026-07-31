@@ -65,7 +65,7 @@ export function ProductSearch({
   const isSearchActive = (isFocused && Boolean(trimmedQuery)) || isOpen;
 
   useEffect(() => {
-    if (!canSuggest) return;
+    if (!canSuggest || !isFocused) return;
 
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
@@ -99,7 +99,7 @@ export function ProductSearch({
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [canSuggest, trimmedQuery]);
+  }, [canSuggest, isFocused, trimmedQuery]);
 
   function closeSearch() {
     setIsOpen(false);
@@ -157,6 +157,7 @@ export function ProductSearch({
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Escape") {
+      event.preventDefault();
       closeSearch();
       event.currentTarget.blur();
       return;
@@ -200,6 +201,7 @@ export function ProductSearch({
   }
 
   const isDesktop = variant === "desktop";
+  const isLoading = status === "loading" && isSearchActive;
 
   return (
     <div
@@ -255,14 +257,17 @@ export function ProductSearch({
 
         <button
           type="submit"
-          aria-label="Pesquisar"
+          aria-label={isLoading ? "Pesquisando produtos" : "Pesquisar"}
           className={
             isDesktop
               ? "flex items-center justify-center px-4 text-[#0c2d72] transition hover:bg-slate-100"
               : "flex items-center justify-center px-4 text-[#0c2d72]"
           }
         >
-          <Search size={isDesktop ? 23 : 22} />
+          <Search
+            size={isDesktop ? 23 : 22}
+            className={isLoading ? "animate-spin" : undefined}
+          />
         </button>
       </form>
 
@@ -271,6 +276,7 @@ export function ProductSearch({
           ref={overlayRef}
           className="fixed inset-x-0 bottom-0 z-30 bg-black/60"
           aria-hidden="true"
+          onPointerDown={closeSearch}
         />
       ) : null}
 

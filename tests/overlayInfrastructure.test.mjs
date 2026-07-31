@@ -70,3 +70,19 @@ test("overlays elegíveis aderem ao gerenciador global", async () => {
   assert.match(files[7], /useClickOutside/);
   assert.equal(files[1].includes('addEventListener("mousedown"'), false);
 });
+
+test("busca fecha sem limpar o termo e indica carregamento na lupa", async () => {
+  const source = await readFile(
+    new URL("../components/Header/ProductSearch.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /if \(event\.key === "Escape"\) \{\s*event\.preventDefault\(\)/);
+  assert.match(source, /onPointerDown=\{closeSearch\}/);
+  assert.match(source, /className=\{isLoading \? "animate-spin" : undefined\}/);
+  assert.match(source, /if \(!canSuggest \|\| !isFocused\) return/);
+  assert.doesNotMatch(
+    source.match(/function closeSearch\(\)[\s\S]*?\n  \}/)?.[0] ?? "",
+    /setQuery/,
+  );
+});
