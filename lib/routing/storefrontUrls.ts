@@ -84,8 +84,3 @@ export function findCategoryByPath<T extends ProductCategory>(
     ? category
     : undefined;
 }
-
-export function getLegacyProductRedirect(pathname: string) {
-  const match = pathname.match(/^\/produto\/([^/]+)\/?$/);
-  return match ? getProductHref(decodeURIComponent(match[1])) : undefined;
-}

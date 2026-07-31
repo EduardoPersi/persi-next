@@ -1,10 +1,8 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   findCategoryByPath,
   getCategoryHref,
-  getLegacyProductRedirect,
   getProductHref,
   RESERVED_ROOT_SLUGS,
   SITE_URL,
@@ -22,10 +20,6 @@ const categories = [
 
 test("produto fica diretamente na raiz", () => {
   assert.equal(getProductHref("produto-exemplo"), "/produto-exemplo");
-  assert.equal(
-    getLegacyProductRedirect("/produto/produto-exemplo"),
-    "/produto-exemplo",
-  );
 });
 
 test("categoria preserva toda a hierarquia", () => {
@@ -54,14 +48,4 @@ test("rotas funcionais e institucionais são reservadas", () => {
   assert.equal(SITE_URL, "https://persimateriais.com.br");
   assert.equal(RESERVED_ROOT_SLUGS.has("checkout"), true);
   assert.equal(RESERVED_ROOT_SLUGS.has("contato"), true);
-});
-
-test("handlers legados declaram redirecionamento HTTP 301", async () => {
-  const sources = await Promise.all([
-    readFile("app/produto/[slug]/route.ts", "utf8"),
-    readFile("app/categoria/[...segments]/route.ts", "utf8"),
-  ]);
-  sources.forEach((source) => {
-    assert.match(source, /NextResponse\.redirect\(destination,\s*301\)/);
-  });
 });

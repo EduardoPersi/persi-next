@@ -7,8 +7,8 @@
 - Subcategoria: `/{categoria-pai}/{subcategoria}`
 - Páginas institucionais e áreas funcionais preservam suas rotas na raiz.
 
-Os prefixos `/produto/` e `/categoria/` existem somente como endpoints
-legados de redirecionamento HTTP 301. Eles não renderizam conteúdo.
+Os prefixos `/produto/` e `/categoria/` não fazem parte do roteamento
+público e retornam 404.
 
 ## Resolução e conflitos
 
@@ -38,16 +38,6 @@ npm run audit:urls
 A auditoria consulta os slugs públicos do WooCommerce e relata conflitos
 entre rotas reservadas, categorias e produtos. Um conflito deve ser resolvido
 no cadastro antes da publicação; não se cria uma segunda URL indexável.
-
-## Redirecionamentos
-
-- `/produto/{slug}` → `/{slug}`
-- `/categoria/{slug}` → caminho hierárquico canônico da categoria
-- `/categoria/{pai}/{filha}` → `/{pai}/{filha}`
-- o parâmetro legado `subcategoria` também é convertido para a hierarquia.
-
-Os Route Handlers devolvem status HTTP 301 e preservam os demais parâmetros
-de consulta aplicáveis.
 
 ## SEO
 
