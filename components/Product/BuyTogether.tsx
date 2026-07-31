@@ -8,6 +8,7 @@ import { useCart } from "@/hooks/useCart";
 import { getProductPaymentInfo } from "@/lib/commerce/productPayment";
 import type { Product } from "@/types/product";
 import { Button } from "@/components/UI/Button";
+import { getProductHref } from "@/lib/routing/storefrontUrls";
 
 const FALLBACK_IMAGE =
   "/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas.webp";
@@ -125,7 +126,7 @@ export function BuyTogether({
                 <Plus className="h-6 w-6 shrink-0 text-slate-800" aria-hidden="true" />
               ) : null}
               <Link
-                href={`/produto/${product.slug}`}
+                href={getProductHref(product.slug)}
                 aria-label={`Ver ${product.name}`}
                 className="relative h-16 min-w-0 flex-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
               >
@@ -176,7 +177,7 @@ export function BuyTogether({
               />
               <div className="min-w-0 flex-1">
                 <Link
-                  href={`/produto/${product.slug}`}
+                  href={getProductHref(product.slug)}
                   className="line-clamp-2 text-center text-sm leading-5 text-slate-800 hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
                 >
                   {product.name}{" "}

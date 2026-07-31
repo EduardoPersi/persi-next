@@ -21,6 +21,12 @@ import {
   type GetProductsOptions,
 } from "@/services/woocommerce/products";
 import type { ProductCategory } from "@/types/category";
+import {
+  getCategoryHref,
+  getProductHref,
+  SITE_URL,
+} from "@/lib/routing/storefrontUrls";
+import { buildBreadcrumbListJsonLd } from "@/lib/seo/productBreadcrumb";
 
 type RawSearchParams = Record<
   string,
@@ -172,7 +178,7 @@ export async function generateMetadata({
       title: `${contextName} | Persi Materiais`,
       description,
       alternates: {
-        canonical: `/categoria/${category.slug}`,
+        canonical: getCategoryHref(category, categories),
       },
       robots: brandIdentifier
         ? { index: false, follow: true }
@@ -181,6 +187,7 @@ export async function generateMetadata({
         title: `${contextName} | Persi Materiais`,
         description,
         type: "website",
+        url: getCategoryHref(category, categories),
         images: contextImage
           ? [
               {
@@ -189,6 +196,12 @@ export async function generateMetadata({
               },
             ]
           : undefined,
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: `${contextName} | Persi Materiais`,
+        description,
+        images: contextImage ? [contextImage.src] : undefined,
       },
     };
   } catch {
@@ -219,10 +232,7 @@ export default async function CategoryPage({
     .sort((first, second) =>
       first.name.localeCompare(second.name, "pt-BR"),
     );
-  const selectedSubcategorySlug = getSingleParam(
-    rawSearchParams,
-    "subcategoria",
-  );
+  const selectedSubcategorySlug = undefined;
   const selectedSubcategory = categories.find(
     (item) =>
       item.slug === selectedSubcategorySlug &&
@@ -355,7 +365,10 @@ export default async function CategoryPage({
   const breadcrumbCategories = selectedBrand
     ? []
     : getCategoryPath(selectedSubcategory ?? category, categories);
-  const pathname = `/categoria/${category.slug}`;
+  const pathname = getCategoryHref(
+    selectedSubcategory ?? category,
+    categories,
+  );
   const contextName =
     selectedBrand?.name ?? selectedSubcategory?.name ?? category.name;
   const contextDescription = selectedBrand
@@ -384,9 +397,38 @@ export default async function CategoryPage({
   };
   const hasMoreProducts =
     productsPage.products.length < productsPage.total;
+  const categoryUrl = new URL(pathname, SITE_URL).toString();
+  const categoryBreadcrumbItems = [
+    { label: "Home", href: "/" },
+    ...breadcrumbCategories.map((item, index) => ({
+      label: item.name,
+      href: getCategoryHref(item, categories),
+      current: index === breadcrumbCategories.length - 1,
+    })),
+  ];
+  const categoryJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: contextName,
+    description: contextDescription || undefined,
+    url: categoryUrl,
+  };
+  const breadcrumbJsonLd = buildBreadcrumbListJsonLd(
+    categoryBreadcrumbItems,
+    SITE_URL,
+    pathname,
+  );
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(categoryJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <Header />
       <main className="py-3 sm:py-6 lg:py-10">
         <Container>
@@ -421,7 +463,10 @@ export default async function CategoryPage({
                       </span>
                     ) : (
                       <Link
-                        href={`/categoria/${breadcrumbCategory.slug}`}
+                        href={getCategoryHref(
+                          breadcrumbCategory,
+                          categories,
+                        )}
                         className="rounded-sm hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
                       >
                         {breadcrumbCategory.name}
@@ -435,8 +480,8 @@ export default async function CategoryPage({
 
           <SubcategoryCarousel
             category={category}
+            allCategories={categories}
             subcategories={selectorSubcategories}
-            pathname={pathname}
             selectedSlug={selectedSubcategory?.slug}
             includeMainCategory={!selectedSubcategory}
           />
@@ -497,7 +542,7 @@ export default async function CategoryPage({
                           name={product.name}
                           image={product.image?.src ?? ""}
                           images={product.images}
-                          href={`/produto/${product.slug}`}
+                          href={getProductHref(product.slug)}
                           price={product.price}
                           regularPrice={
                             product.onSale

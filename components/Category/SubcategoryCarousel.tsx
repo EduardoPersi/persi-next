@@ -8,14 +8,15 @@ import { A11y, Autoplay, Navigation, Pagination } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperInstance } from "swiper";
 import type { ProductCategory } from "@/types/category";
+import { getCategoryHref } from "@/lib/routing/storefrontUrls";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
 
 interface SubcategoryCarouselProps {
   category: ProductCategory;
+  allCategories: ProductCategory[];
   subcategories: ProductCategory[];
-  pathname: string;
   selectedSlug?: string;
   includeMainCategory?: boolean;
   autoplay?: boolean;
@@ -26,8 +27,8 @@ const CATEGORY_FALLBACK = "/images/placeholders/category-placeholder.svg";
 
 export function SubcategoryCarousel({
   category,
+  allCategories,
   subcategories,
-  pathname,
   selectedSlug,
   includeMainCategory = true,
   autoplay = true,
@@ -75,20 +76,15 @@ export function SubcategoryCarousel({
 
   function selectSubcategory(item: ProductCategory) {
     const params = new URLSearchParams(searchParams.toString());
-    const isMainCategory = item.id === category.id;
-
-    if (isMainCategory) {
-      params.delete("subcategoria");
-    } else {
-      params.set("subcategoria", item.slug);
-    }
+    params.delete("subcategoria");
     params.delete("pagina");
 
     onSelect?.(item);
 
     const query = params.toString();
     startTransition(() => {
-      router.push(query ? `${pathname}?${query}` : pathname, {
+      const itemPathname = getCategoryHref(item, allCategories);
+      router.push(query ? `${itemPathname}?${query}` : itemPathname, {
         scroll: false,
       });
     });

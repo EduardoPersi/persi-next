@@ -18,6 +18,7 @@ import type { ProductBrand } from "@/types/brand";
 import type { BoughtTogetherItem } from "@/types/boughtTogether";
 import type { ProductFamilyResponse } from "@/types/productFamily";
 import type { Product } from "@/types/product";
+import { getProductHref } from "@/lib/routing/storefrontUrls";
 import { BackInStockForm } from "./BackInStockForm";
 import { FrequentlyBoughtTogether } from "./FrequentlyBoughtTogether";
 import { ProductFamilyOptions } from "./ProductFamilyOptions";
@@ -342,7 +343,7 @@ export function ProductPurchasePanel({
           <BackInStockForm
             productId={product.id}
             productName={product.name}
-            productUrl={product.permalink}
+            productUrl={getProductHref(product.slug)}
             integrationEnabled={stockNotificationEnabled}
             requiresVariation={product.variations.length > 0}
           />

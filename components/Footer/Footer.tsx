@@ -12,18 +12,18 @@ import { EmailAutocompleteInput } from "@/components/UI/EmailAutocompleteInput";
 import { Container } from "@/components/UI/Container";
 
 const categories = [
-  { label: "Acabamentos", href: "/categoria/acabamentos" },
+  { label: "Acabamentos", href: "/acabamentos" },
   {
     label: "Materiais de construção",
-    href: "/categoria/materiais-de-construcao",
+    href: "/materiais-de-construcao",
   },
-  { label: "Hidráulica", href: "/categoria/hidraulica" },
-  { label: "Banheiros", href: "/categoria/banheiros" },
-  { label: "Ferragens", href: "/categoria/ferragens" },
-  { label: "Ferramentas", href: "/categoria/ferramentas" },
-  { label: "Elétrica", href: "/categoria/eletrica" },
-  { label: "Pintura", href: "/categoria/pintura" },
-  { label: "Utilidades", href: "/categoria/utilidades" },
+  { label: "Hidráulica", href: "/hidraulica" },
+  { label: "Banheiros", href: "/banheiros" },
+  { label: "Ferragens", href: "/ferragens" },
+  { label: "Ferramentas", href: "/ferramentas" },
+  { label: "Elétrica", href: "/eletrica" },
+  { label: "Pintura", href: "/pintura" },
+  { label: "Utilidades", href: "/utilidades" },
 ];
 
 const institutionalLinks = [

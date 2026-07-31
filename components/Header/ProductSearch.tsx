@@ -18,6 +18,7 @@ import type {
 } from "@/types/search";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useOverlayManager } from "@/hooks/useOverlayManager";
+import { getProductHref } from "@/lib/routing/storefrontUrls";
 
 interface ProductSearchProps {
   variant: "desktop" | "mobile";
@@ -58,6 +59,7 @@ export function ProductSearch({
   const [status, setStatus] = useState<SuggestionsStatus>("idle");
   const [isOpen, setIsOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const trimmedQuery = query.trim();
   const canSuggest = trimmedQuery.length >= MINIMUM_QUERY_LENGTH;
   const isSearchActive = (isFocused && Boolean(trimmedQuery)) || isOpen;
@@ -81,6 +83,7 @@ export function ProductSearch({
         const result =
           (await response.json()) as ProductSearchSuggestionsResponse;
         setProducts(result.products);
+        setActiveIndex(-1);
         setStatus("success");
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
@@ -101,6 +104,7 @@ export function ProductSearch({
   function closeSearch() {
     setIsOpen(false);
     setIsFocused(false);
+    setActiveIndex(-1);
   }
 
   useOverlayManager({
@@ -155,11 +159,38 @@ export function ProductSearch({
     if (event.key === "Escape") {
       closeSearch();
       event.currentTarget.blur();
+      return;
+    }
+
+    if (status !== "success" || products.length === 0) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setIsOpen(true);
+      setActiveIndex((current) => (current + 1) % products.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setIsOpen(true);
+      setActiveIndex((current) =>
+        current <= 0 ? products.length - 1 : current - 1,
+      );
+    } else if (event.key === "Home" && isOpen) {
+      event.preventDefault();
+      setActiveIndex(0);
+    } else if (event.key === "End" && isOpen) {
+      event.preventDefault();
+      setActiveIndex(products.length - 1);
+    } else if (event.key === "Enter" && isOpen && activeIndex >= 0) {
+      event.preventDefault();
+      const product = products[activeIndex];
+      closeSearch();
+      router.push(getProductHref(product.slug));
     }
   }
 
   function handleQueryChange(value: string) {
     setQuery(value);
+    setActiveIndex(-1);
 
     if (value.trim().length < MINIMUM_QUERY_LENGTH) {
       setProducts([]);
@@ -210,6 +241,11 @@ export function ProductSearch({
           aria-autocomplete="list"
           aria-controls={resultsId}
           aria-expanded={isOpen}
+          aria-activedescendant={
+            isOpen && activeIndex >= 0
+              ? `${resultsId}-option-${products[activeIndex].id}`
+              : undefined
+          }
           className={
             isDesktop
               ? "min-w-0 flex-1 px-5 py-0 text-sm text-slate-900 outline-none"
@@ -260,13 +296,24 @@ export function ProductSearch({
           ) : null}
           {status === "success" && products.length > 0 ? (
             <ul className="divide-y divide-slate-100">
-              {products.map((product) => (
-                <li key={product.id} role="option" aria-selected="false">
+              {products.map((product, index) => (
+                <li
+                  id={`${resultsId}-option-${product.id}`}
+                  key={product.id}
+                  role="option"
+                  aria-selected={index === activeIndex}
+                  className={
+                    index === activeIndex
+                      ? "bg-blue-50 ring-2 ring-inset ring-[#0c2d72]"
+                      : ""
+                  }
+                >
                   <Link
-                    href={`/produto/${product.slug}`}
+                    href={getProductHref(product.slug)}
                     onClick={() => {
                       setIsOpen(false);
                       setIsFocused(false);
+                      setActiveIndex(-1);
                     }}
                     className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0c2d72]"
                   >

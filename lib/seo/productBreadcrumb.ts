@@ -27,8 +27,11 @@ type ResolveProductCategoryPathOptions = Omit<
 
 const DEFAULT_MAX_DEPTH = 20;
 
-export function getCategoryHref(slug: string): string {
-  return `/categoria/${encodeURIComponent(slug)}`;
+export function getCategoryHref(
+  category: BreadcrumbCategory,
+  categories: readonly BreadcrumbCategory[],
+): string {
+  return buildCategoryHref(category, categories);
 }
 
 function buildCategoryPath(
@@ -137,7 +140,7 @@ export function buildProductCategoryBreadcrumb({
       )
       .map((category) => ({
         label: category.name,
-        href: getCategoryHref(category.slug),
+        href: getCategoryHref(category, options.categories),
       })),
     { label: productName, current: true },
   ];
@@ -161,3 +164,4 @@ export function buildBreadcrumbListJsonLd(
     })),
   };
 }
+import { getCategoryHref as buildCategoryHref } from "../routing/storefrontUrls.ts";

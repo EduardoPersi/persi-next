@@ -8,6 +8,7 @@ import { Button } from "@/components/UI/Button";
 import { useCart } from "@/hooks/useCart";
 import type { BoughtTogetherItem } from "@/types/boughtTogether";
 import type { Product } from "@/types/product";
+import { getProductHref } from "@/lib/routing/storefrontUrls";
 
 const FALLBACK_IMAGE =
   "/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas.webp";
@@ -138,7 +139,7 @@ export function FrequentlyBoughtTogether({
                 />
               ) : null}
               <Link
-                href={`/produto/${product.slug}`}
+                href={getProductHref(product.slug)}
                 aria-label={`Ver ${product.name}`}
                 className="relative h-16 min-w-0 flex-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
               >

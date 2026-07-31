@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getProductHref } from "@/lib/routing/storefrontUrls";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -361,7 +362,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                             name={product.name}
                             image={product.image?.src ?? ""}
                             images={product.images}
-                            href={`/produto/${product.slug}`}
+                            href={getProductHref(product.slug)}
                             price={product.price}
                             regularPrice={product.onSale ? product.regularPrice : undefined}
                             currencyCode={product.currencyCode}

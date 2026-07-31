@@ -11,6 +11,7 @@ import type {
   WooCommerceRestProduct,
   WooCommerceRestTerm,
 } from "@/types/woocommerce-rest";
+import { getProductHref } from "../../lib/routing/storefrontUrls.ts";
 import { stripHtml } from "./mappers";
 import { getAllProductBrands } from "./brands";
 import { restApiGetWithMeta } from "./restClient";
@@ -195,7 +196,7 @@ export function mapRestProduct(product: WooCommerceRestProduct): Product {
     name,
     dateCreated: product.date_created,
     totalSales: product.total_sales ?? 0,
-    permalink: product.permalink,
+    permalink: getProductHref(product.slug),
     sku: product.sku ?? "",
     ean: product.global_unique_id?.trim() || null,
     shortDescription:

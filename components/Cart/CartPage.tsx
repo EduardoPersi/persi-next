@@ -9,6 +9,7 @@ import { ProductQuantity } from "@/components/Product/ProductQuantity";
 import { ShippingCalculator } from "@/components/Shipping/ShippingCalculator";
 import { getCartShippingContextKey } from "@/lib/commerce/shippingCalculator";
 import { formatStoreMoney, isZeroMoney } from "@/lib/formatting/money";
+import { getProductHref } from "@/lib/routing/storefrontUrls";
 
 const FALLBACK_IMAGE =
   "/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas.webp";
@@ -68,7 +69,9 @@ export function CartPage() {
         <div className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white md:space-y-4 md:divide-y-0 md:overflow-visible md:border-0 md:bg-transparent">
           {cart.items.map((item) => {
             const isPending = pendingItemKey === item.key;
-            const productHref = item.slug ? `/produto/${item.slug}` : undefined;
+            const productHref = item.slug
+              ? getProductHref(item.slug)
+              : undefined;
 
             return (
               <article

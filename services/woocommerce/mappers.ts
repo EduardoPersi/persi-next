@@ -8,6 +8,7 @@ import type {
   WooCommerceStoreCategory,
   WooCommerceStoreProduct,
 } from "@/types/woocommerce";
+import { getProductHref } from "../../lib/routing/storefrontUrls.ts";
 
 const namedEntities: Record<string, string> = {
   amp: "&",
@@ -147,7 +148,7 @@ export function mapStoreProduct(
     slug: product.slug,
     type: product.type,
     name: productName,
-    permalink: product.permalink,
+    permalink: getProductHref(product.slug),
     sku: product.sku,
     shortDescription,
     description,
@@ -167,7 +168,6 @@ export function mapStoreProduct(
       slug: category.slug,
       description: "",
       parent: 0,
-      permalink: category.link,
     })),
     brands: (product.brands ?? []).map((brand) => ({
       id: brand.id,

@@ -24,11 +24,11 @@ import { MobileMenu } from "./MobileMenu";
 import { ProductSearch } from "./ProductSearch";
 
 const menuItems = [
-  { label: "Todas as Categorias", href: "#" },
+  { label: "Todas as Categorias", href: "/" },
   { label: "Promoções", href: "/promocoes" },
-  { label: "Hidráulica", href: "#" },
-  { label: "Elétrica", href: "#" },
-  { label: "Impermeabilização", href: "#" },
+  { label: "Hidráulica", href: "/hidraulica" },
+  { label: "Elétrica", href: "/eletrica" },
+  { label: "Impermeabilização", href: "/impermeabilizacao" },
 ];
 
 interface HeaderLogoProps {

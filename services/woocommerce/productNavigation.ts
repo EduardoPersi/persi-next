@@ -5,6 +5,7 @@ import {
   getCategoryHref,
   resolveProductCategoryPath,
 } from "@/lib/seo/productBreadcrumb";
+import { getProductHref } from "../../lib/routing/storefrontUrls.ts";
 import type { ProductCategory } from "@/types/category";
 import type { Product } from "@/types/product";
 import type { ProductFamilyResponse } from "@/types/productFamily";
@@ -15,10 +16,6 @@ import type {
 import { getProductBySlug, getProductsByCategory } from "./products";
 
 const MAX_CATEGORY_PRODUCTS = 100;
-
-export function getProductHref(slug: string): string {
-  return `/produto/${encodeURIComponent(slug)}`;
-}
 
 function formatPrice(product: Product): string {
   return new Intl.NumberFormat("pt-BR", {
@@ -142,7 +139,7 @@ export async function getProductNavigation({
         id: primaryCategory.id,
         name: primaryCategory.name,
         slug: primaryCategory.slug,
-        href: getCategoryHref(primaryCategory.slug),
+        href: getCategoryHref(primaryCategory, categories),
       }
     : null;
 

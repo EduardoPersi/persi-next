@@ -34,6 +34,12 @@ export async function generateMetadata({
       title: `${config.title} | Persi Materiais de Construção`,
       description,
       type: "article",
+      url: `/${slug}`,
+    },
+    twitter: {
+      card: "summary",
+      title: `${config.title} | Persi Materiais de Construção`,
+      description,
     },
   };
 }

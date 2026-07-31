@@ -188,7 +188,7 @@ test("categoria com acento mantém label e URL existente", () => {
     categories: [category(1, "Água Fria", "agua-fria")],
   });
   assert.equal(result[1].label, "Água Fria");
-  assert.equal(result[1].href, "/categoria/agua-fria");
+  assert.equal(result[1].href, "/agua-fria");
 });
 
 test("breadcrumb visual marca somente o produto como atual", () => {
@@ -199,7 +199,7 @@ test("breadcrumb visual marca somente o produto como atual", () => {
     }),
     [
       { label: "Home", href: "/" },
-      { label: "Categoria", href: "/categoria/categoria" },
+      { label: "Categoria", href: "/categoria" },
       { label: "Produto", current: true },
     ],
   );
@@ -215,8 +215,8 @@ test("BreadcrumbList JSON-LD possui a mesma ordem visual", () => {
   });
   const jsonLd = buildBreadcrumbListJsonLd(
     visual,
-    "https://app.persimateriais.com.br",
-    "/produto/produto",
+    "https://persimateriais.com.br",
+    "/produto",
   );
   assert.deepEqual(
     jsonLd.itemListElement.map(({ position, name }) => ({ position, name })),
@@ -229,7 +229,7 @@ test("BreadcrumbList JSON-LD possui a mesma ordem visual", () => {
   );
   assert.equal(
     jsonLd.itemListElement.at(-1).item,
-    "https://app.persimateriais.com.br/produto/produto",
+    "https://persimateriais.com.br/produto",
   );
 });
 

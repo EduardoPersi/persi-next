@@ -5,11 +5,13 @@ import {
   isWooCommerceStoreCategory,
   mapStoreCategory,
 } from "./mappers";
+import { getCategoryHref } from "../../lib/routing/storefrontUrls.ts";
 
 export interface GetProductCategoriesOptions {
   page?: number;
   perPage?: number;
   hideEmpty?: boolean;
+  revalidate?: number;
 }
 
 export async function getProductCategories(
@@ -21,6 +23,7 @@ export async function getProductCategories(
       per_page: options.perPage,
       hide_empty: options.hideEmpty ?? true,
     },
+    revalidate: options.revalidate,
   });
 
   if (!Array.isArray(response)) {
@@ -60,7 +63,10 @@ export async function getCategoryBySlug(
 }
 
 export async function getAllProductCategories(
-  options: Pick<GetProductCategoriesOptions, "hideEmpty"> = {},
+  options: Pick<
+    GetProductCategoriesOptions,
+    "hideEmpty" | "revalidate"
+  > = {},
 ): Promise<ProductCategory[]> {
   const perPage = 100;
   const categories: ProductCategory[] = [];
@@ -71,6 +77,7 @@ export async function getAllProductCategories(
       page,
       perPage,
       hideEmpty: options.hideEmpty,
+      revalidate: options.revalidate,
     });
 
     categories.push(...batch);
@@ -82,5 +89,8 @@ export async function getAllProductCategories(
     page += 1;
   }
 
-  return categories;
+  return categories.map((category) => ({
+    ...category,
+    permalink: getCategoryHref(category, categories),
+  }));
 }

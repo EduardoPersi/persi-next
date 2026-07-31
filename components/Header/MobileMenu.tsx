@@ -21,15 +21,15 @@ type MobileMenuProps = {
 };
 
 const categories = [
-  "Acabamentos",
-  "Banheiro e Cozinha",
-  "Elétrica",
-  "Ferragens",
-  "Ferramentas",
-  "Hidráulica",
-  "Materiais de Construção",
-  "Pintura",
-  "Utilidades",
+  { label: "Acabamentos", href: "/acabamentos" },
+  { label: "Banheiro e Cozinha", href: "/banheiro-e-cozinha" },
+  { label: "Elétrica", href: "/eletrica" },
+  { label: "Ferragens", href: "/ferragens" },
+  { label: "Ferramentas", href: "/ferramentas" },
+  { label: "Hidráulica", href: "/hidraulica" },
+  { label: "Materiais de Construção", href: "/materiais-de-construcao" },
+  { label: "Pintura", href: "/pintura" },
+  { label: "Utilidades", href: "/utilidades" },
 ];
 
 export function MobileMenu({
@@ -125,14 +125,15 @@ export function MobileMenu({
 
           <nav className="px-3 pb-6">
             {categories.map((category) => (
-              <button
-                key={category}
-                type="button"
+              <Link
+                key={category.href}
+                href={category.href}
+                onClick={onClose}
                 className="flex w-full items-center justify-between rounded-md px-3 py-3.5 text-left text-[17px] font-semibold transition hover:bg-slate-100"
               >
-                <span>{category}</span>
+                <span>{category.label}</span>
                 <ChevronRight size={18} className="text-slate-400" />
-              </button>
+              </Link>
             ))}
           </nav>
         </div>

@@ -20,7 +20,7 @@ const baseProduct: Product = {
   slug: "torneira-para-cozinha-de-parede-cromada",
   name: "Torneira para Cozinha de Parede Cromada",
   permalink:
-    "/produto/torneira-para-cozinha-de-parede-cromada",
+    "/torneira-para-cozinha-de-parede-cromada",
   sku: "TOR-COZ-001",
   brand: "Persi",
   shortDescription:

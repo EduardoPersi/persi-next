@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getProductHref } from "@/lib/routing/storefrontUrls";
 
 export interface RecentlyViewedProductData {
   id: number;
@@ -32,7 +33,7 @@ export function RecentlyViewedProductCard({
 }: RecentlyViewedProductCardProps) {
   return (
     <Link
-      href={`/produto/${product.slug}`}
+      href={getProductHref(product.slug)}
       className="grid h-full min-h-32 grid-cols-[88px_minmax(0,1fr)] gap-3 rounded-[6px] border border-slate-200 bg-white p-3 transition-colors hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
       aria-label={`Ver ${product.name}`}
     >

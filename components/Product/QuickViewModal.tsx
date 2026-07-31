@@ -10,6 +10,7 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { getProductHref } from "@/lib/routing/storefrontUrls";
 import { Button } from "@/components/UI/Button";
 import { useCart } from "@/hooks/useCart";
 import { useClickOutside } from "@/hooks/useClickOutside";
@@ -287,7 +288,7 @@ export function QuickViewModal({
                 </div>
               ) : (
                 <Link
-                  href={`/produto/${product.slug}`}
+                  href={getProductHref(product.slug)}
                   className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-[6px] bg-[#0c2d72] px-5 text-center font-semibold text-white transition-colors hover:bg-[#17439f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
                 >
                   {product.available &&
@@ -306,7 +307,7 @@ export function QuickViewModal({
               </p>
 
               <Link
-                href={`/produto/${product.slug}`}
+                href={getProductHref(product.slug)}
                 className="mt-3 inline-flex text-sm font-semibold text-[#0c2d72] underline underline-offset-4 hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
               >
                 Ver detalhes do produto

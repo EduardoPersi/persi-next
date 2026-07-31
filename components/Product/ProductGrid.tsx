@@ -4,6 +4,7 @@ import {
 } from "@/services/woocommerce/products";
 import type { Product } from "@/types/product";
 import { ProductCard } from "./ProductCard";
+import { getProductHref } from "@/lib/routing/storefrontUrls";
 
 export async function ProductGrid() {
   let products: Product[] = [];
@@ -54,7 +55,7 @@ export async function ProductGrid() {
           name={product.name}
           image={product.image?.src ?? ""}
           images={product.images}
-          href={`/produto/${product.slug}`}
+          href={getProductHref(product.slug)}
           price={product.price}
           regularPrice={
             product.onSale ? product.regularPrice : undefined

@@ -8,6 +8,7 @@ import { A11y, Autoplay, Navigation, Pagination } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperInstance } from "swiper";
 import type { ProductCategory } from "@/types/category";
+import { getCategoryHref } from "@/lib/routing/storefrontUrls";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
@@ -125,7 +126,7 @@ export function HomeCategoryCarousel({
         {categories.map((category) => (
           <SwiperSlide key={category.id} className="h-auto!">
             <Link
-              href={`/categoria/${category.slug}`}
+              href={getCategoryHref(category, categories)}
               className="group/item flex h-full w-full flex-col items-center rounded-[6px] text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
               aria-label={`Ver categoria ${category.name}`}
             >

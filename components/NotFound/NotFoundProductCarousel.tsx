@@ -4,6 +4,7 @@ import { A11y, Navigation } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { ProductCard } from "@/components/Product/ProductCard";
 import type { Product } from "@/types/product";
+import { getProductHref } from "@/lib/routing/storefrontUrls";
 import "swiper/css";
 import "swiper/css/navigation";
 
@@ -33,7 +34,7 @@ export function NotFoundProductCarousel({
             name={product.name}
             image={product.image?.src ?? ""}
             images={product.images}
-            href={`/produto/${product.slug}`}
+            href={getProductHref(product.slug)}
             price={product.price}
             regularPrice={product.onSale ? product.regularPrice : undefined}
             currencyCode={product.currencyCode}

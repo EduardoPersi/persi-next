@@ -33,6 +33,7 @@ export interface GetProductsOptions {
     slug: string;
   }>;
   order?: "asc" | "desc";
+  revalidate?: number;
   orderby?:
     | "date"
     | "id"
@@ -85,6 +86,7 @@ export async function getProductsPage(
 
   const response = await storeApiGetWithMeta<unknown>("products", {
     query,
+    revalidate: options.revalidate,
   });
 
   if (!Array.isArray(response.data)) {
@@ -212,6 +214,31 @@ export async function getProducts(
   const response = await getProductsPage(options);
 
   return response.products;
+}
+
+export async function getAllProducts(): Promise<Product[]> {
+  const perPage = 50;
+  const firstPage = await getProductsPage({
+    page: 1,
+    perPage,
+    revalidate: 86_400,
+  });
+  const products = [...firstPage.products];
+  const pageNumbers = Array.from(
+    { length: Math.min(firstPage.totalPages, 100) - 1 },
+    (_, index) => index + 2,
+  );
+
+  for (let index = 0; index < pageNumbers.length; index += 5) {
+    const pages = await Promise.all(
+      pageNumbers.slice(index, index + 5).map((page) =>
+        getProductsPage({ page, perPage, revalidate: 86_400 }),
+      ),
+    );
+    products.push(...pages.flatMap((page) => page.products));
+  }
+
+  return products;
 }
 
 export async function getFeaturedProducts(

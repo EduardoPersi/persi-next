@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getProductHref } from "@/lib/routing/storefrontUrls";
 import Link from "next/link";
 import {
   CategoryFilters,
@@ -250,7 +251,7 @@ export default async function PromotionsPage({
                           name={product.name}
                           image={product.image?.src ?? ""}
                           images={product.images}
-                          href={`/produto/${product.slug}`}
+                          href={getProductHref(product.slug)}
                           price={product.price}
                           regularPrice={product.regularPrice}
                           currencyCode={product.currencyCode}

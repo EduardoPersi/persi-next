@@ -14,6 +14,10 @@ import {
   buildBreadcrumbListJsonLd,
   buildProductCategoryBreadcrumb,
 } from "@/lib/seo/productBreadcrumb";
+import {
+  getProductHref,
+  SITE_URL,
+} from "@/lib/routing/storefrontUrls";
 import { getBrandBySlug } from "@/services/woocommerce/brands";
 import { getBoughtTogether } from "@/services/woocommerce/boughtTogether";
 import { getAllProductCategories } from "@/services/woocommerce/categories";
@@ -76,12 +80,13 @@ export async function generateMetadata({
       title: `${product.name} | Persi Materiais`,
       description,
       alternates: {
-        canonical: `/produto/${product.slug}`,
+        canonical: getProductHref(product.slug),
       },
       openGraph: {
         title: `${product.name} | Persi Materiais`,
         description,
         type: "website",
+        url: getProductHref(product.slug),
         images: product.image
           ? [
               {
@@ -90,6 +95,12 @@ export async function generateMetadata({
               },
             ]
           : undefined,
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: `${product.name} | Persi Materiais`,
+        description,
+        images: product.image ? [product.image.src] : undefined,
       },
     };
   } catch {
@@ -140,9 +151,40 @@ export default async function ProductPage({ params }: ProductPageProps) {
   });
   const breadcrumbJsonLd = buildBreadcrumbListJsonLd(
     breadcrumbItems,
-    "https://app.persimateriais.com.br",
-    `/produto/${product.slug}`,
+    SITE_URL,
+    getProductHref(product.slug),
   );
+  const productUrl = new URL(getProductHref(product.slug), SITE_URL).toString();
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    url: productUrl,
+    image: product.images.map((image) => image.src),
+    description: product.shortDescription || product.description,
+    sku: product.sku || undefined,
+    brand: product.brands[0]
+      ? { "@type": "Brand", name: product.brands[0].name }
+      : undefined,
+    offers: {
+      "@type": "Offer",
+      url: productUrl,
+      priceCurrency: product.currencyCode,
+      price: product.price,
+      availability: product.available
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock",
+      itemCondition: "https://schema.org/NewCondition",
+    },
+    aggregateRating:
+      product.reviewCount > 0
+        ? {
+            "@type": "AggregateRating",
+            ratingValue: product.averageRating,
+            reviewCount: product.reviewCount,
+          }
+        : undefined,
+  };
   const productNavigation = await getProductNavigation({
     product,
     categories,
@@ -159,6 +201,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
       />
       <Header />
       <RecentlyViewedTracker slug={product.slug} />
@@ -247,7 +293,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     name={relatedProduct.name}
                     image={relatedProduct.image?.src ?? ""}
                     images={relatedProduct.images}
-                    href={`/produto/${relatedProduct.slug}`}
+                    href={getProductHref(relatedProduct.slug)}
                     price={relatedProduct.price}
                     regularPrice={
                       relatedProduct.onSale

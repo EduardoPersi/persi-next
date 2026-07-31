@@ -1,4 +1,5 @@
 import "server-only";
+import { getProductHref } from "../../lib/routing/storefrontUrls.ts";
 
 import type {
   BoughtTogetherItem,
@@ -53,7 +54,7 @@ function mapAutomaticProduct(product: Product): BoughtTogetherItem {
     productId: product.id,
     name: product.name,
     slug: product.slug,
-    href: `/produto/${product.slug}`,
+    href: getProductHref(product.slug),
     price: String(product.price),
     currencyCode: product.currencyCode,
     image: {
