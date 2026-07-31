@@ -5,7 +5,7 @@ namespace Persi\HeadlessAccount;
 defined( 'ABSPATH' ) || exit;
 
 final class Activator {
-	public const DATABASE_VERSION = '2';
+	public const DATABASE_VERSION = '3';
 
 	public static function maybe_upgrade(): void {
 		if ( self::DATABASE_VERSION !== get_option( 'persi_headless_account_db_version' ) ) {
@@ -20,6 +20,19 @@ final class Activator {
 
 		$charset = $wpdb->get_charset_collate();
 		$prefix  = $wpdb->prefix;
+
+		dbDelta(
+			"CREATE TABLE {$prefix}persi_favorites (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				user_id bigint(20) unsigned NOT NULL,
+				product_id bigint(20) unsigned NOT NULL,
+				created_at datetime NOT NULL,
+				PRIMARY KEY  (id),
+				UNIQUE KEY user_product (user_id, product_id),
+				KEY user_created (user_id, created_at),
+				KEY product_id (product_id)
+			) {$charset};"
+		);
 
 		dbDelta(
 			"CREATE TABLE {$prefix}persi_account_sessions (

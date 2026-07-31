@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
 
-export type AccountHttpMethod = "GET" | "POST";
+export type AccountHttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 
 export interface AccountHmacConfig {
   keyId: string;

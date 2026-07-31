@@ -6,6 +6,8 @@ import { BackToTopButton } from "@/components/UI/BackToTopButton";
 import { OverlayManagerProvider } from "@/context/OverlayManager";
 import "./globals.css";
 import { SITE_URL } from "@/lib/routing/storefrontUrls";
+import { AccountProvider } from "@/hooks/useAccount";
+import { FavoritesProvider } from "@/lib/favorites/favorites-context";
 
 const PERSI_HEADER_COLOR = "#0c2d72";
 
@@ -44,11 +46,15 @@ export default function RootLayout({
     <html lang="pt-BR" className={`${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <OverlayManagerProvider>
-          <CartProvider>
-            <div className="flex-1">{children}</div>
-            <Footer />
-            <BackToTopButton />
-          </CartProvider>
+          <AccountProvider>
+            <FavoritesProvider>
+              <CartProvider>
+                <div className="flex-1">{children}</div>
+                <Footer />
+                <BackToTopButton />
+              </CartProvider>
+            </FavoritesProvider>
+          </AccountProvider>
         </OverlayManagerProvider>
       </body>
     </html>

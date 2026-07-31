@@ -14,7 +14,8 @@ import {
   X,
 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
-import { AccountProvider, useAccount } from "@/hooks/useAccount";
+import { useAccount } from "@/hooks/useAccount";
+import { useFavorites } from "@/hooks/useFavorites";
 import { getHeaderAccountAction } from "@/lib/account/headerNavigation";
 import type { AccountSessionResult } from "@/lib/account/validation";
 import { AccountDrawer } from "@/components/Account/AccountDrawer";
@@ -60,6 +61,7 @@ function HeaderLogo({ compact = false }: HeaderLogoProps) {
 
 interface HeaderActionsProps {
   itemsCount: number;
+  favoritesCount: number;
   isCartPage: boolean;
   isCartOpen: boolean;
   onOpenCart: () => void;
@@ -76,6 +78,7 @@ interface HeaderActionsProps {
 
 function HeaderActions({
   itemsCount,
+  favoritesCount,
   isCartPage,
   isCartOpen,
   onOpenCart,
@@ -133,13 +136,14 @@ function HeaderActions({
         compact={compact}
       />
 
-      <a
-        href="#"
-        aria-label="Favoritos"
-        className="hidden h-10 w-10 items-center justify-center p-2 transition hover:text-[#ff6a00] sm:flex"
+      <Link
+        href="/favoritos"
+        aria-label={`Favoritos: ${favoritesCount} ${favoritesCount === 1 ? "produto" : "produtos"}`}
+        className="relative flex h-10 w-10 items-center justify-center p-2 transition hover:text-[#ff6a00]"
       >
         <Heart size={compact ? 21 : 24} />
-      </a>
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff6a00] px-1 text-[10px] font-bold leading-none text-white">{favoritesCount}</span>
+      </Link>
 
       <button
         type="button"
@@ -172,6 +176,7 @@ function HeaderContent() {
   const [showCompactHeader, setShowCompactHeader] = useState(false);
   const { cart, closeCart, isOpen: isCartOpen, openCart } = useCart();
   const { status: accountStatus, customer, logout } = useAccount();
+  const { count: favoritesCount } = useFavorites();
   const isCartPage = pathname === "/carrinho";
   const itemsCount = cart?.itemsCount ?? 0;
   const accountLabel =
@@ -268,6 +273,7 @@ function HeaderContent() {
             <ProductSearch variant="desktop" />
             <HeaderActions
               itemsCount={itemsCount}
+              favoritesCount={favoritesCount}
               isCartPage={isCartPage}
               isCartOpen={isCartOpen}
               onOpenCart={handleCartClick}
@@ -335,6 +341,7 @@ function HeaderContent() {
             <ProductSearch variant="desktop" />
             <HeaderActions
               itemsCount={itemsCount}
+              favoritesCount={favoritesCount}
               isCartPage={isCartPage}
               isCartOpen={isCartOpen}
               onOpenCart={handleCartClick}
@@ -371,14 +378,9 @@ function HeaderContent() {
   );
 }
 
-export function Header({
-  initialAccountSession,
-}: {
+export function Header({ initialAccountSession }: {
   initialAccountSession?: AccountSessionResult;
 }) {
-  return (
-    <AccountProvider initialSession={initialAccountSession}>
-      <HeaderContent />
-    </AccountProvider>
-  );
+  void initialAccountSession;
+  return <HeaderContent />;
 }

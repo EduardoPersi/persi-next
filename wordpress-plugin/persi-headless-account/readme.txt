@@ -3,7 +3,7 @@ Contributors: persi
 Requires at least: 6.4
 Requires PHP: 8.1
 WC requires at least: 8.2
-Stable tag: 0.4.0
+Stable tag: 0.5.0
 License: Proprietary
 
 Núcleo de autenticação e sessões opacas para a futura Área da Conta headless.
@@ -22,6 +22,9 @@ Esta fase fornece exclusivamente:
 * POST /wp-json/persi-account/v1/reset-password
 * POST /wp-json/persi-account/v1/google-login
 * POST /wp-json/persi-headless-account/v1/oauth-login
+* GET e POST /wp-json/persi-headless/v1/favorites
+* DELETE /wp-json/persi-headless/v1/favorites/{productId}
+* PUT /wp-json/persi-headless/v1/favorites/sync
 * autenticação HMAC entre servidores;
 * proteção contra replay;
 * limitação progressiva de tentativas de login;

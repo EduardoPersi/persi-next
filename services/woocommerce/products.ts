@@ -17,6 +17,7 @@ export interface GetProductsOptions {
   search?: string;
   category?: string | number;
   slug?: string;
+  include?: readonly number[];
   featured?: boolean;
   minPrice?: number;
   maxPrice?: number;
@@ -63,6 +64,7 @@ export async function getProductsPage(
       search: options.search,
       category: options.category,
       slug: options.slug,
+      include: options.include,
       featured: options.featured,
       min_price: convertMajorUnitToMinorUnit(
         options.minPrice,

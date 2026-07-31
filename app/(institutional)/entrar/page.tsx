@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { AccountLoginForm } from "@/components/Account/AccountLoginForm";
 import { SocialLoginButtons } from "@/components/Account/SocialLoginButtons";
 import { InstitutionalPageLayout } from "@/components/Institutional/InstitutionalPageLayout";
-import { AccountProvider } from "@/hooks/useAccount";
 import { getServerAccountSession } from "@/services/account/serverSession";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +40,7 @@ export default async function LoginPage({
         <p className="mb-6 text-sm leading-6 text-slate-600">
           Use o e-mail ou usuário cadastrado no site da Persi.
         </p>
-        <AccountProvider initialSession={{ authenticated: false }}>
+        <>
           {errorMessage ? (
             <p
               id="social-login-error"
@@ -58,7 +57,7 @@ export default async function LoginPage({
               Use Google ou Facebook para entrar com segurança.
             </p>
           </div>
-        </AccountProvider>
+        </>
       </div>
     </InstitutionalPageLayout>
   );

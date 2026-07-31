@@ -30,15 +30,15 @@ export function ProductCardActions({
         <div className="group/action relative">
           <button
             type="button"
-            onClick={() => toggleFavorite(productId)}
+            onClick={() => void toggleFavorite(productId)}
             aria-label={`${favoriteLabel}: ${productName}`}
             aria-pressed={favorited}
             title={favoriteLabel}
             className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-white/60 text-[#0c2d72] shadow-sm transition-colors hover:bg-white hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
           >
             <Heart
-              className={`h-5 w-5 ${
-                favorited ? "fill-[#ff6a00] text-[#ff6a00]" : ""
+              className={`h-5 w-5 transition-transform duration-200 ${
+                favorited ? "scale-110 fill-[#ff6a00] text-[#ff6a00]" : ""
               }`}
               aria-hidden="true"
             />
