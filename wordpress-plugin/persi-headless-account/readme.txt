@@ -3,7 +3,7 @@ Contributors: persi
 Requires at least: 6.4
 Requires PHP: 8.1
 WC requires at least: 8.2
-Stable tag: 0.6.0
+Stable tag: 0.7.0
 License: Proprietary
 
 Conta headless da Persi com autenticação, sessões opacas, pedidos e listas do
@@ -22,7 +22,7 @@ Ao atualizar uma instalação anterior, a ativação cria a tabela genérica
 persi_customer_lists e migra de forma idempotente os registros existentes de
 persi_favorites para o tipo favorites. A tabela antiga não é apagada.
 
-== Escopo da versão 0.6.0 ==
+== Escopo da versão 0.7.0 ==
 
 Esta fase fornece exclusivamente:
 
@@ -39,6 +39,13 @@ Esta fase fornece exclusivamente:
 * GET e POST /wp-json/persi-headless/v1/customer-lists/{listType}
 * DELETE /wp-json/persi-headless/v1/customer-lists/{listType}/{productId}
 * PUT /wp-json/persi-headless/v1/customer-lists/{listType}/sync
+* GET /wp-json/persi-account/v1/workspace
+* GET e PUT /wp-json/persi-account/v1/profile
+* GET /wp-json/persi-account/v1/addresses
+* PUT e DELETE /wp-json/persi-account/v1/addresses/{billing|shipping}
+* PUT /wp-json/persi-account/v1/addresses/{billing|shipping}/primary
+* GET /wp-json/persi-account/v1/connected-accounts
+* GET e DELETE /wp-json/persi-account/v1/stock-notifications
 * autenticação HMAC entre servidores;
 * proteção contra replay;
 * limitação progressiva de tentativas de login;
@@ -53,6 +60,14 @@ A consulta de pedidos é somente leitura.
 Os endpoints exigem HMAC e X-Persi-Session. Nesta versão, o tipo registrado é
 favorites. Os itens são persistidos em persi_customer_lists com unicidade por
 user_id, list_type e product_id.
+
+== Customer Workspace ==
+
+O Customer Workspace concentra resumo da conta, perfil, endereços WooCommerce,
+identidades OAuth conectadas e inscrições de estoque. Todos os contratos usam
+HMAC servidor a servidor e resolvem o cliente exclusivamente pela sessão opaca.
+O navegador nunca envia customer_id. O e-mail permanece somente leitura; sua
+alteração exige um fluxo separado de verificação.
 
 == Pedidos ==
 

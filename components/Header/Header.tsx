@@ -196,8 +196,15 @@ function HeaderContent() {
     canOpenAccountDrawer && accountDrawerPathname === pathname;
   const handleAccountAction = useCallback(() => {
     if (accountStatus === "loading") return;
+
+    if (accountAction === "refresh-page") {
+      closeAccount();
+      window.location.reload();
+      return;
+    }
+
     setAccountDrawerPathname(pathname);
-  }, [accountStatus, pathname]);
+  }, [accountAction, accountStatus, closeAccount, pathname]);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const handleCartClick = useCallback(() => {
     if (!isCartPage) {

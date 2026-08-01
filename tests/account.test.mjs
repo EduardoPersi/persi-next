@@ -336,7 +336,7 @@ test("saudação da conta prioriza primeiro nome e possui fallbacks seguros", ()
   );
 });
 
-test("painel da conta possui seis cards e expõe Minhas Listas", async () => {
+test("Customer Workspace possui dashboard funcional e navegação compartilhada", async () => {
   const dashboard = await readFile(
     new URL("../components/Account/AccountDashboard.tsx", import.meta.url),
     "utf8",
@@ -347,6 +347,10 @@ test("painel da conta possui seis cards e expõe Minhas Listas", async () => {
   );
   const privatePage = await readFile(
     new URL("../app/(institutional)/minha-conta/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const workspaceShell = await readFile(
+    new URL("../components/Account/CustomerWorkspaceShell.tsx", import.meta.url),
     "utf8",
   );
 
@@ -361,12 +365,16 @@ test("painel da conta possui seis cards e expõe Minhas Listas", async () => {
   }
   assert.match(dashboard, /href: "\/minha-conta\/pedidos"/);
   assert.match(dashboard, /href: "\/minha-conta\/listas"/);
-  assert.match(dashboard, /<AccountLogoutButton variant="dashboard" \/>/);
-  assert.match(dashboardCard, /Em breve/);
-  assert.match(dashboardCard, /aria-disabled="true"/);
+  assert.match(dashboard, /CustomerWorkspaceSummary/);
+  assert.match(dashboard, /Produtos vistos/);
+  assert.equal(dashboardCard.includes("Em breve"), false);
+  assert.match(workspaceShell, /CUSTOMER_WORKSPACE_NAVIGATION/);
+  assert.match(workspaceShell, /<Drawer/);
+  assert.match(workspaceShell, /aria-current/);
+  assert.match(workspaceShell, /AccountLogoutButton/);
   assert.match(dashboard, /grid-cols-1/);
   assert.match(dashboard, /sm:grid-cols-2/);
-  assert.match(dashboard, /lg:grid-cols-3/);
+  assert.match(dashboard, /xl:grid-cols-3/);
   assert.equal(privatePage.includes("AccountNavigation"), false);
   assert.equal((privatePage.match(/AccountLogoutButton/g) ?? []).length, 0);
   assert.match(privatePage, /getServerAccountSession/);
@@ -386,11 +394,11 @@ test("ação da conta no cabeçalho respeita sessão e rota atual", () => {
   );
   assert.equal(
     getHeaderAccountAction("authenticated", "/minha-conta"),
-    "go-to-account",
+    "refresh-page",
   );
   assert.equal(
     getHeaderAccountAction("authenticated", "/minha-conta/pedidos/10"),
-    "go-to-account",
+    "refresh-page",
   );
   assert.equal(getHeaderAccountAction("loading", "/"), "wait");
   assert.equal(isAccountRoute("/minha-conta/pedidos"), true);
@@ -412,6 +420,8 @@ test("desktop e mobile compartilham a ação e o drawer fecha com rota ou login"
   assert.match(header, /accountDrawerPathname === pathname/);
   assert.match(header, /setAccountDrawerPathname\(pathname\)/);
   assert.match(header, /setAccountDrawerPathname\(null\)/);
+  assert.match(header, /accountAction === "refresh-page"/);
+  assert.match(header, /window\.location\.reload\(\)/);
   assert.match(header, /open=\{accountOpen && canOpenAccountDrawer\}/);
   assert.match(header, /accountHref=\{accountHref\}/);
   assert.match(header, /onAccountAction=\{handleAccountAction\}/);

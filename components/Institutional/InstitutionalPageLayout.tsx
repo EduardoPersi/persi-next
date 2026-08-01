@@ -8,18 +8,20 @@ type InstitutionalPageLayoutProps = {
   title: string;
   children: ReactNode;
   accountSession?: AccountSessionResult;
+  containerSize?: "md" | "lg";
 };
 
 export function InstitutionalPageLayout({
   title,
   children,
   accountSession,
+  containerSize = "md",
 }: InstitutionalPageLayoutProps) {
   return (
     <>
       <Header initialAccountSession={accountSession} />
       <main className="py-5 sm:py-8 lg:py-10">
-        <Container size="md">
+        <Container size={containerSize}>
           <nav aria-label="Breadcrumb">
             <ol className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
               <li>

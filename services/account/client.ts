@@ -119,7 +119,7 @@ export function getAccountClientConfig(
 export async function requestAccountEndpoint(input: {
   config: AccountClientConfig;
   method: AccountHttpMethod;
-  route: "/login" | "/google-login" | "/oauth-login" | "/session" | "/logout" | "/register" | "/forgot-password" | "/reset-password" | "/orders" | `/orders/${number}` | `/customer-lists/${string}` | `/customer-lists/${string}/${number}` | `/customer-lists/${string}/sync`;
+  route: "/login" | "/google-login" | "/oauth-login" | "/session" | "/logout" | "/register" | "/forgot-password" | "/reset-password" | "/orders" | `/orders/${number}` | "/workspace" | "/profile" | "/addresses" | `/addresses/${"billing" | "shipping"}` | `/addresses/${"billing" | "shipping"}/primary` | "/connected-accounts" | "/stock-notifications" | `/stock-notifications/${number}` | `/customer-lists/${string}` | `/customer-lists/${string}/${number}` | `/customer-lists/${string}/sync`;
   basePath?: typeof ACCOUNT_REST_BASE_PATH | typeof OAUTH_REST_BASE_PATH | typeof CUSTOMER_LISTS_REST_BASE_PATH;
   query?: string;
   rawBody: string;

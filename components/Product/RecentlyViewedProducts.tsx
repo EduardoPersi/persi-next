@@ -49,12 +49,14 @@ interface RecentlyViewedProductsProps {
   title?: string;
   excludeSlug?: string;
   sectionId?: string;
+  showEmptyState?: boolean;
 }
 
 export function RecentlyViewedProducts({
   title = "Produtos visualizados recentemente",
   excludeSlug,
   sectionId = "recently-viewed-title",
+  showEmptyState = false,
 }: RecentlyViewedProductsProps = {}) {
   const storedValue = useSyncExternalStore(
     subscribeToStorage,
@@ -112,7 +114,13 @@ export function RecentlyViewedProducts({
     return () => controller.abort();
   }, [slugs]);
 
-  if (slugs.length === 0 || (products && products.length === 0)) return null;
+  if (slugs.length === 0 || (products && products.length === 0)) {
+    return showEmptyState ? (
+      <div className="mt-6 rounded-xl bg-slate-50 p-8 text-center text-slate-600">
+        Você ainda não visualizou produtos neste dispositivo.
+      </div>
+    ) : null;
+  }
   const isLoading = products === null;
 
   return (

@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AccountNavigation } from "@/components/Account/AccountNavigation";
-import { InstitutionalPageLayout } from "@/components/Institutional/InstitutionalPageLayout";
+import { CustomerWorkspacePage } from "@/components/Account/CustomerWorkspacePage";
 import { getAccountOrders } from "@/services/account/orders";
 import { getServerAccountSession, getServerAccountToken } from "@/services/account/serverSession";
 import { AccountServiceError } from "@/services/account/client";
@@ -21,12 +20,16 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     result = await getAccountOrders(token, { page, perPage: 10 });
   } catch (error) {
     if (error instanceof AccountServiceError && error.status === 401) redirect("/entrar");
-    return <InstitutionalPageLayout title="Meus pedidos" accountSession={session}><AccountNavigation /><p role="alert">Não foi possível carregar seus pedidos agora.</p></InstitutionalPageLayout>;
+    return <CustomerWorkspacePage title="Meus pedidos" session={session}><p role="alert">Não foi possível carregar seus pedidos agora.</p></CustomerWorkspacePage>;
   }
 
   return (
-    <InstitutionalPageLayout title="Meus pedidos" accountSession={session}>
-      <AccountNavigation />
+    <CustomerWorkspacePage title="Meus pedidos" session={session}>
+      <div className="mb-6 flex flex-wrap gap-2" aria-label="Categorias de pedidos">
+        <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-800">Em andamento: {result.orders.filter((order) => ["pending", "processing", "on-hold"].includes(order.status)).length}</span>
+        <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-800">Entregues: {result.orders.filter((order) => order.status === "completed").length}</span>
+        <span className="rounded-full bg-red-50 px-3 py-1 text-sm font-semibold text-red-800">Cancelados: {result.orders.filter((order) => ["cancelled", "failed", "refunded"].includes(order.status)).length}</span>
+      </div>
       {result.orders.length === 0 ? (
         <div className="rounded-xl bg-slate-50 p-6 text-center">
           <p>Você ainda não fez nenhum pedido.</p>
@@ -60,6 +63,6 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           </nav>
         </>
       )}
-    </InstitutionalPageLayout>
+    </CustomerWorkspacePage>
   );
 }

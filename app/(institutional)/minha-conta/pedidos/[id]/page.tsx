@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import { AccountNavigation } from "@/components/Account/AccountNavigation";
-import { InstitutionalPageLayout } from "@/components/Institutional/InstitutionalPageLayout";
+import { CustomerWorkspacePage } from "@/components/Account/CustomerWorkspacePage";
 import { parseOrderId } from "@/lib/account/orders";
 import { AccountServiceError } from "@/services/account/client";
 import { getAccountOrder } from "@/services/account/orders";
@@ -30,11 +29,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   } catch (error) {
     if (error instanceof AccountServiceError && error.status === 401) redirect("/entrar");
     const missing = error instanceof AccountServiceError && error.status === 404;
-    return <InstitutionalPageLayout title={missing ? "Pedido não encontrado" : "Detalhes do pedido"} accountSession={session}><AccountNavigation /><p role="alert">{missing ? "Pedido não encontrado." : "Não foi possível carregar seus pedidos agora."}</p></InstitutionalPageLayout>;
+    return <CustomerWorkspacePage title={missing ? "Pedido não encontrado" : "Detalhes do pedido"} session={session}><p role="alert">{missing ? "Pedido não encontrado." : "Não foi possível carregar seus pedidos agora."}</p></CustomerWorkspacePage>;
   }
   return (
-    <InstitutionalPageLayout title={`Pedido #${order.number}`} accountSession={session}>
-      <AccountNavigation />
+    <CustomerWorkspacePage title={`Pedido #${order.number}`} session={session}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(order.dateCreated))}</p>
         <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-[#0c2d72]">{order.statusLabel}</span>
@@ -52,6 +50,6 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       <div className="mt-7 grid gap-5 md:grid-cols-2"><section className="rounded-xl border p-5"><h2 className="font-bold text-[#071f5c]">Endereço de entrega</h2><Address value={order.shipping.address} /><p className="mt-3 text-sm">{order.shipping.methodTitle}</p></section>
       <section className="rounded-xl border p-5"><h2 className="font-bold text-[#071f5c]">Endereço de cobrança</h2><Address value={order.billing} /></section></div>
       {order.customerNote && <section className="mt-7"><h2 className="font-bold text-[#071f5c]">Observação</h2><p className="mt-2 whitespace-pre-wrap">{order.customerNote}</p></section>}
-    </InstitutionalPageLayout>
+    </CustomerWorkspacePage>
   );
 }

@@ -7,8 +7,8 @@ export function AccountNavigation() {
       <Link href="/minha-conta" className="rounded-xl px-3 py-2 font-medium text-[#0c2d72] hover:bg-slate-100">Visão geral</Link>
       <Link href="/minha-conta/pedidos" className="rounded-xl px-3 py-2 font-medium text-[#0c2d72] hover:bg-slate-100">Meus pedidos</Link>
       <Link href="/minha-conta/listas" className="rounded-xl px-3 py-2 font-medium text-[#0c2d72] hover:bg-slate-100">Minhas listas</Link>
-      <span aria-disabled="true" className="cursor-not-allowed rounded-xl px-3 py-2 text-slate-400">Endereços</span>
-      <span aria-disabled="true" className="cursor-not-allowed rounded-xl px-3 py-2 text-slate-400">Dados pessoais</span>
+      <Link href="/minha-conta/enderecos" className="rounded-xl px-3 py-2 font-medium text-[#0c2d72] hover:bg-slate-100">Endereços</Link>
+      <Link href="/minha-conta/perfil" className="rounded-xl px-3 py-2 font-medium text-[#0c2d72] hover:bg-slate-100">Dados pessoais</Link>
       <AccountLogoutButton />
     </nav>
   );

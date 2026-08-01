@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 
 type AccountDashboardCardProps = {
-  href?: string;
+  href: string;
   icon: LucideIcon;
   title: string;
 };
@@ -22,24 +22,8 @@ export function AccountDashboardCard({
         aria-hidden="true"
       />
       <span className="mt-4 font-semibold text-[#071f5c]">{title}</span>
-      {!href ? (
-        <span className="mt-2 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-[#c45100]">
-          Em breve
-        </span>
-      ) : null}
     </>
   );
-
-  if (!href) {
-    return (
-      <div
-        className={`${cardClassName} cursor-not-allowed`}
-        aria-disabled="true"
-      >
-        {content}
-      </div>
-    );
-  }
 
   return (
     <Link

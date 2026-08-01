@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Heart } from "lucide-react";
-import { AccountNavigation } from "@/components/Account/AccountNavigation";
-import { InstitutionalPageLayout } from "@/components/Institutional/InstitutionalPageLayout";
+import { CustomerWorkspacePage } from "@/components/Account/CustomerWorkspacePage";
 import { getServerAccountSession } from "@/services/account/serverSession";
 
 export const dynamic = "force-dynamic";
@@ -20,8 +19,7 @@ export default async function CustomerListsPage() {
   if (!session) redirect("/entrar");
 
   return (
-    <InstitutionalPageLayout title="Minhas listas" accountSession={session}>
-      <AccountNavigation />
+    <CustomerWorkspacePage title="Minhas listas" session={session}>
       <section aria-labelledby="customer-list-favorites">
         <Link
           href="/favoritos"
@@ -40,6 +38,6 @@ export default async function CustomerListsPage() {
           </span>
         </Link>
       </section>
-    </InstitutionalPageLayout>
+    </CustomerWorkspacePage>
   );
 }

@@ -49,19 +49,19 @@ const accountItems = [
     href: "/minha-conta/enderecos",
     icon: MapPinned,
     label: "Endereços",
-    available: false,
+    available: true,
   },
   {
-    href: "/minha-conta/dados",
+    href: "/minha-conta/perfil",
     icon: UserRound,
     label: "Dados pessoais",
-    available: false,
+    available: true,
   },
   {
     href: "/minha-conta/lista-espera",
     icon: Bell,
     label: "Lista de espera",
-    available: false,
+    available: true,
   },
   {
     href: "/minha-conta/listas",

@@ -7,6 +7,8 @@ use Persi\HeadlessAccount\Api\OAuthLoginController;
 use Persi\HeadlessAccount\Api\OrderController;
 use Persi\HeadlessAccount\Api\AccountAccessController;
 use Persi\HeadlessAccount\Api\CustomerListsController;
+use Persi\HeadlessAccount\Api\CustomerWorkspaceController;
+use Persi\HeadlessAccount\CustomerWorkspace\CustomerWorkspaceService;
 use Persi\HeadlessAccount\CustomerLists\CustomerListRepository;
 use Persi\HeadlessAccount\CustomerLists\CustomerListsService;
 use Persi\HeadlessAccount\Auth\CredentialsAuthenticator;
@@ -100,6 +102,13 @@ final class Plugin {
 			new Logger()
 		);
 		add_action( 'rest_api_init', array( $customer_lists_controller, 'register_routes' ) );
+		$workspace_controller = new CustomerWorkspaceController(
+			$request_authenticator,
+			$sessions,
+			new CustomerWorkspaceService( $wpdb ),
+			new Logger()
+		);
+		add_action( 'rest_api_init', array( $workspace_controller, 'register_routes' ) );
 		$access_controller = new AccountAccessController(
 			$request_authenticator,
 			new RateLimiter( $wpdb ),
