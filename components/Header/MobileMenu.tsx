@@ -11,6 +11,8 @@ import {
   X,
 } from "lucide-react";
 import { Drawer } from "./Drawer";
+import { MegaMenuMobile } from "@/components/navigation/MegaMenuMobile";
+import { useNavigation } from "@/components/navigation/NavigationProvider";
 
 type MobileMenuProps = {
   open: boolean;
@@ -20,18 +22,6 @@ type MobileMenuProps = {
   onAccountAction: () => void;
 };
 
-const categories = [
-  { label: "Acabamentos", href: "/acabamentos" },
-  { label: "Banheiro e Cozinha", href: "/banheiro-e-cozinha" },
-  { label: "Elétrica", href: "/eletrica" },
-  { label: "Ferragens", href: "/ferragens" },
-  { label: "Ferramentas", href: "/ferramentas" },
-  { label: "Hidráulica", href: "/hidraulica" },
-  { label: "Materiais de Construção", href: "/materiais-de-construcao" },
-  { label: "Pintura", href: "/pintura" },
-  { label: "Utilidades", href: "/utilidades" },
-];
-
 export function MobileMenu({
   open,
   onClose,
@@ -39,6 +29,8 @@ export function MobileMenu({
   accountStatus,
   onAccountAction,
 }: MobileMenuProps) {
+  const { categories } = useNavigation();
+
   return (
     <Drawer open={open} onClose={onClose} side="left">
       <div className="flex h-full flex-col">
@@ -126,19 +118,9 @@ export function MobileMenu({
             Categorias
           </div>
 
-          <nav className="px-3 pb-6">
-            {categories.map((category) => (
-              <Link
-                key={category.href}
-                href={category.href}
-                onClick={onClose}
-                className="flex w-full items-center justify-between rounded-md px-3 py-3.5 text-left text-[17px] font-semibold transition hover:bg-slate-100"
-              >
-                <span>{category.label}</span>
-                <ChevronRight size={18} className="text-slate-400" />
-              </Link>
-            ))}
-          </nav>
+          <div className="px-3 pb-6">
+            <MegaMenuMobile categories={categories} onNavigate={onClose} />
+          </div>
         </div>
       </div>
     </Drawer>

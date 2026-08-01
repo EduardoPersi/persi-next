@@ -23,14 +23,7 @@ import { AccountDropdown } from "@/components/Account/AccountDropdown";
 import { MiniCart } from "./MiniCart";
 import { MobileMenu } from "./MobileMenu";
 import { ProductSearch } from "./ProductSearch";
-
-const menuItems = [
-  { label: "Todas as Categorias", href: "/" },
-  { label: "Promoções", href: "/promocoes" },
-  { label: "Hidráulica", href: "/hidraulica" },
-  { label: "Elétrica", href: "/eletrica" },
-  { label: "Impermeabilização", href: "/impermeabilizacao" },
-];
+import { MegaMenu } from "@/components/navigation/MegaMenu";
 
 interface HeaderLogoProps {
   compact?: boolean;
@@ -271,7 +264,7 @@ function HeaderContent() {
               aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((current) => !current)}
-              className="flex h-10 w-10 items-center justify-center rounded-md hover:bg-white/10 md:hidden"
+              className="flex h-10 w-10 items-center justify-center rounded-md hover:bg-white/10 lg:hidden"
             >
               {menuOpen ? <X size={27} /> : <Menu size={27} />}
             </button>
@@ -300,19 +293,9 @@ function HeaderContent() {
         </div>
       </div>
 
-      <div className="hidden bg-[#ff6500] text-white md:block">
+      <div className="hidden bg-[#ff6a00] text-white lg:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4">
-          <nav className="flex items-center">
-            {menuItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="border-r border-white/40 px-3 py-3 text-base font-semibold transition last:border-r-0 hover:bg-black/10 lg:px-4"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <MegaMenu />
           <a
             href="#"
             className="hidden items-center gap-2 px-4 py-3 text-base font-semibold hover:bg-black/10 lg:flex"
@@ -340,7 +323,7 @@ function HeaderContent() {
               aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((current) => !current)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md hover:bg-white/10 md:hidden"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md hover:bg-white/10 lg:hidden"
             >
               {menuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>

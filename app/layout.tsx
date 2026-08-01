@@ -8,6 +8,8 @@ import "./globals.css";
 import { SITE_URL } from "@/lib/routing/storefrontUrls";
 import { AccountProvider } from "@/hooks/useAccount";
 import { CustomerListsProvider } from "@/lib/customer-lists/provider";
+import { NavigationProvider } from "@/components/navigation/NavigationProvider";
+import { getMegaMenuData } from "@/services/menu/menu";
 
 const PERSI_HEADER_COLOR = "#0c2d72";
 
@@ -37,25 +39,29 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const megaMenu = await getMegaMenuData();
+
   return (
     <html lang="pt-BR" className={`${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <OverlayManagerProvider>
-          <AccountProvider>
-            <CustomerListsProvider>
-              <CartProvider>
-                <div className="flex-1">{children}</div>
-                <Footer />
-                <BackToTopButton />
-              </CartProvider>
-            </CustomerListsProvider>
-          </AccountProvider>
-        </OverlayManagerProvider>
+        <NavigationProvider menu={megaMenu}>
+          <OverlayManagerProvider>
+            <AccountProvider>
+              <CustomerListsProvider>
+                <CartProvider>
+                  <div className="flex-1">{children}</div>
+                  <Footer />
+                  <BackToTopButton />
+                </CartProvider>
+              </CustomerListsProvider>
+            </AccountProvider>
+          </OverlayManagerProvider>
+        </NavigationProvider>
       </body>
     </html>
   );
