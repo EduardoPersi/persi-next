@@ -4,6 +4,7 @@ namespace Persi\HeadlessAccount;
 
 use Persi\HeadlessAccount\Api\AuthController;
 use Persi\HeadlessAccount\Api\OAuthLoginController;
+use Persi\HeadlessAccount\Api\OAuthAuditController;
 use Persi\HeadlessAccount\Api\OrderController;
 use Persi\HeadlessAccount\Api\AccountAccessController;
 use Persi\HeadlessAccount\Api\CustomerListsController;
@@ -18,6 +19,7 @@ use Persi\HeadlessAccount\Auth\OAuthLoginService;
 use Persi\HeadlessAccount\Auth\SessionRepository;
 use Persi\HeadlessAccount\Auth\SessionService;
 use Persi\HeadlessAccount\Auth\SessionToken;
+use Persi\HeadlessAccount\Diagnostics\OAuthAuditService;
 use Persi\HeadlessAccount\Security\ClientFingerprint;
 use Persi\HeadlessAccount\Security\NonceRepository;
 use Persi\HeadlessAccount\Security\RateLimiter;
@@ -88,6 +90,11 @@ final class Plugin {
 			new Logger()
 		);
 		add_action( 'rest_api_init', array( $oauth_controller, 'register_routes' ) );
+		$oauth_audit_controller = new OAuthAuditController(
+			$request_authenticator,
+			new OAuthAuditService( $wpdb, $configuration->secret() )
+		);
+		add_action( 'rest_api_init', array( $oauth_audit_controller, 'register_routes' ) );
 		$order_controller = new OrderController(
 			$request_authenticator,
 			$sessions,

@@ -3,11 +3,32 @@ Contributors: persi
 Requires at least: 6.4
 Requires PHP: 8.1
 WC requires at least: 8.2
-Stable tag: 0.7.0
+Stable tag: 0.7.3
 License: Proprietary
 
 Conta headless da Persi com autenticação, sessões opacas, pedidos e listas do
 cliente, incluindo Favoritos por meio do módulo genérico Customer Lists.
+
+== Auditoria OAuth temporária (0.7.3) ==
+
+Esta compilação inclui temporariamente `GET
+/wp-json/persi-headless-account/v1/debug/oauth-audit`. O endpoint exige ao mesmo
+tempo a assinatura HMAC normal, timestamp e nonce inéditos, além de um usuário
+WordPress autenticado com `manage_options`. Qualquer falha responde 403.
+
+O relatório é somente leitura e nunca retorna e-mails, provider IDs, hashes,
+tokens, cookies ou segredos. Para autenticação administrativa fora do painel,
+use uma Application Password de um administrador junto dos cabeçalhos HMAC. A
+Application Password também é secreta e nunca deve ser incluída em logs, Git ou
+capturas de tela.
+
+O diagnóstico compara o usuário da identidade OAuth, da sessão, da API de conta
+e do perfil WooCommerce. Também classifica, sem executar, se um vínculo
+inconsistente teria reparo inequívoco. `AUTO_REPAIR_POSSIBLE` é somente uma
+indicação de auditoria; esta versão não altera identidades nem sessões.
+
+Remover `OAuthAuditController`, `OAuthAuditService` e seu registro em
+`Plugin.php` assim que a investigação terminar, antes de produção.
 
 == Instalação ==
 
