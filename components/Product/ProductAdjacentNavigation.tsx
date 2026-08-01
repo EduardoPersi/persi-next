@@ -60,7 +60,7 @@ export function ProductAdjacentNavigation({
   return (
     <nav
       aria-label="Navegação entre produtos"
-      className="hidden shrink-0 items-center border-b border-slate-200 pb-2 lg:flex"
+      className="hidden shrink-0 items-center pb-2 lg:flex"
     >
       <div className="flex items-center gap-1">
         <span className="group relative">

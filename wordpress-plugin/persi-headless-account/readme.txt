@@ -3,12 +3,26 @@ Contributors: persi
 Requires at least: 6.4
 Requires PHP: 8.1
 WC requires at least: 8.2
-Stable tag: 0.5.0
+Stable tag: 0.6.0
 License: Proprietary
 
-Núcleo de autenticação e sessões opacas para a futura Área da Conta headless.
+Conta headless da Persi com autenticação, sessões opacas, pedidos e listas do
+cliente, incluindo Favoritos por meio do módulo genérico Customer Lists.
 
-== Escopo da versão 0.4.0 ==
+== Instalação ==
+
+1. Confirme WordPress 6.4+, PHP 8.1+, WooCommerce 8.2+ e HTTPS.
+2. Em Plugins > Adicionar plugin > Enviar plugin, selecione o ZIP
+   persi-headless-account.zip.
+3. Instale e ative o plugin.
+4. Configure no wp-config.php o segredo HMAC, o Key ID e as origens permitidas.
+5. Confirme que não existe aviso de configuração no painel administrativo.
+
+Ao atualizar uma instalação anterior, a ativação cria a tabela genérica
+persi_customer_lists e migra de forma idempotente os registros existentes de
+persi_favorites para o tipo favorites. A tabela antiga não é apagada.
+
+== Escopo da versão 0.6.0 ==
 
 Esta fase fornece exclusivamente:
 
@@ -22,17 +36,23 @@ Esta fase fornece exclusivamente:
 * POST /wp-json/persi-account/v1/reset-password
 * POST /wp-json/persi-account/v1/google-login
 * POST /wp-json/persi-headless-account/v1/oauth-login
-* GET e POST /wp-json/persi-headless/v1/favorites
-* DELETE /wp-json/persi-headless/v1/favorites/{productId}
-* PUT /wp-json/persi-headless/v1/favorites/sync
+* GET e POST /wp-json/persi-headless/v1/customer-lists/{listType}
+* DELETE /wp-json/persi-headless/v1/customer-lists/{listType}/{productId}
+* PUT /wp-json/persi-headless/v1/customer-lists/{listType}/sync
 * autenticação HMAC entre servidores;
 * proteção contra replay;
 * limitação progressiva de tentativas de login;
 * sessões opacas revogáveis;
 * compatibilidade declarada com HPOS.
 
-Não fornece cadastro, recuperação de senha, edição de perfil ou endereços,
-checkout ou integração com gateways. A consulta de pedidos é somente leitura.
+Não fornece edição de perfil ou endereços, checkout ou integração com gateways.
+A consulta de pedidos é somente leitura.
+
+== Customer Lists ==
+
+Os endpoints exigem HMAC e X-Persi-Session. Nesta versão, o tipo registrado é
+favorites. Os itens são persistidos em persi_customer_lists com unicidade por
+user_id, list_type e product_id.
 
 == Pedidos ==
 

@@ -5,7 +5,7 @@ namespace Persi\HeadlessAccount;
 defined( 'ABSPATH' ) || exit;
 
 final class Activator {
-	public const DATABASE_VERSION = '3';
+	public const DATABASE_VERSION = '4';
 
 	public static function maybe_upgrade(): void {
 		if ( self::DATABASE_VERSION !== get_option( 'persi_headless_account_db_version' ) ) {
@@ -22,17 +22,27 @@ final class Activator {
 		$prefix  = $wpdb->prefix;
 
 		dbDelta(
-			"CREATE TABLE {$prefix}persi_favorites (
+			"CREATE TABLE {$prefix}persi_customer_lists (
 				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 				user_id bigint(20) unsigned NOT NULL,
+				list_type varchar(32) NOT NULL,
 				product_id bigint(20) unsigned NOT NULL,
 				created_at datetime NOT NULL,
+				updated_at datetime NOT NULL,
 				PRIMARY KEY  (id),
-				UNIQUE KEY user_product (user_id, product_id),
-				KEY user_created (user_id, created_at),
+				UNIQUE KEY user_list_product (user_id, list_type, product_id),
+				KEY user_list_created (user_id, list_type, created_at),
 				KEY product_id (product_id)
 			) {$charset};"
 		);
+
+		$legacy_table = $prefix . 'persi_favorites';
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $legacy_table ) ) === $legacy_table ) {
+			$wpdb->query(
+				"INSERT IGNORE INTO {$prefix}persi_customer_lists (user_id, list_type, product_id, created_at, updated_at)
+				SELECT user_id, 'favorites', product_id, created_at, created_at FROM {$legacy_table}"
+			);
+		}
 
 		dbDelta(
 			"CREATE TABLE {$prefix}persi_account_sessions (

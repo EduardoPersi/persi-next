@@ -757,7 +757,7 @@ $test( 'fontes não expõem customerId nem registram dados sensíveis', static f
 		$assert( ! str_contains( $logger, "'{$sensitive}'" ) );
 	}
 	$assert( str_contains( $schema, 'UNIQUE KEY token_hash' ) );
-	foreach ( array( 'persi_account_sessions', 'persi_account_nonces', 'persi_account_rate_limits', 'persi_favorites' ) as $table ) {
+	foreach ( array( 'persi_account_sessions', 'persi_account_nonces', 'persi_account_rate_limits', 'persi_customer_lists' ) as $table ) {
 		$assert( str_contains( $schema, $table ) );
 	}
 	$assert( str_contains( $repository, "\$database->prefix . 'persi_account_sessions'" ) );

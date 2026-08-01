@@ -139,7 +139,7 @@ function HeaderActions({
       <Link
         href="/favoritos"
         aria-label={`Favoritos: ${favoritesCount} ${favoritesCount === 1 ? "produto" : "produtos"}`}
-        className="relative flex h-10 w-10 items-center justify-center p-2 transition hover:text-[#ff6a00]"
+        className="relative hidden h-10 w-10 items-center justify-center p-2 transition hover:text-[#ff6a00] md:flex"
       >
         <Heart size={compact ? 21 : 24} />
         <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff6a00] px-1 text-[10px] font-bold leading-none text-white">{favoritesCount}</span>

@@ -83,29 +83,32 @@ export function MobileMenu({
             </button>
           )}
 
-          <a
-            href="#"
+          <Link
+            href="/favoritos"
+            onClick={onClose}
             className="flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition hover:bg-slate-100"
           >
             <Heart size={20} />
             Favoritos
-          </a>
+          </Link>
 
-          <a
-            href="#"
+          <Link
+            href="/minha-conta/pedidos"
+            onClick={onClose}
             className="flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition hover:bg-slate-100"
           >
             <Package size={20} />
             Meus Pedidos
-          </a>
+          </Link>
 
-          <a
-            href="#"
+          <Link
+            href="/contato"
+            onClick={onClose}
             className="flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition hover:bg-slate-100"
           >
             <MapPin size={20} />
             Nossa Loja
-          </a>
+          </Link>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">

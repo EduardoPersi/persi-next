@@ -7,7 +7,7 @@ import { OverlayManagerProvider } from "@/context/OverlayManager";
 import "./globals.css";
 import { SITE_URL } from "@/lib/routing/storefrontUrls";
 import { AccountProvider } from "@/hooks/useAccount";
-import { FavoritesProvider } from "@/lib/favorites/favorites-context";
+import { CustomerListsProvider } from "@/lib/customer-lists/provider";
 
 const PERSI_HEADER_COLOR = "#0c2d72";
 
@@ -47,13 +47,13 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col">
         <OverlayManagerProvider>
           <AccountProvider>
-            <FavoritesProvider>
+            <CustomerListsProvider>
               <CartProvider>
                 <div className="flex-1">{children}</div>
                 <Footer />
                 <BackToTopButton />
               </CartProvider>
-            </FavoritesProvider>
+            </CustomerListsProvider>
           </AccountProvider>
         </OverlayManagerProvider>
       </body>

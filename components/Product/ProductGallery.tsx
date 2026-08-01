@@ -8,6 +8,7 @@ import {
   MessagesSquare,
   Send,
   Share2,
+  Heart,
 } from "lucide-react";
 import Image from "next/image";
 import {
@@ -24,12 +25,14 @@ import type { ProductImage } from "@/types/product";
 import { FacebookIcon, WhatsAppIcon } from "@/components/UI/SocialIcons";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useOverlayManager } from "@/hooks/useOverlayManager";
+import { useFavorites } from "@/hooks/useFavorites";
 import { ProductImageLightbox } from "./ProductImageLightbox";
 import "swiper/css";
 import "swiper/css/pagination";
 
 interface ProductGalleryProps {
   images: ProductImage[];
+  productId: number;
   productName: string;
 }
 
@@ -44,6 +47,7 @@ function subscribeToBrowserState() {
 
 export function ProductGallery({
   images,
+  productId,
   productName,
 }: ProductGalleryProps) {
   const galleryImages = images.length > 0 ? images : [fallbackImage];
@@ -56,6 +60,8 @@ export function ProductGallery({
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isExpandLabelVisible, setIsExpandLabelVisible] = useState(false);
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const favorited = isFavorite(productId);
   const shareUrl = useSyncExternalStore(
     subscribeToBrowserState,
     () => window.location.href,
@@ -215,10 +221,8 @@ export function ProductGallery({
           ))}
         </Swiper>
 
-        <div
-          ref={shareMenuRef}
-          className="absolute right-3 top-3 z-20"
-        >
+        <div className="absolute right-3 top-3 z-20 flex flex-col items-center gap-2">
+          <div ref={shareMenuRef} className="relative">
           <button
             ref={shareTriggerRef}
             type="button"
@@ -272,6 +276,20 @@ export function ProductGallery({
               />
             </div>
           ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={() => void toggleFavorite(productId)}
+            aria-pressed={favorited}
+            aria-label={`${favorited ? "Remover" : "Adicionar"} ${productName} ${favorited ? "dos" : "aos"} favoritos`}
+            title={favorited ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-[#0c2d72] shadow-sm transition-colors hover:bg-white hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+          >
+            <Heart
+              aria-hidden="true"
+              className={`h-5 w-5 transition-transform ${favorited ? "scale-110 fill-[#ff6a00] text-[#ff6a00]" : ""}`}
+            />
+          </button>
         </div>
 
         <button

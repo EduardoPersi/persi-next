@@ -23,7 +23,7 @@ const dashboardItems = [
   { title: "Endereços", icon: MapPin },
   { title: "Dados pessoais", icon: CircleUserRound },
   { title: "Lista de espera", icon: BellRing },
-  { title: "Favoritos", icon: Heart },
+  { title: "Minhas listas", href: "/minha-conta/listas", icon: Heart },
 ] as const;
 
 export function AccountDashboard({ customer }: AccountDashboardProps) {

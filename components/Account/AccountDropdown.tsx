@@ -64,10 +64,10 @@ const accountItems = [
     available: false,
   },
   {
-    href: "/favoritos",
+    href: "/minha-conta/listas",
     icon: Heart,
-    label: "Favoritos",
-    available: false,
+    label: "Minhas listas",
+    available: true,
   },
 ] as const;
 

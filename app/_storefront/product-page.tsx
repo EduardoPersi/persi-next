@@ -253,6 +253,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             <div className="min-w-0 lg:sticky lg:top-20 lg:self-start">
               <ProductGallery
                 images={product.images}
+                productId={product.id}
                 productName={product.name}
               />
             </div>

@@ -6,8 +6,9 @@ use Persi\HeadlessAccount\Api\AuthController;
 use Persi\HeadlessAccount\Api\OAuthLoginController;
 use Persi\HeadlessAccount\Api\OrderController;
 use Persi\HeadlessAccount\Api\AccountAccessController;
-use Persi\HeadlessAccount\Api\FavoriteController;
-use Persi\HeadlessAccount\Favorites\FavoriteRepository;
+use Persi\HeadlessAccount\Api\CustomerListsController;
+use Persi\HeadlessAccount\CustomerLists\CustomerListRepository;
+use Persi\HeadlessAccount\CustomerLists\CustomerListsService;
 use Persi\HeadlessAccount\Auth\CredentialsAuthenticator;
 use Persi\HeadlessAccount\Auth\IdentityRepository;
 use Persi\HeadlessAccount\Auth\OAuthIdentityService;
@@ -92,13 +93,13 @@ final class Plugin {
 			new Logger()
 		);
 		add_action( 'rest_api_init', array( $order_controller, 'register_routes' ) );
-		$favorite_controller = new FavoriteController(
+		$customer_lists_controller = new CustomerListsController(
 			$request_authenticator,
 			$sessions,
-			new FavoriteRepository( $wpdb ),
+			new CustomerListsService( new CustomerListRepository( $wpdb ) ),
 			new Logger()
 		);
-		add_action( 'rest_api_init', array( $favorite_controller, 'register_routes' ) );
+		add_action( 'rest_api_init', array( $customer_lists_controller, 'register_routes' ) );
 		$access_controller = new AccountAccessController(
 			$request_authenticator,
 			new RateLimiter( $wpdb ),

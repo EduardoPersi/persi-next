@@ -7,7 +7,7 @@ import {
 export const ACCOUNT_REST_BASE_PATH = "/wp-json/persi-account/v1";
 export const OAUTH_REST_BASE_PATH =
   "/wp-json/persi-headless-account/v1";
-export const FAVORITES_REST_BASE_PATH = "/wp-json/persi-headless/v1";
+export const CUSTOMER_LISTS_REST_BASE_PATH = "/wp-json/persi-headless/v1";
 
 export interface AccountClientConfig extends AccountHmacConfig {
   endpoint: string;
@@ -119,8 +119,8 @@ export function getAccountClientConfig(
 export async function requestAccountEndpoint(input: {
   config: AccountClientConfig;
   method: AccountHttpMethod;
-  route: "/login" | "/google-login" | "/oauth-login" | "/session" | "/logout" | "/register" | "/forgot-password" | "/reset-password" | "/orders" | `/orders/${number}` | "/favorites" | `/favorites/${number}` | "/favorites/sync";
-  basePath?: typeof ACCOUNT_REST_BASE_PATH | typeof OAUTH_REST_BASE_PATH | typeof FAVORITES_REST_BASE_PATH;
+  route: "/login" | "/google-login" | "/oauth-login" | "/session" | "/logout" | "/register" | "/forgot-password" | "/reset-password" | "/orders" | `/orders/${number}` | `/customer-lists/${string}` | `/customer-lists/${string}/${number}` | `/customer-lists/${string}/sync`;
+  basePath?: typeof ACCOUNT_REST_BASE_PATH | typeof OAUTH_REST_BASE_PATH | typeof CUSTOMER_LISTS_REST_BASE_PATH;
   query?: string;
   rawBody: string;
   sessionToken?: string;

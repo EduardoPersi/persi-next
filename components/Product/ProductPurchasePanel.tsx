@@ -3,14 +3,12 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Heart,
   ShieldCheck,
   Store,
   Truck,
 } from "lucide-react";
 import { Button } from "@/components/UI/Button";
 import { useCart } from "@/hooks/useCart";
-import { useFavorites } from "@/hooks/useFavorites";
 import {
   canAttributeOptionMatch,
   resolveSelectedVariation,
@@ -60,8 +58,6 @@ export function ProductPurchasePanel({
     calculateShippingPostcode,
     selectShippingRate,
   } = useCart();
-  const { isFavorite, toggleFavorite } = useFavorites();
-  const favorited = isFavorite(product.id);
   const variationAttributes = useMemo(
     () => product.attributes.filter((attribute) => attribute.hasVariations),
     [product.attributes],
@@ -185,10 +181,6 @@ export function ProductPurchasePanel({
         <h1 className="min-w-0 flex-1 text-2xl font-bold leading-tight text-[#0c2d72] sm:text-3xl">
           {product.name}
         </h1>
-        <div className="flex shrink-0 items-center gap-2">
-          <button type="button" onClick={() => void toggleFavorite(product.id)} aria-pressed={favorited} aria-label={`${favorited ? "Remover" : "Adicionar"} ${product.name} ${favorited ? "dos" : "aos"} favoritos`} title={favorited ? "Remover dos favoritos" : "Adicionar aos favoritos"} className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 text-[#0c2d72] transition hover:border-[#ff6a00] hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]">
-            <Heart aria-hidden="true" className={`h-6 w-6 transition-transform ${favorited ? "scale-110 fill-[#ff6a00] text-[#ff6a00]" : ""}`} />
-          </button>
         {brand?.image && brand.permalink ? (
           <a
             href={brand.permalink}
@@ -206,7 +198,6 @@ export function ProductPurchasePanel({
             />
           </a>
         ) : null}
-        </div>
       </div>
       <p className="mt-3 text-sm text-slate-500">SKU: {product.sku}</p>
 

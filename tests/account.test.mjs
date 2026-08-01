@@ -336,7 +336,7 @@ test("saudação da conta prioriza primeiro nome e possui fallbacks seguros", ()
   );
 });
 
-test("painel da conta possui seis cards sem simular recursos futuros", async () => {
+test("painel da conta possui seis cards e expõe Minhas Listas", async () => {
   const dashboard = await readFile(
     new URL("../components/Account/AccountDashboard.tsx", import.meta.url),
     "utf8",
@@ -355,11 +355,12 @@ test("painel da conta possui seis cards sem simular recursos futuros", async () 
     "Endereços",
     "Dados pessoais",
     "Lista de espera",
-    "Favoritos",
+    "Minhas listas",
   ]) {
     assert.match(dashboard, new RegExp(title));
   }
   assert.match(dashboard, /href: "\/minha-conta\/pedidos"/);
+  assert.match(dashboard, /href: "\/minha-conta\/listas"/);
   assert.match(dashboard, /<AccountLogoutButton variant="dashboard" \/>/);
   assert.match(dashboardCard, /Em breve/);
   assert.match(dashboardCard, /aria-disabled="true"/);
