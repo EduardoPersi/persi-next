@@ -98,6 +98,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Botões laranja sempre preservam contraste, inclusive quando usados como links. */
+:is(a, button, [role="button"]):is(.bg-secondary, .bg-\[\#ff6a00\]) {
+  color: #ffffff !important;
+}
+
+:is(a, button, [role="button"]):is(.bg-secondary, .bg-\[\#ff6a00\]) svg {
+  color: inherit !important;
+}
+
 button,
 input,
 select,
@@ -192,6 +201,27 @@ img {
 ::selection {
   background: rgb(255 106 0 / 0.22);
   color: var(--persi-foreground);
+}
+
+@keyframes workspace-content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.workspace-content-enter {
+  animation: workspace-content-enter 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-content-enter {
+    animation: none;
+  }
 }
 
 .institutional-content {

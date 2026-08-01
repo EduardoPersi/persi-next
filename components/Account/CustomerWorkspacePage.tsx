@@ -14,7 +14,7 @@ export function CustomerWorkspacePage({
 }) {
   const name = session.customer.firstName || session.customer.displayName || "Cliente";
   return (
-    <InstitutionalPageLayout title={title} accountSession={session} containerSize="lg">
+    <InstitutionalPageLayout title={title} accountSession={session} containerSize="lg" contentVariant="workspace">
       <CustomerWorkspaceShell customerName={name} customerEmail={session.customer.email}>
         {children}
       </CustomerWorkspaceShell>

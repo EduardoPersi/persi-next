@@ -20,7 +20,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   primary:
     "bg-primary text-white hover:bg-primary-hover active:bg-primary-hover",
   secondary:
-    "bg-secondary text-white hover:bg-secondary-hover active:bg-secondary-hover",
+    "bg-secondary !text-white hover:bg-secondary-hover hover:!text-white active:bg-secondary-hover active:!text-white [&_svg]:text-white",
   outline:
     "border border-primary bg-transparent text-primary hover:bg-primary/10 active:bg-primary/15",
   ghost:

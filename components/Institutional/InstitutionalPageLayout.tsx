@@ -9,6 +9,7 @@ type InstitutionalPageLayoutProps = {
   children: ReactNode;
   accountSession?: AccountSessionResult;
   containerSize?: "md" | "lg";
+  contentVariant?: "institutional" | "workspace";
 };
 
 export function InstitutionalPageLayout({
@@ -16,6 +17,7 @@ export function InstitutionalPageLayout({
   children,
   accountSession,
   containerSize = "md",
+  contentVariant = "institutional",
 }: InstitutionalPageLayoutProps) {
   return (
     <>
@@ -40,7 +42,7 @@ export function InstitutionalPageLayout({
             <h1 className="text-2xl font-bold text-[#071f5c] sm:text-3xl">
               {title}
             </h1>
-            <div className="institutional-content mt-7">{children}</div>
+            <div className={contentVariant === "institutional" ? "institutional-content mt-7" : "mt-7"}>{children}</div>
           </article>
         </Container>
       </main>

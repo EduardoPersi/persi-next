@@ -22,7 +22,7 @@ function WorkspaceNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
     <nav aria-label="Menu da minha conta">
-      <ul className="space-y-1">
+      <ul className="m-0 list-none space-y-1 p-0">
         {CUSTOMER_WORKSPACE_NAVIGATION.map((item) => {
           const active = isCustomerWorkspaceItemActive(pathname, item.href);
           const Icon = item.icon;
@@ -30,13 +30,14 @@ function WorkspaceNavigation({ onNavigate }: { onNavigate?: () => void }) {
             <li key={item.href}>
               <Link
                 href={item.href}
+                prefetch
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
                 title={item.label}
-                className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] ${
+                className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold no-underline transition-[color,background-color,transform,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] ${
                   active
-                    ? "bg-[#0c2d72] text-white"
-                    : "text-slate-700 hover:bg-slate-100 hover:text-[#0c2d72]"
+                    ? "bg-[#0c2d72] !text-white shadow-sm"
+                    : "text-slate-700 hover:translate-x-1 hover:bg-slate-100 hover:text-[#0c2d72]"
                 }`}
               >
                 <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -58,6 +59,7 @@ export function CustomerWorkspaceShell({
   customerName,
   customerEmail,
 }: CustomerWorkspaceShellProps) {
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const titleId = useId();
   return (
@@ -88,7 +90,9 @@ export function CustomerWorkspaceShell({
           <Menu className="h-5 w-5" aria-hidden="true" />
           Menu da conta
         </button>
-        {children}
+        <div key={pathname} className="workspace-content-enter">
+          {children}
+        </div>
       </div>
 
       <Drawer
