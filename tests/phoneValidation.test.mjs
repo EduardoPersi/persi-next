@@ -4,6 +4,7 @@ import {
   formatBrazilianPhone,
   validateBrazilianPhone,
 } from "../lib/account/phoneValidation.ts";
+import { formatBrazilianCpf } from "../lib/formatting/personalData.ts";
 
 test("máscara telefone fixo e celular brasileiro", () => {
   assert.equal(formatBrazilianPhone("1133334444"), "(11) 3333-4444");
@@ -51,4 +52,10 @@ test("valida quantidade e tipo de telefone brasileiro", () => {
       "Informe um telefone válido.",
     );
   }
+});
+
+test("mascara CPF limita e organiza os onze digitos", () => {
+  assert.equal(formatBrazilianCpf("12345678901"), "123.456.789-01");
+  assert.equal(formatBrazilianCpf("123.456.789-0199"), "123.456.789-01");
+  assert.equal(formatBrazilianCpf("123456"), "123.456");
 });

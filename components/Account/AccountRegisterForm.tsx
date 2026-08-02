@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/UI/Button";
 import { EmailAutocompleteInput } from "@/components/UI/EmailAutocompleteInput";
+import { PasswordInput } from "@/components/UI/PasswordInput";
 import {
   formatBrazilianPhone,
   validateBrazilianPhone,
@@ -152,10 +153,9 @@ export function AccountRegisterForm() {
         <label htmlFor="register-password" className="mb-2 block font-medium">
           Senha
         </label>
-        <input
+        <PasswordInput
           id="register-password"
           name="password"
-          type="password"
           autoComplete="new-password"
           required
           minLength={8}
@@ -169,10 +169,9 @@ export function AccountRegisterForm() {
         <label htmlFor="register-confirm" className="mb-2 block font-medium">
           Confirmar senha
         </label>
-        <input
+        <PasswordInput
           id="register-confirm"
           name="passwordConfirmation"
-          type="password"
           autoComplete="new-password"
           required
           minLength={8}

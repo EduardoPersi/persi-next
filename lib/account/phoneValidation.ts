@@ -1,3 +1,5 @@
+import { formatBrazilianPhone, getDigits } from "../formatting/personalData.ts";
+
 const VALID_BRAZILIAN_AREA_CODES = new Set([
   "11", "12", "13", "14", "15", "16", "17", "18", "19",
   "21", "22", "24",
@@ -18,21 +20,10 @@ export type BrazilianPhoneError =
   | "Informe um telefone válido.";
 
 export function getPhoneDigits(value: string): string {
-  return value.replace(/\D/g, "").slice(0, 11);
+  return getDigits(value, 11);
 }
 
-export function formatBrazilianPhone(value: string): string {
-  const digits = getPhoneDigits(value);
-  if (!digits) return "";
-  if (digits.length <= 2) return `(${digits}`;
-
-  const areaCode = digits.slice(0, 2);
-  const subscriber = digits.slice(2);
-  if (subscriber.length <= 4) return `(${areaCode}) ${subscriber}`;
-
-  const prefixLength = digits.length === 11 ? 5 : 4;
-  return `(${areaCode}) ${subscriber.slice(0, prefixLength)}-${subscriber.slice(prefixLength)}`;
-}
+export { formatBrazilianPhone };
 
 export function validateBrazilianPhone(
   value: string,

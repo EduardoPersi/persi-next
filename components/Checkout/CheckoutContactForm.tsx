@@ -4,6 +4,7 @@ import { useFormContext } from "react-hook-form";
 import { CheckoutField } from "./CheckoutField";
 import { CheckoutSection } from "./CheckoutSection";
 import type { CheckoutFormValues } from "@/types/checkout";
+import { formatBrazilianPhone } from "@/lib/formatting/personalData";
 
 export function CheckoutContactForm() {
   const {
@@ -55,11 +56,17 @@ export function CheckoutContactForm() {
           <CheckoutField
             id="checkout-phone"
             label="Telefone"
-            registration={register("contact.phone")}
+            registration={register("contact.phone", {
+              onChange: (event) => {
+                event.target.value = formatBrazilianPhone(event.target.value);
+              },
+            })}
             error={errors.contact?.phone?.message}
             type="tel"
-            inputMode="tel"
+            inputMode="numeric"
             autoComplete="tel"
+            maxLength={15}
+            placeholder="(11) 99999-9999"
           />
         </div>
       </div>
