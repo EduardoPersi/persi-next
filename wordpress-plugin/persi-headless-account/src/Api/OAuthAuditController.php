@@ -47,7 +47,11 @@ final class OAuthAuditController {
 			return $this->forbidden();
 		}
 
-		return Response::json( $this->audit->report() );
+		return Response::json(
+			$this->audit->report(
+				trim( (string) $request->get_header( 'x-persi-session' ) )
+			)
+		);
 	}
 
 	private function forbidden(): \WP_REST_Response {

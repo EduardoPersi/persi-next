@@ -70,10 +70,23 @@ test("auditoria localiza divergência em cada etapa da resolução de login", as
     "sessionUserId",
     "accountApiUserId",
     "profileApiUserId",
+    "currentWpUserId",
+    "currentWpUserContext",
     "loginResolution",
   ]) {
     assert.match(service, new RegExp(expected));
   }
+});
+
+test("sessão fornecida é resolvida sem devolver credencial ou digest", async () => {
+  const controller = await readFile(controllerPath, "utf8");
+  const service = await readFile(servicePath, "utf8");
+  assert.match(controller, /get_header\( 'x-persi-session' \)/);
+  assert.match(service, /suppliedSessionResolution/);
+  assert.match(service, /digestCalculated/);
+  assert.match(service, /SESSION_NOT_FOUND/);
+  assert.match(service, /NOT_STORED_IN_SESSION_TABLE/);
+  assert.match(service, /unset\( \$digest, \$supplied_session \)/);
 });
 
 test("auto-reparo permanece apenas indicativo e exige correspondência inequívoca", async () => {

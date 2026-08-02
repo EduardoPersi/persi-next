@@ -12,7 +12,7 @@ final class OAuthAuditService {
 		private readonly string $secret
 	) {}
 
-	public function report(): array {
+	public function report( string $supplied_session = '' ): array {
 		$identity_table = $this->database->prefix . 'persi_account_identities';
 		$session_table  = $this->database->prefix . 'persi_account_sessions';
 		$identity_exists = $this->table_exists( $identity_table );
@@ -152,6 +152,9 @@ final class OAuthAuditService {
 				'invalid'  => array_values( array_filter( $items, static fn( array $item ): bool => ! in_array( $item['provider'], array( 'google', 'facebook' ), true ) ) ),
 			),
 			'sessions' => $session_exists ? $this->session_audit( $session_table, $identities ) : $this->empty_session_audit(),
+			'suppliedSessionResolution' => $session_exists
+				? $this->supplied_session_resolution( $session_table, $identities, $supplied_session )
+				: $this->empty_supplied_session_resolution( $supplied_session ),
 			'tables' => array(
 				'identities' => $identity_exists ? 'AVAILABLE' : 'MISSING',
 				'sessions'   => $session_exists ? 'AVAILABLE' : 'MISSING',
@@ -299,6 +302,8 @@ final class OAuthAuditService {
 			);
 		}
 
+		$current_wp_user = wp_get_current_user();
+		$current_wp_user_id = $current_wp_user instanceof \WP_User ? (int) $current_wp_user->ID : 0;
 		$result = array();
 		$resolved_identity_ids = array();
 		foreach ( is_array( $sessions ) ? $sessions : array() as $session ) {
@@ -333,6 +338,9 @@ final class OAuthAuditService {
 					'identityUserId' => $identity['identityUserId'],
 					'sessionId' => (int) ( $session['id'] ?? 0 ),
 					'sessionUserId' => $session_user_id,
+					'currentWpUserId' => $current_wp_user_id,
+					'currentWpUserContext' => 'AUDIT_ADMIN_REQUEST',
+					'currentWpUserComparison' => $session_user_id === $current_wp_user_id ? 'MATCH' : 'MISMATCH',
 					'accountApiUserId' => $account_user_id,
 					'profileApiUserId' => $profile_user_id,
 					'result' => empty( $flags ) ? 'PASS' : 'FAIL',
@@ -358,6 +366,9 @@ final class OAuthAuditService {
 				'identityUserId' => $identity_user_id,
 				'sessionId' => null,
 				'sessionUserId' => null,
+				'currentWpUserId' => $current_wp_user_id,
+				'currentWpUserContext' => 'AUDIT_ADMIN_REQUEST',
+				'currentWpUserComparison' => 'NOT_COMPARABLE',
 				'accountApiUserId' => $account_user_id,
 				'profileApiUserId' => $profile_user_id,
 				'result' => 'INCOMPLETE',
@@ -365,6 +376,90 @@ final class OAuthAuditService {
 			);
 		}
 		return $result;
+	}
+
+	private function supplied_session_resolution( string $table, array $identities, string $supplied_session ): array {
+		if ( '' === $supplied_session ) {
+			return $this->empty_supplied_session_resolution( '' );
+		}
+		if ( 1 !== preg_match( '/^[A-Za-z0-9_-]{43}$/', $supplied_session ) ) {
+			return array(
+				'provided' => true,
+				'format' => 'INVALID',
+				'digestCalculated' => false,
+				'recordFound' => false,
+				'result' => 'INVALID_FORMAT',
+			);
+		}
+		$digest = hash( 'sha256', $supplied_session );
+		$record = $this->database->get_row(
+			$this->database->prepare(
+				"SELECT id, user_id, status, created_at, last_seen_at,
+					idle_expires_at, absolute_expires_at
+				FROM {$table} WHERE token_hash = %s LIMIT 1",
+				$digest
+			),
+			ARRAY_A
+		);
+		unset( $digest, $supplied_session );
+		if ( ! is_array( $record ) ) {
+			return array(
+				'provided' => true,
+				'format' => 'VALID',
+				'digestCalculated' => true,
+				'recordFound' => false,
+				'result' => 'SESSION_NOT_FOUND',
+			);
+		}
+
+		$user_id = (int) ( $record['user_id'] ?? 0 );
+		$providers = array();
+		foreach ( $identities as $identity ) {
+			if ( $user_id === (int) ( $identity['user_id'] ?? 0 ) ) {
+				$provider = (string) ( $identity['provider'] ?? '' );
+				if ( ! in_array( $provider, $providers, true ) ) {
+					$providers[] = $provider;
+				}
+			}
+		}
+		sort( $providers );
+		$now = time();
+		$idle = strtotime( (string) ( $record['idle_expires_at'] ?? '' ) . ' UTC' );
+		$absolute = strtotime( (string) ( $record['absolute_expires_at'] ?? '' ) . ' UTC' );
+		$status = (string) ( $record['status'] ?? '' );
+		$is_expired = false === $idle || false === $absolute || $idle <= $now || $absolute <= $now;
+		$created = strtotime( (string) ( $record['created_at'] ?? '' ) . ' UTC' );
+		$is_old = false !== $created && $created < $now - ( self::OLD_RECORD_DAYS * DAY_IN_SECONDS );
+
+		return array(
+			'provided' => true,
+			'format' => 'VALID',
+			'digestCalculated' => true,
+			'recordFound' => true,
+			'sessionId' => (int) ( $record['id'] ?? 0 ),
+			'userId' => $user_id,
+			'userStatus' => get_user_by( 'id', $user_id ) instanceof \WP_User ? 'EXISTS' : 'MISSING',
+			'status' => $status,
+			'createdAt' => (string) ( $record['created_at'] ?? '' ),
+			'lastSeenAt' => (string) ( $record['last_seen_at'] ?? '' ),
+			'idleExpiresAt' => (string) ( $record['idle_expires_at'] ?? '' ),
+			'absoluteExpiresAt' => (string) ( $record['absolute_expires_at'] ?? '' ),
+			'expiration' => $is_expired ? 'EXPIRED' : 'CURRENT',
+			'age' => $is_old ? 'OLD_RECORD' : 'CURRENT_RECORD',
+			'associatedProviders' => $providers,
+			'providerOrigin' => 'NOT_STORED_IN_SESSION_TABLE',
+			'result' => 'active' === $status && ! $is_expired ? 'RESOLVABLE' : 'NOT_RESOLVABLE',
+		);
+	}
+
+	private function empty_supplied_session_resolution( string $supplied_session ): array {
+		return array(
+			'provided' => '' !== $supplied_session,
+			'format' => '' === $supplied_session ? 'NOT_PROVIDED' : 'NOT_CHECKED',
+			'digestCalculated' => false,
+			'recordFound' => false,
+			'result' => '' === $supplied_session ? 'NOT_PROVIDED' : 'SESSION_TABLE_MISSING',
+		);
 	}
 
 	private function users_by_email_hash(): array {

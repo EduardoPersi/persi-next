@@ -3,13 +3,13 @@ Contributors: persi
 Requires at least: 6.4
 Requires PHP: 8.1
 WC requires at least: 8.2
-Stable tag: 0.7.3
+Stable tag: 0.7.4
 License: Proprietary
 
 Conta headless da Persi com autenticação, sessões opacas, pedidos e listas do
 cliente, incluindo Favoritos por meio do módulo genérico Customer Lists.
 
-== Auditoria OAuth temporária (0.7.3) ==
+== Auditoria OAuth temporária (0.7.4) ==
 
 Esta compilação inclui temporariamente `GET
 /wp-json/persi-headless-account/v1/debug/oauth-audit`. O endpoint exige ao mesmo
@@ -26,6 +26,16 @@ O diagnóstico compara o usuário da identidade OAuth, da sessão, da API de con
 e do perfil WooCommerce. Também classifica, sem executar, se um vínculo
 inconsistente teria reparo inequívoco. `AUTO_REPAIR_POSSIBLE` é somente uma
 indicação de auditoria; esta versão não altera identidades nem sessões.
+
+Opcionalmente, envie a sessão headless investigada em `X-Persi-Session`. Ela é
+validada e convertida em SHA-256 somente na memória para localizar o registro,
+mas nem o valor recebido nem o digest aparecem no JSON. O relatório mostra
+status, expiração, usuário e providers associados. A origem do provider não pode
+ser confirmada porque a tabela de sessões atual não armazena esse campo.
+
+O `currentWpUserId` representa o administrador que autenticou esta requisição de
+auditoria. Por isso sua divergência com o cliente headless é informativa e não
+prova, isoladamente, uma falha nas APIs de conta ou perfil.
 
 Remover `OAuthAuditController`, `OAuthAuditService` e seu registro em
 `Plugin.php` assim que a investigação terminar, antes de produção.
