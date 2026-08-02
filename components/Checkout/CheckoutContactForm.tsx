@@ -4,7 +4,7 @@ import { useFormContext } from "react-hook-form";
 import { CheckoutField } from "./CheckoutField";
 import { CheckoutSection } from "./CheckoutSection";
 import type { CheckoutFormValues } from "@/types/checkout";
-import { formatBrazilianPhone } from "@/lib/formatting/personalData";
+import { formatBrazilianDocument, formatBrazilianPhone } from "@/lib/formatting/personalData";
 
 export function CheckoutContactForm() {
   const {
@@ -52,27 +52,36 @@ export function CheckoutContactForm() {
             autoComplete="organization"
           />
         </div>
-        <div className="sm:col-span-2">
-          <CheckoutField
-            id="checkout-phone"
-            label="Telefone"
-            registration={register("contact.phone", {
-              onChange: (event) => {
-                event.target.value = formatBrazilianPhone(event.target.value);
-              },
-            })}
-            error={errors.contact?.phone?.message}
-            type="tel"
-            inputMode="numeric"
-            autoComplete="tel"
-            maxLength={15}
-            placeholder="(11) 99999-9999"
-          />
-        </div>
+        <CheckoutField
+          id="checkout-phone"
+          label="Telefone"
+          registration={register("contact.phone", {
+            onChange: (event) => {
+              event.target.value = formatBrazilianPhone(event.target.value);
+            },
+          })}
+          error={errors.contact?.phone?.message}
+          type="tel"
+          inputMode="numeric"
+          autoComplete="tel"
+          maxLength={15}
+          placeholder="(11) 99999-9999"
+        />
+        <CheckoutField
+          id="checkout-document"
+          label="CPF ou CNPJ"
+          registration={register("contact.document", {
+            onChange: (event) => {
+              event.target.value = formatBrazilianDocument(event.target.value);
+            },
+          })}
+          error={errors.contact?.document?.message}
+          inputMode="numeric"
+          autoComplete="off"
+          maxLength={18}
+          placeholder="000.000.000-00 ou 00.000.000/0000-00"
+        />
       </div>
-
-      {/* Ponto único de extensão para CPF/CNPJ e tipo de pessoa após a auditoria
-          das meta keys brasileiras no WordPress/WooCommerce. */}
     </CheckoutSection>
   );
 }

@@ -25,3 +25,25 @@ export function formatBrazilianCpf(value: string): string {
 
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 }
+
+export function formatBrazilianCnpj(value: string): string {
+  const digits = getDigits(value, 14);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+  if (digits.length <= 8) {
+    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+  }
+  if (digits.length <= 12) {
+    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+  }
+
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+}
+
+// Alterna a máscara dinamicamente conforme a quantidade de dígitos digitados:
+// até 11 dígitos usa o formato de CPF, a partir do 12º dígito passa a usar o
+// formato de CNPJ (empresas também compram na loja).
+export function formatBrazilianDocument(value: string): string {
+  const digits = getDigits(value, 14);
+  return digits.length > 11 ? formatBrazilianCnpj(value) : formatBrazilianCpf(value);
+}

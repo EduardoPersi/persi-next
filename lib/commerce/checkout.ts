@@ -47,6 +47,7 @@ const checkoutFieldOrder = [
   "contact.firstName",
   "contact.lastName",
   "contact.phone",
+  "contact.document",
   "billingAddress.postalCode",
   "billingAddress.addressLine1",
   "billingAddress.number",

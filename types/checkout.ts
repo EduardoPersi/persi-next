@@ -16,6 +16,7 @@ export type CheckoutFormValues = {
     lastName: string;
     company: string;
     phone: string;
+    document: string;
   };
   billingAddress: CheckoutAddress;
   shipToBillingAddress: boolean;

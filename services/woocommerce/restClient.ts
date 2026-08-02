@@ -1,4 +1,7 @@
 import "server-only";
+import { WooCommerceRestError } from "./restError.ts";
+
+export { WooCommerceRestError };
 
 const REST_API_PATH = "/wp-json/wc/v3";
 const DEFAULT_REVALIDATE_SECONDS = 120;
@@ -15,16 +18,6 @@ export interface RestApiResponse<T> {
   data: T;
   total: number;
   totalPages: number;
-}
-
-export class WooCommerceRestError extends Error {
-  constructor(
-    message: string,
-    public readonly status?: number,
-  ) {
-    super(message);
-    this.name = "WooCommerceRestError";
-  }
 }
 
 function getRestApiUrl(
@@ -99,4 +92,52 @@ export async function restApiGetWithMeta<T>(
       "Não foi possível consultar a REST API do WooCommerce.",
     );
   }
+}
+
+async function restApiWrite<T>(
+  endpoint: string,
+  method: "POST" | "PUT",
+  body: unknown,
+): Promise<T> {
+  const url = getRestApiUrl(endpoint);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: getAuthorizationHeader(),
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (error instanceof WooCommerceRestError) throw error;
+
+    throw new WooCommerceRestError(
+      "Não foi possível gravar na REST API do WooCommerce.",
+    );
+  }
+
+  const parsedBody = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new WooCommerceRestError(
+      `A REST API respondeu com status ${response.status}.`,
+      response.status,
+    );
+  }
+
+  return parsedBody as T;
+}
+
+export async function restApiPost<T>(endpoint: string, body: unknown): Promise<T> {
+  return restApiWrite<T>(endpoint, "POST", body);
+}
+
+export async function restApiPut<T>(endpoint: string, body: unknown): Promise<T> {
+  return restApiWrite<T>(endpoint, "PUT", body);
 }

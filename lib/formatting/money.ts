@@ -27,3 +27,8 @@ export function formatStoreMoney(
 export function isZeroMoney(money: CartMoney): boolean {
   return /^-?0+$/.test(money.value);
 }
+
+export function moneyToNumber(money: CartMoney): number {
+  if (!/^-?\d+$/.test(money.value)) return 0;
+  return Number(money.value) / 10 ** Math.max(0, money.currencyMinorUnit);
+}

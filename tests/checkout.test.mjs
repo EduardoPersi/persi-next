@@ -35,6 +35,7 @@ const validCheckout = {
     lastName: "Silva",
     company: "",
     phone: "(11) 99999-9999",
+    document: "111.444.777-35",
   },
   billingAddress: {
     postalCode: "13201-000",
@@ -112,6 +113,36 @@ test("endereço de entrega igual não exige segundo endereço", () => {
   assert.equal(checkoutSchema.safeParse(validCheckout).success, true);
 });
 
+test("CPF inválido é rejeitado com mensagem amigável", () => {
+  const invalid = checkoutSchema.safeParse({
+    ...validCheckout,
+    contact: { ...validCheckout.contact, document: "111.111.111-11" },
+  });
+
+  assert.equal(invalid.success, false);
+  if (invalid.success) return;
+  assert.ok(invalid.error.issues.some(({ message }) => message.includes("CPF")));
+});
+
+test("CNPJ válido também é aceito no campo de documento", () => {
+  const valid = checkoutSchema.safeParse({
+    ...validCheckout,
+    contact: { ...validCheckout.contact, document: "11.222.333/0001-81" },
+  });
+  assert.equal(valid.success, true);
+});
+
+test("CNPJ inválido é rejeitado com a mesma mensagem amigável", () => {
+  const invalid = checkoutSchema.safeParse({
+    ...validCheckout,
+    contact: { ...validCheckout.contact, document: "11.222.333/0001-82" },
+  });
+
+  assert.equal(invalid.success, false);
+  if (invalid.success) return;
+  assert.ok(invalid.error.issues.some(({ message }) => message.includes("CNPJ")));
+});
+
 test("endereço de entrega diferente é validado sem apagar seus valores", () => {
   const invalid = checkoutSchema.safeParse({
     ...validCheckout,
@@ -148,7 +179,7 @@ test("primeiro erro segue a ordem visual e pode receber foco", () => {
   );
 });
 
-test("estrutura usa resumo oficial, breakpoints e não chama pedido ou gateway", () => {
+test("estrutura usa resumo oficial e breakpoints esperados", () => {
   const page = readFileSync("app/checkout/page.tsx", "utf8");
   const client = readFileSync(
     "components/Checkout/CheckoutPageClient.tsx",
@@ -158,8 +189,6 @@ test("estrutura usa resumo oficial, breakpoints e não chama pedido ou gateway",
     "components/Checkout/CheckoutOrderSummary.tsx",
     "utf8",
   );
-  const form = readFileSync("components/Checkout/CheckoutForm.tsx", "utf8");
-  const checkoutSource = [page, client, summary, form].join("\n");
 
   assert.match(page, /dynamic = "force-dynamic"/);
   assert.match(page, /revalidate = 0/);
@@ -167,7 +196,18 @@ test("estrutura usa resumo oficial, breakpoints e não chama pedido ou gateway",
   assert.match(summary, /item\.total/);
   assert.match(summary, /cart\.totals\.items/);
   assert.match(summary, /cart\.totals\.price/);
-  assert.doesNotMatch(checkoutSource, /\bfetch\s*\(/);
-  assert.doesNotMatch(checkoutSource, /services\/woocommerce/);
-  assert.doesNotMatch(checkoutSource, /createOrder|processPayment|gatewayId/);
+});
+
+test("checkout headless só fala com a rota própria de orquestração de pagamento, nunca com WooCommerce ou provedor direto", () => {
+  const form = readFileSync("components/Checkout/CheckoutForm.tsx", "utf8");
+
+  // Desde a Fase 6 do checkout headless (ver docs/25-checkout-gateway-audit.md,
+  // decisão revertida conscientemente), o próprio front-end cria a cobrança
+  // chamando `/api/checkout/payment` — o que este teste garante é que essa é
+  // a ÚNICA superfície chamada, nunca a REST API do WooCommerce nem a API de
+  // um provedor de pagamento diretamente do client.
+  assert.match(form, /fetch\(\s*"\/api\/checkout\/payment"/);
+  assert.doesNotMatch(form, /services\/woocommerce/);
+  assert.doesNotMatch(form, /services\/payments\/(inter|pagbank)\/client/);
+  assert.doesNotMatch(form, /cdpj\.partners\.bancointer|api\.pagseguro/);
 });

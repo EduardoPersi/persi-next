@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { BRAZILIAN_STATES } from "../constants/brazilianStates.ts";
+import { isValidBrazilianDocument } from "./document.ts";
 import type { CheckoutFormValues } from "@/types/checkout";
 
 const requiredText = (message: string) => z.string().trim().min(1, message);
@@ -52,6 +53,10 @@ export const checkoutSchema = z
           (value) => /^\d{10,11}$/.test(value.replace(/\D/g, "")),
           "Informe um telefone com DDD.",
         ),
+      document: z
+        .string()
+        .trim()
+        .refine(isValidBrazilianDocument, "Informe um CPF ou CNPJ válido."),
     }),
     billingAddress: addressSchema,
     shipToBillingAddress: z.boolean(),
@@ -92,6 +97,7 @@ export const checkoutDefaultValues: CheckoutFormValues = {
     lastName: "",
     company: "",
     phone: "",
+    document: "",
   },
   billingAddress: { ...emptyCheckoutAddress },
   shipToBillingAddress: true,

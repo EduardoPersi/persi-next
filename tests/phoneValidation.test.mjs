@@ -4,7 +4,11 @@ import {
   formatBrazilianPhone,
   validateBrazilianPhone,
 } from "../lib/account/phoneValidation.ts";
-import { formatBrazilianCpf } from "../lib/formatting/personalData.ts";
+import {
+  formatBrazilianCnpj,
+  formatBrazilianCpf,
+  formatBrazilianDocument,
+} from "../lib/formatting/personalData.ts";
 
 test("máscara telefone fixo e celular brasileiro", () => {
   assert.equal(formatBrazilianPhone("1133334444"), "(11) 3333-4444");
@@ -58,4 +62,16 @@ test("mascara CPF limita e organiza os onze digitos", () => {
   assert.equal(formatBrazilianCpf("12345678901"), "123.456.789-01");
   assert.equal(formatBrazilianCpf("123.456.789-0199"), "123.456.789-01");
   assert.equal(formatBrazilianCpf("123456"), "123.456");
+});
+
+test("mascara CNPJ limita e organiza os catorze digitos", () => {
+  assert.equal(formatBrazilianCnpj("11222333000181"), "11.222.333/0001-81");
+  assert.equal(formatBrazilianCnpj("1122233300018199"), "11.222.333/0001-81");
+  assert.equal(formatBrazilianCnpj("112223"), "11.222.3");
+});
+
+test("mascara de documento alterna entre CPF e CNPJ pela quantidade de dígitos", () => {
+  assert.equal(formatBrazilianDocument("12345678901"), "123.456.789-01");
+  assert.equal(formatBrazilianDocument("112223330001"), "11.222.333/0001");
+  assert.equal(formatBrazilianDocument("11222333000181"), "11.222.333/0001-81");
 });

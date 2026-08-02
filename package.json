@@ -14,8 +14,8 @@
     "test:cart:isolation:direct": "node tests/cart-isolation.mjs",
     "test:cart:isolation:hostinger": "node tests/cart-isolation.mjs",
     "test:checkout:shipping": "node tests/checkout-shipping-smoke.mjs",
-    "audit:checkout:gateways": "node --env-file=.env.local tests/gateway-audit.mjs",
-    "audit:urls": "node --env-file=.env.local scripts/audit-public-slugs.mjs"
+    "audit:urls": "node --env-file=.env.local scripts/audit-public-slugs.mjs",
+    "register:inter-webhooks": "node --env-file=.env.local scripts/register-inter-webhooks.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -29,6 +29,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.81.0",
+    "server-only": "^0.0.1",
     "swiper": "^14.0.5",
     "zod": "^4.4.3"
   },

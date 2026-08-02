@@ -63,3 +63,37 @@ São necessários, no WordPress de homologação:
 
 Esta auditoria não adiciona rota de criação de pedido, campos de cartão, chamada
 ao endpoint de checkout ou integração de pagamento.
+
+## Atualização — decisão revertida (2026-08-02)
+
+A decisão arquitetural acima foi conscientemente revertida a pedido explícito
+do responsável pelo projeto, ciente dos riscos e bloqueios listados nesta
+página. O checkout passou a processar pagamento diretamente no headless:
+
+- Banco Inter (Pix e boleto) via mTLS + OAuth2 client_credentials —
+  `services/payments/inter/`.
+- PagBank (cartão de crédito, Apple Pay, Google Pay) via tokenização no
+  client e cobrança no servidor — `services/payments/pagbank/`.
+- Pedido criado diretamente via `POST wc/v3/orders` (status `pending`),
+  atualizado de forma idempotente após confirmação de pagamento —
+  `services/woocommerce/orders.ts`.
+- Endpoint de orquestração: `app/api/checkout/payment`. Webhooks:
+  `app/api/webhooks/{inter,pagbank}`.
+
+Os gateways nativos do WooCommerce (`interpix`, `interboleto`,
+`wc_gerencianet_cartao`) e o script `tests/gateway-audit.mjs` que os
+auditava foram aposentados — o fluxo de pagamento não passa mais pelo
+checkout nativo do WooCommerce.
+
+As preocupações de segurança e idempotência levantadas nesta auditoria
+(webhook não confiável, pedido duplicado, confirmação de pagamento) foram
+endereçadas na nova implementação: webhooks nunca tratam o próprio corpo como
+fonte de verdade — sempre reconsultam a API do provedor antes de atualizar o
+pedido (`services/payments/reconcile.ts`), e a criação de pedido/cobrança usa
+uma chave de idempotência para evitar duplicidade.
+
+Pontos que ainda dependem de confirmação em homologação/sandbox (não
+resolvíveis só no código): mecanismo real de assinatura de webhook de cada
+provedor, credenciais de sandbox, domínio de callback a cadastrar, e
+confirmação de que `wc/v3/orders` recalcula corretamente preço/imposto/frete
+a partir de `product_id` neste WooCommerce específico.
