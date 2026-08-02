@@ -97,3 +97,24 @@ resolvíveis só no código): mecanismo real de assinatura de webhook de cada
 provedor, credenciais de sandbox, domínio de callback a cadastrar, e
 confirmação de que `wc/v3/orders` recalcula corretamente preço/imposto/frete
 a partir de `product_id` neste WooCommerce específico.
+
+## Scripts operacionais
+
+Scripts administrativos relacionados a pagamento, todos rodados com
+`node --env-file=.env.local scripts/<arquivo>.mjs` (ou via `npm run <script>`).
+Nenhum deles é chamado pelo app em runtime — são passos manuais de setup.
+
+- **`scripts/register-inter-webhooks.mjs`** (`npm run register:inter-webhooks`)
+  — registra a URL de webhook Pix (e tenta a de boleto) do Banco Inter a
+  partir de `APP_BASE_URL`. Rodar ao configurar o ambiente e de novo sempre
+  que o domínio do app mudar (ex.: troca do domínio de teste para o
+  definitivo).
+- **`scripts/generate-pagbank-public-key.mjs`**
+  (`npm run generate:pagbank-public-key`) — gera a chave pública de
+  **produção** do PagBank (`NEXT_PUBLIC_PAGBANK_PUBLIC_KEY`), chamando
+  `POST {PAGBANK_API_BASE_URL}/public-keys` autenticado com
+  `PAGBANK_CLIENT_SECRET`. **Só é necessário ao ativar produção de verdade
+  com o PagBank** — em sandbox a chave pública é fixa e já vem documentada
+  em `.env.example`, não precisa gerar nada. As chaves geradas não expiram,
+  mas o PagBank recomenda renovar antes de completar 2 anos; o script
+  imprime a data de geração para você guardar.
