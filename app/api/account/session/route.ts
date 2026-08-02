@@ -7,6 +7,7 @@ import {
 import { getPrivateAccountHeaders } from "@/lib/account/responsePolicy";
 import { getAccountSession } from "@/services/account/auth";
 import { AccountServiceError } from "@/services/account/client";
+import { getServerAccountSession } from "@/services/account/serverSession";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -31,7 +32,11 @@ function clearSessionCookie(nextResponse: NextResponse) {
 
 export async function GET() {
   const token = (await cookies()).get(ACCOUNT_SESSION_COOKIE)?.value;
-  if (!token) return response({ authenticated: false });
+
+  if (!token) {
+    const session = await getServerAccountSession();
+    return response(session ?? { authenticated: false });
+  }
   if (!/^[A-Za-z0-9_-]{43}$/.test(token)) {
     const invalidResponse = response({ authenticated: false });
     clearSessionCookie(invalidResponse);
