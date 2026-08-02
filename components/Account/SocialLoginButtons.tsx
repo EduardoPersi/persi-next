@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { signInWithFacebook, signInWithGoogle } from "@/lib/account/authActions";
 
 type SocialLoginButtonsProps = {
   descriptionId: string;
@@ -64,33 +64,37 @@ export function SocialLoginButtons({
       </div>
 
       <div className={`grid gap-3 ${stacked ? "" : "sm:grid-cols-2"}`}>
-        <Link
-          href="/api/auth/facebook/start"
-          className="relative inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#4267a9] px-3 text-sm font-medium uppercase !text-white !no-underline transition-colors hover:bg-[#365899] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          aria-describedby={descriptionId}
-        >
-          <span
-            aria-hidden="true"
-            className="absolute left-2.5 flex size-7 items-center justify-center rounded bg-white"
+        <form className="contents" action={signInWithFacebook}>
+          <button
+            type="submit"
+            className="relative inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#4267a9] px-3 text-sm font-medium uppercase !text-white !no-underline transition-colors hover:bg-[#365899] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            aria-describedby={descriptionId}
           >
-            <FacebookIcon />
-          </span>
-          Facebook
-        </Link>
+            <span
+              aria-hidden="true"
+              className="absolute left-2.5 flex size-7 items-center justify-center rounded bg-white"
+            >
+              <FacebookIcon />
+            </span>
+            Facebook
+          </button>
+        </form>
 
-        <Link
-          href="/api/auth/google/start"
-          className="relative inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#4285f4] px-3 text-sm font-medium uppercase !text-white !no-underline transition-colors hover:bg-[#3367d6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          aria-describedby={descriptionId}
-        >
-          <span
-            aria-hidden="true"
-            className="absolute left-2.5 flex size-7 items-center justify-center rounded bg-white"
+        <form className="contents" action={signInWithGoogle}>
+          <button
+            type="submit"
+            className="relative inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#4285f4] px-3 text-sm font-medium uppercase !text-white !no-underline transition-colors hover:bg-[#3367d6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            aria-describedby={descriptionId}
           >
-            <GoogleIcon />
-          </span>
-          Google
-        </Link>
+            <span
+              aria-hidden="true"
+              className="absolute left-2.5 flex size-7 items-center justify-center rounded bg-white"
+            >
+              <GoogleIcon />
+            </span>
+            Google
+          </button>
+        </form>
       </div>
     </div>
   );

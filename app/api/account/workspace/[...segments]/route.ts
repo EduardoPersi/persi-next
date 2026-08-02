@@ -1,8 +1,7 @@
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { ACCOUNT_SESSION_COOKIE } from "@/lib/account/sessionCookie";
 import { validateMutationSource } from "@/lib/account/validation";
 import { AccountServiceError, getAccountClientConfig } from "@/services/account/client";
+import { getServerAccountToken } from "@/services/account/serverSession";
 import { requestCustomerWorkspace } from "@/services/account/workspace";
 
 const responseHeaders = { "Cache-Control": "private, no-store" };
@@ -19,8 +18,8 @@ function resolveRoute(segments: string[]) {
 }
 
 async function handle(request: NextRequest, segments: string[], method: Method) {
-  const token = (await cookies()).get(ACCOUNT_SESSION_COOKIE)?.value;
-  if (!token || !/^[A-Za-z0-9_-]{43}$/.test(token))
+  const token = await getServerAccountToken();
+  if (!token)
     return NextResponse.json({ message: "Sessão necessária." }, { status: 401, headers: responseHeaders });
   const route = resolveRoute(segments);
   if (!route) return NextResponse.json({ message: "Recurso não encontrado." }, { status: 404, headers: responseHeaders });

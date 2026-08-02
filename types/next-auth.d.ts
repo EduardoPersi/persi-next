@@ -8,6 +8,7 @@ declare module "next-auth" {
 
   interface Session {
     wpSessionToken?: string;
+    wpSessionExpiresAt?: string;
     customer?: AccountCustomer;
   }
 }

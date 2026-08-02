@@ -154,6 +154,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       session.wpSessionToken = token.wpSessionToken;
+      session.wpSessionExpiresAt = token.wpSessionExpiresAt;
       session.customer = token.customer;
       return session;
     },

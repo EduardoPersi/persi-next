@@ -1,10 +1,9 @@
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { ACCOUNT_SESSION_COOKIE } from "@/lib/account/sessionCookie";
 import {
   CUSTOMER_LIST_TYPES,
   type CustomerListType,
 } from "@/lib/customer-lists/types";
+import { getServerAccountToken } from "@/services/account/serverSession";
 import {
   addCustomerListItem,
   listCustomerList,
@@ -13,15 +12,13 @@ import {
 const headers = { "Cache-Control": "private, no-store" };
 const isListType = (value: string): value is CustomerListType =>
   CUSTOMER_LIST_TYPES.some((listType) => listType === value);
-const validToken = (value: string | undefined) =>
-  value && /^[A-Za-z0-9_-]{43}$/.test(value) ? value : null;
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ listType: string }> },
 ) {
   const { listType } = await params;
-  const token = validToken((await cookies()).get(ACCOUNT_SESSION_COOKIE)?.value);
+  const token = await getServerAccountToken();
   if (!isListType(listType))
     return NextResponse.json({ message: "Tipo de lista inválido." }, { status: 404, headers });
   if (!token)
@@ -38,7 +35,7 @@ export async function POST(
   { params }: { params: Promise<{ listType: string }> },
 ) {
   const { listType } = await params;
-  const token = validToken((await cookies()).get(ACCOUNT_SESSION_COOKIE)?.value);
+  const token = await getServerAccountToken();
   const body: unknown = await request.json().catch(() => null);
   const productId =
     typeof body === "object" && body !== null
