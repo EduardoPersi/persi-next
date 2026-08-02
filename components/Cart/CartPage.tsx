@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
-import { useCheckoutTransfer } from "@/hooks/useCheckoutTransfer";
 import { ProductQuantity } from "@/components/Product/ProductQuantity";
 import { ShippingCalculator } from "@/components/Shipping/ShippingCalculator";
 import { getCartShippingContextKey } from "@/lib/commerce/shippingCalculator";
@@ -15,8 +14,6 @@ const FALLBACK_IMAGE =
   "/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas.webp";
 
 export function CartPage() {
-  const { checkoutError, isPreparingCheckout, prepareCheckout } =
-    useCheckoutTransfer();
   const {
     cart,
     error,
@@ -231,25 +228,18 @@ export function CartPage() {
             </dd>
           </div>
         </dl>
-        <button
-          type="button"
-          onClick={() => void prepareCheckout()}
-          disabled={isPreparingCheckout || isLoading || Boolean(pendingItemKey)}
-          aria-busy={isPreparingCheckout}
-          aria-describedby="checkout-status"
-          className="mt-6 h-12 w-full rounded-xl bg-[#ff6a00] px-4 font-semibold text-white transition hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-200 disabled:text-slate-500"
+        <Link
+          href="/checkout"
+          aria-disabled={isLoading || Boolean(pendingItemKey)}
+          onClick={(event) => {
+            if (isLoading || Boolean(pendingItemKey)) event.preventDefault();
+          }}
+          className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-[#ff6a00] px-4 font-semibold text-white transition hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 aria-disabled:cursor-wait aria-disabled:bg-slate-200 aria-disabled:text-slate-500 aria-disabled:pointer-events-none"
         >
-          {isPreparingCheckout ? "Preparando checkout..." : "Finalizar compra"}
-        </button>
-        <p
-          id="checkout-status"
-          className={`mt-2 text-center text-sm ${
-            checkoutError ? "text-red-700" : "text-slate-500"
-          }`}
-          role="status"
-          aria-live="polite"
-        >
-          {checkoutError || "Você será direcionado ao checkout seguro."}
+          Finalizar compra
+        </Link>
+        <p className="mt-2 text-center text-sm text-slate-500" role="status">
+          Você será direcionado ao checkout seguro.
         </p>
       </aside>
     </div>

@@ -5,11 +5,8 @@ import Link from "next/link";
 import { Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useCart } from "@/hooks/useCart";
-import { useCheckoutTransfer } from "@/hooks/useCheckoutTransfer";
 
 export function MiniCart() {
-  const { checkoutError, isPreparingCheckout, prepareCheckout } =
-    useCheckoutTransfer();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const {
@@ -237,9 +234,9 @@ export function MiniCart() {
           </main>
         )}
 
-        {error || checkoutError ? (
+        {error ? (
           <p className="px-6 pb-3 text-sm text-red-700" role="status">
-            {checkoutError || error}
+            {error}
           </p>
         ) : null}
 
@@ -257,22 +254,20 @@ export function MiniCart() {
           >
             Ver carrinho
           </Link>
-          <button
-            type="button"
-            onClick={() => void prepareCheckout()}
-            disabled={
-              !cart?.items.length ||
-              isLoading ||
-              Boolean(pendingItemKey) ||
-              isPreparingCheckout
-            }
-            aria-busy={isPreparingCheckout}
-            className="w-full rounded-md bg-[#ff6a00] py-3 font-medium text-white transition hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-200 disabled:text-slate-500"
+          <Link
+            href="/checkout"
+            onClick={(event) => {
+              if (!cart?.items.length || isLoading || Boolean(pendingItemKey)) {
+                event.preventDefault();
+                return;
+              }
+              closeCart();
+            }}
+            aria-disabled={!cart?.items.length || isLoading || Boolean(pendingItemKey)}
+            className="flex w-full items-center justify-center rounded-md bg-[#ff6a00] py-3 font-medium text-white transition hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 aria-disabled:cursor-wait aria-disabled:bg-slate-200 aria-disabled:text-slate-500 aria-disabled:pointer-events-none"
           >
-            {isPreparingCheckout
-              ? "PREPARANDO CHECKOUT..."
-              : "FINALIZAR COMPRA"}
-          </button>
+            FINALIZAR COMPRA
+          </Link>
         </footer>
       </aside>
     </>
