@@ -32,7 +32,8 @@ export function isAddressComplete(address: CheckoutAddress): boolean {
     Boolean(address.number.trim()) &&
     Boolean(address.neighborhood.trim()) &&
     Boolean(address.city.trim()) &&
-    /^[A-Za-z]{2}$/.test(address.state.trim())
+    /^[A-Za-z]{2}$/.test(address.state.trim()) &&
+    Boolean(address.recipientName.trim())
   );
 }
 
@@ -46,12 +47,14 @@ const checkoutFieldOrder = [
   "billingAddress.postalCode",
   "billingAddress.addressLine1",
   "billingAddress.number",
+  "billingAddress.recipientName",
   "billingAddress.neighborhood",
   "billingAddress.city",
   "billingAddress.state",
   "shippingAddress.postalCode",
   "shippingAddress.addressLine1",
   "shippingAddress.number",
+  "shippingAddress.recipientName",
   "shippingAddress.neighborhood",
   "shippingAddress.city",
   "shippingAddress.state",

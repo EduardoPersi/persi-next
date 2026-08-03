@@ -29,6 +29,7 @@ const addressSchema = z.object({
       "Selecione um estado válido.",
     ),
   country: z.literal("BR"),
+  recipientName: requiredText("Informe o nome de quem vai receber."),
 });
 
 const inactiveAddressSchema = z.object({
@@ -40,6 +41,7 @@ const inactiveAddressSchema = z.object({
   city: z.string(),
   state: z.string(),
   country: z.literal("BR"),
+  recipientName: z.string(),
 });
 
 export const checkoutSchema = z
@@ -63,6 +65,8 @@ export const checkoutSchema = z
     billingAddress: addressSchema,
     shipToBillingAddress: z.boolean(),
     shippingAddress: inactiveAddressSchema,
+    includeOrderNote: z.boolean(),
+    orderNote: z.string().trim().max(500, "Informe até 500 caracteres."),
     acceptsTerms: z.boolean().refine((value) => value, {
       message: "Você precisa aceitar os termos para continuar.",
     }),
@@ -106,6 +110,7 @@ export const emptyCheckoutAddress = {
   city: "",
   state: "",
   country: "BR",
+  recipientName: "",
 } as const;
 
 export const checkoutDefaultValues: CheckoutFormValues = {
@@ -121,5 +126,7 @@ export const checkoutDefaultValues: CheckoutFormValues = {
   billingAddress: { ...emptyCheckoutAddress },
   shipToBillingAddress: true,
   shippingAddress: { ...emptyCheckoutAddress },
+  includeOrderNote: false,
+  orderNote: "",
   acceptsTerms: false,
 };

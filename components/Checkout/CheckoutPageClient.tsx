@@ -44,7 +44,9 @@ export function CheckoutPageClient({
           initialAddresses={initialAddresses}
         />
       </div>
-      <CheckoutOrderSummary cart={cart} />
+      <div className="hidden lg:block">
+        <CheckoutOrderSummary cart={cart} />
+      </div>
     </div>
   );
 }

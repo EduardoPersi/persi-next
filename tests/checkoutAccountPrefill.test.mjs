@@ -43,6 +43,16 @@ test("preenche contato a partir do perfil, sem sobrescrever com campos vazios", 
   assert.equal(result.contact.document, "111.444.777-35");
 });
 
+test("sugere o destinatário a partir do nome do perfil", () => {
+  const result = applyAccountPrefill(checkoutDefaultValues, { profile, addresses: [] });
+  assert.equal(result.billingAddress.recipientName, "Eduardo Pereira");
+});
+
+test("sem perfil, destinatário permanece vazio (preenchido depois pela etapa de perfil)", () => {
+  const result = applyAccountPrefill(checkoutDefaultValues, { profile: null, addresses: [] });
+  assert.equal(result.billingAddress.recipientName, "");
+});
+
 test("perfil nulo ou vazio mantém os defaults do checkout intactos", () => {
   const result = applyAccountPrefill(checkoutDefaultValues, { profile: null, addresses: [] });
   assert.deepEqual(result.contact, checkoutDefaultValues.contact);

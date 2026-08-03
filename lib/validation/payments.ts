@@ -6,6 +6,7 @@ const documentSchema = z
   .string()
   .trim()
   .refine(isValidBrazilianDocument, "CPF ou CNPJ inválido.");
+const customerNoteSchema = z.string().trim().max(500).optional();
 
 export const paymentInitiationSchema = z.discriminatedUnion("method", [
   z
@@ -13,6 +14,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
       method: z.literal("inter_pix"),
       idempotencyKey: idempotencyKeySchema,
       document: documentSchema,
+      customerNote: customerNoteSchema,
     })
     .strict(),
   z
@@ -20,6 +22,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
       method: z.literal("inter_boleto"),
       idempotencyKey: idempotencyKeySchema,
       document: documentSchema,
+      customerNote: customerNoteSchema,
     })
     .strict(),
   z
@@ -29,6 +32,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
       cardToken: z.string().trim().min(1).max(4096),
       installments: z.number().int().min(1).max(12),
       holderDocument: documentSchema,
+      customerNote: customerNoteSchema,
     })
     .strict(),
   z
@@ -37,6 +41,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
       idempotencyKey: idempotencyKeySchema,
       token: z.string().trim().min(1).max(4096),
       holderDocument: documentSchema,
+      customerNote: customerNoteSchema,
     })
     .strict(),
   z
@@ -45,6 +50,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
       idempotencyKey: idempotencyKeySchema,
       token: z.string().trim().min(1).max(4096),
       holderDocument: documentSchema,
+      customerNote: customerNoteSchema,
     })
     .strict(),
 ]);

@@ -154,6 +154,7 @@ export async function POST(request: Request) {
         billingAddress,
         shippingAddress,
         paymentMethod,
+        customerNote: input.customerNote,
       }));
 
     const payerName = `${billingAddress.firstName} ${billingAddress.lastName}`.trim();

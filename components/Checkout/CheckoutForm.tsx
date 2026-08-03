@@ -37,6 +37,9 @@ import type {
 import { CheckoutAddresses } from "./CheckoutAddresses";
 import { BoletoPaymentResult } from "./BoletoPaymentResult";
 import { CheckoutContactForm } from "./CheckoutContactForm";
+import { CheckoutMobileOrderSummary } from "./CheckoutMobileOrderSummary";
+import { CheckoutMobileStepper } from "./CheckoutMobileStepper";
+import { CheckoutOrderNote } from "./CheckoutOrderNote";
 import { CheckoutPayment } from "./CheckoutPayment";
 import { CheckoutShippingPlaceholder } from "./CheckoutShippingPlaceholder";
 import { CheckoutStepCard, type CheckoutStepState } from "./CheckoutStepCard";
@@ -45,7 +48,9 @@ import { createIdempotencyKey, type CheckoutPaymentMethod } from "./paymentMetho
 import { PixPaymentResult } from "./PixPaymentResult";
 import type { PaymentCardFieldsHandle } from "./PaymentCardFields";
 
-type CheckoutStep = "profile" | "address" | "payment";
+export type CheckoutStep = "profile" | "address" | "payment";
+
+const STEP_ORDER: readonly CheckoutStep[] = ["profile", "address", "payment"];
 
 const PROFILE_FIELDS = [
   "contact.email",
@@ -168,10 +173,11 @@ export function CheckoutForm({
     try {
       const idempotencyKey = createIdempotencyKey();
       const document = values.contact.document;
+      const customerNote = values.includeOrderNote ? values.orderNote.trim() : "";
       let body: Record<string, unknown>;
 
       if (paymentMethod === "inter_pix" || paymentMethod === "inter_boleto") {
-        body = { method: paymentMethod, idempotencyKey, document };
+        body = { method: paymentMethod, idempotencyKey, document, customerNote };
       } else if (paymentMethod === "pagbank_card") {
         const cardToken = cardFieldsRef.current?.tokenize();
         if (!cardToken) {
@@ -183,6 +189,7 @@ export function CheckoutForm({
           cardToken,
           installments,
           holderDocument: document,
+          customerNote,
         };
       } else {
         setStatusMessage(
@@ -259,6 +266,17 @@ export function CheckoutForm({
       setStatusMessage("Revise os campos destacados para continuar.");
       return;
     }
+    // Sugere o destinatário a partir do nome informado no perfil — o
+    // cliente pode trocar livremente (ex.: presente, portaria).
+    if (!methods.getValues("billingAddress.recipientName")) {
+      const { firstName, lastName } = methods.getValues("contact");
+      const fullName = `${firstName} ${lastName}`.trim();
+      if (fullName) {
+        methods.setValue("billingAddress.recipientName", fullName, {
+          shouldDirty: true,
+        });
+      }
+    }
     setCurrentStep("address");
   };
 
@@ -299,6 +317,8 @@ export function CheckoutForm({
   const paymentState: CheckoutStepState =
     currentStep === "payment" ? "active" : "upcoming";
 
+  const completedSteps = STEP_ORDER.slice(0, STEP_ORDER.indexOf(currentStep));
+
   const documentLabel = contact?.personType === "juridica" ? "CNPJ" : "CPF";
   const formattedDocument = contact?.document
     ? contact.personType === "juridica"
@@ -314,6 +334,13 @@ export function CheckoutForm({
         onSubmit={methods.handleSubmit(submitPayment, focusFirstError)}
         className="grid gap-5 lg:grid-cols-2 lg:items-start"
       >
+        <CheckoutMobileStepper
+          currentStep={currentStep}
+          completedSteps={completedSteps}
+          onStepSelect={setCurrentStep}
+        />
+        {cart ? <CheckoutMobileOrderSummary cart={cart} /> : null}
+
         <div>
           <CheckoutStepCard
             step={1}
@@ -321,7 +348,7 @@ export function CheckoutForm({
             state={profileState}
             onEdit={() => setCurrentStep("profile")}
             doneSummary={
-              <div className="space-y-1 text-sm text-slate-700">
+              <div className="space-y-1 text-xs text-slate-700">
                 <p className="font-semibold text-slate-900">
                   {contact?.firstName} {contact?.lastName}
                 </p>
@@ -352,7 +379,7 @@ export function CheckoutForm({
             upcomingText="Finalize seu perfil para avançar..."
             onEdit={() => setCurrentStep("address")}
             doneSummary={
-              <p className="text-sm text-slate-700">
+              <p className="text-xs text-slate-700">
                 {billingAddress?.addressLine1}, {billingAddress?.number} —{" "}
                 {billingAddress?.neighborhood}, {billingAddress?.city}/
                 {billingAddress?.state}
@@ -361,6 +388,7 @@ export function CheckoutForm({
           >
             <CheckoutAddresses />
             <CheckoutShippingPlaceholder />
+            <CheckoutOrderNote />
             <Button
               type="button"
               size="lg"
@@ -403,7 +431,7 @@ export function CheckoutForm({
 
         <p
           id="checkout-submit-status"
-          className="text-center text-sm text-slate-600 lg:col-span-2"
+          className="text-center text-xs text-slate-600 lg:col-span-2"
           role="status"
           aria-live="polite"
         >

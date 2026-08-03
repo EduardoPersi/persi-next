@@ -47,6 +47,7 @@ const validCheckout = {
     city: "Jundiaí",
     state: "SP",
     country: "BR",
+    recipientName: "Amanda Silva",
   },
   acceptsTerms: true,
 };

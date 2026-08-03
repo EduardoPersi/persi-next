@@ -7,6 +7,7 @@ export type CheckoutAddress = {
   city: string;
   state: string;
   country: "BR";
+  recipientName: string;
 };
 
 export type CheckoutPersonType = "fisica" | "juridica";
@@ -24,6 +25,8 @@ export type CheckoutFormValues = {
   billingAddress: CheckoutAddress;
   shipToBillingAddress: boolean;
   shippingAddress: CheckoutAddress;
+  includeOrderNote: boolean;
+  orderNote: string;
   acceptsTerms: boolean;
 };
 

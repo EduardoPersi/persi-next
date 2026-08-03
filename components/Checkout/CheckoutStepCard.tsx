@@ -33,7 +33,17 @@ export function CheckoutStepCard({
     <section
       className={clsx(
         "rounded-xl border bg-white p-4 shadow-sm sm:p-6",
-        state === "done" ? "border-emerald-300" : "border-slate-200",
+        state === "done"
+          ? "border-emerald-300"
+          : state === "upcoming"
+            ? "border-black/25"
+            : "border-black",
+        // No mobile só a etapa ativa fica visível — voltar para uma etapa
+        // concluída é feito pelo CheckoutMobileStepper no topo, então o
+        // resumo "done" aqui seria redundante; etapas futuras também ficam
+        // escondidas (fluxo tipo assistente, uma "página" por vez). No
+        // desktop as três colunas continuam visíveis ao mesmo tempo.
+        state !== "active" && "hidden lg:block",
       )}
       aria-current={state === "active" ? "step" : undefined}
     >
@@ -49,8 +59,8 @@ export function CheckoutStepCard({
         </span>
         <h2
           className={clsx(
-            "text-lg font-bold",
-            state === "upcoming" ? "text-slate-400" : "text-[#0c2d72]",
+            "text-base font-bold",
+            state === "upcoming" ? "text-slate-400" : "text-black",
           )}
         >
           {title}
@@ -59,7 +69,7 @@ export function CheckoutStepCard({
           <button
             type="button"
             onClick={onEdit}
-            className="ml-auto text-sm font-medium text-primary underline underline-offset-2"
+            className="ml-auto text-xs font-medium text-primary underline underline-offset-2"
           >
             Editar
           </button>
@@ -68,7 +78,7 @@ export function CheckoutStepCard({
 
       <div className={state === "active" ? "mt-5" : "mt-3"}>
         {state === "upcoming" ? (
-          <p className="text-sm text-slate-500">{upcomingText}</p>
+          <p className="text-xs text-slate-500">{upcomingText}</p>
         ) : state === "done" ? (
           doneSummary
         ) : null}

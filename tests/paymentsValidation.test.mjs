@@ -107,6 +107,23 @@ test("rejeita método desconhecido", () => {
   assert.equal(result.success, false);
 });
 
+test("aceita customerNote opcional e continua fechado a outros campos extras", () => {
+  const result = paymentInitiationSchema.safeParse({
+    method: "inter_pix",
+    idempotencyKey,
+    document: "111.444.777-35",
+    customerNote: "Entregar após as 18h.",
+  });
+  assert.equal(result.success, true);
+
+  const withoutNote = paymentInitiationSchema.safeParse({
+    method: "inter_pix",
+    idempotencyKey,
+    document: "111.444.777-35",
+  });
+  assert.equal(withoutNote.success, true);
+});
+
 test("idempotencyKey precisa ser um UUID", () => {
   const result = paymentInitiationSchema.safeParse({
     method: "inter_pix",

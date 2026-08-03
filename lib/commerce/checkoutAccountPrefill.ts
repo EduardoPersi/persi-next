@@ -30,6 +30,7 @@ function toCheckoutAddress(
     city: address.city?.trim() ?? "",
     state: address.state?.trim().toUpperCase() ?? "",
     country: "BR",
+    recipientName: "",
   };
 }
 
@@ -82,6 +83,16 @@ export function applyAccountPrefill(
 
   if (singleAddress) {
     result.billingAddress = singleAddress;
+  }
+
+  // Destinatário padrão é o próprio titular da conta — o cliente pode
+  // trocar livremente no formulário (ex.: presente, portaria).
+  const fullName = [profile?.firstName, profile?.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  if (fullName) {
+    result.billingAddress.recipientName = fullName;
   }
 
   return result;

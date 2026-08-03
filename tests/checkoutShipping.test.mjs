@@ -138,6 +138,7 @@ test("mapper central cria cobrança e entrega iguais sem meta keys", () => {
       city: "Jundiaí",
       state: "sp",
       country: "BR",
+      recipientName: "Cliente Teste",
     },
     shipToBillingAddress: true,
     shippingAddress: {
@@ -149,6 +150,7 @@ test("mapper central cria cobrança e entrega iguais sem meta keys", () => {
       city: "",
       state: "",
       country: "BR",
+      recipientName: "",
     },
     acceptsTerms: false,
   };
@@ -163,6 +165,12 @@ test("mapper central cria cobrança e entrega iguais sem meta keys", () => {
   assert.equal(payload.billingAddress.state, "SP");
   assert.equal("number" in payload.billingAddress, false);
   assert.equal("neighborhood" in payload.billingAddress, false);
+  assert.equal(payload.billingAddress.firstName, "Cliente");
+  assert.equal(payload.billingAddress.lastName, "Teste");
+  // O nome de entrega vem do "Destinatário" do endereço, não do contato —
+  // permite que a compra seja de uma pessoa e a entrega para outra.
+  assert.equal(payload.shippingAddress.firstName, "Cliente");
+  assert.equal(payload.shippingAddress.lastName, "Teste");
 });
 
 test("mapper usa endereço de entrega diferente quando solicitado", () => {
@@ -175,6 +183,7 @@ test("mapper usa endereço de entrega diferente quando solicitado", () => {
     city: "Jundiaí",
     state: "SP",
     country: "BR",
+    recipientName: "Cliente Teste",
   };
   const payload = mapCheckoutFormToWooAddress({
     contact: {
@@ -186,12 +195,23 @@ test("mapper usa endereço de entrega diferente quando solicitado", () => {
     },
     billingAddress: base,
     shipToBillingAddress: false,
-    shippingAddress: { ...base, addressLine1: "Rua B", number: "20" },
+    shippingAddress: {
+      ...base,
+      addressLine1: "Rua B",
+      number: "20",
+      recipientName: "Outra Pessoa",
+    },
     acceptsTerms: true,
   });
   assert.equal(payload.billingAddress.address1, "Rua A, 10");
   assert.equal(payload.shippingAddress.address1, "Rua B, 20");
   assert.equal(payload.shippingAddress.email, undefined);
+  assert.equal(payload.billingAddress.firstName, "Cliente");
+  assert.equal(payload.billingAddress.lastName, "Teste");
+  // Destinatário diferente do titular da compra (ex.: presente) é
+  // respeitado no endereço de entrega enviado ao WooCommerce.
+  assert.equal(payload.shippingAddress.firstName, "Outra");
+  assert.equal(payload.shippingAddress.lastName, "Pessoa");
 });
 
 test("normalizador usa exclusivamente totais oficiais do carrinho", () => {

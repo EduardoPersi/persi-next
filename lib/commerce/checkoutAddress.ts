@@ -22,14 +22,33 @@ function joinAddressLine2(address: CheckoutAddress): string | undefined {
   return value || undefined;
 }
 
+// O "Destinatário" do endereço pode ser diferente de quem está comprando
+// (ex.: presente, portaria) — por isso o nome de entrega vem do campo
+// `recipientName`, não do contato/titular da compra usado na cobrança.
+function splitRecipientName(recipientName: string): {
+  firstName: string;
+  lastName: string;
+} {
+  const parts = recipientName.trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0] ?? "",
+    lastName: parts.slice(1).join(" "),
+  };
+}
+
 function mapAddress(
   address: CheckoutAddress,
   form: CheckoutFormValues,
   includeContact: boolean,
+  useRecipientName: boolean,
 ): CheckoutStoreAddress {
+  const { firstName, lastName } = useRecipientName
+    ? splitRecipientName(address.recipientName)
+    : { firstName: form.contact.firstName.trim(), lastName: form.contact.lastName.trim() };
+
   return {
-    firstName: form.contact.firstName.trim(),
-    lastName: form.contact.lastName.trim(),
+    firstName,
+    lastName,
     company: form.contact.company.trim() || undefined,
     address1: joinAddressLine1(address),
     address2: joinAddressLine2(address),
@@ -59,7 +78,7 @@ export function mapCheckoutFormToWooAddress(
     : form.shippingAddress;
 
   return {
-    billingAddress: mapAddress(form.billingAddress, form, true),
-    shippingAddress: mapAddress(shippingSource, form, false),
+    billingAddress: mapAddress(form.billingAddress, form, true, false),
+    shippingAddress: mapAddress(shippingSource, form, false, true),
   };
 }
