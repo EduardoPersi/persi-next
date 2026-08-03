@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckoutPageClient } from "@/components/Checkout/CheckoutPageClient";
-import { Header } from "@/components/Header/Header";
+import { CheckoutHeader } from "@/components/Header/CheckoutHeader";
 import { Container } from "@/components/UI/Container";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 export default function CheckoutPage() {
   return (
     <>
-      <Header />
+      <CheckoutHeader />
       <main className="bg-slate-50 py-5 sm:py-8 lg:py-10">
         <Container>
           <nav aria-label="Breadcrumb" className="text-sm text-slate-600">

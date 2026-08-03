@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Header } from "@/components/Header/Header";
+import { CheckoutHeader } from "@/components/Header/CheckoutHeader";
 import { Container } from "@/components/UI/Container";
 import { getBoletoChargeStatus } from "@/services/payments/inter/boleto";
 import { getPixChargeStatus } from "@/services/payments/inter/pix";
@@ -77,7 +77,7 @@ export default async function CheckoutConfirmationPage({
 
   return (
     <>
-      <Header />
+      <CheckoutHeader />
       <main className="bg-slate-50 py-5 sm:py-8 lg:py-10">
         <Container>
           <div className="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">

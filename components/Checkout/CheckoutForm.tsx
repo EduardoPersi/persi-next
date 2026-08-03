@@ -10,7 +10,9 @@ import {
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/UI/Button";
+import { useBeforeUnloadWarning } from "@/hooks/useBeforeUnloadWarning";
 import { useCart } from "@/hooks/useCart";
+import { useTabAttentionTitle } from "@/hooks/useTabAttentionTitle";
 import { getFirstCheckoutErrorPath } from "@/lib/commerce/checkout";
 import { checkoutDefaultValues, checkoutSchema } from "@/lib/validation/checkout";
 import type { CheckoutFormValues } from "@/types/checkout";
@@ -37,6 +39,7 @@ export function CheckoutForm() {
   const [installments, setInstallments] = useState(1);
   const [pixResult, setPixResult] = useState<PixPaymentResultData | null>(null);
   const [boletoResult, setBoletoResult] = useState<BoletoPaymentResultData | null>(null);
+  const [hasCreatedOrder, setHasCreatedOrder] = useState(false);
   const cardFieldsRef = useRef<PaymentCardFieldsHandle>(null);
 
   const methods = useForm<CheckoutFormValues>({
@@ -56,6 +59,13 @@ export function CheckoutForm() {
     Boolean(dirtyFields.billingAddress) ||
     Boolean(dirtyFields.shipToBillingAddress) ||
     (!shipToBillingAddress && Boolean(dirtyFields.shippingAddress));
+
+  // Só avisa ao sair da página depois que o cliente já preencheu algum
+  // dado (endereço/contato) ou trocou a forma de pagamento padrão — e para
+  // de avisar assim que o pedido é de fato criado no servidor.
+  const hasUnsavedProgress = methods.formState.isDirty || paymentMethod !== "inter_pix";
+  useBeforeUnloadWarning(hasUnsavedProgress && !hasCreatedOrder);
+  useTabAttentionTitle(!hasCreatedOrder);
 
   const submitPayment = async (values: CheckoutFormValues) => {
     setStatusMessage("");
@@ -102,20 +112,24 @@ export function CheckoutForm() {
       }
 
       if (result.alreadyInitiated) {
+        setHasCreatedOrder(true);
         router.push(`/checkout/confirmacao?orderId=${result.orderId}`);
         return;
       }
 
       if (result.method === "inter_pix") {
+        setHasCreatedOrder(true);
         setPixResult(result);
         return;
       }
 
       if (result.method === "inter_boleto") {
+        setHasCreatedOrder(true);
         setBoletoResult(result);
         return;
       }
 
+      setHasCreatedOrder(true);
       router.push(
         `/checkout/confirmacao?provider=pagbank_card&reference=${encodeURIComponent(result.chargeId)}`,
       );

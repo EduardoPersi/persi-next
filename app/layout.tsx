@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { CartProvider } from "@/components/Cart/CartProvider";
 import { Footer } from "@/components/Footer/Footer";
+import { FooterVisibility } from "@/components/Footer/FooterVisibility";
 import { BackToTopButton } from "@/components/UI/BackToTopButton";
 import { OverlayManagerProvider } from "@/context/OverlayManager";
 import "./globals.css";
@@ -55,7 +56,9 @@ export default async function RootLayout({
               <CustomerListsProvider>
                 <CartProvider>
                   <div className="flex-1">{children}</div>
-                  <Footer />
+                  <FooterVisibility>
+                    <Footer />
+                  </FooterVisibility>
                   <BackToTopButton />
                 </CartProvider>
               </CustomerListsProvider>
