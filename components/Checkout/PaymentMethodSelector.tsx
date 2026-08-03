@@ -108,7 +108,7 @@ export function PaymentMethodSelector({ value, onChange }: PaymentMethodSelector
                 : "border-slate-300 bg-white hover:border-primary/50",
             )}
           >
-            <span className="block text-sm font-semibold text-slate-900">
+            <span className="block text-xs font-semibold text-slate-900">
               {option.label}
             </span>
             <span className="mt-0.5 block text-xs text-slate-600">

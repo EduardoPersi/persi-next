@@ -13,7 +13,7 @@ export function CheckoutTerms() {
 
   return (
     <div>
-      <label className="flex items-start gap-3 text-sm leading-6 text-slate-700">
+      <label className="flex items-start gap-3 text-xs leading-6 text-slate-700">
         <input
           type="checkbox"
           {...register("acceptsTerms")}
@@ -44,7 +44,7 @@ export function CheckoutTerms() {
         </span>
       </label>
       {errors.acceptsTerms ? (
-        <p id={errorId} className="mt-2 text-sm text-danger">
+        <p id={errorId} className="mt-2 text-xs text-danger">
           {errors.acceptsTerms.message}
         </p>
       ) : null}

@@ -147,8 +147,8 @@ export function CheckoutShippingPlaceholder() {
 
   return (
     <div className="border-t border-slate-200 pt-5">
-      <h3 className="mb-3 text-sm font-bold text-slate-700">Entrega</h3>
-      <div aria-live="polite" className="min-h-6 text-sm text-slate-600">
+      <h3 className="mb-3 text-xs font-bold text-slate-700">Entrega</h3>
+      <div aria-live="polite" className="min-h-6 text-xs text-slate-600">
         {!addressComplete
           ? "Informe seu endereço para calcular a entrega."
           : isBusy
@@ -164,7 +164,7 @@ export function CheckoutShippingPlaceholder() {
               disabled={isBusy}
               className="min-w-0"
             >
-              <legend className="mb-3 font-semibold text-slate-900">
+              <legend className="mb-3 text-sm font-semibold text-slate-900">
                 {packages.length > 1
                   ? shippingPackage.name || `Entrega ${packageIndex + 1}`
                   : "Opções disponíveis"}
@@ -199,10 +199,10 @@ export function CheckoutShippingPlaceholder() {
                       />
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap justify-between gap-x-4 gap-y-1">
-                          <strong className="text-sm text-slate-900">
+                          <strong className="text-xs text-slate-900">
                             {rate.name}
                           </strong>
-                          <strong className="text-sm text-slate-900">
+                          <strong className="text-xs text-slate-900">
                             {isZeroMoney(rate.price)
                               ? "Grátis"
                               : formatStoreMoney(rate.price)}
@@ -213,7 +213,7 @@ export function CheckoutShippingPlaceholder() {
                         rate.methodId === "local_pickup" ? (
                           <span
                             id={descriptionId}
-                            className="mt-1 block text-sm leading-5 text-slate-600"
+                            className="mt-1 block text-xs leading-5 text-slate-600"
                           >
                             {rate.deliveryTime || rate.description}
                             {rate.methodId === "local_pickup" &&
