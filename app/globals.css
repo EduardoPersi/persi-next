@@ -297,8 +297,16 @@ img {
 }
 
 :focus-visible {
-  outline: 3px solid rgb(11 58 141 / 0.28);
-  outline-offset: 3px;
+  outline: 2px solid #0b3a8d;
+  outline-offset: 2px;
+}
+
+/* Campos de formulário já indicam foco pela cor da borda
+   (ver `focus:border-primary`) — dispensam o contorno extra acima. */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

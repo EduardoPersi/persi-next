@@ -98,7 +98,7 @@ export const PaymentCardFields = forwardRef<PaymentCardFieldsHandle, PaymentCard
           strategy="lazyOnload"
         />
         <div className="sm:col-span-2">
-          <label htmlFor="card-holder" className="mb-2 block text-sm text-slate-800">
+          <label htmlFor="card-holder" className="mb-1.5 block text-xs font-medium text-black">
             Nome impresso no cartão
           </label>
           <input
@@ -106,11 +106,11 @@ export const PaymentCardFields = forwardRef<PaymentCardFieldsHandle, PaymentCard
             autoComplete="cc-name"
             value={card.holder}
             onChange={handleChange("holder")}
-            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-black outline-none transition focus:border-primary"
           />
         </div>
         <div className="sm:col-span-2">
-          <label htmlFor="card-number" className="mb-2 block text-sm text-slate-800">
+          <label htmlFor="card-number" className="mb-1.5 block text-xs font-medium text-black">
             Número do cartão
           </label>
           <input
@@ -120,11 +120,11 @@ export const PaymentCardFields = forwardRef<PaymentCardFieldsHandle, PaymentCard
             maxLength={19}
             value={card.number}
             onChange={handleChange("number")}
-            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-black outline-none transition focus:border-primary"
           />
         </div>
         <div>
-          <label htmlFor="card-exp-month" className="mb-2 block text-sm text-slate-800">
+          <label htmlFor="card-exp-month" className="mb-1.5 block text-xs font-medium text-black">
             Mês de validade
           </label>
           <input
@@ -135,11 +135,11 @@ export const PaymentCardFields = forwardRef<PaymentCardFieldsHandle, PaymentCard
             placeholder="MM"
             value={card.expMonth}
             onChange={handleChange("expMonth")}
-            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-black outline-none transition focus:border-primary"
           />
         </div>
         <div>
-          <label htmlFor="card-exp-year" className="mb-2 block text-sm text-slate-800">
+          <label htmlFor="card-exp-year" className="mb-1.5 block text-xs font-medium text-black">
             Ano de validade
           </label>
           <input
@@ -150,11 +150,11 @@ export const PaymentCardFields = forwardRef<PaymentCardFieldsHandle, PaymentCard
             placeholder="AAAA"
             value={card.expYear}
             onChange={handleChange("expYear")}
-            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-black outline-none transition focus:border-primary"
           />
         </div>
         <div>
-          <label htmlFor="card-cvv" className="mb-2 block text-sm text-slate-800">
+          <label htmlFor="card-cvv" className="mb-1.5 block text-xs font-medium text-black">
             CVV
           </label>
           <input
@@ -164,18 +164,18 @@ export const PaymentCardFields = forwardRef<PaymentCardFieldsHandle, PaymentCard
             maxLength={4}
             value={card.securityCode}
             onChange={handleChange("securityCode")}
-            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-black outline-none transition focus:border-primary"
           />
         </div>
         <div>
-          <label htmlFor="card-installments" className="mb-2 block text-sm text-slate-800">
+          <label htmlFor="card-installments" className="mb-1.5 block text-xs font-medium text-black">
             Parcelas
           </label>
           <select
             id="card-installments"
             value={installments}
             onChange={(event) => onInstallmentsChange(Number(event.target.value))}
-            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-black outline-none transition focus:border-primary"
           >
             {Array.from({ length: 12 }, (_, index) => index + 1).map((count) => (
               <option key={count} value={count}>

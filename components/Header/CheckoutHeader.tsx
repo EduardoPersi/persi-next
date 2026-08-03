@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { Lock } from "lucide-react";
 
 // Cabeçalho reduzido, só para as páginas de checkout: sem menu de
 // categorias, busca, wishlist, carrinho ou login — reduz distração durante
@@ -25,8 +25,8 @@ export function CheckoutHeader() {
           />
         </Link>
         <span className="flex items-center gap-2 text-sm font-medium text-white/90">
-          <ShieldCheck size={18} className="shrink-0" aria-hidden="true" />
-          Compra segura
+          <Lock size={18} className="shrink-0" aria-hidden="true" />
+          Ambiente seguro
         </span>
       </div>
     </header>

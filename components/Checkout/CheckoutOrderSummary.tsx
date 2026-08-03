@@ -15,7 +15,7 @@ export function CheckoutOrderSummary({ cart }: { cart: Cart }) {
   return (
     <aside
       aria-labelledby="checkout-summary-title"
-      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-6 sm:p-6"
+      className="rounded-xl border border-black bg-white p-4 shadow-sm lg:sticky lg:top-6 sm:p-6"
     >
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -25,13 +25,13 @@ export function CheckoutOrderSummary({ cart }: { cart: Cart }) {
           >
             4
           </span>
-          <h2 id="checkout-summary-title" className="text-lg font-bold text-[#0c2d72]">
+          <h2 id="checkout-summary-title" className="text-base font-bold text-[#0c2d72]">
             Revise seu pedido
           </h2>
         </div>
         <Link
           href="/carrinho"
-          className="shrink-0 text-sm font-medium text-primary underline underline-offset-2"
+          className="shrink-0 text-xs font-medium text-primary underline underline-offset-2"
         >
           Editar carrinho
         </Link>
@@ -48,7 +48,7 @@ export function CheckoutOrderSummary({ cart }: { cart: Cart }) {
               className="h-16 w-16 shrink-0 rounded-lg border border-slate-200 object-contain"
             />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold leading-5 text-slate-900">
+              <p className="text-xs font-semibold leading-5 text-slate-900">
                 {item.name}
               </p>
               {item.variation.length ? (
@@ -58,7 +58,7 @@ export function CheckoutOrderSummary({ cart }: { cart: Cart }) {
                     .join(" · ")}
                 </p>
               ) : null}
-              <div className="mt-2 flex justify-between gap-3 text-sm">
+              <div className="mt-2 flex justify-between gap-3 text-xs">
                 <span className="text-slate-600">
                   Quantidade: {item.quantity}
                 </span>
@@ -70,7 +70,7 @@ export function CheckoutOrderSummary({ cart }: { cart: Cart }) {
       </ul>
 
       <dl
-        className="space-y-3 border-t border-slate-200 pt-4 text-sm"
+        className="space-y-3 border-t border-slate-200 pt-4 text-xs"
         aria-live="polite"
         aria-atomic="true"
       >
@@ -115,7 +115,7 @@ export function CheckoutOrderSummary({ cart }: { cart: Cart }) {
         ) : null}
         <div className="flex justify-between gap-4 border-t border-slate-200 pt-4">
           <dt className="font-bold text-slate-900">Total</dt>
-          <dd className="text-lg font-bold text-[#0c2d72]">
+          <dd className="text-base font-bold text-[#0c2d72]">
             {formatStoreMoney(cart.totals.price)}
           </dd>
         </div>

@@ -7,9 +7,6 @@ import { CheckoutAddressFields } from "./CheckoutAddressFields";
 export function CheckoutAddresses() {
   return (
     <div>
-      <h3 className="mb-3 text-sm font-bold text-slate-700">
-        Endereço de cobrança
-      </h3>
       <CheckoutAddressFields kind="billing" />
     </div>
   );
