@@ -33,13 +33,6 @@ function toCheckoutAddress(
   };
 }
 
-function isSameAddress(a: CheckoutAddress, b: CheckoutAddress): boolean {
-  return (
-    a.postalCode.replace(/\D/g, "") === b.postalCode.replace(/\D/g, "") &&
-    a.addressLine1.trim().toLowerCase() === b.addressLine1.trim().toLowerCase()
-  );
-}
-
 export interface CheckoutAccountPrefillInput {
   profile: CustomerWorkspaceProfile | null;
   addresses: CustomerWorkspaceAddress[];
@@ -56,6 +49,9 @@ export function applyAccountPrefill(
     ...base,
     contact: { ...base.contact },
     billingAddress: { ...base.billingAddress },
+    // A loja usa um único endereço (cobrança = entrega) — sempre "true",
+    // não há mais como a conta ou o checkout divergirem os dois.
+    shipToBillingAddress: true,
     shippingAddress: { ...base.shippingAddress },
   };
 
@@ -72,24 +68,20 @@ export function applyAccountPrefill(
     }
   }
 
+  // Só um endereço é usado (cobrança = entrega): prioriza o de cobrança
+  // salvo na conta; se não houver, usa o de entrega salvo como ponto de
+  // partida. Nunca preenche `shippingAddress` — ele não tem mais campo
+  // próprio no checkout.
   const billing = toCheckoutAddress(
     addresses.find((address) => address.type === "billing"),
   );
   const shipping = toCheckoutAddress(
     addresses.find((address) => address.type === "shipping"),
   );
+  const singleAddress = billing ?? shipping;
 
-  if (billing) {
-    result.billingAddress = billing;
-    result.shipToBillingAddress = !shipping || isSameAddress(billing, shipping);
-    if (shipping && !result.shipToBillingAddress) {
-      result.shippingAddress = shipping;
-    }
-  } else if (shipping) {
-    // Sem endereço de cobrança salvo, mas com endereço de entrega: usa o
-    // de entrega como ponto de partida dos dois (cliente confirma/edita).
-    result.billingAddress = shipping;
-    result.shipToBillingAddress = true;
+  if (singleAddress) {
+    result.billingAddress = singleAddress;
   }
 
   return result;

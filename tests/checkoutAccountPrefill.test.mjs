@@ -64,7 +64,7 @@ test("endereço de cobrança da conta preenche billingAddress; número e complem
   assert.equal(result.shipToBillingAddress, true);
 });
 
-test("endereço de entrega diferente do de cobrança desmarca 'mesmo endereço' e preenche os dois", () => {
+test("a loja usa um único endereço: mesmo com endereço de entrega diferente salvo na conta, só o de cobrança é usado", () => {
   const shipping = makeAddress({
     id: "shipping",
     type: "shipping",
@@ -76,17 +76,9 @@ test("endereço de entrega diferente do de cobrança desmarca 'mesmo endereço' 
     addresses: [makeAddress(), shipping],
   });
 
-  assert.equal(result.shipToBillingAddress, false);
-  assert.equal(result.shippingAddress.addressLine1, "Avenida Nove de Julho, 900");
-  assert.equal(result.billingAddress.addressLine1, "Rua Coronel Leme da Fonseca, 426");
-});
-
-test("endereço de entrega igual ao de cobrança mantém 'mesmo endereço' marcado", () => {
-  const result = applyAccountPrefill(checkoutDefaultValues, {
-    profile: null,
-    addresses: [makeAddress(), makeAddress({ id: "shipping", type: "shipping" })],
-  });
   assert.equal(result.shipToBillingAddress, true);
+  assert.equal(result.billingAddress.addressLine1, "Rua Coronel Leme da Fonseca, 426");
+  assert.deepEqual(result.shippingAddress, checkoutDefaultValues.shippingAddress);
 });
 
 test("sem endereço de cobrança, usa o de entrega como ponto de partida", () => {
