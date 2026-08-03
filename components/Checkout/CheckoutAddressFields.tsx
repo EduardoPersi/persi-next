@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useFormContext } from "react-hook-form";
-import { formatPostalCode } from "@/lib/commerce/checkout";
+import { usePostcodeAddressLookup } from "@/hooks/usePostcodeAddressLookup";
+import { formatPostcode, normalizePostcode } from "@/lib/commerce/shippingCalculator";
 import { BRAZILIAN_STATES } from "@/lib/constants/brazilianStates";
 import type { CheckoutFormValues } from "@/types/checkout";
 import { CheckoutField } from "./CheckoutField";
@@ -18,6 +20,8 @@ export function CheckoutAddressFields({
     setValue,
     formState: { errors },
   } = useFormContext<CheckoutFormValues>();
+  const lookupPostcodeAddress = usePostcodeAddressLookup();
+  const [isLookingUpAddress, setIsLookingUpAddress] = useState(false);
   const isBilling = kind === "billing";
   const prefix = isBilling ? "billingAddress" : "shippingAddress";
   const addressErrors = isBilling
@@ -25,6 +29,51 @@ export function CheckoutAddressFields({
     : errors.shippingAddress;
   const autocompletePrefix = isBilling ? "billing" : "shipping";
   const postalCodeRegistration = register(`${prefix}.postalCode`);
+
+  const handlePostalCodeChange = (value: string) => {
+    const formatted = formatPostcode(value);
+    setValue(`${prefix}.postalCode`, formatted, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    if (normalizePostcode(formatted).length !== 8) return;
+
+    setIsLookingUpAddress(true);
+    void lookupPostcodeAddress(formatted)
+      .then((address) => {
+        // CEP não encontrado: campo de CEP continua com o valor digitado,
+        // sem travar a tela — o cliente sempre pode preencher manualmente.
+        if (!address) return;
+        // `address2` do serviço de CEP carrega o bairro (não o
+        // complemento) — ver services/shipping/postcode.ts.
+        if (address.address1) {
+          setValue(`${prefix}.addressLine1`, address.address1, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+        }
+        if (address.address2) {
+          setValue(`${prefix}.neighborhood`, address.address2, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+        }
+        if (address.city) {
+          setValue(`${prefix}.city`, address.city, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+        }
+        if (address.state) {
+          setValue(`${prefix}.state`, address.state, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+        }
+      })
+      .finally(() => setIsLookingUpAddress(false));
+  };
 
   return (
     <div className="grid gap-4 sm:grid-cols-6">
@@ -38,13 +87,13 @@ export function CheckoutAddressFields({
           maxLength={9}
           placeholder="00000-000"
           autoComplete={`${autocompletePrefix} postal-code`}
-          onChange={(value) => {
-            setValue(`${prefix}.postalCode`, formatPostalCode(value), {
-              shouldDirty: true,
-              shouldValidate: true,
-            });
-          }}
+          onChange={handlePostalCodeChange}
         />
+        {isLookingUpAddress ? (
+          <p className="mt-1.5 text-sm text-slate-500" role="status">
+            Buscando endereço...
+          </p>
+        ) : null}
       </div>
       <div className="sm:col-span-4">
         <CheckoutField

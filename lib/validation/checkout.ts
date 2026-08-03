@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { validateBrazilianPhone } from "../account/phoneValidation.ts";
 import { BRAZILIAN_STATES } from "../constants/brazilianStates.ts";
+import { isValidPostcode } from "../commerce/shippingCalculator.ts";
 import { isValidBrazilianCnpj } from "./cnpj.ts";
 import { isValidBrazilianCpf } from "./cpf.ts";
 import type { CheckoutFormValues } from "@/types/checkout";
@@ -10,7 +12,7 @@ const addressSchema = z.object({
   postalCode: z
     .string()
     .trim()
-    .refine((value) => /^\d{5}-?\d{3}$/.test(value), "Informe um CEP válido."),
+    .refine(isValidPostcode, "Informe um CEP válido."),
   addressLine1: requiredText("Informe o endereço."),
   number: requiredText("Informe o número."),
   addressLine2: z.string().trim(),
@@ -50,10 +52,11 @@ export const checkoutSchema = z
       phone: z
         .string()
         .trim()
-        .refine(
-          (value) => /^\d{10,11}$/.test(value.replace(/\D/g, "")),
-          "Informe um telefone com DDD.",
-        ),
+        .min(1, "Informe um telefone com DDD.")
+        .superRefine((value, context) => {
+          const error = validateBrazilianPhone(value);
+          if (error) context.addIssue({ code: "custom", message: error });
+        }),
       personType: z.enum(["fisica", "juridica"]),
       document: z.string().trim(),
     }),

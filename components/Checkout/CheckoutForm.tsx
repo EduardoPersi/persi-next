@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   FormProvider,
@@ -12,8 +12,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/UI/Button";
 import { useBeforeUnloadWarning } from "@/hooks/useBeforeUnloadWarning";
 import { useCart } from "@/hooks/useCart";
+import { usePostcodeAddressLookup } from "@/hooks/usePostcodeAddressLookup";
 import { useTabAttentionTitle } from "@/hooks/useTabAttentionTitle";
+import { applyAccountPrefill } from "@/lib/commerce/checkoutAccountPrefill";
 import { getFirstCheckoutErrorPath } from "@/lib/commerce/checkout";
+import {
+  formatPostcode,
+  readLastShippingPostcode,
+} from "@/lib/commerce/shippingCalculator";
+import type {
+  CustomerWorkspaceAddress,
+  CustomerWorkspaceProfile,
+} from "@/lib/customer-workspace/types";
 import {
   formatBrazilianCnpj,
   formatBrazilianCpf,
@@ -46,7 +56,15 @@ const PROFILE_FIELDS = [
   "contact.document",
 ] as const;
 
-export function CheckoutForm() {
+interface CheckoutFormProps {
+  initialProfile: CustomerWorkspaceProfile | null;
+  initialAddresses: CustomerWorkspaceAddress[];
+}
+
+export function CheckoutForm({
+  initialProfile,
+  initialAddresses,
+}: CheckoutFormProps) {
   const { cart, isCheckoutUpdating } = useCart();
   const router = useRouter();
   const [statusMessage, setStatusMessage] = useState("");
@@ -58,14 +76,71 @@ export function CheckoutForm() {
   const [hasCreatedOrder, setHasCreatedOrder] = useState(false);
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("profile");
   const cardFieldsRef = useRef<PaymentCardFieldsHandle>(null);
+  const lookupPostcodeAddress = usePostcodeAddressLookup();
+
+  // Dados salvos no cadastro do cliente logado têm prioridade sobre
+  // qualquer CEP solto lembrado da navegação anônima (ver efeito abaixo) —
+  // só é calculado uma vez, a partir dos dados já resolvidos no servidor.
+  const initialFormValues = useMemo(
+    () =>
+      applyAccountPrefill(checkoutDefaultValues, {
+        profile: initialProfile,
+        addresses: initialAddresses,
+      }),
+    [initialProfile, initialAddresses],
+  );
 
   const methods = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),
-    defaultValues: checkoutDefaultValues,
+    defaultValues: initialFormValues,
     mode: "onBlur",
     shouldFocusError: false,
     shouldUnregister: false,
   });
+
+  // Sem endereço salvo na conta (convidado, ou cliente logado que nunca
+  // preencheu um endereço): sugere o último CEP usado em qualquer cálculo
+  // de frete no site (mesmo armazenamento de lib/commerce/shippingCalculator,
+  // já usado nas páginas de produto/carrinho) e busca o endereço
+  // correspondente — o cliente não precisa digitar de novo o que já
+  // informou em outro lugar da navegação.
+  useEffect(() => {
+    if (methods.getValues("billingAddress.addressLine1")) return;
+    if (typeof window === "undefined") return;
+
+    const remembered = readLastShippingPostcode(window.localStorage);
+    if (!remembered) return;
+
+    const formatted = formatPostcode(remembered);
+    methods.setValue("billingAddress.postalCode", formatted, {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+
+    void lookupPostcodeAddress(formatted).then((address) => {
+      if (!address) return;
+      if (address.address1) {
+        methods.setValue("billingAddress.addressLine1", address.address1, {
+          shouldValidate: true,
+        });
+      }
+      if (address.address2) {
+        methods.setValue("billingAddress.neighborhood", address.address2, {
+          shouldValidate: true,
+        });
+      }
+      if (address.city) {
+        methods.setValue("billingAddress.city", address.city, { shouldValidate: true });
+      }
+      if (address.state) {
+        methods.setValue("billingAddress.state", address.state, {
+          shouldValidate: true,
+        });
+      }
+    });
+    // Roda só uma vez, ao montar — não deve reagir a edições do cliente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const shipToBillingAddress = useWatch({
     control: methods.control,
     name: "shipToBillingAddress",

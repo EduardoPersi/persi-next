@@ -1,4 +1,5 @@
 import type { Cart } from "@/types/cart";
+import { isValidPostcode } from "./shippingCalculator.ts";
 import type {
   CheckoutAddress,
   CheckoutViewState,
@@ -24,16 +25,9 @@ export function resolveCheckoutViewState({
   return "ready";
 }
 
-export function formatPostalCode(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  return digits.length > 5
-    ? `${digits.slice(0, 5)}-${digits.slice(5)}`
-    : digits;
-}
-
 export function isAddressComplete(address: CheckoutAddress): boolean {
   return (
-    /^\d{5}-?\d{3}$/.test(address.postalCode.trim()) &&
+    isValidPostcode(address.postalCode) &&
     Boolean(address.addressLine1.trim()) &&
     Boolean(address.number.trim()) &&
     Boolean(address.neighborhood.trim()) &&

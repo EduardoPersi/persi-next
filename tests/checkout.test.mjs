@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
-  formatPostalCode,
   getFirstCheckoutErrorPath,
   resolveCheckoutViewState,
 } from "../lib/commerce/checkout.ts";
+import { formatPostcode } from "../lib/commerce/shippingCalculator.ts";
 import {
   checkoutDefaultValues,
   checkoutSchema,
@@ -34,7 +34,7 @@ const validCheckout = {
     firstName: "Amanda",
     lastName: "Silva",
     company: "",
-    phone: "(11) 99999-9999",
+    phone: "(11) 98765-4321",
     personType: "fisica",
     document: "111.444.777-35",
   },
@@ -107,7 +107,28 @@ test("valida e-mail e CEP com mensagens amigáveis", () => {
   if (invalid.success) return;
   assert.ok(invalid.error.issues.some(({ message }) => message.includes("e-mail")));
   assert.ok(invalid.error.issues.some(({ message }) => message.includes("CEP")));
-  assert.equal(formatPostalCode("13201000"), "13201-000");
+  assert.equal(formatPostcode("13201000"), "13201-000");
+});
+
+test("telefone reaproveita a validação compartilhada da conta (DDD e dígito repetido)", () => {
+  // Mesmas regras de lib/account/phoneValidation.ts (já usada em "Meu
+  // perfil") — garante que o checkout não tem uma validação de telefone
+  // paralela e mais fraca.
+  const repeatedDigit = checkoutSchema.safeParse({
+    ...validCheckout,
+    contact: { ...validCheckout.contact, phone: "(11) 99999-9999" },
+  });
+  assert.equal(repeatedDigit.success, false);
+
+  const invalidDdd = checkoutSchema.safeParse({
+    ...validCheckout,
+    contact: { ...validCheckout.contact, phone: "(10) 98765-4321" },
+  });
+  assert.equal(invalidDdd.success, false);
+  if (invalidDdd.success) return;
+  assert.ok(
+    invalidDdd.error.issues.some(({ message }) => message.includes("DDD")),
+  );
 });
 
 test("endereço de entrega igual não exige segundo endereço", () => {
