@@ -9,6 +9,8 @@ export type CheckoutAddress = {
   country: "BR";
 };
 
+export type CheckoutPersonType = "fisica" | "juridica";
+
 export type CheckoutFormValues = {
   contact: {
     email: string;
@@ -16,6 +18,7 @@ export type CheckoutFormValues = {
     lastName: string;
     company: string;
     phone: string;
+    personType: CheckoutPersonType;
     document: string;
   };
   billingAddress: CheckoutAddress;

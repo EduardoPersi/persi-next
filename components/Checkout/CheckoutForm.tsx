@@ -14,6 +14,10 @@ import { useBeforeUnloadWarning } from "@/hooks/useBeforeUnloadWarning";
 import { useCart } from "@/hooks/useCart";
 import { useTabAttentionTitle } from "@/hooks/useTabAttentionTitle";
 import { getFirstCheckoutErrorPath } from "@/lib/commerce/checkout";
+import {
+  formatBrazilianCnpj,
+  formatBrazilianCpf,
+} from "@/lib/formatting/personalData";
 import { checkoutDefaultValues, checkoutSchema } from "@/lib/validation/checkout";
 import type { CheckoutFormValues } from "@/types/checkout";
 import type {
@@ -25,10 +29,22 @@ import { BoletoPaymentResult } from "./BoletoPaymentResult";
 import { CheckoutContactForm } from "./CheckoutContactForm";
 import { CheckoutPayment } from "./CheckoutPayment";
 import { CheckoutShippingPlaceholder } from "./CheckoutShippingPlaceholder";
+import { CheckoutStepCard, type CheckoutStepState } from "./CheckoutStepCard";
 import { CheckoutTerms } from "./CheckoutTerms";
 import { createIdempotencyKey, type CheckoutPaymentMethod } from "./paymentMethod";
 import { PixPaymentResult } from "./PixPaymentResult";
 import type { PaymentCardFieldsHandle } from "./PaymentCardFields";
+
+type CheckoutStep = "profile" | "address" | "payment";
+
+const PROFILE_FIELDS = [
+  "contact.email",
+  "contact.firstName",
+  "contact.lastName",
+  "contact.phone",
+  "contact.personType",
+  "contact.document",
+] as const;
 
 export function CheckoutForm() {
   const { cart, isCheckoutUpdating } = useCart();
@@ -40,6 +56,7 @@ export function CheckoutForm() {
   const [pixResult, setPixResult] = useState<PixPaymentResultData | null>(null);
   const [boletoResult, setBoletoResult] = useState<BoletoPaymentResultData | null>(null);
   const [hasCreatedOrder, setHasCreatedOrder] = useState(false);
+  const [currentStep, setCurrentStep] = useState<CheckoutStep>("profile");
   const cardFieldsRef = useRef<PaymentCardFieldsHandle>(null);
 
   const methods = useForm<CheckoutFormValues>({
@@ -53,6 +70,8 @@ export function CheckoutForm() {
     control: methods.control,
     name: "shipToBillingAddress",
   });
+  const contact = useWatch({ control: methods.control, name: "contact" });
+  const billingAddress = useWatch({ control: methods.control, name: "billingAddress" });
   const dirtyFields = methods.formState.dirtyFields;
   const addressNeedsUpdate =
     Boolean(dirtyFields.contact) ||
@@ -140,7 +159,7 @@ export function CheckoutForm() {
     }
   };
 
-  const canContinue =
+  const addressReady =
     Boolean(cart) &&
     (!cart?.needsShipping ||
       (!addressNeedsUpdate &&
@@ -156,6 +175,25 @@ export function CheckoutForm() {
     if (firstError) {
       methods.setFocus(firstError);
     }
+  };
+
+  const advanceToAddress = async () => {
+    setStatusMessage("");
+    const valid = await methods.trigger(PROFILE_FIELDS, { shouldFocus: true });
+    if (!valid) {
+      setStatusMessage("Revise os campos destacados para continuar.");
+      return;
+    }
+    setCurrentStep("address");
+  };
+
+  const advanceToPayment = () => {
+    if (!addressReady) {
+      setStatusMessage("Calcule e selecione a entrega para continuar.");
+      return;
+    }
+    setStatusMessage("");
+    setCurrentStep("payment");
   };
 
   if (pixResult) {
@@ -179,48 +217,123 @@ export function CheckoutForm() {
     return <BoletoPaymentResult result={boletoResult} />;
   }
 
+  const profileState: CheckoutStepState =
+    currentStep === "profile" ? "active" : "done";
+  const addressState: CheckoutStepState =
+    currentStep === "profile" ? "upcoming" : currentStep === "address" ? "active" : "done";
+  const paymentState: CheckoutStepState =
+    currentStep === "payment" ? "active" : "upcoming";
+
+  const documentLabel = contact?.personType === "juridica" ? "CNPJ" : "CPF";
+  const formattedDocument = contact?.document
+    ? contact.personType === "juridica"
+      ? formatBrazilianCnpj(contact.document)
+      : formatBrazilianCpf(contact.document)
+    : "";
+
   return (
     <FormProvider {...methods}>
       <form
         noValidate
         // eslint-disable-next-line react-hooks/refs -- cardFieldsRef só é lido dentro do callback de submit do react-hook-form, disparado por um evento real de submit, nunca durante a renderização.
         onSubmit={methods.handleSubmit(submitPayment, focusFirstError)}
-        className="space-y-5"
+        className="grid gap-5 lg:grid-cols-2 lg:items-start"
       >
-        <CheckoutContactForm />
-        <CheckoutAddresses />
-        <CheckoutShippingPlaceholder />
-        <CheckoutPayment
-          method={paymentMethod}
-          onMethodChange={setPaymentMethod}
-          installments={installments}
-          onInstallmentsChange={setInstallments}
-          cardFieldsRef={cardFieldsRef}
-          onCardError={setStatusMessage}
-        />
+        <div>
+          <CheckoutStepCard
+            step={1}
+            title="Perfil"
+            state={profileState}
+            onEdit={() => setCurrentStep("profile")}
+            doneSummary={
+              <div className="space-y-1 text-sm text-slate-700">
+                <p className="font-semibold text-slate-900">
+                  {contact?.firstName} {contact?.lastName}
+                </p>
+                <p>{contact?.email}</p>
+                <p>
+                  {documentLabel} {formattedDocument}
+                </p>
+              </div>
+            }
+          >
+            <CheckoutContactForm />
+            <Button
+              type="button"
+              size="lg"
+              onClick={() => void advanceToAddress()}
+              className="mt-5 w-full"
+            >
+              Avançar
+            </Button>
+          </CheckoutStepCard>
+        </div>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-          <CheckoutTerms />
-          <Button
-            type="submit"
-            size="lg"
-            disabled={!canContinue || isCheckoutUpdating || isSubmittingPayment}
-            aria-describedby="checkout-submit-status"
-            className="mt-5 w-full"
+        <div className="space-y-5">
+          <CheckoutStepCard
+            step={2}
+            title="Endereço de entrega"
+            state={addressState}
+            upcomingText="Finalize seu perfil para avançar..."
+            onEdit={() => setCurrentStep("address")}
+            doneSummary={
+              <p className="text-sm text-slate-700">
+                {billingAddress?.addressLine1}, {billingAddress?.number} —{" "}
+                {billingAddress?.neighborhood}, {billingAddress?.city}/
+                {billingAddress?.state}
+              </p>
+            }
           >
-            {isSubmittingPayment ? "Processando..." : "Continuar para pagamento"}
-          </Button>
-          <p
-            id="checkout-submit-status"
-            className="mt-3 text-center text-sm text-slate-600"
-            role="status"
-            aria-live="polite"
+            <CheckoutAddresses />
+            <CheckoutShippingPlaceholder />
+            <Button
+              type="button"
+              size="lg"
+              disabled={!addressReady || isCheckoutUpdating}
+              onClick={advanceToPayment}
+              className="mt-5 w-full"
+            >
+              Avançar
+            </Button>
+          </CheckoutStepCard>
+
+          <CheckoutStepCard
+            step={3}
+            title="Pagamento"
+            state={paymentState}
+            upcomingText="Finalize seu cadastro e endereço para avançar..."
           >
-            {!canContinue
-              ? "Calcule e selecione a entrega para continuar."
-              : statusMessage}
-          </p>
-        </section>
+            <div className="space-y-5">
+              <CheckoutPayment
+                method={paymentMethod}
+                onMethodChange={setPaymentMethod}
+                installments={installments}
+                onInstallmentsChange={setInstallments}
+                cardFieldsRef={cardFieldsRef}
+                onCardError={setStatusMessage}
+              />
+              <CheckoutTerms />
+              <Button
+                type="submit"
+                size="lg"
+                disabled={isCheckoutUpdating || isSubmittingPayment}
+                aria-describedby="checkout-submit-status"
+                className="w-full"
+              >
+                {isSubmittingPayment ? "Processando..." : "Continuar para pagamento"}
+              </Button>
+            </div>
+          </CheckoutStepCard>
+        </div>
+
+        <p
+          id="checkout-submit-status"
+          className="text-center text-sm text-slate-600 lg:col-span-2"
+          role="status"
+          aria-live="polite"
+        >
+          {statusMessage}
+        </p>
       </form>
     </FormProvider>
   );

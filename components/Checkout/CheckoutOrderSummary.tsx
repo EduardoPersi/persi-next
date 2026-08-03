@@ -18,9 +18,17 @@ export function CheckoutOrderSummary({ cart }: { cart: Cart }) {
       className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-6 sm:p-6"
     >
       <div className="flex items-center justify-between gap-4">
-        <h2 id="checkout-summary-title" className="text-xl text-[#0c2d72]">
-          Resumo do pedido
-        </h2>
+        <div className="flex items-center gap-3">
+          <span
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0c2d72] text-sm font-bold text-white"
+            aria-hidden="true"
+          >
+            4
+          </span>
+          <h2 id="checkout-summary-title" className="text-lg font-bold text-[#0c2d72]">
+            Revise seu pedido
+          </h2>
+        </div>
         <Link
           href="/carrinho"
           className="shrink-0 text-sm font-medium text-primary underline underline-offset-2"

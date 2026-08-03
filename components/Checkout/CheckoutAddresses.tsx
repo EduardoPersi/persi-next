@@ -3,7 +3,6 @@
 import { useFormContext, useWatch } from "react-hook-form";
 import type { CheckoutFormValues } from "@/types/checkout";
 import { CheckoutAddressFields } from "./CheckoutAddressFields";
-import { CheckoutSection } from "./CheckoutSection";
 
 export function CheckoutAddresses() {
   const { control, register } = useFormContext<CheckoutFormValues>();
@@ -13,12 +12,15 @@ export function CheckoutAddresses() {
   });
 
   return (
-    <>
-      <CheckoutSection title="Endereço de cobrança">
+    <div className="space-y-5">
+      <div>
+        <h3 className="mb-3 text-sm font-bold text-slate-700">
+          Endereço de cobrança
+        </h3>
         <CheckoutAddressFields kind="billing" />
-      </CheckoutSection>
+      </div>
 
-      <CheckoutSection title="Endereço de entrega">
+      <div className="border-t border-slate-200 pt-5">
         <label className="flex min-h-11 items-start gap-3 text-sm text-slate-800">
           <input
             type="checkbox"
@@ -33,7 +35,7 @@ export function CheckoutAddresses() {
             <CheckoutAddressFields kind="shipping" />
           </div>
         ) : null}
-      </CheckoutSection>
-    </>
+      </div>
+    </div>
   );
 }

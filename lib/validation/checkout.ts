@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BRAZILIAN_STATES } from "../constants/brazilianStates.ts";
-import { isValidBrazilianDocument } from "./document.ts";
+import { isValidBrazilianCnpj } from "./cnpj.ts";
+import { isValidBrazilianCpf } from "./cpf.ts";
 import type { CheckoutFormValues } from "@/types/checkout";
 
 const requiredText = (message: string) => z.string().trim().min(1, message);
@@ -53,10 +54,8 @@ export const checkoutSchema = z
           (value) => /^\d{10,11}$/.test(value.replace(/\D/g, "")),
           "Informe um telefone com DDD.",
         ),
-      document: z
-        .string()
-        .trim()
-        .refine(isValidBrazilianDocument, "Informe um CPF ou CNPJ válido."),
+      personType: z.enum(["fisica", "juridica"]),
+      document: z.string().trim(),
     }),
     billingAddress: addressSchema,
     shipToBillingAddress: z.boolean(),
@@ -66,6 +65,22 @@ export const checkoutSchema = z
     }),
   })
   .superRefine((value, context) => {
+    const isValidDocument =
+      value.contact.personType === "juridica"
+        ? isValidBrazilianCnpj(value.contact.document)
+        : isValidBrazilianCpf(value.contact.document);
+
+    if (!isValidDocument) {
+      context.addIssue({
+        code: "custom",
+        path: ["contact", "document"],
+        message:
+          value.contact.personType === "juridica"
+            ? "Informe um CNPJ válido."
+            : "Informe um CPF válido.",
+      });
+    }
+
     if (value.shipToBillingAddress) return;
 
     const result = addressSchema.safeParse(value.shippingAddress);
@@ -97,6 +112,7 @@ export const checkoutDefaultValues: CheckoutFormValues = {
     lastName: "",
     company: "",
     phone: "",
+    personType: "fisica",
     document: "",
   },
   billingAddress: { ...emptyCheckoutAddress },

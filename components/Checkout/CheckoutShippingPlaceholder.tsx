@@ -8,7 +8,6 @@ import { isAddressComplete } from "@/lib/commerce/checkout";
 import { mapCheckoutFormToWooAddress } from "@/lib/commerce/checkoutAddress";
 import { formatStoreMoney, isZeroMoney } from "@/lib/formatting/money";
 import type { CheckoutFormValues, ShippingStatus } from "@/types/checkout";
-import { CheckoutSection } from "./CheckoutSection";
 
 const billingFields = [
   "contact.email",
@@ -147,7 +146,8 @@ export function CheckoutShippingPlaceholder() {
     status === "selecting-rate";
 
   return (
-    <CheckoutSection title="Entrega">
+    <div className="border-t border-slate-200 pt-5">
+      <h3 className="mb-3 text-sm font-bold text-slate-700">Entrega</h3>
       <div aria-live="polite" className="min-h-6 text-sm text-slate-600">
         {!addressComplete
           ? "Informe seu endereço para calcular a entrega."
@@ -244,6 +244,6 @@ export function CheckoutShippingPlaceholder() {
           ? "Atualizar opções de entrega"
           : "Calcular entrega"}
       </Button>
-    </CheckoutSection>
+    </div>
   );
 }

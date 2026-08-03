@@ -35,6 +35,7 @@ const validCheckout = {
     lastName: "Silva",
     company: "",
     phone: "(11) 99999-9999",
+    personType: "fisica",
     document: "111.444.777-35",
   },
   billingAddress: {
@@ -124,23 +125,43 @@ test("CPF inválido é rejeitado com mensagem amigável", () => {
   assert.ok(invalid.error.issues.some(({ message }) => message.includes("CPF")));
 });
 
-test("CNPJ válido também é aceito no campo de documento", () => {
+test("CNPJ válido é aceito quando Tipo de Pessoa é jurídica", () => {
   const valid = checkoutSchema.safeParse({
     ...validCheckout,
-    contact: { ...validCheckout.contact, document: "11.222.333/0001-81" },
+    contact: {
+      ...validCheckout.contact,
+      personType: "juridica",
+      document: "11.222.333/0001-81",
+    },
   });
   assert.equal(valid.success, true);
 });
 
-test("CNPJ inválido é rejeitado com a mesma mensagem amigável", () => {
+test("CNPJ inválido é rejeitado com mensagem específica quando pessoa jurídica", () => {
   const invalid = checkoutSchema.safeParse({
     ...validCheckout,
-    contact: { ...validCheckout.contact, document: "11.222.333/0001-82" },
+    contact: {
+      ...validCheckout.contact,
+      personType: "juridica",
+      document: "11.222.333/0001-82",
+    },
   });
 
   assert.equal(invalid.success, false);
   if (invalid.success) return;
   assert.ok(invalid.error.issues.some(({ message }) => message.includes("CNPJ")));
+});
+
+test("um CNPJ válido é rejeitado se Tipo de Pessoa continuar física (o tipo escolhido manda, não o formato)", () => {
+  const invalid = checkoutSchema.safeParse({
+    ...validCheckout,
+    contact: {
+      ...validCheckout.contact,
+      personType: "fisica",
+      document: "11.222.333/0001-81",
+    },
+  });
+  assert.equal(invalid.success, false);
 });
 
 test("endereço de entrega diferente é validado sem apagar seus valores", () => {

@@ -1,87 +1,97 @@
 "use client";
 
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 import { CheckoutField } from "./CheckoutField";
-import { CheckoutSection } from "./CheckoutSection";
 import type { CheckoutFormValues } from "@/types/checkout";
-import { formatBrazilianDocument, formatBrazilianPhone } from "@/lib/formatting/personalData";
+import {
+  formatBrazilianCnpj,
+  formatBrazilianCpf,
+  formatBrazilianPhone,
+} from "@/lib/formatting/personalData";
 
 export function CheckoutContactForm() {
   const {
+    control,
     register,
     formState: { errors },
   } = useFormContext<CheckoutFormValues>();
+  const personType = useWatch({ control, name: "contact.personType" });
+  const isCompany = personType === "juridica";
 
   return (
-    <CheckoutSection
-      title="Identificação"
-      description="Usaremos estes dados somente para o atendimento desta compra."
-    >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <CheckoutField
-            id="checkout-email"
-            label="E-mail"
-            registration={register("contact.email")}
-            error={errors.contact?.email?.message}
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-          />
-        </div>
+    <div className="grid gap-4 sm:grid-cols-2">
+      <div className="sm:col-span-2">
         <CheckoutField
-          id="checkout-first-name"
-          label="Nome"
-          registration={register("contact.firstName")}
-          error={errors.contact?.firstName?.message}
-          autoComplete="given-name"
-        />
-        <CheckoutField
-          id="checkout-last-name"
-          label="Sobrenome"
-          registration={register("contact.lastName")}
-          error={errors.contact?.lastName?.message}
-          autoComplete="family-name"
-        />
-        <div className="sm:col-span-2">
-          <CheckoutField
-            id="checkout-company"
-            label="Empresa (opcional)"
-            registration={register("contact.company")}
-            error={errors.contact?.company?.message}
-            autoComplete="organization"
-          />
-        </div>
-        <CheckoutField
-          id="checkout-phone"
-          label="Telefone"
-          registration={register("contact.phone", {
-            onChange: (event) => {
-              event.target.value = formatBrazilianPhone(event.target.value);
-            },
-          })}
-          error={errors.contact?.phone?.message}
-          type="tel"
-          inputMode="numeric"
-          autoComplete="tel"
-          maxLength={15}
-          placeholder="(11) 99999-9999"
-        />
-        <CheckoutField
-          id="checkout-document"
-          label="CPF ou CNPJ"
-          registration={register("contact.document", {
-            onChange: (event) => {
-              event.target.value = formatBrazilianDocument(event.target.value);
-            },
-          })}
-          error={errors.contact?.document?.message}
-          inputMode="numeric"
-          autoComplete="off"
-          maxLength={18}
-          placeholder="000.000.000-00 ou 00.000.000/0000-00"
+          id="checkout-email"
+          label="E-mail"
+          registration={register("contact.email")}
+          error={errors.contact?.email?.message}
+          type="email"
+          inputMode="email"
+          autoComplete="email"
         />
       </div>
-    </CheckoutSection>
+      <CheckoutField
+        id="checkout-first-name"
+        label="Nome"
+        registration={register("contact.firstName")}
+        error={errors.contact?.firstName?.message}
+        autoComplete="given-name"
+      />
+      <CheckoutField
+        id="checkout-last-name"
+        label="Sobrenome"
+        registration={register("contact.lastName")}
+        error={errors.contact?.lastName?.message}
+        autoComplete="family-name"
+      />
+      <CheckoutField
+        id="checkout-phone"
+        label="Celular/WhatsApp"
+        registration={register("contact.phone", {
+          onChange: (event) => {
+            event.target.value = formatBrazilianPhone(event.target.value);
+          },
+        })}
+        error={errors.contact?.phone?.message}
+        type="tel"
+        inputMode="numeric"
+        autoComplete="tel"
+        maxLength={15}
+        placeholder="(11) 99999-9999"
+      />
+      <div>
+        <label
+          htmlFor="checkout-person-type"
+          className="mb-2 block text-sm text-slate-800"
+        >
+          Tipo de Pessoa
+        </label>
+        <select
+          id="checkout-person-type"
+          {...register("contact.personType")}
+          className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+        >
+          <option value="fisica">Pessoa Física</option>
+          <option value="juridica">Pessoa Jurídica</option>
+        </select>
+      </div>
+      <CheckoutField
+        id="checkout-document"
+        label={isCompany ? "CNPJ" : "CPF"}
+        registration={register("contact.document", {
+          onChange: (event) => {
+            event.target.value = isCompany
+              ? formatBrazilianCnpj(event.target.value)
+              : formatBrazilianCpf(event.target.value);
+          },
+        })}
+        error={errors.contact?.document?.message}
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength={isCompany ? 18 : 14}
+        placeholder={isCompany ? "00.000.000/0000-00" : "000.000.000-00"}
+      />
+    </div>
   );
 }

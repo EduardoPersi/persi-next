@@ -25,8 +25,10 @@ export function CheckoutPageClient() {
   if (!cart) return <CheckoutError />;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
-      <CheckoutForm />
+    <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
+      <div className="lg:col-span-2">
+        <CheckoutForm />
+      </div>
       <CheckoutOrderSummary cart={cart} />
     </div>
   );

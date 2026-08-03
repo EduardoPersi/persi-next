@@ -1,7 +1,6 @@
 "use client";
 
 import type { RefObject } from "react";
-import { CheckoutSection } from "./CheckoutSection";
 import { PaymentCardFields, type PaymentCardFieldsHandle } from "./PaymentCardFields";
 import { PaymentMethodSelector } from "./PaymentMethodSelector";
 import type { CheckoutPaymentMethod } from "./paymentMethod";
@@ -33,27 +32,26 @@ export function CheckoutPayment({
   const isWalletMethod = CARD_METHODS.includes(method) && method !== "pagbank_card";
 
   return (
-    <CheckoutSection
-      title="Pagamento"
-      description="Escolha como prefere pagar. O valor final é sempre confirmado com o Banco Inter ou o PagBank antes da confirmação do pedido."
-    >
-      <div className="space-y-5">
-        <PaymentMethodSelector value={method} onChange={onMethodChange} />
-        {showCardFields ? (
-          <PaymentCardFields
-            ref={cardFieldsRef}
-            installments={installments}
-            onInstallmentsChange={onInstallmentsChange}
-            onError={onCardError}
-          />
-        ) : null}
-        {isWalletMethod ? (
-          <p className="rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-            Você vai confirmar o pagamento pela carteira digital do seu dispositivo ao
-            continuar.
-          </p>
-        ) : null}
-      </div>
-    </CheckoutSection>
+    <div className="space-y-5">
+      <p className="text-sm leading-6 text-slate-600">
+        Escolha como prefere pagar. O valor final é sempre confirmado com o Banco
+        Inter ou o PagBank antes da confirmação do pedido.
+      </p>
+      <PaymentMethodSelector value={method} onChange={onMethodChange} />
+      {showCardFields ? (
+        <PaymentCardFields
+          ref={cardFieldsRef}
+          installments={installments}
+          onInstallmentsChange={onInstallmentsChange}
+          onError={onCardError}
+        />
+      ) : null}
+      {isWalletMethod ? (
+        <p className="rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+          Você vai confirmar o pagamento pela carteira digital do seu dispositivo ao
+          continuar.
+        </p>
+      ) : null}
+    </div>
   );
 }
