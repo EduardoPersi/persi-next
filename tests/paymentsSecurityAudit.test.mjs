@@ -28,6 +28,42 @@ test("webhook do PagBank sempre reconsulta o provedor antes de reconciliar o ped
   assert.ok(getStatusIndex > -1 && reconcileIndex > -1 && getStatusIndex < reconcileIndex);
 });
 
+test("rota de status de pagamento resolve e autoriza o pedido antes de consultar qualquer provedor", () => {
+  const source = read("app/api/checkout/payment/status/route.ts");
+  assert.match(source, /findOrderByPaymentReference/);
+  assert.match(source, /isAuthorizedForOrderStatus/);
+
+  const findOrderIndex = source.indexOf("findOrderByPaymentReference(paymentProvider, reference)");
+  const authIndex = source.indexOf("isAuthorizedForOrderStatus(");
+  const getPixIndex = source.indexOf("getPixChargeStatus(reference)");
+  const getBoletoIndex = source.indexOf("getBoletoChargeStatus(reference)");
+  const getCardIndex = source.indexOf("getCardChargeStatus(reference)");
+
+  assert.ok(findOrderIndex > -1 && authIndex > -1);
+  assert.ok(findOrderIndex < authIndex);
+  assert.ok(authIndex < getPixIndex && authIndex < getBoletoIndex && authIndex < getCardIndex);
+
+  // Pedido inexistente e pedido não autorizado devem ser indistinguíveis
+  // para quem chama: mesmo status, nunca 404 (não confirma nem nega a
+  // existência do pedido).
+  assert.doesNotMatch(source, /,\s*404\s*\)/);
+  const unauthorizedResponses = source.match(/UNAUTHORIZED_MESSAGE\s*\},\s*401\)/g) ?? [];
+  assert.equal(unauthorizedResponses.length, 2);
+});
+
+test("página de confirmação do checkout também autoriza antes de resolver o status do pagamento", () => {
+  const source = read("app/checkout/confirmacao/page.tsx");
+  assert.match(source, /findOrderByPaymentReference/);
+  assert.match(source, /isAuthorizedForOrderStatus/);
+
+  const findOrderIndex = source.indexOf("findOrderByPaymentReference(paymentProvider, reference)");
+  const authIndex = source.indexOf("isAuthorizedForOrderStatus(");
+  const getPixIndex = source.indexOf("getPixChargeStatus(reference)");
+
+  assert.ok(findOrderIndex > -1 && authIndex > -1 && getPixIndex > -1);
+  assert.ok(findOrderIndex < authIndex && authIndex < getPixIndex);
+});
+
 test("cron de expiração de pedidos pendentes aceita POST, exige CRON_SECRET e usa comparação constante-tempo", () => {
   const source = read("app/api/cron/expire-pending-payments/route.ts");
   assert.match(source, /export async function POST/);

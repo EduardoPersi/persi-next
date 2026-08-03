@@ -1,6 +1,9 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
 import { getPrivateCartHeaders } from "@/lib/commerce/cartResponsePolicy";
 import { paymentStatusQuerySchema } from "@/lib/validation/payments";
+import { getServerAccountSession } from "@/services/account/serverSession";
 import { getBoletoChargeStatus } from "@/services/payments/inter/boleto";
 import { InterPaymentError } from "@/services/payments/inter/errors";
 import { getPixChargeStatus } from "@/services/payments/inter/pix";
@@ -12,13 +15,22 @@ import {
   categorizePixStatus,
   reconcilePaymentReference,
 } from "@/services/payments/reconcile";
-import { WooCommerceRestError } from "@/services/woocommerce/orders";
+import { isAuthorizedForOrderStatus } from "@/services/payments/statusAuthorization";
+import {
+  findOrderByPaymentReference,
+  WooCommerceRestError,
+  type PaymentProvider,
+} from "@/services/woocommerce/orders";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const runtime = "nodejs";
 
 const GENERIC_ERROR_MESSAGE = "Não foi possível consultar o pagamento agora.";
+// Mesma mensagem/status tanto para "pedido não encontrado" quanto para
+// "encontrado mas não autorizado" — não dá pra confirmar nem negar a
+// existência do pedido para quem não provou ter relação com ele.
+const UNAUTHORIZED_MESSAGE = "Não autorizado.";
 
 function createPrivateResponse(body: object, status: number) {
   const response = NextResponse.json(body, { status });
@@ -55,6 +67,22 @@ export async function GET(request: Request) {
       return createPrivateResponse({ message: "Parâmetros inválidos." }, 400);
     }
     const { provider, reference } = parsed.data;
+    const paymentProvider: PaymentProvider =
+      provider === "pagbank_card" ? "pagbank" : "inter";
+
+    // Resolve o pedido localmente (sem tocar Inter/PagBank) antes de mais
+    // nada — só consulta o provedor depois de confirmar que quem está
+    // perguntando tem relação com esse pedido.
+    const order = await findOrderByPaymentReference(paymentProvider, reference);
+    if (!order) {
+      return createPrivateResponse({ message: UNAUTHORIZED_MESSAGE }, 401);
+    }
+
+    const requestCartToken = (await cookies()).get(CART_TOKEN_COOKIE)?.value;
+    const session = await getServerAccountSession();
+    if (!isAuthorizedForOrderStatus(order, requestCartToken, session?.customer.email)) {
+      return createPrivateResponse({ message: UNAUTHORIZED_MESSAGE }, 401);
+    }
 
     if (provider === "inter_pix") {
       const charge = await getPixChargeStatus(reference);

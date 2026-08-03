@@ -19,6 +19,7 @@ export interface WooCommerceOrder {
   total: string;
   currency: string;
   paymentMethod: string;
+  billingEmail: string;
   metaData: Record<string, string>;
 }
 
@@ -28,12 +29,19 @@ interface WooCommerceOrderApiResponse {
   total: string;
   currency: string;
   payment_method?: string;
+  billing?: { email?: string };
   meta_data?: { key: string; value: unknown }[];
 }
 
 const IDEMPOTENCY_KEY_META = "_persi_idempotency_key";
 const PAYMENT_PROVIDER_META = "_persi_payment_provider";
 const PAYMENT_REFERENCE_META = "_persi_payment_reference";
+// Guarda o Cart-Token (JWT do WooCommerce Store API, httpOnly) ativo no
+// momento em que o pedido foi criado — é o "segredo de posse" usado pela
+// rota de status para confirmar que quem está consultando é quem fez o
+// checkout, sem precisar de um token novo gerenciado pelo client
+// (ver services/payments/statusAuthorization.ts).
+const CHECKOUT_OWNER_TOKEN_META = "_persi_checkout_owner_token";
 
 function toMetaRecord(
   metaData: WooCommerceOrderApiResponse["meta_data"],
@@ -52,8 +60,15 @@ function toOrder(response: WooCommerceOrderApiResponse): WooCommerceOrder {
     total: response.total,
     currency: response.currency,
     paymentMethod: response.payment_method ?? "",
+    billingEmail: response.billing?.email ?? "",
     metaData: toMetaRecord(response.meta_data),
   };
+}
+
+// Único ponto de leitura do meta de posse do pedido — mantém a chave de
+// meta_data como detalhe interno deste módulo.
+export function getCheckoutOwnerToken(order: WooCommerceOrder): string {
+  return order.metaData[CHECKOUT_OWNER_TOKEN_META] ?? "";
 }
 
 type WooPostFn = <T>(endpoint: string, body: unknown) => Promise<T>;
@@ -86,6 +101,7 @@ export interface CreatePendingOrderInput {
   shippingAddress: CheckoutStoreAddress;
   paymentMethod: PersiPaymentMethod;
   customerNote?: string;
+  ownerToken: string;
 }
 
 function toWooAddress(address: CheckoutStoreAddress) {
@@ -131,6 +147,7 @@ export async function createPendingOrder(
     meta_data: [
       { key: IDEMPOTENCY_KEY_META, value: input.idempotencyKey },
       { key: PAYMENT_PROVIDER_META, value: provider },
+      { key: CHECKOUT_OWNER_TOKEN_META, value: input.ownerToken },
     ],
   });
 

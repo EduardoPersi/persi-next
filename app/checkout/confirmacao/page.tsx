@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
 import { CheckoutHeader } from "@/components/Header/CheckoutHeader";
 import { Container } from "@/components/UI/Container";
+import { getServerAccountSession } from "@/services/account/serverSession";
 import { getBoletoChargeStatus } from "@/services/payments/inter/boleto";
 import { getPixChargeStatus } from "@/services/payments/inter/pix";
 import { getCardChargeStatus } from "@/services/payments/pagbank/charge";
@@ -10,6 +13,8 @@ import {
   categorizePixStatus,
   type PaymentStatusCategory,
 } from "@/services/payments/reconcile";
+import { isAuthorizedForOrderStatus } from "@/services/payments/statusAuthorization";
+import { findOrderByPaymentReference, type PaymentProvider } from "@/services/woocommerce/orders";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -47,8 +52,24 @@ async function resolveStatus(
   reference: string | undefined,
 ): Promise<PaymentStatusCategory | null> {
   if (!provider || !reference) return null;
+  if (provider !== "inter_pix" && provider !== "inter_boleto" && provider !== "pagbank_card") {
+    return null;
+  }
 
   try {
+    // Mesma regra da rota de status (services/payments/statusAuthorization):
+    // só resolve/consulta o provedor depois de confirmar que quem pediu
+    // esta página tem relação com o pedido dessa reference.
+    const paymentProvider: PaymentProvider = provider === "pagbank_card" ? "pagbank" : "inter";
+    const order = await findOrderByPaymentReference(paymentProvider, reference);
+    if (!order) return null;
+
+    const requestCartToken = (await cookies()).get(CART_TOKEN_COOKIE)?.value;
+    const session = await getServerAccountSession();
+    if (!isAuthorizedForOrderStatus(order, requestCartToken, session?.customer.email)) {
+      return null;
+    }
+
     if (provider === "inter_pix") {
       const charge = await getPixChargeStatus(reference);
       return categorizePixStatus(charge);
@@ -57,15 +78,11 @@ async function resolveStatus(
       const charge = await getBoletoChargeStatus(reference);
       return categorizeBoletoStatus(charge.status);
     }
-    if (provider === "pagbank_card") {
-      const charge = await getCardChargeStatus(reference);
-      return categorizeCardStatus(charge.status);
-    }
+    const charge = await getCardChargeStatus(reference);
+    return categorizeCardStatus(charge.status);
   } catch {
     return null;
   }
-
-  return null;
 }
 
 export default async function CheckoutConfirmationPage({

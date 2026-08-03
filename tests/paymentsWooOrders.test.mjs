@@ -6,6 +6,7 @@ import {
   findOrderByIdempotencyKey,
   findOrderByPaymentReference,
   findPendingOrdersWithPaymentReference,
+  getCheckoutOwnerToken,
   markOrderAsFailed,
   markOrderAsPaid,
   WooCommerceRestError,
@@ -35,12 +36,13 @@ test("createPendingOrder rejeita carrinho vazio antes de chamar a API", async ()
       billingAddress,
       shippingAddress: billingAddress,
       paymentMethod: "inter_pix",
+      ownerToken: "cart-token-1",
     }),
     WooCommerceRestError,
   );
 });
 
-test("createPendingOrder monta line_items sem preço e grava idempotency key/provider", async () => {
+test("createPendingOrder monta line_items sem preço e grava idempotency key/provider/owner token", async () => {
   const calls = [];
   const post = async (endpoint, body) => {
     calls.push({ endpoint, body });
@@ -49,9 +51,11 @@ test("createPendingOrder monta line_items sem preço e grava idempotency key/pro
       status: "pending",
       total: "199.90",
       currency: "BRL",
+      billing: { email: "maria@example.com" },
       meta_data: [
         { key: "_persi_idempotency_key", value: "key-1" },
         { key: "_persi_payment_provider", value: "inter" },
+        { key: "_persi_checkout_owner_token", value: "cart-token-1" },
       ],
     };
   };
@@ -66,12 +70,15 @@ test("createPendingOrder monta line_items sem preço e grava idempotency key/pro
       billingAddress,
       shippingAddress: billingAddress,
       paymentMethod: "inter_pix",
+      ownerToken: "cart-token-1",
     },
     post,
   );
 
   assert.equal(order.id, 501);
   assert.equal(order.status, "pending");
+  assert.equal(order.billingEmail, "maria@example.com");
+  assert.equal(getCheckoutOwnerToken(order), "cart-token-1");
   assert.equal(calls[0].endpoint, "orders");
   assert.equal(calls[0].body.set_paid, false);
   assert.equal(calls[0].body.line_items.length, 2);
@@ -82,6 +89,15 @@ test("createPendingOrder monta line_items sem preço e grava idempotency key/pro
     calls[0].body.meta_data.find((m) => m.key === "_persi_idempotency_key"),
     { key: "_persi_idempotency_key", value: "key-1" },
   );
+  assert.deepEqual(
+    calls[0].body.meta_data.find((m) => m.key === "_persi_checkout_owner_token"),
+    { key: "_persi_checkout_owner_token", value: "cart-token-1" },
+  );
+});
+
+test("getCheckoutOwnerToken retorna string vazia quando o pedido não tem o meta", () => {
+  const orderWithoutToken = { id: 1, status: "pending", metaData: {} };
+  assert.equal(getCheckoutOwnerToken(orderWithoutToken), "");
 });
 
 test("findOrderByIdempotencyKey busca por meta_key/meta_value e retorna null se não achar", async () => {

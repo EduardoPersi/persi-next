@@ -155,6 +155,7 @@ export async function POST(request: Request) {
         shippingAddress,
         paymentMethod,
         customerNote: input.customerNote,
+        ownerToken: activeCartToken,
       }));
 
     const payerName = `${billingAddress.firstName} ${billingAddress.lastName}`.trim();
