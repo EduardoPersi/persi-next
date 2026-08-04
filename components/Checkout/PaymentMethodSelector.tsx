@@ -4,8 +4,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import clsx from "clsx";
 import { Barcode, CreditCard } from "lucide-react";
 import { PixIcon } from "@/components/Product/PixIcon";
-import { PIX_DISCOUNT_RATE } from "@/lib/commerce/productPayment";
-import type { CheckoutPaymentMethod } from "./paymentMethod";
+import {
+  getPaymentMethodDiscountRate,
+  type CheckoutPaymentMethod,
+} from "./paymentMethod";
 
 interface PaymentMethodOption {
   value: CheckoutPaymentMethod;
@@ -76,13 +78,18 @@ export function PaymentMethodSelector({
     setWallets(detectWalletAvailability());
   }, []);
 
-  const pixDiscountLabel =
-    typeof cartTotal === "number" && cartTotal > 0
-      ? `${new Intl.NumberFormat("pt-BR", {
-          style: "currency",
-          currency: currencyCode,
-        }).format(cartTotal * PIX_DISCOUNT_RATE)} off`
-      : undefined;
+  const formatDiscount = (method: CheckoutPaymentMethod) => {
+    const rate = getPaymentMethodDiscountRate(method);
+    if (rate <= 0 || typeof cartTotal !== "number" || cartTotal <= 0) {
+      return undefined;
+    }
+    return `${new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: currencyCode,
+    }).format(cartTotal * rate)} off`;
+  };
+  const pixDiscountLabel = formatDiscount("inter_pix");
+  const boletoDiscountLabel = formatDiscount("inter_boleto");
 
   const options: PaymentMethodOption[] = [
     {
@@ -97,6 +104,7 @@ export function PaymentMethodSelector({
       label: "Boleto",
       description: "Compensação em até 2 dias úteis",
       icon: <Barcode className="h-5 w-5" />,
+      discountLabel: boletoDiscountLabel,
     },
     {
       value: "pagbank_card",

@@ -7,23 +7,41 @@ import clsx from "clsx";
 import { ChevronDown } from "lucide-react";
 import { ProductQuantity } from "@/components/Product/ProductQuantity";
 import { useCart } from "@/hooks/useCart";
-import { formatStoreMoney, isZeroMoney } from "@/lib/formatting/money";
+import { formatStoreMoney, isZeroMoney, moneyToNumber } from "@/lib/formatting/money";
 import type { Cart } from "@/types/cart";
+import {
+  getPaymentMethodDiscountRate,
+  type CheckoutPaymentMethod,
+} from "./paymentMethod";
 
 const FALLBACK_IMAGE =
   "/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas.webp";
+
+interface CheckoutMobileOrderSummaryProps {
+  cart: Cart;
+  paymentMethod?: CheckoutPaymentMethod;
+}
 
 // Versão compacta e recolhível do resumo do pedido, só para mobile — o
 // desktop continua usando CheckoutOrderSummary como barra lateral sempre
 // visível. Mantida como componente separado (em vez de variantes dentro do
 // mesmo componente) para não misturar os dois layouts bem diferentes.
-export function CheckoutMobileOrderSummary({ cart }: { cart: Cart }) {
+export function CheckoutMobileOrderSummary({
+  cart,
+  paymentMethod,
+}: CheckoutMobileOrderSummaryProps) {
   const { updateItem, pendingItemKey } = useCart();
   const [isExpanded, setIsExpanded] = useState(false);
   const formatter = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: cart.currencyCode,
   });
+  const priceTotal = moneyToNumber(cart.totals.price);
+  const discountRate = paymentMethod
+    ? getPaymentMethodDiscountRate(paymentMethod)
+    : 0;
+  const paymentDiscount = priceTotal * discountRate;
+  const finalTotal = priceTotal - paymentDiscount;
 
   return (
     <div className="rounded-xl border border-black bg-white lg:hidden">
@@ -51,7 +69,7 @@ export function CheckoutMobileOrderSummary({ cart }: { cart: Cart }) {
           </span>
         </span>
         <strong className="text-sm text-[#0c2d72]">
-          {formatStoreMoney(cart.totals.price)}
+          {formatter.format(finalTotal)}
         </strong>
       </button>
 
@@ -134,6 +152,12 @@ export function CheckoutMobileOrderSummary({ cart }: { cart: Cart }) {
                 <dd>{formatStoreMoney(fee.total)}</dd>
               </div>
             ))}
+            {paymentDiscount > 0 ? (
+              <div className="flex justify-between gap-4 text-emerald-700">
+                <dt>Desconto por forma de pagamento</dt>
+                <dd>-{formatter.format(paymentDiscount)}</dd>
+              </div>
+            ) : null}
             <div className="flex justify-between gap-4">
               <dt className="text-slate-600">Entrega</dt>
               <dd className="max-w-40 text-right text-slate-600">
@@ -153,7 +177,7 @@ export function CheckoutMobileOrderSummary({ cart }: { cart: Cart }) {
             <div className="flex justify-between gap-4 border-t border-slate-200 pt-3">
               <dt className="font-bold text-slate-900">Total</dt>
               <dd className="text-sm font-bold text-[#0c2d72]">
-                {formatStoreMoney(cart.totals.price)}
+                {formatter.format(finalTotal)}
               </dd>
             </div>
           </dl>

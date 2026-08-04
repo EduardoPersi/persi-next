@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Lock } from "lucide-react";
 import {
   FormProvider,
   useForm,
@@ -65,17 +66,20 @@ const PROFILE_FIELDS = [
 interface CheckoutFormProps {
   initialProfile: CustomerWorkspaceProfile | null;
   initialAddresses: CustomerWorkspaceAddress[];
+  paymentMethod: CheckoutPaymentMethod;
+  onPaymentMethodChange: (method: CheckoutPaymentMethod) => void;
 }
 
 export function CheckoutForm({
   initialProfile,
   initialAddresses,
+  paymentMethod,
+  onPaymentMethodChange: setPaymentMethod,
 }: CheckoutFormProps) {
   const { cart, isCheckoutUpdating } = useCart();
   const router = useRouter();
   const [statusMessage, setStatusMessage] = useState("");
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>("inter_pix");
   const [installments, setInstallments] = useState(1);
   const [pixResult, setPixResult] = useState<PixPaymentResultData | null>(null);
   const [boletoResult, setBoletoResult] = useState<BoletoPaymentResultData | null>(null);
@@ -340,7 +344,9 @@ export function CheckoutForm({
           completedSteps={completedSteps}
           onStepSelect={setCurrentStep}
         />
-        {cart ? <CheckoutMobileOrderSummary cart={cart} /> : null}
+        {cart ? (
+          <CheckoutMobileOrderSummary cart={cart} paymentMethod={paymentMethod} />
+        ) : null}
 
         <div>
           <CheckoutStepCard
@@ -426,7 +432,14 @@ export function CheckoutForm({
                 aria-describedby="checkout-submit-status"
                 className="w-full"
               >
-                {isSubmittingPayment ? "Processando..." : "Continuar para pagamento"}
+                {isSubmittingPayment ? (
+                  "Processando..."
+                ) : (
+                  <>
+                    <Lock className="h-4 w-4" aria-hidden="true" />
+                    Comprar
+                  </>
+                )}
               </Button>
             </div>
           </CheckoutStepCard>

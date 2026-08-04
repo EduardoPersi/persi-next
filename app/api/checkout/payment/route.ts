@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
 import { exceedsRequestLimit } from "@/app/api/checkout/checkout-request";
+import { getPaymentMethodDiscountRate } from "@/components/Checkout/paymentMethod";
 import {
   getCartTokenCookieOptions,
   getPrivateCartHeaders,
@@ -129,8 +130,8 @@ export async function POST(request: Request) {
     const shippingAddress = cart.needsShipping
       ? requireCompleteAddress(cart.shippingAddress ?? cart.billingAddress)
       : billingAddress;
-    const amount = moneyToNumber(cart.totals.price);
-    if (amount <= 0) {
+    const cartAmount = moneyToNumber(cart.totals.price);
+    if (cartAmount <= 0) {
       throw new CheckoutTransferError(422, "Total do pedido inválido");
     }
 
@@ -146,6 +147,19 @@ export async function POST(request: Request) {
       return createPrivateResponse(result, 200, activeCartToken);
     }
 
+    // Desconto por forma de pagamento (Pix/Boleto): o valor efetivamente
+    // cobrado no Banco Inter/PagBank é sempre calculado a partir do total do
+    // carrinho (que já inclui frete) menos o desconto — nunca a partir do
+    // total do pedido no WooCommerce, que hoje não recebe shipping_lines e
+    // por isso não representa o frete. A mesma fee_line é registrada no
+    // pedido só para ficar visível no admin/relatórios.
+    const discountRate = getPaymentMethodDiscountRate(paymentMethod);
+    const discountAmount = Math.round(cartAmount * discountRate * 100) / 100;
+    const amount = Math.round((cartAmount - discountAmount) * 100) / 100;
+    if (amount <= 0) {
+      throw new CheckoutTransferError(422, "Total do pedido inválido");
+    }
+
     const order =
       existingOrder ??
       (await createPendingOrder({
@@ -156,6 +170,13 @@ export async function POST(request: Request) {
         paymentMethod,
         customerNote: input.customerNote,
         ownerToken: activeCartToken,
+        discountFee:
+          discountAmount > 0
+            ? {
+                name: paymentMethod === "inter_pix" ? "Desconto Pix" : "Desconto Boleto",
+                amount: discountAmount,
+              }
+            : undefined,
       }));
 
     const payerName = `${billingAddress.firstName} ${billingAddress.lastName}`.trim();

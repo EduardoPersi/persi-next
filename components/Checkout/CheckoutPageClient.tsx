@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useCart } from "@/hooks/useCart";
 import { resolveCheckoutViewState } from "@/lib/commerce/checkout";
 import type {
@@ -8,6 +9,7 @@ import type {
 } from "@/lib/customer-workspace/types";
 import { CheckoutForm } from "./CheckoutForm";
 import { CheckoutOrderSummary } from "./CheckoutOrderSummary";
+import type { CheckoutPaymentMethod } from "./paymentMethod";
 import {
   CheckoutEmptyCart,
   CheckoutError,
@@ -24,6 +26,11 @@ export function CheckoutPageClient({
   initialAddresses,
 }: CheckoutPageClientProps) {
   const { cart, error, isHydrated, isLoading } = useCart();
+  // Compartilhado entre o formulário (seletor de pagamento) e o resumo do
+  // pedido (coluna lateral no desktop) para que o desconto por forma de
+  // pagamento apareça no Total dos dois lugares ao mesmo tempo.
+  const [paymentMethod, setPaymentMethod] =
+    useState<CheckoutPaymentMethod>("inter_pix");
   const viewState = resolveCheckoutViewState({
     cart,
     error,
@@ -42,10 +49,12 @@ export function CheckoutPageClient({
         <CheckoutForm
           initialProfile={initialProfile}
           initialAddresses={initialAddresses}
+          paymentMethod={paymentMethod}
+          onPaymentMethodChange={setPaymentMethod}
         />
       </div>
       <div className="hidden lg:block">
-        <CheckoutOrderSummary cart={cart} />
+        <CheckoutOrderSummary cart={cart} paymentMethod={paymentMethod} />
       </div>
     </div>
   );

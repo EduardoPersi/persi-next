@@ -102,6 +102,11 @@ export interface CreatePendingOrderInput {
   paymentMethod: PersiPaymentMethod;
   customerNote?: string;
   ownerToken: string;
+  // Desconto por forma de pagamento (Pix/Boleto): vira uma fee_line negativa
+  // no pedido do WooCommerce, para que o total do pedido já saia com o
+  // desconto aplicado — é esse total (não o do carrinho) que é cobrado no
+  // Banco Inter/PagBank, então os dois nunca podem divergir.
+  discountFee?: { name: string; amount: number };
 }
 
 function toWooAddress(address: CheckoutStoreAddress) {
@@ -144,6 +149,16 @@ export async function createPendingOrder(
       ...(item.variationId > 0 ? { variation_id: item.variationId } : {}),
       quantity: item.quantity,
     })),
+    ...(input.discountFee && input.discountFee.amount > 0
+      ? {
+          fee_lines: [
+            {
+              name: input.discountFee.name,
+              total: (-input.discountFee.amount).toFixed(2),
+            },
+          ],
+        }
+      : {}),
     meta_data: [
       { key: IDEMPOTENCY_KEY_META, value: input.idempotencyKey },
       { key: PAYMENT_PROVIDER_META, value: provider },

@@ -1,41 +1,55 @@
 import Image from "next/image";
 import Link from "next/link";
-import { formatStoreMoney, isZeroMoney } from "@/lib/formatting/money";
+import { formatStoreMoney, isZeroMoney, moneyToNumber } from "@/lib/formatting/money";
 import type { Cart } from "@/types/cart";
+import {
+  getPaymentMethodDiscountRate,
+  type CheckoutPaymentMethod,
+} from "./paymentMethod";
 
 const FALLBACK_IMAGE =
   "/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas.webp";
 
-export function CheckoutOrderSummary({ cart }: { cart: Cart }) {
+interface CheckoutOrderSummaryProps {
+  cart: Cart;
+  paymentMethod?: CheckoutPaymentMethod;
+}
+
+export function CheckoutOrderSummary({
+  cart,
+  paymentMethod,
+}: CheckoutOrderSummaryProps) {
   const formatter = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: cart.currencyCode,
   });
+  const priceTotal = moneyToNumber(cart.totals.price);
+  const discountRate = paymentMethod
+    ? getPaymentMethodDiscountRate(paymentMethod)
+    : 0;
+  const paymentDiscount = priceTotal * discountRate;
+  const finalTotal = priceTotal - paymentDiscount;
 
   return (
     <aside
       aria-labelledby="checkout-summary-title"
       className="rounded-xl border border-black bg-white p-4 shadow-sm lg:sticky lg:top-6 sm:p-6"
     >
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0c2d72] text-sm font-bold text-white"
-            aria-hidden="true"
-          >
-            4
-          </span>
-          <h2 id="checkout-summary-title" className="text-base font-bold text-[#0c2d72]">
-            Revise seu pedido
-          </h2>
-        </div>
-        <Link
-          href="/carrinho"
-          className="shrink-0 text-xs font-medium text-primary underline underline-offset-2"
+      <Link
+        href="/carrinho"
+        aria-label="Editar carrinho"
+        className="-m-2 flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+      >
+        <span
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0c2d72] text-sm font-bold text-white"
+          aria-hidden="true"
         >
-          Editar carrinho
-        </Link>
-      </div>
+          4
+        </span>
+        <h2 id="checkout-summary-title" className="text-base font-bold text-[#0c2d72]">
+          Revise seu pedido
+        </h2>
+      </Link>
 
       <ul className="mt-5 divide-y divide-slate-200">
         {cart.items.map((item) => (
@@ -97,6 +111,12 @@ export function CheckoutOrderSummary({ cart }: { cart: Cart }) {
             <dd>{formatStoreMoney(fee.total)}</dd>
           </div>
         ))}
+        {paymentDiscount > 0 ? (
+          <div className="flex justify-between gap-4 text-emerald-700">
+            <dt>Desconto por forma de pagamento</dt>
+            <dd>-{formatter.format(paymentDiscount)}</dd>
+          </div>
+        ) : null}
         <div className="flex justify-between gap-4">
           <dt className="text-slate-600">Entrega</dt>
           <dd className="max-w-52 text-right text-slate-600">
@@ -116,7 +136,7 @@ export function CheckoutOrderSummary({ cart }: { cart: Cart }) {
         <div className="flex justify-between gap-4 border-t border-slate-200 pt-4">
           <dt className="font-bold text-slate-900">Total</dt>
           <dd className="text-base font-bold text-[#0c2d72]">
-            {formatStoreMoney(cart.totals.price)}
+            {formatter.format(finalTotal)}
           </dd>
         </div>
       </dl>
