@@ -91,7 +91,8 @@ export async function GET(request: Request) {
     );
     writeGoogleDiagnostic("GOOGLE_SESSION_COOKIE_UPDATED");
     return response;
-  } catch {
+  } catch (error) {
+    console.error("google_login_failed", error);
     const response = redirectResponse(origin, GOOGLE_ERROR_PATH);
     clearTemporaryCookies(response);
     response.cookies.set(AUTH_COOKIE_NAME, "", getExpiredAuthCookieOptions());

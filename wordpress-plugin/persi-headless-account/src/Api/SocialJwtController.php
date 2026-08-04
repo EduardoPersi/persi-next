@@ -41,11 +41,15 @@ final class SocialJwtController {
 		if ( ! is_array( $identity ) ) return Response::json( array( 'message' => 'Identidade social inválida.' ), 401 );
 
 		$user = $this->identities->resolve( $identity );
-		if ( ! $user instanceof \WP_User ) return Response::json( array( 'message' => 'Conflito de identidade.' ), 409 );
+		if ( ! $user instanceof \WP_User ) {
+			error_log( '[persi-auth] oauth/token rejected: ' . $this->identities->last_code() );
+			return Response::json( array( 'message' => 'Conflito de identidade.' ), 409 );
+		}
 
 		try {
 			return Response::json( $this->jwt->issue_for_user( $user ) );
 		} catch ( \RuntimeException $error ) {
+			error_log( '[persi-auth] oauth/token JWT issuance failed for user #' . $user->ID . ': ' . $error->getMessage() );
 			return Response::json( array( 'message' => 'Serviço JWT oficial indisponível.' ), 503 );
 		}
 	}
