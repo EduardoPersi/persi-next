@@ -74,6 +74,15 @@ export async function restApiGetWithMeta<T>(
     });
 
     if (!response.ok) {
+      // Diagnóstico temporário: nunca exposto ao cliente — só o
+      // WooCommerceRestError genérico é lançado abaixo. Sem isso não dá pra
+      // saber qual campo o WooCommerce rejeitou (a mensagem genérica some o
+      // corpo real do erro, que costuma ter code/message explicando o motivo).
+      console.error("[woocommerce-rest]", {
+        endpoint,
+        status: response.status,
+        body: await response.json().catch(() => null),
+      });
       throw new WooCommerceRestError(
         `A REST API respondeu com status ${response.status}.`,
         response.status,
@@ -125,6 +134,14 @@ async function restApiWrite<T>(
   const parsedBody = await response.json().catch(() => null);
 
   if (!response.ok) {
+    // Diagnóstico temporário: nunca exposto ao cliente — mesma razão do
+    // restApiGetWithMeta acima.
+    console.error("[woocommerce-rest]", {
+      endpoint,
+      method,
+      status: response.status,
+      body: parsedBody,
+    });
     throw new WooCommerceRestError(
       `A REST API respondeu com status ${response.status}.`,
       response.status,
