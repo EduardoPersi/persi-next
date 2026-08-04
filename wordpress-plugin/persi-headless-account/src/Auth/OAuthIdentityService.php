@@ -8,25 +8,15 @@ class OAuthIdentityService {
 	private string $last_code = '';
 	private bool $user_created = false;
 
-	public function __construct(
-		private readonly IdentityRepository $identities,
-		private readonly string $secret
-	) {}
+	public function __construct( private readonly IdentityRepository $identities ) {}
 
 	public function resolve( array $identity, ?int $now = null ): ?\WP_User {
 		$this->last_code = '';
 		$this->user_created = false;
 		$provider = $identity['provider'];
-		$provider_id_hash = hash_hmac(
-			'sha256',
-			$provider . '|provider_id|' . $identity['provider_id'],
-			$this->secret
-		);
-		$email_hash = hash_hmac(
-			'sha256',
-			'oauth|email|' . strtolower( $identity['email'] ),
-			$this->secret
-		);
+		$salt = wp_salt( 'auth' );
+		$provider_id_hash = hash( 'sha256', $salt . '|' . $provider . '|provider_id|' . $identity['provider_id'] );
+		$email_hash = hash( 'sha256', $salt . '|oauth|email|' . strtolower( $identity['email'] ) );
 		$locks = array( $email_hash, $provider_id_hash );
 		sort( $locks );
 		if ( ! $this->identities->acquire_locks( $locks ) ) {
@@ -37,6 +27,10 @@ class OAuthIdentityService {
 		try {
 			$linked = $this->identities->find( $provider, $provider_id_hash );
 			if ( is_array( $linked ) ) {
+				if ( ! hash_equals( (string) $linked['email_hash'], $email_hash ) ) {
+					$this->last_code = $this->code( 'IDENTITY_CONFLICT', $provider );
+					return null;
+				}
 				$user = get_user_by( 'id', (int) $linked['user_id'] );
 				if (
 					! $user instanceof \WP_User ||

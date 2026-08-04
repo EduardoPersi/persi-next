@@ -11,11 +11,11 @@ import {
 import { getOAuthProvider } from "@/lib/account/oauth/provider";
 import { createOAuthRedirect } from "@/lib/account/oauth/redirect";
 import {
-  ACCOUNT_SESSION_COOKIE,
-  getAccountSessionCookieOptions,
-  getExpiredAccountSessionCookieOptions,
-  replaceOAuthAccountSession,
-} from "@/lib/account/oauth/session";
+  AUTH_COOKIE_NAME,
+  getAuthCookieOptions,
+  getExpiredAuthCookieOptions,
+} from "@/lib/auth/cookies";
+import { authenticateWithSocialToken } from "@/lib/auth/jwt";
 import { validateOAuthCallbackInput } from "@/lib/account/oauth/state";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +32,6 @@ function clearTemporaryCookies(response: NextResponse) {
 
 export async function GET(request: Request) {
   let origin = getFacebookOAuthErrorOrigin();
-  let previousSessionToken = "";
   try {
     const config = getFacebookOAuthConfig();
     origin = new URL(config.redirectUri).origin;
@@ -48,8 +47,6 @@ export async function GET(request: Request) {
 
     const cookieStore = await cookies();
     const names = getOAuthCookieNames("facebook");
-    previousSessionToken =
-      cookieStore.get(ACCOUNT_SESSION_COOKIE)?.value ?? "";
     const code = url.searchParams.get("code") ?? "";
     const state = url.searchParams.get("state") ?? "";
     const nonce = cookieStore.get(names.nonce)?.value ?? "";
@@ -68,40 +65,21 @@ export async function GET(request: Request) {
       codeVerifier,
       config,
     });
-    const providerUser = await provider.getUser(token, { config, nonce });
-    const identity = provider.normalizeUser(providerUser);
-    const accountSession = await replaceOAuthAccountSession(
-      identity,
-      previousSessionToken,
-    );
-    if (accountSession.sessionToken === previousSessionToken) {
-      throw new Error("OAuth account session token was reused");
-    }
+    await provider.getUser(token, { config, nonce });
+    const jwt = await authenticateWithSocialToken({ provider: "facebook", token: token.accessToken });
 
     const response = createOAuthRedirect(origin, "/minha-conta");
     clearTemporaryCookies(response);
     response.cookies.set(
-      ACCOUNT_SESSION_COOKIE,
-      accountSession.sessionToken,
-      getAccountSessionCookieOptions({
-        isProduction: process.env.NODE_ENV === "production",
-        remember: false,
-        expiresAt: accountSession.expiresAt,
-      }),
+      AUTH_COOKIE_NAME,
+      jwt.token,
+      getAuthCookieOptions(jwt.expiresAt),
     );
     return response;
   } catch {
     const response = createOAuthRedirect(origin, "/entrar?erro=facebook");
     clearTemporaryCookies(response);
-    if (/^[A-Za-z0-9_-]{43}$/.test(previousSessionToken)) {
-      response.cookies.set(
-        ACCOUNT_SESSION_COOKIE,
-        "",
-        getExpiredAccountSessionCookieOptions(
-          process.env.NODE_ENV === "production",
-        ),
-      );
-    }
+    response.cookies.set(AUTH_COOKIE_NAME, "", getExpiredAuthCookieOptions());
     return response;
   }
 }

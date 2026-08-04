@@ -9,7 +9,7 @@ final class ClientFingerprint {
 
 	public function ip_hash( array $server ): ?string {
 		$ip = $this->resolve_ip( $server );
-		return '' === $ip ? null : hash_hmac( 'sha256', 'ip|' . $ip, $this->secret );
+		return '' === $ip ? null : hash( 'sha256', $this->secret . '|ip|' . $ip );
 	}
 
 	public function user_agent_hash( array $server ): ?string {
@@ -18,7 +18,7 @@ final class ClientFingerprint {
 			: '';
 		return '' === $value
 			? null
-			: hash_hmac( 'sha256', 'ua|' . substr( $value, 0, 512 ), $this->secret );
+			: hash( 'sha256', $this->secret . '|ua|' . substr( $value, 0, 512 ) );
 	}
 
 	private function resolve_ip( array $server ): string {

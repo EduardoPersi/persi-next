@@ -2,19 +2,15 @@
 
 namespace Persi\HeadlessAccount\Api;
 
-use Persi\HeadlessAccount\Auth\SessionService;
+use Persi\HeadlessAccount\Auth\BearerAuthorization;
 use Persi\HeadlessAccount\CustomerWorkspace\CustomerWorkspaceService;
-use Persi\HeadlessAccount\Security\AuthenticationException;
-use Persi\HeadlessAccount\Security\RequestAuthenticator;
-use Persi\HeadlessAccount\Support\Logger;
 use Persi\HeadlessAccount\Support\Response;
 
 defined( 'ABSPATH' ) || exit;
 
 final class CustomerWorkspaceController {
 	private const NAMESPACE='persi-account/v1';
-	private const BASE_PATH='/wp-json/persi-account/v1';
-	public function __construct(private readonly RequestAuthenticator $authenticator,private readonly SessionService $sessions,private readonly CustomerWorkspaceService $workspace,private readonly Logger $logger){}
+	public function __construct(private readonly BearerAuthorization $authorization,private readonly CustomerWorkspaceService $workspace){}
 	public function register_routes():void{
 		foreach(array('/workspace'=>'workspace','/profile'=>'profile','/addresses'=>'addresses','/connected-accounts'=>'accounts','/stock-notifications'=>'stock') as $route=>$callback)
 			register_rest_route(self::NAMESPACE,$route,array('methods'=>\WP_REST_Server::READABLE,'callback'=>array($this,$callback),'permission_callback'=>'__return_true'));
@@ -40,6 +36,5 @@ final class CustomerWorkspaceController {
 	public function delete_address($r){$type=(string)$r->get_param('type');$u=$this->authorize($r,"/addresses/{$type}");return $u instanceof \WP_REST_Response?$u:Response::json($this->workspace->clear_address($u,$type));}
 	public function primary_address($r){$type=(string)$r->get_param('type');$u=$this->authorize($r,"/addresses/{$type}/primary");return $u instanceof \WP_REST_Response?$u:Response::json($this->workspace->set_primary_address($u,$type));}
 	public function delete_stock($r){$id=absint($r->get_param('id'));$u=$this->authorize($r,"/stock-notifications/{$id}");if($u instanceof \WP_REST_Response)return $u;return $this->workspace->remove_stock_notification($u,$id)?Response::json(array('success'=>true)):Response::json(array('message'=>'Não foi possível remover.'),500);}
-	private function authorize($request,string $route){try{$this->authenticator->authenticate($request->get_method(),self::BASE_PATH.$route,$this->headers($request),$request->get_body());}catch(AuthenticationException $e){$this->logger->write('warning','workspace_hmac_rejected',$e->error_code());return Response::json(array('message'=>'Requisição não autorizada.'),401);}$session=$this->sessions->resolve(trim((string)$request->get_header('x-persi-session')));return null===$session?Response::json(array('message'=>'Sessão inválida.'),401):$session['user'];}
-	private function headers($request):array{$h=array();foreach(array('x-persi-key-id','x-persi-timestamp','x-persi-nonce','x-persi-origin','x-persi-signature') as $n)$h[$n]=(string)$request->get_header($n);return $h;}
+	private function authorize($request,string $route){unset($route);$user=$this->authorization->user($request);return is_wp_error($user)?Response::json(array('message'=>$user->get_error_message()),401):$user;}
 }

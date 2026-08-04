@@ -6,9 +6,9 @@ const read=(path)=>readFileSync(new URL(`../${path}`,import.meta.url),"utf8");
 test("Customer Workspace protege mutações e não recebe customerId",()=>{
   const route=read("app/api/account/workspace/[...segments]/route.ts");
   const controller=read("wordpress-plugin/persi-headless-account/src/Api/CustomerWorkspaceController.php");
-  assert.match(route,/ACCOUNT_SESSION_COOKIE/);
+  assert.match(route,/getServerAccountToken/);
   assert.match(route,/validateMutationSource/);
-  assert.match(controller,/RequestAuthenticator|authenticator/);
+  assert.match(controller,/BearerAuthorization|authorization/);
   assert.equal(controller.includes("customerId"),false);
 });
 

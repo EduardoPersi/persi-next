@@ -25,6 +25,7 @@ interface AccountContextValue {
 }
 
 const AccountContext = createContext<AccountContextValue | null>(null);
+const AUTH_CHANNEL = "persi-auth";
 
 async function readResponse(response: Response): Promise<Record<string, unknown>> {
   return (await response.json().catch(() => ({}))) as Record<string, unknown>;
@@ -73,6 +74,20 @@ export function AccountProvider({
     return () => controller.abort();
   }, [initialSession]);
 
+  useEffect(() => {
+    if (!("BroadcastChannel" in window)) return;
+    const channel = new BroadcastChannel(AUTH_CHANNEL);
+    channel.addEventListener("message", (event) => {
+      if (event.data !== "logout") return;
+      setCustomer(null);
+      setStatus("anonymous");
+      if (window.location.pathname.startsWith("/minha-conta") || window.location.pathname.startsWith("/checkout")) {
+        window.location.replace("/entrar");
+      }
+    });
+    return () => channel.close();
+  }, []);
+
   const login = useCallback(async (payload: AccountLoginPayload) => {
     const response = await fetch("/api/account/login", {
       method: "POST",
@@ -105,6 +120,12 @@ export function AccountProvider({
     } finally {
       setCustomer(null);
       setStatus("anonymous");
+      if ("BroadcastChannel" in window) {
+        const channel = new BroadcastChannel(AUTH_CHANNEL);
+        channel.postMessage("logout");
+        channel.close();
+      }
+      window.location.replace("/entrar");
     }
   }, []);
 

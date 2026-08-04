@@ -1,14 +1,20 @@
 export const ACCOUNT_BODY_LIMIT_BYTES = 8 * 1024;
 
 export interface AccountCustomer {
+  id: number;
   firstName: string;
   displayName: string;
   email: string;
+  roles: string[];
+  avatar: string;
+  permissions: string[];
+  authenticated: true;
+  jwtExpiration: string | null;
 }
 
 export interface AccountSession {
   authenticated: true;
-  expiresAt: string;
+  expiresAt: string | null;
   customer: AccountCustomer;
 }
 
@@ -91,12 +97,17 @@ export function parseAccountSession(value: unknown): AccountSessionResult {
   }
   if (!value.authenticated) return { authenticated: false };
   if (
-    typeof value.expiresAt !== "string" ||
-    !Number.isFinite(Date.parse(value.expiresAt)) ||
+    (value.expiresAt !== null && (typeof value.expiresAt !== "string" || !Number.isFinite(Date.parse(value.expiresAt)))) ||
     !isRecord(value.customer) ||
     typeof value.customer.firstName !== "string" ||
     typeof value.customer.displayName !== "string" ||
     typeof value.customer.email !== "string"
+    || !Number.isInteger(value.customer.id)
+    || !Array.isArray(value.customer.roles)
+    || typeof value.customer.avatar !== "string"
+    || !Array.isArray(value.customer.permissions)
+    || value.customer.authenticated !== true
+    || (value.customer.jwtExpiration !== null && typeof value.customer.jwtExpiration !== "string")
   ) {
     throw new AccountValidationError("Invalid account response");
   }
@@ -108,6 +119,12 @@ export function parseAccountSession(value: unknown): AccountSessionResult {
       firstName: value.customer.firstName,
       displayName: value.customer.displayName,
       email: value.customer.email,
+      id: Number(value.customer.id),
+      roles: value.customer.roles.filter((role): role is string => typeof role === "string"),
+      avatar: value.customer.avatar,
+      permissions: value.customer.permissions.filter((permission): permission is string => typeof permission === "string"),
+      authenticated: true,
+      jwtExpiration: value.customer.jwtExpiration,
     },
   };
 }

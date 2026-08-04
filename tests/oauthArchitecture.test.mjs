@@ -135,7 +135,7 @@ test("provider Facebook prepara URL, token e usuário normalizado sem vazar toke
   assert.equal("accessToken" in user, false);
 });
 
-test("rotas Facebook reutilizam infraestrutura OAuth e sessão comum", async () => {
+test("rotas Facebook terminam na sessão JWT comum", async () => {
   const routes = await Promise.all(
     [
       "../app/api/auth/facebook/start/route.ts",
@@ -146,28 +146,16 @@ test("rotas Facebook reutilizam infraestrutura OAuth e sessão comum", async () 
   assert.match(routes[0], /getOAuthProvider\("facebook"\)/);
   assert.match(routes[0], /setOAuthTransactionCookies/);
   assert.match(routes[1], /validateOAuthCallbackInput/);
-  assert.match(routes[1], /replaceOAuthAccountSession/);
-  assert.match(routes[1], /ACCOUNT_SESSION_COOKIE/);
+  assert.match(routes[1], /authenticateWithSocialToken/);
+  assert.match(routes[1], /AUTH_COOKIE_NAME/);
   for (const route of routes) {
     assert.equal(route.includes("FACEBOOK_CLIENT_SECRET"), false);
     assert.equal(route.includes("access_token"), false);
   }
 });
 
-test("sessão OAuth central preserva o cookie público existente", async () => {
-  const session = await readFile(
-    new URL("../lib/account/oauth/session.ts", import.meta.url),
-    "utf8",
-  );
-  const legacyCookie = await readFile(
-    new URL("../lib/account/sessionCookie.ts", import.meta.url),
-    "utf8",
-  );
-
-  assert.match(session, /replaceOAuthAccountSession/);
-  assert.match(session, /destroyOAuthAccountSession/);
-  assert.match(session, /createOAuthAccountSession/);
-  assert.match(session, /readOAuthAccountSession/);
-  assert.match(session, /renewOAuthAccountSession/);
-  assert.match(legacyCookie, /__Host-persi_account_session/);
+test("OAuth usa o mesmo cookie JWT sem sessão paralela", async () => {
+  const cookie = await readFile(new URL("../lib/auth/cookies.ts", import.meta.url), "utf8");
+  assert.match(cookie, /__Host-persi_jwt_session/);
+  assert.equal(cookie.includes("provider"), false);
 });

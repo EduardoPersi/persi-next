@@ -3,7 +3,7 @@ import { CUSTOMER_LIST_TYPES, normalizeProductIds, type CustomerListType } from 
 import { getServerAccountToken } from "@/services/account/serverSession";
 import { syncCustomerList } from "@/services/account/customerLists";
 
-const headers = { "Cache-Control": "private, no-store" };
+const headers = { "Cache-Control": "private, no-store, no-cache, must-revalidate" };
 
 export async function PUT(
   request: NextRequest,

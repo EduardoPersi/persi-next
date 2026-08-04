@@ -1,5 +1,5 @@
 export const ACCOUNT_CACHE_CONTROL =
-  "private, no-store, no-cache, max-age=0";
+  "private, no-store, no-cache, must-revalidate, max-age=0";
 
 export function getPrivateAccountHeaders(): Record<string, string> {
   return {

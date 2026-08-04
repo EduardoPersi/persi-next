@@ -19,7 +19,7 @@ test("API autenticada expõe endpoints genéricos para listas", () => {
   assert.match(controller, /\/customer-lists\/\(\?P<list_type>/);
   assert.match(controller, /\/sync/);
   assert.match(controller, /WP_REST_Server::DELETABLE/);
-  assert.match(controller, /RequestAuthenticator/);
+  assert.match(controller, /BearerAuthorization/);
   assert.match(repository, /user_id, list_type, product_id/);
 });
 

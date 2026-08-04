@@ -3,7 +3,7 @@ import { CUSTOMER_LIST_TYPES, type CustomerListType } from "@/lib/customer-lists
 import { getServerAccountToken } from "@/services/account/serverSession";
 import { removeCustomerListItem } from "@/services/account/customerLists";
 
-const headers = { "Cache-Control": "private, no-store" };
+const headers = { "Cache-Control": "private, no-store, no-cache, must-revalidate" };
 
 export async function DELETE(
   _request: NextRequest,

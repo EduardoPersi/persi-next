@@ -29,7 +29,7 @@ export async function requestCustomerWorkspace(
   rawBody = "",
 ): Promise<unknown> {
   const result = await requestAccountEndpoint({
-    config: getAccountClientConfig(), method, route, rawBody, sessionToken: token,
+    config: getAccountClientConfig(), method, route, rawBody, bearerToken: token,
   });
   if (result.status < 200 || result.status >= 300) {
     throw new AccountServiceError(

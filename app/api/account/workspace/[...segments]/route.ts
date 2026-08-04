@@ -4,7 +4,7 @@ import { AccountServiceError, getAccountClientConfig } from "@/services/account/
 import { getServerAccountToken } from "@/services/account/serverSession";
 import { requestCustomerWorkspace } from "@/services/account/workspace";
 
-const responseHeaders = { "Cache-Control": "private, no-store" };
+const responseHeaders = { "Cache-Control": "private, no-store, no-cache, must-revalidate" };
 type Method = "GET" | "PUT" | "DELETE";
 
 function resolveRoute(segments: string[]) {

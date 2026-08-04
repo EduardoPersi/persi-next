@@ -9,7 +9,7 @@ import {
   listCustomerList,
 } from "@/services/account/customerLists";
 
-const headers = { "Cache-Control": "private, no-store" };
+const headers = { "Cache-Control": "private, no-store, no-cache, must-revalidate" };
 const isListType = (value: string): value is CustomerListType =>
   CUSTOMER_LIST_TYPES.some((listType) => listType === value);
 

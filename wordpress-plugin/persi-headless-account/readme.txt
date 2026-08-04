@@ -1,232 +1,34 @@
 === Persi Headless Account ===
-Contributors: persi
 Requires at least: 6.4
 Requires PHP: 8.1
-WC requires at least: 8.2
-Stable tag: 0.7.4
-License: Proprietary
+Stable tag: 1.0.3
 
-Conta headless da Persi com autenticação, sessões opacas, pedidos e listas do
-cliente, incluindo Favoritos por meio do módulo genérico Customer Lists.
+APIs privadas da conta Persi protegidas por JWT emitido e validado
+exclusivamente pelo plugin JWT Authentication for WP REST API.
 
-== Auditoria OAuth temporária (0.7.4) ==
+== Requisitos ==
 
-Esta compilação inclui temporariamente `GET
-/wp-json/persi-headless-account/v1/debug/oauth-audit`. O endpoint exige ao mesmo
-tempo a assinatura HMAC normal, timestamp e nonce inéditos, além de um usuário
-WordPress autenticado com `manage_options`. Qualquer falha responde 403.
+* WooCommerce e JWT Authentication for WP REST API ativos.
+* `JWT_AUTH_SECRET_KEY` forte e header `Authorization` encaminhado ao PHP.
+* Extensão OpenSSL do PHP.
+* `PERSI_GOOGLE_CLIENT_ID`, `PERSI_FACEBOOK_APP_ID`,
+  `PERSI_FACEBOOK_APP_SECRET` e `PERSI_FACEBOOK_GRAPH_VERSION` no wp-config.php.
 
-O relatório é somente leitura e nunca retorna e-mails, provider IDs, hashes,
-tokens, cookies ou segredos. Para autenticação administrativa fora do painel,
-use uma Application Password de um administrador junto dos cabeçalhos HMAC. A
-Application Password também é secreta e nunca deve ser incluída em logs, Git ou
-capturas de tela.
+== Endpoints ==
 
-O diagnóstico compara o usuário da identidade OAuth, da sessão, da API de conta
-e do perfil WooCommerce. Também classifica, sem executar, se um vínculo
-inconsistente teria reparo inequívoco. `AUTO_REPAIR_POSSIBLE` é somente uma
-indicação de auditoria; esta versão não altera identidades nem sessões.
+Públicos: registro, recuperação de senha e
+`POST /wp-json/persi-auth/v1/oauth/token`.
 
-Opcionalmente, envie a sessão headless investigada em `X-Persi-Session`. Ela é
-validada e convertida em SHA-256 somente na memória para localizar o registro,
-mas nem o valor recebido nem o digest aparecem no JSON. O relatório mostra
-status, expiração, usuário e providers associados. A origem do provider não pode
-ser confirmada porque a tabela de sessões atual não armazena esse campo.
+Diagnóstico sem secrets: `GET /wp-json/persi-auth/v1/health`.
 
-O `currentWpUserId` representa o administrador que autenticou esta requisição de
-auditoria. Por isso sua divergência com o cliente headless é informativa e não
-prova, isoladamente, uma falha nas APIs de conta ou perfil.
+Pedidos, workspace, perfil, endereços, contas conectadas, notificações e listas
+exigem `Authorization: Bearer <JWT>`.
 
-Remover `OAuthAuditController`, `OAuthAuditService` e seu registro em
-`Plugin.php` assim que a investigação terminar, antes de produção.
+Google é validado por assinatura RS256 com os certificados oficiais, issuer,
+audience, expiração e e-mail verificado. Meta é validado com `debug_token`, App
+ID, expiração e perfil oficial antes da integração com o emissor JWT oficial.
 
-== Instalação ==
-
-1. Confirme WordPress 6.4+, PHP 8.1+, WooCommerce 8.2+ e HTTPS.
-2. Em Plugins > Adicionar plugin > Enviar plugin, selecione o ZIP
-   persi-headless-account.zip.
-3. Instale e ative o plugin.
-4. Configure no wp-config.php o segredo HMAC, o Key ID e as origens permitidas.
-5. Confirme que não existe aviso de configuração no painel administrativo.
-
-Ao atualizar uma instalação anterior, a ativação cria a tabela genérica
-persi_customer_lists e migra de forma idempotente os registros existentes de
-persi_favorites para o tipo favorites. A tabela antiga não é apagada.
-
-== Escopo da versão 0.7.0 ==
-
-Esta fase fornece exclusivamente:
-
-* POST /wp-json/persi-account/v1/login
-* GET /wp-json/persi-account/v1/session
-* POST /wp-json/persi-account/v1/logout
-* GET /wp-json/persi-account/v1/orders
-* GET /wp-json/persi-account/v1/orders/{id}
-* POST /wp-json/persi-account/v1/register
-* POST /wp-json/persi-account/v1/forgot-password
-* POST /wp-json/persi-account/v1/reset-password
-* POST /wp-json/persi-account/v1/google-login
-* POST /wp-json/persi-headless-account/v1/oauth-login
-* GET e POST /wp-json/persi-headless/v1/customer-lists/{listType}
-* DELETE /wp-json/persi-headless/v1/customer-lists/{listType}/{productId}
-* PUT /wp-json/persi-headless/v1/customer-lists/{listType}/sync
-* GET /wp-json/persi-account/v1/workspace
-* GET e PUT /wp-json/persi-account/v1/profile
-* GET /wp-json/persi-account/v1/addresses
-* PUT e DELETE /wp-json/persi-account/v1/addresses/{billing|shipping}
-* PUT /wp-json/persi-account/v1/addresses/{billing|shipping}/primary
-* GET /wp-json/persi-account/v1/connected-accounts
-* GET e DELETE /wp-json/persi-account/v1/stock-notifications
-* autenticação HMAC entre servidores;
-* proteção contra replay;
-* limitação progressiva de tentativas de login;
-* sessões opacas revogáveis;
-* compatibilidade declarada com HPOS.
-
-Não fornece edição de perfil ou endereços, checkout ou integração com gateways.
-A consulta de pedidos é somente leitura.
-
-== Customer Lists ==
-
-Os endpoints exigem HMAC e X-Persi-Session. Nesta versão, o tipo registrado é
-favorites. Os itens são persistidos em persi_customer_lists com unicidade por
-user_id, list_type e product_id.
-
-== Customer Workspace ==
-
-O Customer Workspace concentra resumo da conta, perfil, endereços WooCommerce,
-identidades OAuth conectadas e inscrições de estoque. Todos os contratos usam
-HMAC servidor a servidor e resolvem o cliente exclusivamente pela sessão opaca.
-O navegador nunca envia customer_id. O e-mail permanece somente leitura; sua
-alteração exige um fluxo separado de verificação.
-
-== Pedidos ==
-
-Os endpoints de pedidos exigem HMAC e X-Persi-Session. O usuário é resolvido pela
-sessão opaca e nunca por customer_id enviado pelo navegador. A listagem usa
-wc_get_orders e o detalhe usa wc_get_order, preservando compatibilidade com HPOS.
-Pedidos de convidado e pedidos pertencentes a outro usuário não são retornados.
-
-== Configuração ==
-
-Configure no wp-config.php ou como variáveis de ambiente do servidor:
-
-define( 'PERSI_HEADLESS_ACCOUNT_HMAC_SECRET', 'substitua-por-um-segredo-aleatorio-forte' );
-define( 'PERSI_HEADLESS_ACCOUNT_HMAC_KEY_ID', 'primary' );
-define(
-    'PERSI_HEADLESS_ACCOUNT_ALLOWED_ORIGINS',
-    'https://app.persimateriais.com.br'
-);
-
-O segredo deve ser diferente do segredo do Persi Headless Checkout e nunca deve
-usar prefixo NEXT_PUBLIC_. Sem segredo ou key ID, os endpoints recusam a operação.
-O Key ID não diferencia letras maiúsculas e minúsculas.
-
-O login Google usa o `sub` validado pelo Next.js como identificador permanente.
-O plugin armazena somente HMAC-SHA256 determinístico do `sub` e do e-mail na
-tabela dedicada de identidades. Nenhum access token, refresh token, ID token ou
-Client Secret do Google é recebido ou persistido pelo WordPress.
-
-PERSI_HEADLESS_ACCOUNT_ALLOWED_ORIGINS aceita uma lista separada por vírgulas.
-Cada origem deve conter apenas esquema HTTP/HTTPS, host e porta opcional, sem
-caminho, query, fragmento ou credenciais.
-
-Por padrão, apenas REMOTE_ADDR é considerado para limitação por IP. Ative
-PERSI_HEADLESS_ACCOUNT_TRUST_PROXY_HEADERS somente depois de confirmar que o
-proxy confiável substitui e remove cabeçalhos enviados diretamente pelo cliente.
-
-== Contrato HMAC ==
-
-Todos os endpoints exigem:
-
-* X-Persi-Key-Id
-* X-Persi-Timestamp (Unix em segundos)
-* X-Persi-Nonce (base64url aleatório)
-* X-Persi-Origin
-* X-Persi-Signature
-
-A string canônica é, sem newline final:
-
-{METHOD}
-{PATH}
-{TIMESTAMP}
-{NONCE}
-{ORIGIN_NORMALIZADA}
-{SHA256_HEX_MINUSCULO_DO_CORPO_BRUTO}
-
-Exemplo para login:
-
-POST
-/wp-json/persi-account/v1/login
-{timestamp}
-{nonce}
-https://app.persimateriais.com.br
-{body_sha256}
-
-A assinatura é HMAC-SHA256 hexadecimal minúscula e o header usa:
-
-X-Persi-Signature: v1={assinatura}
-
-O timestamp aceita diferença máxima de 120 segundos. O nonce é consumido uma
-única vez e permanece reservado por 5 minutos.
-
-== Login ==
-
-Corpo JSON exato:
-
-{
-  "identifier": "email-ou-usuario",
-  "password": "senha",
-  "remember": false
-}
-
-Propriedades desconhecidas são rejeitadas. A senha é enviada apenas na chamada
-HMAC servidor a servidor, usada por wp_authenticate e nunca persistida ou
-registrada em log.
-
-Uma resposta bem-sucedida contém um sessionToken opaco. Somente o hash SHA-256
-do token é persistido. O servidor Next.js deverá futuramente guardar o token em
-cookie HttpOnly; esta versão não cria esse cookie.
-
-== Sessão ==
-
-GET /session exige X-Persi-Session. A resposta informa se a sessão está
-autenticada e devolve somente perfil seguro, sem customer_id confiado pelo
-navegador.
-
-Prazos:
-
-* remember=false: inatividade de 2 horas, limite absoluto de 24 horas;
-* remember=true: inatividade de 7 dias, limite absoluto de 30 dias.
-
-A atividade renova somente o prazo de inatividade e nunca ultrapassa o limite
-absoluto. Logout revoga a sessão e é idempotente.
-
-== Limitação de tentativas ==
-
-O login é limitado por identificador normalizado e por impressão HMAC do IP.
-São permitidas até 5 falhas em uma janela de 15 minutos. A partir daí é aplicado
-bloqueio progressivo iniciado em 30 segundos, limitado a 15 minutos, com
-Retry-After. E-mail, usuário e IP puros não são gravados na tabela de limites.
-
-== Testes ==
-
-Em um ambiente com PHP 8.1 ou superior:
-
-php tests/run.php
-
-Também execute lint nos arquivos:
-
-php -l persi-headless-account.php
-php -l uninstall.php
-
-e em todos os arquivos PHP de src/ e tests/.
-
-Os testes unitários locais usam stubs de WordPress e banco em memória. A
-instalação via dbDelta, concorrência real do MySQL e integração com
-wp_authenticate devem ser homologadas em uma instalação de teste do WordPress.
-
-== Desinstalação ==
-
-Por segurança operacional, uninstall.php remove somente a opção de versão. As
-tabelas e sessões são preservadas para não apagar dados automaticamente.
+O plugin Persi não assina, decodifica nem valida JWT. Após validar Google ou
+Meta e resolver o usuário, ele chama internamente `/jwt-auth/v1/token`; emissão,
+assinatura, algoritmo, secret e validação pertencem exclusivamente ao plugin
+JWT Authentication for WP REST API.

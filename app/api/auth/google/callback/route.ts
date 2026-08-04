@@ -11,11 +11,11 @@ import {
 import { getOAuthProvider } from "@/lib/account/oauth/provider";
 import { createOAuthRedirect } from "@/lib/account/oauth/redirect";
 import {
-  ACCOUNT_SESSION_COOKIE,
-  getExpiredAccountSessionCookieOptions,
-  getAccountSessionCookieOptions,
-  replaceOAuthAccountSession,
-} from "@/lib/account/oauth/session";
+  AUTH_COOKIE_NAME,
+  getAuthCookieOptions,
+  getExpiredAuthCookieOptions,
+} from "@/lib/auth/cookies";
+import { authenticateWithSocialToken } from "@/lib/auth/jwt";
 import { validateOAuthCallbackInput } from "@/lib/account/oauth/state";
 import { writeGoogleDiagnostic } from "@/lib/account/googleDiagnostics";
 
@@ -39,7 +39,6 @@ function redirectResponse(origin: string, path: string): NextResponse {
 
 export async function GET(request: Request) {
   let origin = getGoogleOAuthErrorOrigin();
-  let previousSessionToken = "";
   try {
     const config = getGoogleOAuthConfig();
     origin = new URL(config.redirectUri).origin;
@@ -48,8 +47,6 @@ export async function GET(request: Request) {
     const state = url.searchParams.get("state") ?? "";
     const cookieStore = await cookies();
     const oauthCookieNames = getOAuthCookieNames("google");
-    previousSessionToken =
-      cookieStore.get(ACCOUNT_SESSION_COOKIE)?.value ?? "";
     const expectedState =
       cookieStore.get(oauthCookieNames.state)?.value ?? "";
     const nonce = cookieStore.get(oauthCookieNames.nonce)?.value ?? "";
@@ -69,47 +66,27 @@ export async function GET(request: Request) {
       codeVerifier,
       config,
     });
-    const providerUser = await provider.getUser(idToken, {
+    await provider.getUser(idToken, {
       config,
       nonce,
     });
-    const identity = provider.normalizeUser(providerUser);
     writeGoogleDiagnostic("GOOGLE_EMAIL_RECEIVED");
 
-    const accountSession = await replaceOAuthAccountSession(
-      identity,
-      previousSessionToken,
-    );
+    const jwt = await authenticateWithSocialToken({ provider: "google", token: idToken });
     writeGoogleDiagnostic("GOOGLE_SESSION_CREATED");
-    if (accountSession.sessionToken === previousSessionToken) {
-      writeGoogleDiagnostic("GOOGLE_SESSION_REUSED");
-      throw new Error("Google account session token was reused");
-    }
     const response = redirectResponse(origin, "/minha-conta");
     clearTemporaryCookies(response);
     response.cookies.set(
-      ACCOUNT_SESSION_COOKIE,
-      accountSession.sessionToken,
-      getAccountSessionCookieOptions({
-        isProduction: process.env.NODE_ENV === "production",
-        remember: false,
-        expiresAt: accountSession.expiresAt,
-      }),
+      AUTH_COOKIE_NAME,
+      jwt.token,
+      getAuthCookieOptions(jwt.expiresAt),
     );
     writeGoogleDiagnostic("GOOGLE_SESSION_COOKIE_UPDATED");
     return response;
   } catch {
     const response = redirectResponse(origin, GOOGLE_ERROR_PATH);
     clearTemporaryCookies(response);
-    if (/^[A-Za-z0-9_-]{43}$/.test(previousSessionToken)) {
-      response.cookies.set(
-        ACCOUNT_SESSION_COOKIE,
-        "",
-        getExpiredAccountSessionCookieOptions(
-          process.env.NODE_ENV === "production",
-        ),
-      );
-    }
+    response.cookies.set(AUTH_COOKIE_NAME, "", getExpiredAuthCookieOptions());
     return response;
   }
 }

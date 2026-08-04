@@ -5,8 +5,8 @@ import { AccountOrderValidationError, parseOrderId, parseOrdersQuery, parseOrder
 import { AccountServiceError } from "../services/account/client.ts";
 import { getAccountOrder, getAccountOrders } from "../services/account/orders.ts";
 
-const config = { endpoint: "https://persimateriais.com.br/wp-json/persi-account/v1", keyId: "primary", origin: "https://app.persimateriais.com.br", secret: "test-only-account-secret" };
-const token = "A".repeat(43);
+const config = { endpoint: "https://persimateriais.com.br", origin: "https://app.persimateriais.com.br" };
+const token = "header.payload.signature";
 const money = { value: "156.90", currency: "BRL", formatted: "R$ 156,90" };
 const summary = { id: 1234, number: "1234", dateCreated: "2026-07-27T15:30:00-03:00", status: "processing", statusLabel: "Processando", total: money, itemCount: 3, paymentMethod: "pix", paymentMethodTitle: "Pix", shippingMethodTitle: "Melhor Envio", canOpen: true };
 
@@ -26,7 +26,7 @@ test("listagem valida contrato e paginação", () => {
   assert.equal("customer_id" in result.orders[0], false);
 });
 
-test("serviço envia sessão, query segura, HMAC e no-store sem expor token", async () => {
+test("serviço envia JWT Bearer, query segura e no-store sem expor token", async () => {
   let request;
   const result = await getAccountOrders(token, { page: 2, perPage: 10, status: "processing" }, { config, fetchImplementation: async (url, init) => {
     request = { url, init };
@@ -34,8 +34,8 @@ test("serviço envia sessão, query segura, HMAC e no-store sem expor token", as
   } });
   assert.equal(result.orders.length, 1);
   assert.match(request.url, /orders\?page=2&per_page=10&status=processing$/);
-  assert.equal(request.init.headers["X-Persi-Session"], token);
-  assert.match(request.init.headers["X-Persi-Signature"], /^v1=[a-f0-9]{64}$/);
+  assert.equal(request.init.headers.Authorization, `Bearer ${token}`);
+  assert.equal("X-Persi-Signature" in request.init.headers, false);
   assert.equal(request.init.cache, "no-store");
   assert.equal(JSON.stringify(result).includes(token), false);
 });
@@ -52,7 +52,7 @@ test("rotas e páginas são privadas e nunca serializam o token", async () => {
     readFile(new URL("../app/(institutional)/minha-conta/pedidos/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/(institutional)/minha-conta/pedidos/[id]/page.tsx", import.meta.url), "utf8"),
   ]);
-  assert.match(files[0], /ACCOUNT_SESSION_COOKIE/);
+  assert.match(files[0], /getServerAccountToken/);
   assert.match(files[0], /401/);
   assert.match(files[1], /Pedido não encontrado/);
   assert.match(files[2], /getServerAccountSession/);

@@ -5,7 +5,7 @@ namespace Persi\HeadlessAccount;
 defined( 'ABSPATH' ) || exit;
 
 final class Activator {
-	public const DATABASE_VERSION = '4';
+	public const DATABASE_VERSION = '5';
 
 	public static function maybe_upgrade(): void {
 		if ( self::DATABASE_VERSION !== get_option( 'persi_headless_account_db_version' ) ) {
@@ -15,6 +15,7 @@ final class Activator {
 
 	public static function activate(): void {
 		global $wpdb;
+		$previous_version = (string) get_option( 'persi_headless_account_db_version', '' );
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
@@ -44,40 +45,8 @@ final class Activator {
 			);
 		}
 
-		dbDelta(
-			"CREATE TABLE {$prefix}persi_account_sessions (
-				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-				token_hash char(64) NOT NULL,
-				user_id bigint(20) unsigned NOT NULL,
-				status varchar(20) NOT NULL DEFAULT 'active',
-				created_at datetime NOT NULL,
-				last_seen_at datetime NOT NULL,
-				idle_expires_at datetime NOT NULL,
-				absolute_expires_at datetime NOT NULL,
-				revoked_at datetime NULL DEFAULT NULL,
-				rotation_parent_hash char(64) NULL DEFAULT NULL,
-				user_agent_hash char(64) NULL DEFAULT NULL,
-				ip_hash char(64) NULL DEFAULT NULL,
-				failure_code varchar(64) NULL DEFAULT NULL,
-				PRIMARY KEY  (id),
-				UNIQUE KEY token_hash (token_hash),
-				KEY user_status (user_id, status),
-				KEY status_idle (status, idle_expires_at),
-				KEY status_absolute (status, absolute_expires_at)
-			) {$charset};"
-		);
-
-		dbDelta(
-			"CREATE TABLE {$prefix}persi_account_nonces (
-				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-				nonce_hash char(64) NOT NULL,
-				expires_at datetime NOT NULL,
-				created_at datetime NOT NULL,
-				PRIMARY KEY  (id),
-				UNIQUE KEY nonce_hash (nonce_hash),
-				KEY expires_at (expires_at)
-			) {$charset};"
-		);
+		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}persi_account_sessions" );
+		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}persi_account_nonces" );
 
 		dbDelta(
 			"CREATE TABLE {$prefix}persi_account_rate_limits (
@@ -110,6 +79,9 @@ final class Activator {
 				KEY user_provider (user_id, provider)
 			) {$charset};"
 		);
+		if ( '' !== $previous_version && version_compare( $previous_version, '5', '<' ) ) {
+			$wpdb->query( "TRUNCATE TABLE {$prefix}persi_account_identities" );
+		}
 
 		update_option(
 			'persi_headless_account_db_version',

@@ -1,10 +1,8 @@
 <?php
 namespace Persi\HeadlessAccount\Api;
 
-use Persi\HeadlessAccount\Security\AuthenticationException;
 use Persi\HeadlessAccount\Security\ClientFingerprint;
 use Persi\HeadlessAccount\Security\RateLimiter;
-use Persi\HeadlessAccount\Security\RequestAuthenticator;
 use Persi\HeadlessAccount\Support\Configuration;
 use Persi\HeadlessAccount\Support\Response;
 use Persi\HeadlessAccount\Validation\AccountAccessPayloadValidator;
@@ -14,11 +12,9 @@ defined( 'ABSPATH' ) || exit;
 
 final class AccountAccessController {
 	private const NAMESPACE = 'persi-account/v1';
-	private const BASE_PATH = '/wp-json/persi-account/v1';
 	private const GENERIC_RECOVERY = 'Se existir uma conta com este e-mail, enviaremos as instruções.';
 
 	public function __construct(
-		private readonly RequestAuthenticator $authenticator,
 		private readonly RateLimiter $limiter,
 		private readonly ClientFingerprint $fingerprint,
 		private readonly Configuration $configuration,
@@ -32,8 +28,7 @@ final class AccountAccessController {
 	}
 
 	public function register( \WP_REST_Request $request ): \WP_REST_Response {
-		$auth = $this->authenticate( $request, '/register' );
-		if ( $auth ) return $auth;
+		if ( ! $this->valid_json( $request ) ) return Response::json( array( 'message' => 'Dados inválidos.' ), 400 );
 		try {
 			$input = $this->validator->register( $request->get_body() );
 		} catch ( ValidationException $error ) {
@@ -71,8 +66,7 @@ final class AccountAccessController {
 	}
 
 	public function forgot_password( \WP_REST_Request $request ): \WP_REST_Response {
-		$auth = $this->authenticate( $request, '/forgot-password' );
-		if ( $auth ) return $auth;
+		if ( ! $this->valid_json( $request ) ) return Response::json( array( 'message' => self::GENERIC_RECOVERY ) );
 		try { $email = $this->validator->forgot( $request->get_body() ); } catch ( ValidationException $error ) { return Response::json( array( 'message' => self::GENERIC_RECOVERY ) ); }
 		$buckets = $this->buckets( 'forgot', $email );
 		$retry = $this->limiter->retry_after( $buckets );
@@ -98,8 +92,7 @@ final class AccountAccessController {
 	}
 
 	public function reset_password( \WP_REST_Request $request ): \WP_REST_Response {
-		$auth = $this->authenticate( $request, '/reset-password' );
-		if ( $auth ) return $auth;
+		if ( ! $this->valid_json( $request ) ) return Response::json( array( 'message' => 'Link ou dados inválidos.' ), 400 );
 		try { $input = $this->validator->reset( $request->get_body() ); } catch ( ValidationException $error ) { return Response::json( array( 'message' => 'Link ou dados inválidos.' ), 400 ); }
 		$buckets = $this->buckets( 'reset', $input['login'] );
 		$retry = $this->limiter->retry_after( $buckets );
@@ -111,24 +104,17 @@ final class AccountAccessController {
 		return Response::json( array( 'reset' => true ) );
 	}
 
-	private function authenticate( \WP_REST_Request $request, string $route ): ?\WP_REST_Response {
+	private function valid_json( \WP_REST_Request $request ): bool {
 		$body = $request->get_body();
-		if ( strlen( $body ) > Configuration::BODY_LIMIT_BYTES || 1 !== preg_match( '/^application\/json(?:\s*;|$)/', strtolower( trim( (string) $request->get_header( 'content-type' ) ) ) ) ) return Response::json( array( 'message' => 'Dados inválidos.' ), 400 );
-		try {
-			$headers = array();
-			foreach ( array( 'x-persi-key-id', 'x-persi-timestamp', 'x-persi-nonce', 'x-persi-origin', 'x-persi-signature' ) as $name ) $headers[ $name ] = (string) $request->get_header( $name );
-			$this->authenticator->authenticate( 'POST', self::BASE_PATH . $route, $headers, $body );
-			return null;
-		} catch ( AuthenticationException $error ) {
-			return Response::json( array( 'message' => 'Requisição não autorizada.' ), 'service_unavailable' === $error->error_code() ? 503 : 401 );
-		}
+		return strlen( $body ) <= Configuration::BODY_LIMIT_BYTES && 1 === preg_match( '/^application\/json(?:\s*;|$)/', strtolower( trim( (string) $request->get_header( 'content-type' ) ) ) );
 	}
 
 	private function buckets( string $scope, string $email ): array {
 		$ip = $this->fingerprint->ip_hash( $_SERVER );
+		$salt = wp_salt( 'nonce' );
 		return array_filter( array(
-			$ip ? hash_hmac( 'sha256', $scope . '|ip|' . $ip, $this->configuration->secret() ) : null,
-			hash_hmac( 'sha256', $scope . '|email|' . strtolower( $email ), $this->configuration->secret() ),
+			$ip ? hash( 'sha256', $salt . '|' . $scope . '|ip|' . $ip ) : null,
+			hash( 'sha256', $salt . '|' . $scope . '|email|' . strtolower( $email ) ),
 		) );
 	}
 

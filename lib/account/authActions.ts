@@ -1,11 +1,11 @@
 "use server";
 
-import { signIn } from "@/auth";
+import { redirect } from "next/navigation";
 
 export async function signInWithGoogle() {
-  await signIn("google", { redirectTo: "/minha-conta" });
+  redirect("/api/auth/google/start");
 }
 
 export async function signInWithFacebook() {
-  await signIn("facebook", { redirectTo: "/minha-conta" });
+  redirect("/api/auth/facebook/start");
 }

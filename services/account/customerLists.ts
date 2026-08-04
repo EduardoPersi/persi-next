@@ -37,7 +37,7 @@ async function call(
     route: `/customer-lists/${listType}${suffix}`,
     basePath: CUSTOMER_LISTS_REST_BASE_PATH,
     rawBody,
-    sessionToken: token,
+    bearerToken: token,
   });
   if (result.status < 200 || result.status >= 300) {
     throw new AccountServiceError(

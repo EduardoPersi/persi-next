@@ -5,9 +5,11 @@ namespace Persi\HeadlessAccount\Support;
 defined( 'ABSPATH' ) || exit;
 
 final class Configuration {
-	public const HMAC_SECRET = 'PERSI_HEADLESS_ACCOUNT_HMAC_SECRET';
-	public const HMAC_KEY_ID = 'PERSI_HEADLESS_ACCOUNT_HMAC_KEY_ID';
 	public const ALLOWED_ORIGINS = 'PERSI_HEADLESS_ACCOUNT_ALLOWED_ORIGINS';
+	public const GOOGLE_CLIENT_ID = 'PERSI_GOOGLE_CLIENT_ID';
+	public const FACEBOOK_APP_ID = 'PERSI_FACEBOOK_APP_ID';
+	public const FACEBOOK_APP_SECRET = 'PERSI_FACEBOOK_APP_SECRET';
+	public const FACEBOOK_GRAPH_VERSION = 'PERSI_FACEBOOK_GRAPH_VERSION';
 
 	public const CLOCK_SKEW_SECONDS = 120;
 	public const NONCE_TTL_SECONDS = 300;
@@ -20,15 +22,12 @@ final class Configuration {
 	public const LOGIN_MAX_ATTEMPTS = 5;
 	public const LOGIN_MAX_BACKOFF_SECONDS = 900;
 
-	public function secret(): string {
-		return $this->value( self::HMAC_SECRET );
-	}
-
-	public function key_id(): string {
-		$value = $this->value( self::HMAC_KEY_ID );
-		return preg_match( '/^[A-Za-z0-9._-]{1,40}$/', $value )
-			? $value
-			: 'primary';
+	public function google_client_id(): string { return $this->value( self::GOOGLE_CLIENT_ID ); }
+	public function facebook_app_id(): string { return $this->value( self::FACEBOOK_APP_ID ); }
+	public function facebook_app_secret(): string { return $this->value( self::FACEBOOK_APP_SECRET ); }
+	public function facebook_graph_version(): string {
+		$value = $this->value( self::FACEBOOK_GRAPH_VERSION );
+		return preg_match( '/^v[0-9]{1,2}\.[0-9]$/', $value ) ? $value : 'v23.0';
 	}
 
 	public function allowed_origins(): array {

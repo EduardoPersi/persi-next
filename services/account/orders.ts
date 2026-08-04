@@ -15,7 +15,7 @@ import {
 type Options = { config?: AccountClientConfig; fetchImplementation?: typeof fetch };
 
 export async function getAccountOrders(
-  sessionToken: string,
+  token: string,
   input: { page: number; perPage: number; status?: AccountOrderStatus | null },
   options: Options = {},
 ): Promise<AccountOrdersResponse> {
@@ -23,20 +23,20 @@ export async function getAccountOrders(
   if (input.status) query.set("status", input.status);
   const result = await requestAccountEndpoint({
     config: options.config ?? getAccountClientConfig(), method: "GET", route: "/orders",
-    query: query.toString(), rawBody: "", sessionToken, fetchImplementation: options.fetchImplementation,
+    query: query.toString(), rawBody: "", bearerToken: token, fetchImplementation: options.fetchImplementation,
   });
   if (result.status < 200 || result.status >= 300) throw new AccountServiceError([400, 401, 503].includes(result.status) ? result.status : 502, "Orders unavailable");
   try { return parseOrdersResponse(result.body); } catch { throw new AccountServiceError(502, "Invalid orders response"); }
 }
 
 export async function getAccountOrder(
-  sessionToken: string,
+  token: string,
   orderId: number,
   options: Options = {},
 ): Promise<AccountOrderDetail> {
   const result = await requestAccountEndpoint({
     config: options.config ?? getAccountClientConfig(), method: "GET", route: `/orders/${orderId}`,
-    rawBody: "", sessionToken, fetchImplementation: options.fetchImplementation,
+    rawBody: "", bearerToken: token, fetchImplementation: options.fetchImplementation,
   });
   if (result.status < 200 || result.status >= 300) throw new AccountServiceError([401, 404, 503].includes(result.status) ? result.status : 502, "Order unavailable");
   try { return parseOrderResponse(result.body); } catch { throw new AccountServiceError(502, "Invalid order response"); }
