@@ -5,8 +5,15 @@ import { Check, Copy } from "lucide-react";
 import { CheckoutSection } from "./CheckoutSection";
 import type { PixPaymentResult as PixPaymentResultData } from "@/types/payments";
 
-const POLL_INTERVAL_MS = 4000;
-const MAX_POLL_ATTEMPTS = 60;
+// Verifica rápido nos primeiros minutos (quando a maioria paga logo depois
+// de abrir o QR Code) e depois espaça as tentativas — sem isso, alguém que
+// demora mais de alguns minutos pra pagar via Pix (ex.: procurando o app do
+// banco) nunca veria a tela atualizar sozinha, mesmo com o pagamento já
+// aprovado. O limite real de quando parar é o vencimento do Pix
+// (`result.expiresAt`), não uma contagem de tentativas.
+const FAST_POLL_INTERVAL_MS = 4000;
+const FAST_POLL_DURATION_MS = 3 * 60 * 1000;
+const SLOW_POLL_INTERVAL_MS = 15000;
 
 interface PixPaymentResultProps {
   result: PixPaymentResultData;
@@ -42,11 +49,10 @@ export function PixPaymentResult({ result, onPaid, onExpired }: PixPaymentResult
   }, [secondsRemaining, onExpired]);
 
   useEffect(() => {
-    let attempts = 0;
     let cancelled = false;
+    const pollingStartedAt = Date.now();
 
     const poll = async () => {
-      attempts += 1;
       // Nunca consulta status de uma cobrança já vencida — evita chamadas
       // desnecessárias ao Inter para um Pix que não pode mais ser pago.
       if (Date.now() >= new Date(result.expiresAt).getTime()) return;
@@ -64,12 +70,16 @@ export function PixPaymentResult({ result, onPaid, onExpired }: PixPaymentResult
       } catch {
         // Falha de rede não interrompe o polling — tenta de novo no próximo ciclo.
       }
-      if (!cancelled && attempts < MAX_POLL_ATTEMPTS) {
-        window.setTimeout(poll, POLL_INTERVAL_MS);
+      if (!cancelled) {
+        const nextInterval =
+          Date.now() - pollingStartedAt < FAST_POLL_DURATION_MS
+            ? FAST_POLL_INTERVAL_MS
+            : SLOW_POLL_INTERVAL_MS;
+        window.setTimeout(poll, nextInterval);
       }
     };
 
-    const timer = window.setTimeout(poll, POLL_INTERVAL_MS);
+    const timer = window.setTimeout(poll, FAST_POLL_INTERVAL_MS);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);

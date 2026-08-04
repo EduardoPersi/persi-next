@@ -15,6 +15,7 @@ import { createPixCharge } from "@/services/payments/inter/pix";
 import { InterPaymentError } from "@/services/payments/inter/errors";
 import { createCardCharge } from "@/services/payments/pagbank/charge";
 import { PagBankPaymentError } from "@/services/payments/pagbank/errors";
+import { getServerAccountSession } from "@/services/account/serverSession";
 import { getAuthoritativeCheckoutItems } from "@/services/checkout/headlessCheckout";
 import { CartServiceError, getCart } from "@/services/woocommerce/cart";
 import {
@@ -160,6 +161,12 @@ export async function POST(request: Request) {
       throw new CheckoutTransferError(422, "Total do pedido inválido");
     }
 
+    // Sem isso, o pedido fica órfão (sem customer_id) mesmo com o cliente
+    // logado, e some da lista "Meus pedidos" — checkout já exige login, então
+    // a sessão deveria sempre existir aqui; se por algum motivo não existir,
+    // o pedido ainda é criado (como convidado) em vez de falhar o pagamento.
+    const session = await getServerAccountSession();
+
     const order =
       existingOrder ??
       (await createPendingOrder({
@@ -170,6 +177,7 @@ export async function POST(request: Request) {
         paymentMethod,
         customerNote: input.customerNote,
         ownerToken: activeCartToken,
+        customerId: session?.customer.id,
         discountFee:
           discountAmount > 0
             ? {

@@ -95,6 +95,48 @@ test("createPendingOrder monta line_items sem preço e grava idempotency key/pro
   );
 });
 
+test("createPendingOrder envia customer_id quando o cliente está logado, e omite quando não está", async () => {
+  const calls = [];
+  const post = async (endpoint, body) => {
+    calls.push(body);
+    return {
+      id: 502,
+      status: "pending",
+      total: "10",
+      currency: "BRL",
+      billing: {},
+      meta_data: [],
+    };
+  };
+
+  await createPendingOrder(
+    {
+      idempotencyKey: "key-2",
+      items: [{ productId: 10, variationId: 0, quantity: 1 }],
+      billingAddress,
+      shippingAddress: billingAddress,
+      paymentMethod: "inter_pix",
+      ownerToken: "cart-token-2",
+      customerId: 42,
+    },
+    post,
+  );
+  await createPendingOrder(
+    {
+      idempotencyKey: "key-3",
+      items: [{ productId: 10, variationId: 0, quantity: 1 }],
+      billingAddress,
+      shippingAddress: billingAddress,
+      paymentMethod: "inter_pix",
+      ownerToken: "cart-token-3",
+    },
+    post,
+  );
+
+  assert.equal(calls[0].customer_id, 42);
+  assert.equal("customer_id" in calls[1], false);
+});
+
 test("getCheckoutOwnerToken retorna string vazia quando o pedido não tem o meta", () => {
   const orderWithoutToken = { id: 1, status: "pending", metaData: {} };
   assert.equal(getCheckoutOwnerToken(orderWithoutToken), "");
@@ -232,27 +274,43 @@ test("markOrderAsFailed é idempotente: não reescreve pedido já cancelado", as
   assert.equal(result.status, "cancelled");
 });
 
-test("findPendingOrdersWithPaymentReference busca pedidos pending com referência de pagamento", async () => {
+test("findPendingOrdersWithPaymentReference busca pedidos pending e on-hold com referência de pagamento", async () => {
+  const statusesQueried = [];
   const getList = async (endpoint, query) => {
     assert.equal(endpoint, "orders");
-    assert.equal(query.status, "pending");
     assert.equal(query.meta_key, "_persi_payment_reference");
+    statusesQueried.push(query.status);
+    if (query.status === "pending") {
+      return [
+        {
+          id: 1,
+          status: "pending",
+          total: "10",
+          currency: "BRL",
+          payment_method: "inter_pix",
+          meta_data: [{ key: "_persi_payment_reference", value: "TX1" }],
+        },
+      ];
+    }
     return [
       {
-        id: 1,
-        status: "pending",
-        total: "10",
+        id: 2,
+        status: "on-hold",
+        total: "20",
         currency: "BRL",
         payment_method: "inter_pix",
-        meta_data: [{ key: "_persi_payment_reference", value: "TX1" }],
+        meta_data: [{ key: "_persi_payment_reference", value: "TX2" }],
       },
     ];
   };
 
   const orders = await findPendingOrdersWithPaymentReference(getList);
-  assert.equal(orders.length, 1);
-  assert.equal(orders[0].paymentMethod, "inter_pix");
-  assert.equal(orders[0].metaData._persi_payment_reference, "TX1");
+  assert.deepEqual([...statusesQueried].sort(), ["on-hold", "pending"]);
+  assert.equal(orders.length, 2);
+  assert.deepEqual(
+    orders.map((order) => order.id).sort(),
+    [1, 2],
+  );
 });
 
 test("findPendingOrdersWithPaymentReference descarta pedidos sem referência de pagamento", async () => {

@@ -102,6 +102,11 @@ export interface CreatePendingOrderInput {
   paymentMethod: PersiPaymentMethod;
   customerNote?: string;
   ownerToken: string;
+  // ID do usuário WordPress do cliente logado. Sem isso o pedido fica
+  // "convidado" (sem dono) e não aparece em "Meus pedidos", mesmo com o
+  // cliente autenticado — checkout exige login, então isso deveria sempre
+  // vir preenchido na prática.
+  customerId?: number;
   // Desconto por forma de pagamento (Pix/Boleto): vira uma fee_line negativa
   // no pedido do WooCommerce, para que o total do pedido já saia com o
   // desconto aplicado — é esse total (não o do carrinho) que é cobrado no
@@ -140,6 +145,7 @@ export async function createPendingOrder(
   const response = await post<WooCommerceOrderApiResponse>("orders", {
     status: "pending",
     set_paid: false,
+    ...(input.customerId ? { customer_id: input.customerId } : {}),
     billing: toWooAddress(input.billingAddress),
     shipping: toWooAddress(input.shippingAddress),
     payment_method: input.paymentMethod,
@@ -256,14 +262,32 @@ export async function markOrderAsFailed(
 // só considera pedidos que já têm uma cobrança criada no provedor (sem
 // referência, o pedido ainda pode estar "em voo" na primeira requisição, não
 // é uma cobrança abandonada).
+//
+// Inclui "on-hold" além de "pending": um gateway antigo do WooCommerce ainda
+// ativo neste site altera o status de pedidos recém-criados para "on-hold"
+// antes de a reconciliação rodar — sem isso, esses pedidos ficam invisíveis
+// para sempre a esta varredura mesmo já pagos. Ver docs/25 e histórico do
+// incidente do pedido #30855 (2026-08-04).
+const RECONCILIABLE_ORDER_STATUSES = ["pending", "on-hold"] as const;
+
 export async function findPendingOrdersWithPaymentReference(
   getList: WooGetListFn = defaultGetList,
 ): Promise<WooCommerceOrder[]> {
-  const orders = await getList<WooCommerceOrderApiResponse>("orders", {
-    status: "pending",
-    meta_key: PAYMENT_REFERENCE_META,
-  });
-  return orders
-    .map(toOrder)
-    .filter((order) => order.metaData[PAYMENT_REFERENCE_META]);
+  const ordersByStatus = await Promise.all(
+    RECONCILIABLE_ORDER_STATUSES.map((status) =>
+      getList<WooCommerceOrderApiResponse>("orders", {
+        status,
+        meta_key: PAYMENT_REFERENCE_META,
+      }),
+    ),
+  );
+
+  const seenIds = new Set<number>();
+  const orders: WooCommerceOrder[] = [];
+  for (const order of ordersByStatus.flat().map(toOrder)) {
+    if (!order.metaData[PAYMENT_REFERENCE_META] || seenIds.has(order.id)) continue;
+    seenIds.add(order.id);
+    orders.push(order);
+  }
+  return orders;
 }
