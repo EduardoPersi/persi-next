@@ -68,6 +68,8 @@ interface CheckoutFormProps {
   initialAddresses: CustomerWorkspaceAddress[];
   paymentMethod: CheckoutPaymentMethod;
   onPaymentMethodChange: (method: CheckoutPaymentMethod) => void;
+  hasCreatedOrder: boolean;
+  onOrderCreated: () => void;
 }
 
 export function CheckoutForm({
@@ -75,6 +77,8 @@ export function CheckoutForm({
   initialAddresses,
   paymentMethod,
   onPaymentMethodChange: setPaymentMethod,
+  hasCreatedOrder,
+  onOrderCreated: setHasCreatedOrder,
 }: CheckoutFormProps) {
   const { cart, isCheckoutUpdating, refreshCart } = useCart();
   const router = useRouter();
@@ -83,7 +87,6 @@ export function CheckoutForm({
   const [installments, setInstallments] = useState(1);
   const [pixResult, setPixResult] = useState<PixPaymentResultData | null>(null);
   const [boletoResult, setBoletoResult] = useState<BoletoPaymentResultData | null>(null);
-  const [hasCreatedOrder, setHasCreatedOrder] = useState(false);
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("profile");
   const cardFieldsRef = useRef<PaymentCardFieldsHandle>(null);
   const lookupPostcodeAddress = usePostcodeAddressLookup();
@@ -223,24 +226,24 @@ export function CheckoutForm({
       void refreshCart();
 
       if (result.alreadyInitiated) {
-        setHasCreatedOrder(true);
+        setHasCreatedOrder();
         router.push(`/checkout/confirmacao?orderId=${result.orderId}`);
         return;
       }
 
       if (result.method === "inter_pix") {
-        setHasCreatedOrder(true);
+        setHasCreatedOrder();
         setPixResult(result);
         return;
       }
 
       if (result.method === "inter_boleto") {
-        setHasCreatedOrder(true);
+        setHasCreatedOrder();
         setBoletoResult(result);
         return;
       }
 
-      setHasCreatedOrder(true);
+      setHasCreatedOrder();
       router.push(
         `/checkout/confirmacao?provider=pagbank_card&reference=${encodeURIComponent(result.chargeId)}`,
       );

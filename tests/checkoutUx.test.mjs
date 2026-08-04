@@ -47,6 +47,10 @@ test("CheckoutForm liga os dois hooks de UX e os desliga assim que o pedido é c
   assert.match(source, /useTabAttentionTitle\(!hasCreatedOrder\)/);
   // Todos os quatro ramos de sucesso do submit precisam marcar o pedido
   // como criado antes de seguir (Pix, boleto, cartão/carteira, já iniciado).
-  const setHasCreatedOrderCount = source.split("setHasCreatedOrder(true)").length - 1;
+  // `hasCreatedOrder` é elevado a CheckoutPageClient (onOrderCreated) para
+  // que a página de checkout não trate o carrinho esvaziado pós-pagamento
+  // como "carrinho vazio" e derrube a tela do Pix/boleto.
+  assert.match(source, /onOrderCreated: setHasCreatedOrder/);
+  const setHasCreatedOrderCount = source.split("setHasCreatedOrder()").length - 1;
   assert.equal(setHasCreatedOrderCount, 4);
 });

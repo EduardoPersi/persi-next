@@ -31,6 +31,12 @@ export function CheckoutPageClient({
   // pagamento apareça no Total dos dois lugares ao mesmo tempo.
   const [paymentMethod, setPaymentMethod] =
     useState<CheckoutPaymentMethod>("inter_pix");
+  // Assim que o pedido é criado, o carrinho é esvaziado (ver
+  // CheckoutForm/refreshCart) — sem essa flag, um carrinho com 0 itens faria
+  // esta página achar que "o carrinho está vazio" e trocar a tela pela de
+  // carrinho vazio, derrubando o QR Code do Pix (ou o boleto) que acabou de
+  // aparecer.
+  const [hasCreatedOrder, setHasCreatedOrder] = useState(false);
   const viewState = resolveCheckoutViewState({
     cart,
     error,
@@ -38,24 +44,34 @@ export function CheckoutPageClient({
     isLoading,
   });
 
-  if (viewState === "loading") return <CheckoutLoading />;
-  if (viewState === "error") return <CheckoutError />;
-  if (viewState === "empty") return <CheckoutEmptyCart />;
+  if (!hasCreatedOrder) {
+    if (viewState === "loading") return <CheckoutLoading />;
+    if (viewState === "error") return <CheckoutError />;
+    if (viewState === "empty") return <CheckoutEmptyCart />;
+  }
   if (!cart) return <CheckoutError />;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
-      <div className="lg:col-span-2">
+    <div
+      className={
+        hasCreatedOrder ? undefined : "grid gap-6 lg:grid-cols-3 lg:items-start"
+      }
+    >
+      <div className={hasCreatedOrder ? undefined : "lg:col-span-2"}>
         <CheckoutForm
           initialProfile={initialProfile}
           initialAddresses={initialAddresses}
           paymentMethod={paymentMethod}
           onPaymentMethodChange={setPaymentMethod}
+          hasCreatedOrder={hasCreatedOrder}
+          onOrderCreated={() => setHasCreatedOrder(true)}
         />
       </div>
-      <div className="hidden lg:block">
-        <CheckoutOrderSummary cart={cart} paymentMethod={paymentMethod} />
-      </div>
+      {!hasCreatedOrder ? (
+        <div className="hidden lg:block">
+          <CheckoutOrderSummary cart={cart} paymentMethod={paymentMethod} />
+        </div>
+      ) : null}
     </div>
   );
 }
