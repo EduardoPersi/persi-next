@@ -47,6 +47,7 @@ interface CartContextValue {
     postcode: string,
     signal?: AbortSignal,
   ) => Promise<CartMutationResult>;
+  refreshCart: () => Promise<void>;
   openCart: () => void;
   closeCart: () => void;
 }
@@ -229,6 +230,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Não reaproveita `initializeCart()` (memoizado para sempre após a
+  // primeira carga) — usado depois de um pagamento concluído, quando o
+  // servidor já trocou o Cart-Token por um carrinho novo e vazio (o pedido
+  // já foi criado a partir de uma foto do carrinho anterior), então precisa
+  // ir buscar esse carrinho novo de verdade.
+  const refreshCart = useCallback(async () => {
+    const requestId = latestRequest.current.start();
+    try {
+      const response = await fetch("/api/cart", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      const result = (await response.json()) as Cart & { message?: string };
+      if (response.ok && latestRequest.current.isLatest(requestId)) {
+        setCart(result);
+      }
+    } catch {
+      // Falha ao atualizar o carrinho depois do pagamento não é crítica —
+      // o próximo carregamento de página busca o estado correto de novo.
+    }
+  }, []);
+
   const updateCustomerAddress = useCallback(
     async (
       input: CheckoutCustomerPayload,
@@ -386,6 +409,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       updateCustomerAddress,
       selectShippingRate,
       calculateShippingPostcode,
+      refreshCart,
       openCart: () => setIsOpen(true),
       closeCart: () => setIsOpen(false),
     }),
@@ -398,6 +422,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       isOpen,
       isCheckoutUpdating,
       pendingItemKey,
+      refreshCart,
       removeItem,
       selectShippingRate,
       calculateShippingPostcode,

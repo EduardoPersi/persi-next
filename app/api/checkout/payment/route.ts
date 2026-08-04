@@ -5,6 +5,7 @@ import { exceedsRequestLimit } from "@/app/api/checkout/checkout-request";
 import { getPaymentMethodDiscountRate } from "@/components/Checkout/paymentMethod";
 import {
   getCartTokenCookieOptions,
+  getExpiredCartTokenCookieOptions,
   getPrivateCartHeaders,
 } from "@/lib/commerce/cartResponsePolicy";
 import { CheckoutTransferError } from "@/lib/commerce/checkoutTransfer";
@@ -39,16 +40,28 @@ function createPrivateResponse(
   body: object,
   status: number,
   cartToken?: string,
+  options: { clearCartToken?: boolean } = {},
 ) {
   const response = NextResponse.json(body, { status });
   for (const [name, value] of Object.entries(getPrivateCartHeaders())) {
     response.headers.set(name, value);
   }
-  if (cartToken) {
+  const isProduction = process.env.NODE_ENV === "production";
+  if (options.clearCartToken) {
+    // O pedido já foi criado a partir de uma foto do carrinho (ver
+    // getAuthoritativeCheckoutItems) — diferente do checkout nativo do
+    // WooCommerce, nada mais esvazia o carrinho sozinho. Sem isso, os
+    // mesmos itens continuam aparecendo no carrinho depois da compra.
+    response.cookies.set(
+      CART_TOKEN_COOKIE,
+      "",
+      getExpiredCartTokenCookieOptions(isProduction),
+    );
+  } else if (cartToken) {
     response.cookies.set(
       CART_TOKEN_COOKIE,
       cartToken,
-      getCartTokenCookieOptions(process.env.NODE_ENV === "production"),
+      getCartTokenCookieOptions(isProduction),
     );
   }
   return response;
@@ -145,7 +158,7 @@ export async function POST(request: Request) {
         method: paymentMethod,
         orderId: existingOrder.id,
       };
-      return createPrivateResponse(result, 200, activeCartToken);
+      return createPrivateResponse(result, 200, activeCartToken, { clearCartToken: true });
     }
 
     // Desconto por forma de pagamento (Pix/Boleto): o valor efetivamente
@@ -271,7 +284,7 @@ export async function POST(request: Request) {
       };
     }
 
-    return createPrivateResponse(result, 201, activeCartToken);
+    return createPrivateResponse(result, 201, activeCartToken, { clearCartToken: true });
   } catch (error) {
     const status = getErrorStatus(error);
     console.error("[checkout-payment]", {

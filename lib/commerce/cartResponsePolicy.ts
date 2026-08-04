@@ -19,3 +19,11 @@ export function getCartTokenCookieOptions(isProduction: boolean) {
     maxAge: 60 * 60 * 24 * 30,
   };
 }
+
+export function getExpiredCartTokenCookieOptions(isProduction: boolean) {
+  return {
+    ...getCartTokenCookieOptions(isProduction),
+    expires: new Date(0),
+    maxAge: 0,
+  };
+}

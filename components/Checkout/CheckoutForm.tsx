@@ -76,7 +76,7 @@ export function CheckoutForm({
   paymentMethod,
   onPaymentMethodChange: setPaymentMethod,
 }: CheckoutFormProps) {
-  const { cart, isCheckoutUpdating } = useCart();
+  const { cart, isCheckoutUpdating, refreshCart } = useCart();
   const router = useRouter();
   const [statusMessage, setStatusMessage] = useState("");
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
@@ -216,6 +216,11 @@ export function CheckoutForm({
         );
         return;
       }
+
+      // O pedido já foi criado a partir desses itens — o servidor troca o
+      // Cart-Token por um carrinho novo e vazio; sem isso, os mesmos itens
+      // continuariam aparecendo no carrinho depois da compra.
+      void refreshCart();
 
       if (result.alreadyInitiated) {
         setHasCreatedOrder(true);
