@@ -1,7 +1,7 @@
 === Persi Headless Account ===
 Requires at least: 6.4
 Requires PHP: 8.1
-Stable tag: 1.0.3
+Stable tag: 1.0.4
 
 APIs privadas da conta Persi protegidas por JWT emitido e validado
 exclusivamente pelo plugin JWT Authentication for WP REST API.

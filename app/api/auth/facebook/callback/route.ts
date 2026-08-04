@@ -65,8 +65,11 @@ export async function GET(request: Request) {
       codeVerifier,
       config,
     });
-    await provider.getUser(token, { config, nonce });
+    const facebookUser = await provider.getUser(token, { config, nonce });
     const jwt = await authenticateWithSocialToken({ provider: "facebook", token: token.accessToken });
+    if (!jwt.userEmail || jwt.userEmail.trim().toLowerCase() !== facebookUser.email.trim().toLowerCase()) {
+      throw new Error("Facebook identity does not match the issued WordPress user");
+    }
 
     const response = createOAuthRedirect(origin, "/minha-conta");
     clearTemporaryCookies(response);

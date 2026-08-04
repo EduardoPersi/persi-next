@@ -29,11 +29,23 @@ test("plugin Persi delega emissão e validação ao plugin JWT oficial", async (
   assert.doesNotMatch(combined, /Firebase\\JWT|JWT::encode|JWT::decode|JwtIssuer|RevokedTokenStore/);
   assert.match(adapter, /\/jwt-auth\/v1\/token/);
   assert.match(adapter, /rest_do_request/);
+  assert.match(adapter, /user_email/);
   assert.match(social, /OfficialJwtAdapter/);
   assert.match(social, /GoogleTokenVerifier/);
   assert.match(social, /MetaTokenVerifier/);
   assert.match(bearer, /wp_get_current_user/);
   assert.doesNotMatch(tokenRuntime, /JSON\.parse|Buffer\.from|decode/);
+});
+
+test("callbacks sociais recusam JWT de outro e-mail", async () => {
+  const [google, facebook, identities] = await Promise.all([
+    readFile(new URL("../app/api/auth/google/callback/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/auth/facebook/callback/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../wordpress-plugin/persi-headless-account/src/Auth/OAuthIdentityService.php", import.meta.url), "utf8"),
+  ]);
+  assert.match(google, /jwt\.userEmail.*googleUser\.email/);
+  assert.match(facebook, /jwt\.userEmail.*facebookUser\.email/);
+  assert.match(identities, /email_matches/);
 });
 
 test("arquitetura usa somente JWT Bearer", async () => {

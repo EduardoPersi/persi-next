@@ -35,6 +35,9 @@ final class OfficialJwtAdapter {
 		if ( ! is_array( $data ) || ! is_string( $data['token'] ?? null ) || 1 !== preg_match( '/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/', $data['token'] ) ) {
 			throw new \RuntimeException( 'O endpoint JWT oficial retornou uma resposta inválida.' );
 		}
+		if ( ! is_string( $data['user_email'] ?? null ) || ! hash_equals( strtolower( $user->user_email ), strtolower( $data['user_email'] ) ) ) {
+			throw new \RuntimeException( 'O endpoint JWT oficial retornou outro usuário.' );
+		}
 		return $data;
 	}
 }

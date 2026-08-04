@@ -34,7 +34,8 @@ class OAuthIdentityService {
 				$user = get_user_by( 'id', (int) $linked['user_id'] );
 				if (
 					! $user instanceof \WP_User ||
-					! CredentialsAuthenticator::is_allowed_user( $user )
+					! CredentialsAuthenticator::is_allowed_user( $user ) ||
+					! $this->email_matches( $user, $identity['email'] )
 				) {
 					$this->last_code = $this->code( 'USER_REJECTED', $provider );
 					return null;
@@ -78,7 +79,9 @@ class OAuthIdentityService {
 					: false;
 				if (
 					! $concurrent_user instanceof \WP_User ||
-					! CredentialsAuthenticator::is_allowed_user( $concurrent_user )
+					! hash_equals( (string) ( $concurrent['email_hash'] ?? '' ), $email_hash ) ||
+					! CredentialsAuthenticator::is_allowed_user( $concurrent_user ) ||
+					! $this->email_matches( $concurrent_user, $identity['email'] )
 				) {
 					$this->last_code = $this->code( 'LINK_CREATE_FAILED', $provider );
 					return null;
@@ -100,6 +103,13 @@ class OAuthIdentityService {
 
 	public function user_was_created(): bool {
 		return $this->user_created;
+	}
+
+	private function email_matches( \WP_User $user, string $verified_email ): bool {
+		return hash_equals(
+			strtolower( trim( (string) $user->user_email ) ),
+			strtolower( trim( $verified_email ) )
+		);
 	}
 
 	private function code( string $suffix, string $provider ): string {

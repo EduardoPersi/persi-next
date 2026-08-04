@@ -66,13 +66,16 @@ export async function GET(request: Request) {
       codeVerifier,
       config,
     });
-    await provider.getUser(idToken, {
+    const googleUser = await provider.getUser(idToken, {
       config,
       nonce,
     });
     writeGoogleDiagnostic("GOOGLE_EMAIL_RECEIVED");
 
     const jwt = await authenticateWithSocialToken({ provider: "google", token: idToken });
+    if (!jwt.userEmail || jwt.userEmail.trim().toLowerCase() !== googleUser.email.trim().toLowerCase()) {
+      throw new Error("Google identity does not match the issued WordPress user");
+    }
     writeGoogleDiagnostic("GOOGLE_SESSION_CREATED");
     const response = redirectResponse(origin, "/minha-conta");
     clearTemporaryCookies(response);
