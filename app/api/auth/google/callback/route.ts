@@ -39,6 +39,15 @@ function redirectResponse(origin: string, path: string): NextResponse {
   return createOAuthRedirect(origin, path);
 }
 
+// Diagnóstico temporário: mascara o e-mail para registrar nos logs do
+// servidor (nunca na tela) sem expor o endereço completo.
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!local || !domain) return "***";
+  const visible = local.slice(0, 2);
+  return `${visible}***@${domain}`;
+}
+
 // Diagnóstico temporário: mostra um código curto e não sensível na tela de
 // erro para localizar qual validação está rejeitando o login sem precisar
 // de acesso a logs de servidor. Remover depois de identificar a causa.
@@ -90,10 +99,19 @@ export async function GET(request: Request) {
 
     const jwt = await authenticateWithSocialToken({ provider: "google", token: idToken });
     if (!jwt.userEmail || jwt.userEmail.trim().toLowerCase() !== googleUser.email.trim().toLowerCase()) {
+      console.error("google_login_token_email_mismatch", {
+        google: maskEmail(googleUser.email),
+        issued: jwt.userEmail ? maskEmail(jwt.userEmail) : null,
+      });
       throw new Error("Google identity does not match the issued WordPress user");
     }
     const authenticatedUser = await getAuthenticatedUser(jwt.token);
     if (authenticatedUser.email.trim().toLowerCase() !== googleUser.email.trim().toLowerCase()) {
+      console.error("google_login_me_email_mismatch", {
+        google: maskEmail(googleUser.email),
+        me: maskEmail(authenticatedUser.email),
+        meId: authenticatedUser.id,
+      });
       throw new Error("Google identity does not match the authenticated WordPress user");
     }
     writeGoogleDiagnostic("GOOGLE_SESSION_CREATED");
