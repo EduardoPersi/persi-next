@@ -38,6 +38,8 @@ export const GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS = [
   `https://app.persimateriais.com.br${GOOGLE_OAUTH_CALLBACK_PATH}`,
   `https://persimateriais.com.br${GOOGLE_OAUTH_CALLBACK_PATH}`,
 ] as const;
+export const GOOGLE_OAUTH_DEFAULT_REDIRECT_URI =
+  GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS[0];
 export const GOOGLE_OAUTH_COOKIE_MAX_AGE = OAUTH_COOKIE_MAX_AGE;
 const googleCookieNames = getOAuthCookieNames("google");
 export const GOOGLE_OAUTH_STATE_COOKIE = googleCookieNames.state;
@@ -105,10 +107,9 @@ function requireServerValue(
 export function getGoogleOAuthConfig(
   environment: NodeJS.ProcessEnv = process.env,
 ): GoogleOAuthConfig {
-  const redirectUri = requireServerValue(
-    environment,
-    "GOOGLE_OAUTH_REDIRECT_URI",
-  );
+  const redirectUri =
+    environment.GOOGLE_OAUTH_REDIRECT_URI?.trim() ||
+    GOOGLE_OAUTH_DEFAULT_REDIRECT_URI;
   if (
     !GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS.includes(
       redirectUri as GoogleOAuthConfig["redirectUri"],

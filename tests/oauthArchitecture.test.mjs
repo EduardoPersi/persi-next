@@ -17,6 +17,10 @@ import {
   generateOAuthValue,
   validateOAuthCallbackInput,
 } from "../lib/account/oauth/state.ts";
+import {
+  getGoogleOAuthConfig,
+  GOOGLE_OAUTH_DEFAULT_REDIRECT_URI,
+} from "../lib/account/oauth/google.ts";
 
 const facebookConfig = {
   clientId: "facebook-client-id",
@@ -38,6 +42,14 @@ test("providers Google e Facebook compartilham contrato comum", () => {
   }
   assert.equal(google.name, "google");
   assert.equal(facebook.name, "facebook");
+});
+
+test("Google usa callback canônico quando a variável de redirect não existe", () => {
+  const config = getGoogleOAuthConfig({
+    GOOGLE_CLIENT_ID: "google-client-id",
+    GOOGLE_CLIENT_SECRET: "test-only-google-secret",
+  });
+  assert.equal(config.redirectUri, GOOGLE_OAUTH_DEFAULT_REDIRECT_URI);
 });
 
 test("estado, nonce, PKCE e validação são independentes do provider", () => {

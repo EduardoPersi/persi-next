@@ -1,4 +1,7 @@
-import { GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS } from "./googleOAuth.ts";
+import {
+  GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS,
+  GOOGLE_OAUTH_DEFAULT_REDIRECT_URI,
+} from "./googleOAuth.ts";
 
 export const GOOGLE_START_DIAGNOSTIC_CODES = [
   "GOOGLE_START_CONFIG_MISSING",
@@ -25,10 +28,9 @@ export function getGoogleStartConfigurationCodes(
   if (!environment.GOOGLE_CLIENT_SECRET?.trim()) {
     missing.push("GOOGLE_START_SECRET_MISSING");
   }
-  const redirectUri = environment.GOOGLE_OAUTH_REDIRECT_URI?.trim();
-  if (!redirectUri) {
-    missing.push("GOOGLE_START_REDIRECT_URI_MISSING");
-  }
+  const redirectUri =
+    environment.GOOGLE_OAUTH_REDIRECT_URI?.trim() ||
+    GOOGLE_OAUTH_DEFAULT_REDIRECT_URI;
   if (missing.length > 0) {
     return ["GOOGLE_START_CONFIG_MISSING", ...missing];
   }
