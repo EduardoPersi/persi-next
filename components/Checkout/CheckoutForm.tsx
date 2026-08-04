@@ -63,6 +63,26 @@ const PROFILE_FIELDS = [
   "contact.document",
 ] as const;
 
+const BILLING_ADDRESS_FIELDS = [
+  "billingAddress.postalCode",
+  "billingAddress.addressLine1",
+  "billingAddress.number",
+  "billingAddress.neighborhood",
+  "billingAddress.city",
+  "billingAddress.state",
+  "billingAddress.recipientName",
+] as const;
+
+const SHIPPING_ADDRESS_FIELDS = [
+  "shippingAddress.postalCode",
+  "shippingAddress.addressLine1",
+  "shippingAddress.number",
+  "shippingAddress.neighborhood",
+  "shippingAddress.city",
+  "shippingAddress.state",
+  "shippingAddress.recipientName",
+] as const;
+
 interface CheckoutFormProps {
   initialProfile: CustomerWorkspaceProfile | null;
   initialAddresses: CustomerWorkspaceAddress[];
@@ -293,7 +313,20 @@ export function CheckoutForm({
     setCurrentStep("address");
   };
 
-  const advanceToPayment = () => {
+  const advanceToPayment = async () => {
+    setStatusMessage("");
+    // Antes só checava se o frete tinha sido calculado — dava pra avançar
+    // com campos obrigatórios (ex.: Número) vazios, já que calcular o frete
+    // depende só do CEP, não do endereço completo.
+    const shipsToBillingAddress = methods.getValues("shipToBillingAddress");
+    const fieldsToValidate = shipsToBillingAddress
+      ? BILLING_ADDRESS_FIELDS
+      : [...BILLING_ADDRESS_FIELDS, ...SHIPPING_ADDRESS_FIELDS];
+    const valid = await methods.trigger(fieldsToValidate, { shouldFocus: true });
+    if (!valid) {
+      setStatusMessage("Revise os campos destacados para continuar.");
+      return;
+    }
     if (!addressReady) {
       setStatusMessage("Calcule e selecione a entrega para continuar.");
       return;
