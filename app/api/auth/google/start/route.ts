@@ -15,6 +15,10 @@ import {
   writeGoogleStartDiagnostic,
 } from "@/lib/account/googleStartDiagnostics";
 import { getPrivateAccountHeaders } from "@/lib/account/responsePolicy";
+import {
+  AUTH_COOKIE_NAME,
+  getExpiredAuthCookieOptions,
+} from "@/lib/auth/cookies";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -85,6 +89,7 @@ export async function GET() {
       { codeVerifier, nonce, state },
       process.env.NODE_ENV === "production",
     );
+    response.cookies.set(AUTH_COOKIE_NAME, "", getExpiredAuthCookieOptions());
   } catch {
     writeGoogleStartDiagnostic("GOOGLE_START_COOKIE_FAILED");
     return redirectToGoogleError();

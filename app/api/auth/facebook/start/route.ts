@@ -10,6 +10,10 @@ import {
   createOAuthPkce,
   generateOAuthValue,
 } from "@/lib/account/oauth/state";
+import {
+  AUTH_COOKIE_NAME,
+  getExpiredAuthCookieOptions,
+} from "@/lib/auth/cookies";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -37,6 +41,7 @@ export async function GET() {
       { codeVerifier, nonce, state },
       process.env.NODE_ENV === "production",
     );
+    response.cookies.set(AUTH_COOKIE_NAME, "", getExpiredAuthCookieOptions());
     return response;
   } catch {
     return createOAuthRedirect(errorOrigin, "/entrar?erro=facebook");

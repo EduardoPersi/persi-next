@@ -171,3 +171,16 @@ test("OAuth usa o mesmo cookie JWT sem sessão paralela", async () => {
   assert.match(cookie, /__Host-persi_jwt_session/);
   assert.equal(cookie.includes("provider"), false);
 });
+
+test("troca social expira a sessão anterior antes do provedor", async () => {
+  const routes = await Promise.all(
+    [
+      "../app/api/auth/google/start/route.ts",
+      "../app/api/auth/facebook/start/route.ts",
+    ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+  );
+  for (const route of routes) {
+    assert.match(route, /AUTH_COOKIE_NAME/);
+    assert.match(route, /getExpiredAuthCookieOptions/);
+  }
+});
