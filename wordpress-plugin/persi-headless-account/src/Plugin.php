@@ -20,6 +20,7 @@ use Persi\HeadlessAccount\CustomerLists\CustomerListRepository;
 use Persi\HeadlessAccount\CustomerLists\CustomerListsService;
 use Persi\HeadlessAccount\CustomerWorkspace\CustomerWorkspaceService;
 use Persi\HeadlessAccount\Orders\OrderPresenter;
+use Persi\HeadlessAccount\Orders\OrderRestMetaQuery;
 use Persi\HeadlessAccount\Orders\OrderService;
 use Persi\HeadlessAccount\Security\ClientFingerprint;
 use Persi\HeadlessAccount\Security\RateLimiter;
@@ -47,6 +48,7 @@ final class Plugin {
 		global $wpdb;
 		$bearer = new BearerAuthorization();
 		( new OfficialJwtResponseMetadata() )->register();
+		OrderRestMetaQuery::register();
 		$identity = new OAuthIdentityService( new IdentityRepository( $wpdb ) );
 
 		$controllers = array(
