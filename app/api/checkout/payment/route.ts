@@ -179,6 +179,11 @@ export async function POST(request: Request) {
     // a sessão deveria sempre existir aqui; se por algum motivo não existir,
     // o pedido ainda é criado (como convidado) em vez de falhar o pagamento.
     const session = await getServerAccountSession();
+    const selectedShippingRate = cart.needsShipping
+      ? cart.shippingPackages
+          .flatMap((shippingPackage) => shippingPackage.rates)
+          .find((rate) => rate.selected)
+      : undefined;
 
     const order =
       existingOrder ??
@@ -191,6 +196,12 @@ export async function POST(request: Request) {
         customerNote: input.customerNote,
         ownerToken: activeCartToken,
         customerId: session?.customer.id,
+        shippingLine: selectedShippingRate
+          ? {
+              name: selectedShippingRate.name,
+              amount: moneyToNumber(selectedShippingRate.price),
+            }
+          : undefined,
         discountFee:
           discountAmount > 0
             ? {

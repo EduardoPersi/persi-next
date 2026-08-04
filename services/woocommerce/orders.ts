@@ -74,6 +74,7 @@ export function getCheckoutOwnerToken(order: WooCommerceOrder): string {
 type WooPostFn = <T>(endpoint: string, body: unknown) => Promise<T>;
 type WooPutFn = <T>(endpoint: string, body: unknown) => Promise<T>;
 type WooGetListFn = <T>(endpoint: string, query: Record<string, string>) => Promise<T[]>;
+type WooGetFn = <T>(endpoint: string) => Promise<T>;
 
 // Import dinâmico: `restClient.ts` importa "server-only" (as credenciais do
 // WooCommerce nunca podem rodar fora de um contexto de servidor) e por isso
@@ -91,6 +92,11 @@ const defaultPut: WooPutFn = async (endpoint, body) => {
 const defaultGetList: WooGetListFn = async (endpoint, query) => {
   const { restApiGetWithMeta } = await import("./restClient.ts");
   const result = await restApiGetWithMeta<unknown>(endpoint, { query, revalidate: 0 });
+  return result.data as never;
+};
+const defaultGet: WooGetFn = async (endpoint) => {
+  const { restApiGetWithMeta } = await import("./restClient.ts");
+  const result = await restApiGetWithMeta<unknown>(endpoint, { revalidate: 0 });
   return result.data as never;
 };
 
@@ -112,6 +118,11 @@ export interface CreatePendingOrderInput {
   // desconto aplicado — é esse total (não o do carrinho) que é cobrado no
   // Banco Inter/PagBank, então os dois nunca podem divergir.
   discountFee?: { name: string; amount: number };
+  // Sem isso o pedido nunca soube que a compra tinha frete — o valor cobrado
+  // no Inter/PagBank sempre incluiu o frete (via cart.totals.price), mas o
+  // registro do pedido no WooCommerce ficava sem shipping_lines, então
+  // relatórios e a tela de confirmação não conseguiam mostrar a entrega.
+  shippingLine?: { name: string; amount: number };
 }
 
 function toWooAddress(address: CheckoutStoreAddress) {
@@ -161,6 +172,16 @@ export async function createPendingOrder(
             {
               name: input.discountFee.name,
               total: (-input.discountFee.amount).toFixed(2),
+            },
+          ],
+        }
+      : {}),
+    ...(input.shippingLine
+      ? {
+          shipping_lines: [
+            {
+              method_title: input.shippingLine.name,
+              total: input.shippingLine.amount.toFixed(2),
             },
           ],
         }
@@ -290,4 +311,96 @@ export async function findPendingOrdersWithPaymentReference(
     orders.push(order);
   }
   return orders;
+}
+
+export interface OrderConfirmationItem {
+  id: number;
+  name: string;
+  quantity: number;
+  total: string;
+  imageSrc?: string;
+}
+
+export interface OrderConfirmationDetails {
+  id: number;
+  currency: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  document: string;
+  items: OrderConfirmationItem[];
+  itemsSubtotal: string;
+  shippingLabel: string;
+  shippingTotal: string;
+  discountLabel: string;
+  discountTotal: string;
+  total: string;
+}
+
+interface WooCommerceOrderDetailsApiResponse {
+  id: number;
+  currency: string;
+  total: string;
+  billing?: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    phone?: string;
+    cpf?: string;
+    cnpj?: string;
+  };
+  line_items?: Array<{
+    id: number;
+    name: string;
+    quantity: number;
+    total: string;
+    image?: { src?: string };
+  }>;
+  shipping_lines?: Array<{ method_title: string; total: string }>;
+  fee_lines?: Array<{ name: string; total: string }>;
+}
+
+function sumMoneyStrings(values: string[]): string {
+  const sum = values.reduce((acc, value) => acc + (Number(value) || 0), 0);
+  return sum.toFixed(2);
+}
+
+export async function getOrderConfirmationDetails(
+  orderId: number,
+  get: WooGetFn = defaultGet,
+): Promise<OrderConfirmationDetails> {
+  const response = await get<WooCommerceOrderDetailsApiResponse>(`orders/${orderId}`);
+  const billing = response.billing ?? {};
+  const items = response.line_items ?? [];
+  const shipping = response.shipping_lines?.[0];
+  // Só a fee_line negativa é um desconto — WooCommerce também usa fee_lines
+  // para acréscimos (ex.: taxas), que aqui não existem, mas não custa ser
+  // explícito em vez de assumir que toda fee_line é sempre um desconto.
+  const discountFees = (response.fee_lines ?? []).filter(
+    (fee) => (Number(fee.total) || 0) < 0,
+  );
+
+  return {
+    id: response.id,
+    currency: response.currency,
+    firstName: billing.first_name ?? "",
+    lastName: billing.last_name ?? "",
+    email: billing.email ?? "",
+    phone: billing.phone ?? "",
+    document: billing.cpf || billing.cnpj || "",
+    items: items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      total: item.total,
+      imageSrc: item.image?.src,
+    })),
+    itemsSubtotal: sumMoneyStrings(items.map((item) => item.total)),
+    shippingLabel: shipping?.method_title ?? "",
+    shippingTotal: shipping?.total ?? "0.00",
+    discountLabel: discountFees[0]?.name ?? "Desconto",
+    discountTotal: sumMoneyStrings(discountFees.map((fee) => fee.total)).replace(/^-/, ""),
+    total: response.total,
+  };
 }
