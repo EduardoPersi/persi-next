@@ -196,10 +196,11 @@ export async function POST(request: Request) {
         customerNote: input.customerNote,
         ownerToken: activeCartToken,
         customerId: session?.customer.id,
-        shippingLine: selectedShippingRate
+        shippingLine: selectedShippingRate?.methodId
           ? {
               name: selectedShippingRate.name,
               amount: moneyToNumber(selectedShippingRate.price),
+              methodId: selectedShippingRate.methodId,
             }
           : undefined,
         discountFee:

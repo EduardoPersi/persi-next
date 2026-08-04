@@ -122,7 +122,7 @@ export interface CreatePendingOrderInput {
   // no Inter/PagBank sempre incluiu o frete (via cart.totals.price), mas o
   // registro do pedido no WooCommerce ficava sem shipping_lines, então
   // relatórios e a tela de confirmação não conseguiam mostrar a entrega.
-  shippingLine?: { name: string; amount: number };
+  shippingLine?: { name: string; amount: number; methodId: string };
 }
 
 function toWooAddress(address: CheckoutStoreAddress) {
@@ -180,6 +180,7 @@ export async function createPendingOrder(
       ? {
           shipping_lines: [
             {
+              method_id: input.shippingLine.methodId,
               method_title: input.shippingLine.name,
               total: input.shippingLine.amount.toFixed(2),
             },
