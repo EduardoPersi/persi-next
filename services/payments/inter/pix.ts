@@ -1,3 +1,4 @@
+import QRCode from "qrcode";
 import { InterPaymentError, type InterHttpMethod } from "./errors.ts";
 
 type InterRequestFn = <T>(
@@ -43,12 +44,7 @@ interface InterPixCobResponse {
   txid: string;
   status: string;
   calendario: { criacao: string; expiracao: number };
-  loc?: { id: number };
-}
-
-interface InterPixLocQrCodeResponse {
-  qrcode: string;
-  imagemQrcode: string;
+  pixCopiaECola: string;
 }
 
 function assertPixChargeStatus(value: string): PixChargeStatus {
@@ -115,24 +111,28 @@ export async function createPixCharge(
     },
   );
 
-  if (!cob.loc?.id) {
+  if (!cob.pixCopiaECola) {
     throw new InterPaymentError(
       502,
-      "Cobrança Pix criada sem localização de QR Code",
-      "INTER_PIX_MISSING_LOCATION",
+      "Cobrança Pix criada sem código copia e cola",
+      "INTER_PIX_MISSING_COPY_PASTE_CODE",
     );
   }
 
-  const qrCode = await request<InterPixLocQrCodeResponse>(
-    `/pix/v2/loc/${cob.loc.id}/qrcode`,
-    "GET",
-  );
+  // O Inter não expõe um endpoint que devolva a imagem do QR Code pronta —
+  // só o código copia e cola (padrão BR Code). A imagem é gerada aqui a
+  // partir desse código.
+  const qrCodeImageBuffer = await QRCode.toBuffer(cob.pixCopiaECola, {
+    type: "png",
+    margin: 1,
+    width: 440,
+  });
 
   return {
     txid: cob.txid,
     status: assertPixChargeStatus(cob.status),
-    qrCodeCopyPaste: qrCode.qrcode,
-    qrCodeImageBase64: qrCode.imagemQrcode,
+    qrCodeCopyPaste: cob.pixCopiaECola,
+    qrCodeImageBase64: qrCodeImageBuffer.toString("base64"),
     expiresAt: computeExpiresAt(cob),
   };
 }

@@ -28,20 +28,17 @@ const billingAddress = {
   country: "BR",
 };
 
-test("createPixCharge monta cobrança a partir do cob e do qrcode, sempre com expiração de 3600s", async () => {
+test("createPixCharge monta cobrança a partir do cob e gera a imagem do QR Code a partir do copia e cola, sempre com expiração de 3600s", async () => {
   process.env.INTER_PIX_KEY = "chave-pix-teste";
   const calls = [];
   const request = async (path, method, body) => {
     calls.push({ path, method, body });
-    if (method === "PUT") {
-      return {
-        txid: "TX123",
-        status: "ATIVA",
-        calendario: { criacao: "2026-08-02T10:00:00Z", expiracao: 3600 },
-        loc: { id: 42 },
-      };
-    }
-    return { qrcode: "00020126...copia-e-cola", imagemQrcode: "data:base64" };
+    return {
+      txid: "TX123",
+      status: "ATIVA",
+      calendario: { criacao: "2026-08-02T10:00:00Z", expiracao: 3600 },
+      pixCopiaECola: "00020126...copia-e-cola",
+    };
   };
 
   const charge = await createPixCharge(
@@ -58,28 +55,31 @@ test("createPixCharge monta cobrança a partir do cob e do qrcode, sempre com ex
   assert.equal(charge.txid, "TX123");
   assert.equal(charge.status, "ATIVA");
   assert.equal(charge.qrCodeCopyPaste, "00020126...copia-e-cola");
+  // A imagem é gerada localmente (não vem do Inter): confirma que é um PNG
+  // válido em base64, sem depender de uma segunda chamada à API.
+  assert.match(charge.qrCodeImageBase64, /^[A-Za-z0-9+/]+=*$/);
+  assert.equal(
+    Buffer.from(charge.qrCodeImageBase64, "base64").subarray(0, 8).toString("hex"),
+    "89504e470d0a1a0a",
+  );
+  assert.equal(calls.length, 1);
   assert.equal(calls[0].path, "/pix/v2/cob/TX123");
   assert.equal(calls[0].body.calendario.expiracao, 3600);
   assert.equal(calls[0].body.valor.original, "199.90");
   assert.equal(calls[0].body.chave, "chave-pix-teste");
-  assert.equal(calls[1].path, "/pix/v2/loc/42/qrcode");
 });
 
 test("createPixCharge envia devedor.cpf para documento de 11 dígitos e devedor.cnpj para 14", async () => {
   process.env.INTER_PIX_KEY = "chave-pix-teste";
-  const responses = {
-    PUT: {
-      txid: "TX1",
-      status: "ATIVA",
-      calendario: { criacao: "2026-08-02T10:00:00Z", expiracao: 3600 },
-      loc: { id: 1 },
-    },
-    GET: { qrcode: "x", imagemQrcode: "y" },
-  };
   const calls = [];
   const request = async (path, method, body) => {
     calls.push({ method, body });
-    return responses[method];
+    return {
+      txid: "TX1",
+      status: "ATIVA",
+      calendario: { criacao: "2026-08-02T10:00:00Z", expiracao: 3600 },
+      pixCopiaECola: "codigo",
+    };
   };
 
   await createPixCharge(
@@ -104,7 +104,7 @@ test("createPixCharge envia devedor.cpf para documento de 11 dígitos e devedor.
   );
 
   assert.deepEqual(calls[0].body.devedor, { cpf: "12345678909", nome: "Pessoa Física" });
-  assert.deepEqual(calls[2].body.devedor, { cnpj: "11222333000181", nome: "Empresa LTDA" });
+  assert.deepEqual(calls[1].body.devedor, { cnpj: "11222333000181", nome: "Empresa LTDA" });
 });
 
 test("createPixCharge falha sem INTER_PIX_KEY configurada", async () => {
@@ -124,7 +124,7 @@ test("createPixCharge falha sem INTER_PIX_KEY configurada", async () => {
   );
 });
 
-test("createPixCharge rejeita cobrança sem localização de QR Code", async () => {
+test("createPixCharge rejeita cobrança sem código copia e cola", async () => {
   process.env.INTER_PIX_KEY = "chave-pix-teste";
   const request = async () => ({
     txid: "TX1",
@@ -143,7 +143,7 @@ test("createPixCharge rejeita cobrança sem localização de QR Code", async () 
       },
       request,
     ),
-    /localização de QR Code/,
+    /código copia e cola/,
   );
 });
 
