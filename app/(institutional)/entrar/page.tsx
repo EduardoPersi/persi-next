@@ -17,11 +17,11 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ erro?: string }>;
+  searchParams: Promise<{ erro?: string; motivo?: string }>;
 }) {
   const session = await getServerAccountSession();
   if (session) redirect("/minha-conta");
-  const error = (await searchParams).erro;
+  const { erro: error, motivo } = await searchParams;
   const errorMessage =
     error === "google"
       ? "Não foi possível entrar com o Google. Tente novamente."
@@ -48,6 +48,11 @@ export default async function LoginPage({
               className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-800"
             >
               {errorMessage}
+              {motivo ? (
+                <span className="mt-1 block font-mono text-xs text-red-500">
+                  Código: {motivo}
+                </span>
+              ) : null}
             </p>
           ) : null}
           <AccountLoginForm />

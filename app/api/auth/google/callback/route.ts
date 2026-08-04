@@ -16,6 +16,7 @@ import {
   getExpiredAuthCookieOptions,
 } from "@/lib/auth/cookies";
 import { authenticateWithSocialToken } from "@/lib/auth/jwt";
+import { AuthError } from "@/lib/auth/errors";
 import { getAuthenticatedUser } from "@/lib/auth/user";
 import { validateOAuthCallbackInput } from "@/lib/account/oauth/state";
 import { writeGoogleDiagnostic } from "@/lib/account/googleDiagnostics";
@@ -36,6 +37,20 @@ function clearTemporaryCookies(response: NextResponse) {
 
 function redirectResponse(origin: string, path: string): NextResponse {
   return createOAuthRedirect(origin, path);
+}
+
+// Diagnóstico temporário: mostra um código curto e não sensível na tela de
+// erro para localizar qual validação está rejeitando o login sem precisar
+// de acesso a logs de servidor. Remover depois de identificar a causa.
+function describeFailure(error: unknown): string {
+  if (error instanceof AuthError) return error.code;
+  if (error instanceof Error && error.message === "Google identity does not match the issued WordPress user") {
+    return "TOKEN_EMAIL_MISMATCH";
+  }
+  if (error instanceof Error && error.message === "Google identity does not match the authenticated WordPress user") {
+    return "ME_EMAIL_MISMATCH";
+  }
+  return "UNKNOWN";
 }
 
 export async function GET(request: Request) {
@@ -93,7 +108,11 @@ export async function GET(request: Request) {
     return response;
   } catch (error) {
     console.error("google_login_failed", error);
-    const response = redirectResponse(origin, GOOGLE_ERROR_PATH);
+    const reason = describeFailure(error);
+    const response = redirectResponse(
+      origin,
+      `${GOOGLE_ERROR_PATH}&motivo=${encodeURIComponent(reason)}`,
+    );
     clearTemporaryCookies(response);
     response.cookies.set(AUTH_COOKIE_NAME, "", getExpiredAuthCookieOptions());
     return response;
