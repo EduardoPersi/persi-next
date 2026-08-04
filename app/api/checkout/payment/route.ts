@@ -187,6 +187,18 @@ export async function POST(request: Request) {
             : undefined,
       }));
 
+    // Diagnóstico temporário: não existia nenhum log no caminho de sucesso —
+    // só assim dá pra confirmar, quando um pagamento é feito de verdade, qual
+    // pedido foi realmente criado/reaproveitado no WooCommerce.
+    console.log("[checkout-payment] pedido resolvido", {
+      orderId: order.id,
+      reused: Boolean(existingOrder),
+      idempotencyKey: input.idempotencyKey,
+      method: paymentMethod,
+      customerId: session?.customer.id ?? null,
+      amount,
+    });
+
     const payerName = `${billingAddress.firstName} ${billingAddress.lastName}`.trim();
 
     let result: PaymentInitiationResult;
