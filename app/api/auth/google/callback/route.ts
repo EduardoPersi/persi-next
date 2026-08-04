@@ -16,6 +16,7 @@ import {
   getExpiredAuthCookieOptions,
 } from "@/lib/auth/cookies";
 import { authenticateWithSocialToken } from "@/lib/auth/jwt";
+import { getAuthenticatedUser } from "@/lib/auth/user";
 import { validateOAuthCallbackInput } from "@/lib/account/oauth/state";
 import { writeGoogleDiagnostic } from "@/lib/account/googleDiagnostics";
 
@@ -75,6 +76,10 @@ export async function GET(request: Request) {
     const jwt = await authenticateWithSocialToken({ provider: "google", token: idToken });
     if (!jwt.userEmail || jwt.userEmail.trim().toLowerCase() !== googleUser.email.trim().toLowerCase()) {
       throw new Error("Google identity does not match the issued WordPress user");
+    }
+    const authenticatedUser = await getAuthenticatedUser(jwt.token);
+    if (authenticatedUser.email.trim().toLowerCase() !== googleUser.email.trim().toLowerCase()) {
+      throw new Error("Google identity does not match the authenticated WordPress user");
     }
     writeGoogleDiagnostic("GOOGLE_SESSION_CREATED");
     const response = redirectResponse(origin, "/minha-conta");

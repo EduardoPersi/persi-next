@@ -16,6 +16,7 @@ import {
   getExpiredAuthCookieOptions,
 } from "@/lib/auth/cookies";
 import { authenticateWithSocialToken } from "@/lib/auth/jwt";
+import { getAuthenticatedUser } from "@/lib/auth/user";
 import { validateOAuthCallbackInput } from "@/lib/account/oauth/state";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +70,10 @@ export async function GET(request: Request) {
     const jwt = await authenticateWithSocialToken({ provider: "facebook", token: token.accessToken });
     if (!jwt.userEmail || jwt.userEmail.trim().toLowerCase() !== facebookUser.email.trim().toLowerCase()) {
       throw new Error("Facebook identity does not match the issued WordPress user");
+    }
+    const authenticatedUser = await getAuthenticatedUser(jwt.token);
+    if (authenticatedUser.email.trim().toLowerCase() !== facebookUser.email.trim().toLowerCase()) {
+      throw new Error("Facebook identity does not match the authenticated WordPress user");
     }
 
     const response = createOAuthRedirect(origin, "/minha-conta");

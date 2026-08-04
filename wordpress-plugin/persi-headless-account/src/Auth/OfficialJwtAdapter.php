@@ -17,9 +17,15 @@ final class OfficialJwtAdapter {
 			if ( hash_equals( $username, $candidate_username ) && hash_equals( $password, $candidate_password ) ) return $user;
 			return $authenticated;
 		};
+		$issued_user_id = 0;
+		$capture_payload = static function ( array $payload ) use ( &$issued_user_id ): array {
+			$issued_user_id = (int) ( $payload['data']['user']['id'] ?? 0 );
+			return $payload;
+		};
 
 		// Prioridade 1 entrega o WP_User já verificado antes dos autenticadores padrão.
 		add_filter( 'authenticate', $authenticate, 1, 3 );
+		add_filter( 'jwt_auth_token_before_sign', $capture_payload, PHP_INT_MAX, 1 );
 		try {
 			$request = new \WP_REST_Request( 'POST', self::TOKEN_ROUTE );
 			$request->set_param( 'username', $username );
@@ -28,6 +34,7 @@ final class OfficialJwtAdapter {
 		} finally {
 			// O filtro existe apenas durante rest_do_request, inclusive quando há erro.
 			remove_filter( 'authenticate', $authenticate, 1 );
+			remove_filter( 'jwt_auth_token_before_sign', $capture_payload, PHP_INT_MAX );
 		}
 
 		if ( $response->is_error() ) throw new \RuntimeException( 'O endpoint JWT oficial recusou a emissão.' );
@@ -37,6 +44,9 @@ final class OfficialJwtAdapter {
 		}
 		if ( ! is_string( $data['user_email'] ?? null ) || ! hash_equals( strtolower( $user->user_email ), strtolower( $data['user_email'] ) ) ) {
 			throw new \RuntimeException( 'O endpoint JWT oficial retornou outro usuário.' );
+		}
+		if ( $issued_user_id !== (int) $user->ID ) {
+			throw new \RuntimeException( 'O emissor JWT oficial recebeu outro usuário.' );
 		}
 		return $data;
 	}

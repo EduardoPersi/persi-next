@@ -30,6 +30,8 @@ test("plugin Persi delega emissão e validação ao plugin JWT oficial", async (
   assert.match(adapter, /\/jwt-auth\/v1\/token/);
   assert.match(adapter, /rest_do_request/);
   assert.match(adapter, /user_email/);
+  assert.match(adapter, /jwt_auth_token_before_sign/);
+  assert.match(adapter, /issued_user_id.*user->ID/s);
   assert.match(social, /OfficialJwtAdapter/);
   assert.match(social, /GoogleTokenVerifier/);
   assert.match(social, /MetaTokenVerifier/);
@@ -45,6 +47,10 @@ test("callbacks sociais recusam JWT de outro e-mail", async () => {
   ]);
   assert.match(google, /jwt\.userEmail.*googleUser\.email/);
   assert.match(facebook, /jwt\.userEmail.*facebookUser\.email/);
+  assert.match(google, /getAuthenticatedUser\(jwt\.token\)/);
+  assert.match(google, /authenticatedUser\.email.*googleUser\.email/);
+  assert.match(facebook, /getAuthenticatedUser\(jwt\.token\)/);
+  assert.match(facebook, /authenticatedUser\.email.*facebookUser\.email/);
   assert.match(identities, /email_matches/);
 });
 
