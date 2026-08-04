@@ -1,4 +1,4 @@
-const PIX_DISCOUNT_RATE = 0.1;
+export const PIX_DISCOUNT_RATE = 0.1;
 const MAX_INSTALLMENTS = 10;
 const MIN_INSTALLMENT_VALUE = 25;
 

@@ -20,6 +20,7 @@ import {
   formatPostcode,
   readLastShippingPostcode,
 } from "@/lib/commerce/shippingCalculator";
+import { moneyToNumber } from "@/lib/formatting/money";
 import type {
   CustomerWorkspaceAddress,
   CustomerWorkspaceProfile,
@@ -414,6 +415,8 @@ export function CheckoutForm({
                 onInstallmentsChange={setInstallments}
                 cardFieldsRef={cardFieldsRef}
                 onCardError={setStatusMessage}
+                cartTotal={cart ? moneyToNumber(cart.totals.price) : undefined}
+                currencyCode={cart?.currencyCode}
               />
               <CheckoutTerms />
               <Button

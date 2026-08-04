@@ -12,6 +12,8 @@ interface CheckoutPaymentProps {
   onInstallmentsChange: (installments: number) => void;
   cardFieldsRef: RefObject<PaymentCardFieldsHandle | null>;
   onCardError: (message: string) => void;
+  cartTotal?: number;
+  currencyCode?: string;
 }
 
 const CARD_METHODS: CheckoutPaymentMethod[] = [
@@ -27,6 +29,8 @@ export function CheckoutPayment({
   onInstallmentsChange,
   cardFieldsRef,
   onCardError,
+  cartTotal,
+  currencyCode,
 }: CheckoutPaymentProps) {
   const showCardFields = method === "pagbank_card";
   const isWalletMethod = CARD_METHODS.includes(method) && method !== "pagbank_card";
@@ -37,7 +41,12 @@ export function CheckoutPayment({
         Escolha como prefere pagar. O valor final é sempre confirmado com o Banco
         Inter ou o PagBank antes da confirmação do pedido.
       </p>
-      <PaymentMethodSelector value={method} onChange={onMethodChange} />
+      <PaymentMethodSelector
+        value={method}
+        onChange={onMethodChange}
+        cartTotal={cartTotal}
+        currencyCode={currencyCode}
+      />
       {showCardFields ? (
         <PaymentCardFields
           ref={cardFieldsRef}

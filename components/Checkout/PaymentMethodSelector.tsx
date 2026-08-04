@@ -1,28 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import clsx from "clsx";
+import { Barcode, CreditCard } from "lucide-react";
+import { PixIcon } from "@/components/Product/PixIcon";
+import { PIX_DISCOUNT_RATE } from "@/lib/commerce/productPayment";
 import type { CheckoutPaymentMethod } from "./paymentMethod";
 
 interface PaymentMethodOption {
   value: CheckoutPaymentMethod;
   label: string;
   description: string;
+  icon?: ReactNode;
+  discountLabel?: string;
 }
-
-const BASE_OPTIONS: PaymentMethodOption[] = [
-  { value: "inter_pix", label: "Pix", description: "Aprovação imediata" },
-  {
-    value: "inter_boleto",
-    label: "Boleto",
-    description: "Compensação em até 2 dias úteis",
-  },
-  {
-    value: "pagbank_card",
-    label: "Cartão de crédito",
-    description: "Em até 12x",
-  },
-];
 
 interface WalletAvailability {
   applePay: boolean;
@@ -44,12 +35,33 @@ function detectWalletAvailability(): WalletAvailability {
   };
 }
 
+function RadioDot({ selected }: { selected: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={clsx(
+        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+        selected ? "border-primary" : "border-slate-300",
+      )}
+    >
+      {selected ? <span className="h-2.5 w-2.5 rounded-full bg-primary" /> : null}
+    </span>
+  );
+}
+
 interface PaymentMethodSelectorProps {
   value: CheckoutPaymentMethod;
   onChange: (method: CheckoutPaymentMethod) => void;
+  cartTotal?: number;
+  currencyCode?: string;
 }
 
-export function PaymentMethodSelector({ value, onChange }: PaymentMethodSelectorProps) {
+export function PaymentMethodSelector({
+  value,
+  onChange,
+  cartTotal,
+  currencyCode = "BRL",
+}: PaymentMethodSelectorProps) {
   const [wallets, setWallets] = useState<WalletAvailability>({
     applePay: false,
     googlePay: false,
@@ -64,8 +76,34 @@ export function PaymentMethodSelector({ value, onChange }: PaymentMethodSelector
     setWallets(detectWalletAvailability());
   }, []);
 
+  const pixDiscountLabel =
+    typeof cartTotal === "number" && cartTotal > 0
+      ? `${new Intl.NumberFormat("pt-BR", {
+          style: "currency",
+          currency: currencyCode,
+        }).format(cartTotal * PIX_DISCOUNT_RATE)} off`
+      : undefined;
+
   const options: PaymentMethodOption[] = [
-    ...BASE_OPTIONS,
+    {
+      value: "inter_pix",
+      label: "Pix",
+      description: "Aprovação imediata",
+      icon: <PixIcon className="h-5 w-5" />,
+      discountLabel: pixDiscountLabel,
+    },
+    {
+      value: "inter_boleto",
+      label: "Boleto",
+      description: "Compensação em até 2 dias úteis",
+      icon: <Barcode className="h-5 w-5" />,
+    },
+    {
+      value: "pagbank_card",
+      label: "Cartão de crédito",
+      description: "Em até 12x",
+      icon: <CreditCard className="h-5 w-5" />,
+    },
     ...(wallets.applePay
       ? [
           {
@@ -90,7 +128,7 @@ export function PaymentMethodSelector({ value, onChange }: PaymentMethodSelector
     <div
       role="radiogroup"
       aria-label="Forma de pagamento"
-      className="grid gap-3 sm:grid-cols-2"
+      className="flex flex-col gap-3"
     >
       {options.map((option) => {
         const selected = option.value === value;
@@ -102,18 +140,33 @@ export function PaymentMethodSelector({ value, onChange }: PaymentMethodSelector
             aria-checked={selected}
             onClick={() => onChange(option.value)}
             className={clsx(
-              "min-h-11 rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+              "flex min-h-11 w-full items-center gap-3 rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
               selected
                 ? "border-primary bg-primary/5"
-                : "border-slate-300 bg-white hover:border-primary/50",
+                : "border-slate-200 bg-white hover:border-primary/50",
             )}
           >
-            <span className="block text-xs font-semibold text-slate-900">
-              {option.label}
+            <RadioDot selected={selected} />
+            <span className="min-w-0 flex-1">
+              <span className="flex flex-wrap items-baseline gap-x-1.5">
+                <span className="text-sm font-semibold text-slate-900">
+                  {option.label}
+                </span>
+                {option.discountLabel ? (
+                  <span className="text-xs font-semibold text-emerald-700">
+                    {option.discountLabel}
+                  </span>
+                ) : null}
+              </span>
+              <span className="mt-0.5 block text-xs text-slate-600">
+                {option.description}
+              </span>
             </span>
-            <span className="mt-0.5 block text-xs text-slate-600">
-              {option.description}
-            </span>
+            {option.icon ? (
+              <span className="shrink-0 text-slate-500" aria-hidden="true">
+                {option.icon}
+              </span>
+            ) : null}
           </button>
         );
       })}
