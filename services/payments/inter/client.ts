@@ -135,6 +135,15 @@ async function getInterAccessToken(config: InterConfig): Promise<string> {
 function toInterPaymentError(error: unknown, fallbackMessage: string): InterPaymentError {
   if (error instanceof AxiosError) {
     const status = error.response?.status ?? 502;
+    // Diagnóstico temporário: nunca exposto ao cliente (só o InterPaymentError
+    // genérico é lançado abaixo) — registra a resposta real da API do Inter
+    // no log do servidor para descobrir a causa (auth, certificado, corpo da
+    // requisição) sem vazar detalhes internos na resposta HTTP.
+    console.error("[inter-client]", {
+      url: error.config?.url,
+      status,
+      data: error.response?.data,
+    });
     return new InterPaymentError(
       status >= 400 && status < 600 ? status : 502,
       fallbackMessage,
