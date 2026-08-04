@@ -228,6 +228,7 @@ export async function POST(request: Request) {
       result = {
         method: "inter_pix",
         orderId: order.id,
+        amount,
         txid: charge.txid,
         qrCodeCopyPaste: charge.qrCodeCopyPaste,
         qrCodeImageBase64: charge.qrCodeImageBase64,

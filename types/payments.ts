@@ -3,6 +3,7 @@ import type { PersiPaymentMethod } from "@/services/woocommerce/orders";
 export interface PixPaymentResult {
   method: "inter_pix";
   orderId: number;
+  amount: number;
   txid: string;
   qrCodeCopyPaste: string;
   qrCodeImageBase64: string;
