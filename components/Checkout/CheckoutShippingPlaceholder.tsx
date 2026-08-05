@@ -120,6 +120,19 @@ export function CheckoutShippingPlaceholder() {
     setMessage("Opções de entrega atualizadas.");
   };
 
+  // Calcula a entrega sozinho assim que o endereço fica completo (CEP já
+  // preenche rua/bairro/cidade/UF automaticamente — só falta número e
+  // destinatário) e recalcula de novo se o cliente editar algo depois. O
+  // debounce evita disparar uma chamada a cada tecla digitada no número.
+  useEffect(() => {
+    if (!addressComplete) return;
+    const timeout = window.setTimeout(() => {
+      void updateAddress();
+    }, 600);
+    return () => window.clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addressComplete, activeAddress]);
+
   const chooseRate = async (packageId: number | string, rateId: string) => {
     if (isCheckoutUpdating || status === "selecting-rate") return;
     setStatus("selecting-rate");
@@ -233,17 +246,17 @@ export function CheckoutShippingPlaceholder() {
         </div>
       ) : null}
 
-      <Button
-        type="button"
-        variant={status === "ready" ? "outline" : "primary"}
-        disabled={!addressComplete || isBusy}
-        onClick={() => void updateAddress()}
-        className="mt-5 w-full sm:w-auto"
-      >
-        {status === "ready"
-          ? "Atualizar opções de entrega"
-          : "Calcular entrega"}
-      </Button>
+      {status === "error" || status === "unavailable" ? (
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!addressComplete || isBusy}
+          onClick={() => void updateAddress()}
+          className="mt-5 w-full sm:w-auto"
+        >
+          Tentar novamente
+        </Button>
+      ) : null}
     </div>
   );
 }
