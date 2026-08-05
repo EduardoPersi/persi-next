@@ -7,6 +7,15 @@ import { Container } from "@/components/UI/Container";
 
 const HIDDEN_FULL_FOOTER_PREFIXES = ["/checkout"];
 
+const PAYMENT_ICONS = [
+  { file: "visa", label: "Visa" },
+  { file: "elo", label: "Elo" },
+  { file: "amex", label: "American Express" },
+  { file: "mastercard", label: "Mastercard" },
+  { file: "pix", label: "Pix" },
+  { file: "boleto", label: "Boleto" },
+] as const;
+
 // Recebe o <Footer /> completo (renderizado no servidor) como children e só
 // decide, no client, se ele deve aparecer — evita duplicar o Footer.tsx em
 // duas variantes e mantém o rodapé de verdade como Server Component.
@@ -22,16 +31,23 @@ export function FooterVisibility({ children }: { children: ReactNode }) {
     <footer className="border-t border-[#E5E7EB] bg-slate-50">
       <Container className="py-4 text-center">
         <h2 className="text-sm font-bold text-slate-800">Formas de pagamento</h2>
-        {/* Mesma imagem já usada no rodapé completo (components/Footer/Footer.tsx)
-            — evita recriar logos de bandeiras/marcas registradas do zero. */}
-        <Image
-          src="/images/footer/pagamentos.webp"
-          alt="Formas de pagamento aceitas pela Persi Materiais"
-          width={295}
-          height={82}
-          sizes="230px"
-          className="mx-auto mt-2 h-auto w-full max-w-[230px] object-contain"
-        />
+        <ul className="mx-auto mt-3 grid max-w-md grid-cols-3 gap-3 sm:max-w-lg sm:grid-cols-6">
+          {PAYMENT_ICONS.map((icon) => (
+            <li
+              key={icon.file}
+              className="flex aspect-[10/7] items-center justify-center rounded-lg border border-slate-200 bg-white p-2"
+            >
+              <Image
+                src={`/images/footer/${icon.file}.webp`}
+                alt={icon.label}
+                width={500}
+                height={350}
+                sizes="90px"
+                className="h-auto w-full object-contain"
+              />
+            </li>
+          ))}
+        </ul>
         <p className="mt-3 text-[13px] leading-5 text-slate-500">
           © 2016-2026 Persi Construções e Comércio Ltda. CNPJ:
           26.069.136/0001-41. Todos os direitos reservados.
