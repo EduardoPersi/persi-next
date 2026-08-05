@@ -191,9 +191,7 @@ test("createBoletoCharge cria com vencimento D+2 e reconsulta para retornar linh
     calls.push({ path, method, body });
     if (method === "POST") return { codigoSolicitacao: "REQ1" };
     return {
-      codigoSolicitacao: "REQ1",
-      situacao: "A_RECEBER",
-      dataVencimento: getBoletoDueDate(),
+      cobranca: { situacao: "A_RECEBER", dataVencimento: getBoletoDueDate() },
       boleto: { linhaDigitavel: "34191...", codigoBarras: "341...9" },
     };
   };
@@ -213,6 +211,8 @@ test("createBoletoCharge cria com vencimento D+2 e reconsulta para retornar linh
   assert.equal(charge.status, "A_RECEBER");
   assert.equal(charge.digitableLine, "34191...");
   assert.equal(charge.dueDate, getBoletoDueDate());
+  assert.equal(calls[0].path, "/cobranca/v3/cobrancas");
+  assert.equal(calls[1].path, "/cobranca/v3/cobrancas/REQ1");
   assert.equal(calls[0].body.dataVencimento, getBoletoDueDate());
   assert.equal(calls[0].body.pagador.cpfCnpj, "12345678909");
   assert.equal(calls[0].body.pagador.tipoPessoa, "FISICA");
@@ -234,15 +234,14 @@ test("createBoletoCharge usa tipoPessoa JURIDICA para CNPJ", async () => {
         assert.equal(body.pagador.tipoPessoa, "JURIDICA");
         return { codigoSolicitacao: "REQ2" };
       }
-      return { codigoSolicitacao: "REQ2", situacao: "A_RECEBER" };
+      return { cobranca: { situacao: "A_RECEBER" } };
     },
   );
 });
 
 test("getBoletoChargeStatus valida a situação recebida", async () => {
   const request = async () => ({
-    codigoSolicitacao: "REQ1",
-    situacao: "CANCELADO_DESCONHECIDO",
+    cobranca: { situacao: "CANCELADO_DESCONHECIDO" },
   });
 
   await assert.rejects(getBoletoChargeStatus("REQ1", request), /Situação de boleto desconhecida/);

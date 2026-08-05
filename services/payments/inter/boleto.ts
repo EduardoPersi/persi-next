@@ -55,10 +55,14 @@ interface InterBoletoCreateResponse {
   codigoSolicitacao: string;
 }
 
+// A consulta (GET) devolve os campos de status dentro de "cobranca", não
+// soltos na raiz como a criação (POST) devolve "codigoSolicitacao" — são
+// dois formatos de resposta diferentes na mesma API.
 interface InterBoletoDetailResponse {
-  codigoSolicitacao: string;
-  situacao: string;
-  dataVencimento?: string;
+  cobranca?: {
+    situacao: string;
+    dataVencimento?: string;
+  };
   boleto?: { linhaDigitavel: string; codigoBarras: string };
 }
 
@@ -98,7 +102,7 @@ export async function createBoletoCharge(
   const dueDate = getBoletoDueDate();
 
   const created = await request<InterBoletoCreateResponse>(
-    "/cobranca/v3/boletos",
+    "/cobranca/v3/cobrancas",
     "POST",
     {
       seuNumero: input.seuNumero,
@@ -132,15 +136,15 @@ export async function getBoletoChargeStatus(
   request: InterRequestFn = defaultInterRequest,
 ): Promise<BoletoCharge> {
   const detail = await request<InterBoletoDetailResponse>(
-    `/cobranca/v3/boletos/${encodeURIComponent(requestCode)}`,
+    `/cobranca/v3/cobrancas/${encodeURIComponent(requestCode)}`,
     "GET",
   );
 
   return {
-    requestCode: detail.codigoSolicitacao,
-    status: assertBoletoStatus(detail.situacao),
+    requestCode,
+    status: assertBoletoStatus(detail.cobranca?.situacao ?? ""),
     digitableLine: detail.boleto?.linhaDigitavel ?? "",
     barcode: detail.boleto?.codigoBarras ?? "",
-    dueDate: detail.dataVencimento ?? "",
+    dueDate: detail.cobranca?.dataVencimento ?? "",
   };
 }
