@@ -35,6 +35,9 @@ export const revalidate = 0;
 export const runtime = "nodejs";
 
 const GENERIC_ERROR_MESSAGE = "Não foi possível iniciar o pagamento. Tente novamente.";
+// Exigência do Banco Inter para emissão de boleto — abaixo disso a API
+// rejeita a cobrança (violação "valorNominal deve ser maior ou igual a 2.5").
+const MIN_BOLETO_AMOUNT = 2.5;
 
 function createPrivateResponse(
   body: object,
@@ -173,6 +176,12 @@ export async function POST(request: Request) {
     if (amount <= 0) {
       throw new CheckoutTransferError(422, "Total do pedido inválido");
     }
+    if (paymentMethod === "inter_boleto" && amount < MIN_BOLETO_AMOUNT) {
+      throw new CheckoutTransferError(
+        422,
+        `O valor mínimo para pagamento via boleto é R$ ${MIN_BOLETO_AMOUNT.toFixed(2).replace(".", ",")}. Escolha Pix ou cartão para valores menores.`,
+      );
+    }
 
     // Sem isso, o pedido fica órfão (sem customer_id) mesmo com o cliente
     // logado, e some da lista "Meus pedidos" — checkout já exige login, então
@@ -309,10 +318,14 @@ export async function POST(request: Request) {
             ? error.name
             : "UNKNOWN",
     });
-    return createPrivateResponse(
-      { message: GENERIC_ERROR_MESSAGE },
-      status,
-      activeCartToken,
-    );
+    // Só passa a mensagem adiante para erros 422 (dado inválido/ação do
+    // cliente, ex.: valor abaixo do mínimo do boleto) — nunca para falhas
+    // de provedor/servidor (502/503), que continuam com o texto genérico
+    // para não vazar detalhe interno.
+    const message =
+      status === 422 && error instanceof Error && error.message
+        ? error.message
+        : GENERIC_ERROR_MESSAGE;
+    return createPrivateResponse({ message }, status, activeCartToken);
   }
 }

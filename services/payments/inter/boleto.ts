@@ -115,7 +115,7 @@ export async function createBoletoCharge(
         endereco: input.billingAddress.address1,
         cidade: input.billingAddress.city,
         uf: input.billingAddress.state,
-        cep: input.billingAddress.postcode,
+        cep: input.billingAddress.postcode.replace(/\D/g, ""),
       },
     },
   );
