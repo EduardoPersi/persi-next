@@ -46,6 +46,12 @@ export function CheckoutShippingPlaceholder() {
     ? billingAddress
     : shippingAddress;
   const addressComplete = isAddressComplete(activeAddress);
+  // `reset()` (chamado no fim de updateAddress) troca a referência de
+  // activeAddress mesmo devolvendo os mesmos valores — usar o objeto direto
+  // como dependência do efeito abaixo fazia esse próprio reset disparar o
+  // cálculo de novo, sem parar. Uma chave por conteúdo resolve isso: só
+  // muda quando os valores realmente mudam.
+  const addressKey = JSON.stringify(activeAddress);
   const [status, setStatus] = useState<ShippingStatus>(
     cart?.shippingPackages.some((shippingPackage) =>
       shippingPackage.rates.some((rate) => rate.selected),
@@ -131,7 +137,7 @@ export function CheckoutShippingPlaceholder() {
     }, 600);
     return () => window.clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressComplete, activeAddress]);
+  }, [addressComplete, addressKey]);
 
   const chooseRate = async (packageId: number | string, rateId: string) => {
     if (isCheckoutUpdating || status === "selecting-rate") return;
