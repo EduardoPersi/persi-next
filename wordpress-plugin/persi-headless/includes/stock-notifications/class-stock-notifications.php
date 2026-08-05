@@ -196,7 +196,7 @@ final class Persi_Headless_Stock_Notifications {
 	}
 
 	private function email_template( $product, $unsubscribe_url ) {
-		$product_url = Persi_Headless_Stock_Configuration::frontend_url() . '/produto/' . $product->get_slug();
+		$product_url = Persi_Headless_Stock_Configuration::frontend_url() . '/' . $product->get_slug();
 		$image = wp_get_attachment_image_url( $product->get_image_id(), 'woocommerce_thumbnail' );
 		$price = wp_strip_all_tags( wc_price( $product->get_price() ) );
 		$pix = apply_filters( 'persi_headless_stock_pix_price', '', $product );

@@ -140,7 +140,7 @@ class Persi_Headless_Product_Families {
 			$image_id = $item->get_image_id();
 			$items[] = array(
 				'productId' => $item->get_id(), 'name' => $item->get_name(), 'slug' => $item->get_slug(),
-				'href' => wp_make_link_relative( Persi_Headless_Settings::frontend_url( 'produto/' . $item->get_slug() ) ),
+				'href' => wp_make_link_relative( Persi_Headless_Settings::frontend_url( $item->get_slug() ) ),
 				'attributes' => $values,
 				'image' => array( 'src' => $image_id ? wp_get_attachment_image_url( $image_id, 'woocommerce_thumbnail' ) : '', 'alt' => $image_id ? get_post_meta( $image_id, '_wp_attachment_image_alt', true ) : '' ),
 				'inStock' => $item->is_in_stock(), 'purchasable' => $item->is_purchasable(), 'isCurrent' => $item->get_id() === $product_id,
