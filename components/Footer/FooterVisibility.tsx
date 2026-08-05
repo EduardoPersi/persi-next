@@ -31,18 +31,18 @@ export function FooterVisibility({ children }: { children: ReactNode }) {
     <footer className="border-t border-[#E5E7EB] bg-slate-50">
       <Container className="py-4 text-center">
         <h2 className="text-sm font-bold text-slate-800">Formas de pagamento</h2>
-        <ul className="mx-auto mt-3 grid max-w-md grid-cols-3 gap-3 sm:max-w-lg sm:grid-cols-6">
+        <ul className="mx-auto mt-3 grid max-w-[224px] grid-cols-3 gap-1.5 sm:max-w-[256px] sm:grid-cols-6">
           {PAYMENT_ICONS.map((icon) => (
             <li
               key={icon.file}
-              className="flex aspect-[10/7] items-center justify-center rounded-lg border border-slate-200 bg-white p-2"
+              className="flex aspect-[10/7] items-center justify-center rounded-lg border border-slate-200 bg-white p-1"
             >
               <Image
                 src={`/images/footer/${icon.file}.webp`}
                 alt={icon.label}
                 width={500}
                 height={350}
-                sizes="90px"
+                sizes="45px"
                 className="h-auto w-full object-contain"
               />
             </li>
