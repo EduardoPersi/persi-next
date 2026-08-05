@@ -27,3 +27,35 @@ export function getPaymentMethodDiscountRate(
   if (method === "inter_boleto") return BOLETO_DISCOUNT_RATE;
   return 0;
 }
+
+// Exigência do Banco Inter para emissão de boleto — abaixo disso a API
+// rejeita a cobrança (violação "valorNominal deve ser maior ou igual a 2.5").
+// Nenhum outro método tem mínimo confirmado hoje.
+export const MIN_BOLETO_AMOUNT = 2.5;
+
+// Fonte única de "valor mínimo já com desconto aplicado" por forma de
+// pagamento — usada tanto para decidir o que mostrar no seletor (client)
+// quanto para validar antes de criar a cobrança (server, ver
+// app/api/checkout/payment/route.ts). Novo gateway com mínimo próprio só
+// precisa de uma linha aqui.
+const MIN_AMOUNT_BY_METHOD: Partial<Record<CheckoutPaymentMethod, number>> = {
+  inter_boleto: MIN_BOLETO_AMOUNT,
+};
+
+export function getDiscountedAmount(
+  method: CheckoutPaymentMethod,
+  cartTotal: number,
+): number {
+  return cartTotal * (1 - getPaymentMethodDiscountRate(method));
+}
+
+// Sem `cartTotal` conhecido ainda (carrinho carregando), nunca esconde a
+// opção — só filtra depois que o valor real está disponível.
+export function isPaymentMethodAvailable(
+  method: CheckoutPaymentMethod,
+  cartTotal: number | undefined,
+): boolean {
+  const minAmount = MIN_AMOUNT_BY_METHOD[method];
+  if (!minAmount || typeof cartTotal !== "number") return true;
+  return getDiscountedAmount(method, cartTotal) >= minAmount;
+}

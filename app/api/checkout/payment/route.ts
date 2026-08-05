@@ -2,7 +2,10 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
 import { exceedsRequestLimit } from "@/app/api/checkout/checkout-request";
-import { getPaymentMethodDiscountRate } from "@/components/Checkout/paymentMethod";
+import {
+  getPaymentMethodDiscountRate,
+  MIN_BOLETO_AMOUNT,
+} from "@/components/Checkout/paymentMethod";
 import {
   getCartTokenCookieOptions,
   getExpiredCartTokenCookieOptions,
@@ -35,9 +38,6 @@ export const revalidate = 0;
 export const runtime = "nodejs";
 
 const GENERIC_ERROR_MESSAGE = "Não foi possível iniciar o pagamento. Tente novamente.";
-// Exigência do Banco Inter para emissão de boleto — abaixo disso a API
-// rejeita a cobrança (violação "valorNominal deve ser maior ou igual a 2.5").
-const MIN_BOLETO_AMOUNT = 2.5;
 
 function createPrivateResponse(
   body: object,
@@ -270,6 +270,7 @@ export async function POST(request: Request) {
       result = {
         method: "inter_boleto",
         orderId: order.id,
+        amount,
         requestCode: charge.requestCode,
         digitableLine: charge.digitableLine,
         barcode: charge.barcode,

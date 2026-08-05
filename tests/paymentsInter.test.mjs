@@ -9,6 +9,7 @@ import {
   createBoletoCharge,
   getBoletoChargeStatus,
   getBoletoDueDate,
+  getBoletoPdfBase64,
 } from "../services/payments/inter/boleto.ts";
 
 // `services/payments/inter/client.ts` importa "server-only" (mTLS/OAuth2 do
@@ -245,4 +246,84 @@ test("getBoletoChargeStatus valida a situação recebida", async () => {
   });
 
   await assert.rejects(getBoletoChargeStatus("REQ1", request), /Situação de boleto desconhecida/);
+});
+
+test("createBoletoCharge reconsulta até a cobrança sair de EM_PROCESSAMENTO e trazer a linha digitável", async () => {
+  const calls = [];
+  let getCount = 0;
+  const request = async (path, method, body) => {
+    calls.push({ path, method, body });
+    if (method === "POST") return { codigoSolicitacao: "REQ1" };
+    getCount += 1;
+    // Emissão assíncrona no Inter: as duas primeiras consultas ainda pegam a
+    // cobrança em processamento, só a terceira já traz a linha digitável.
+    if (getCount < 3) {
+      return { cobranca: { situacao: "EM_PROCESSAMENTO" } };
+    }
+    return {
+      cobranca: { situacao: "A_RECEBER", dataVencimento: getBoletoDueDate() },
+      boleto: { linhaDigitavel: "34191...", codigoBarras: "341...9" },
+    };
+  };
+
+  const charge = await createBoletoCharge(
+    {
+      seuNumero: "PEDIDO-100",
+      amount: 250,
+      payerDocument: "12345678909",
+      payerName: "Maria Silva",
+      billingAddress,
+    },
+    request,
+    { pollIntervalMs: 0 },
+  );
+
+  assert.equal(charge.status, "A_RECEBER");
+  assert.equal(charge.digitableLine, "34191...");
+  // 1 POST + 3 GETs (a reconsulta inicial mais duas tentativas extras).
+  assert.equal(calls.length, 4);
+});
+
+test("createBoletoCharge desiste depois do número máximo de tentativas e devolve o que tiver, sem lançar erro", async () => {
+  let getCount = 0;
+  const request = async (path, method) => {
+    if (method === "POST") return { codigoSolicitacao: "REQ1" };
+    getCount += 1;
+    return { cobranca: { situacao: "EM_PROCESSAMENTO" } };
+  };
+
+  const charge = await createBoletoCharge(
+    {
+      seuNumero: "PEDIDO-100",
+      amount: 250,
+      payerDocument: "12345678909",
+      payerName: "Maria Silva",
+      billingAddress,
+    },
+    request,
+    { pollIntervalMs: 0, pollAttempts: 2 },
+  );
+
+  assert.equal(charge.status, "EM_PROCESSAMENTO");
+  assert.equal(charge.digitableLine, "");
+  // 1 reconsulta inicial + 2 tentativas extras, nunca mais que o limite.
+  assert.equal(getCount, 3);
+});
+
+test("getBoletoPdfBase64 devolve o campo pdf da resposta", async () => {
+  const calls = [];
+  const request = async (path, method) => {
+    calls.push({ path, method });
+    return { pdf: "base64conteudo" };
+  };
+
+  const pdf = await getBoletoPdfBase64("REQ1", request);
+  assert.equal(pdf, "base64conteudo");
+  assert.equal(calls[0].path, "/cobranca/v3/cobrancas/REQ1/pdf");
+  assert.equal(calls[0].method, "GET");
+});
+
+test("getBoletoPdfBase64 rejeita quando a resposta não traz o pdf", async () => {
+  const request = async () => ({});
+  await assert.rejects(getBoletoPdfBase64("REQ1", request), /PDF do boleto indisponível/);
 });

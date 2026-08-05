@@ -95,7 +95,19 @@ export async function GET(request: Request) {
       const charge = await getBoletoChargeStatus(reference);
       const category = categorizeBoletoStatus(charge.status);
       await reconcilePaymentReference("inter", reference, category);
-      return createPrivateResponse({ status: charge.status, category }, 200);
+      // A criação já tenta algumas vezes até a linha digitável ficar pronta
+      // (ver createBoletoCharge), mas se ainda estiver "EM_PROCESSAMENTO" na
+      // resposta inicial, o cliente reconsulta aqui até ela aparecer.
+      return createPrivateResponse(
+        {
+          status: charge.status,
+          category,
+          digitableLine: charge.digitableLine,
+          barcode: charge.barcode,
+          dueDate: charge.dueDate,
+        },
+        200,
+      );
     }
 
     const charge = await getCardChargeStatus(reference);

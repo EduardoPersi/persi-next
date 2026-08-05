@@ -13,6 +13,7 @@ export interface PixPaymentResult {
 export interface BoletoPaymentResult {
   method: "inter_boleto";
   orderId: number;
+  amount: number;
   requestCode: string;
   digitableLine: string;
   barcode: string;

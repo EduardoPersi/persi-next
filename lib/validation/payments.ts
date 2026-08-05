@@ -61,3 +61,7 @@ export const paymentStatusQuerySchema = z.object({
   provider: z.enum(["inter_pix", "inter_boleto", "pagbank_card"]),
   reference: z.string().trim().min(1).max(200),
 });
+
+export const boletoPdfQuerySchema = z.object({
+  reference: z.string().trim().min(1).max(200),
+});

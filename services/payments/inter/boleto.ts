@@ -95,11 +95,33 @@ function buildPagadorDocument(document: string): { cpfCnpj: string; tipoPessoa: 
   };
 }
 
+// A emissão é assíncrona no Inter: a cobrança nasce "EM_PROCESSAMENTO" e só
+// alguns segundos depois passa a ter linha digitável/código de barras. Uma
+// única reconsulta logo após o POST (comportamento antigo) frequentemente
+// pegava a cobrança ainda em processamento e devolvia esses campos vazios —
+// por isso reconsulta algumas vezes, com um pequeno intervalo, antes de
+// devolver. Se ainda estiver processando depois disso, devolve mesmo assim
+// (o cliente continua consultando via /api/checkout/payment/status).
+const BOLETO_STATUS_POLL_ATTEMPTS = 6;
+const BOLETO_STATUS_POLL_INTERVAL_MS = 1500;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export interface CreateBoletoOptions {
+  pollAttempts?: number;
+  pollIntervalMs?: number;
+}
+
 export async function createBoletoCharge(
   input: CreateBoletoInput,
   request: InterRequestFn = defaultInterRequest,
+  options: CreateBoletoOptions = {},
 ): Promise<BoletoCharge> {
   const dueDate = getBoletoDueDate();
+  const pollAttempts = options.pollAttempts ?? BOLETO_STATUS_POLL_ATTEMPTS;
+  const pollIntervalMs = options.pollIntervalMs ?? BOLETO_STATUS_POLL_INTERVAL_MS;
 
   const created = await request<InterBoletoCreateResponse>(
     "/cobranca/v3/cobrancas",
@@ -128,7 +150,17 @@ export async function createBoletoCharge(
     );
   }
 
-  return getBoletoChargeStatus(created.codigoSolicitacao, request);
+  let charge = await getBoletoChargeStatus(created.codigoSolicitacao, request);
+  for (
+    let attempt = 0;
+    attempt < pollAttempts && charge.status === "EM_PROCESSAMENTO" && !charge.digitableLine;
+    attempt++
+  ) {
+    await delay(pollIntervalMs);
+    charge = await getBoletoChargeStatus(created.codigoSolicitacao, request);
+  }
+
+  return charge;
 }
 
 export async function getBoletoChargeStatus(
@@ -147,4 +179,30 @@ export async function getBoletoChargeStatus(
     barcode: detail.boleto?.codigoBarras ?? "",
     dueDate: detail.cobranca?.dataVencimento ?? "",
   };
+}
+
+interface InterBoletoPdfResponse {
+  pdf?: string;
+}
+
+// Só pode ser buscado depois que a cobrança sai de "EM_PROCESSAMENTO" (ver
+// createBoletoCharge) — antes disso o Inter ainda não tem o PDF gerado.
+export async function getBoletoPdfBase64(
+  requestCode: string,
+  request: InterRequestFn = defaultInterRequest,
+): Promise<string> {
+  const detail = await request<InterBoletoPdfResponse>(
+    `/cobranca/v3/cobrancas/${encodeURIComponent(requestCode)}/pdf`,
+    "GET",
+  );
+
+  if (!detail.pdf) {
+    throw new InterPaymentError(
+      502,
+      "PDF do boleto indisponível",
+      "INTER_BOLETO_PDF_UNAVAILABLE",
+    );
+  }
+
+  return detail.pdf;
 }

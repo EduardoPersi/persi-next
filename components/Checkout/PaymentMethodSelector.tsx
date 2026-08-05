@@ -6,6 +6,7 @@ import { Barcode, CreditCard } from "lucide-react";
 import { PixIcon } from "@/components/Product/PixIcon";
 import {
   getPaymentMethodDiscountRate,
+  isPaymentMethodAvailable,
   type CheckoutPaymentMethod,
 } from "./paymentMethod";
 
@@ -91,7 +92,7 @@ export function PaymentMethodSelector({
   const pixDiscountLabel = formatDiscount("inter_pix");
   const boletoDiscountLabel = formatDiscount("inter_boleto");
 
-  const options: PaymentMethodOption[] = [
+  const allOptions: PaymentMethodOption[] = [
     {
       value: "inter_pix",
       label: "Pix",
@@ -131,6 +132,13 @@ export function PaymentMethodSelector({
         ]
       : []),
   ];
+
+  // Novo gateway com valor mínimo próprio: basta declarar o mínimo em
+  // MIN_AMOUNT_BY_METHOD (./paymentMethod.ts) — o filtro abaixo já esconde
+  // a opção sozinho quando o carrinho não atinge o valor.
+  const options = allOptions.filter((option) =>
+    isPaymentMethodAvailable(option.value, cartTotal),
+  );
 
   return (
     <div

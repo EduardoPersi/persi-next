@@ -51,6 +51,28 @@ test("rota de status de pagamento resolve e autoriza o pedido antes de consultar
   assert.equal(unauthorizedResponses.length, 2);
 });
 
+test("rota de download do PDF do boleto autoriza o pedido antes de buscar o PDF no Inter", () => {
+  const source = read("app/api/checkout/payment/boleto-pdf/route.ts");
+  assert.match(source, /findOrderByPaymentReference/);
+  assert.match(source, /isAuthorizedForOrderStatus/);
+
+  const findOrderIndex = source.indexOf('findOrderByPaymentReference("inter", reference)');
+  const authIndex = source.indexOf("isAuthorizedForOrderStatus(");
+  const pdfIndex = source.indexOf("getBoletoPdfBase64(reference)");
+
+  assert.ok(findOrderIndex > -1 && authIndex > -1 && pdfIndex > -1);
+  assert.ok(findOrderIndex < authIndex && authIndex < pdfIndex);
+
+  // Mesma regra da rota de status: nunca 404 (não confirma nem nega a
+  // existência do pedido para quem não provou ter relação com ele).
+  assert.doesNotMatch(source, /,\s*404\s*\)/);
+  const unauthorizedResponses = source.match(/UNAUTHORIZED_MESSAGE,\s*401\)/g) ?? [];
+  assert.equal(unauthorizedResponses.length, 2);
+
+  // O PDF pode conter dados do pagador — nunca deve ser cacheado.
+  assert.match(source, /Cache-Control.*private, no-store/);
+});
+
 test("página de confirmação do checkout também autoriza antes de resolver o status do pagamento", () => {
   const source = read("app/checkout/confirmacao/page.tsx");
   assert.match(source, /findOrderByPaymentReference/);

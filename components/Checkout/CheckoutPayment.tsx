@@ -1,9 +1,9 @@
 "use client";
 
-import type { RefObject } from "react";
+import { useEffect, type RefObject } from "react";
 import { PaymentCardFields, type PaymentCardFieldsHandle } from "./PaymentCardFields";
 import { PaymentMethodSelector } from "./PaymentMethodSelector";
-import type { CheckoutPaymentMethod } from "./paymentMethod";
+import { isPaymentMethodAvailable, type CheckoutPaymentMethod } from "./paymentMethod";
 
 interface CheckoutPaymentProps {
   method: CheckoutPaymentMethod;
@@ -34,6 +34,15 @@ export function CheckoutPayment({
 }: CheckoutPaymentProps) {
   const showCardFields = method === "pagbank_card";
   const isWalletMethod = CARD_METHODS.includes(method) && method !== "pagbank_card";
+
+  // Se o carrinho mudar (ex.: cupom removido, item excluído) e o método já
+  // selecionado deixar de atingir o valor mínimo, troca para o Pix — a
+  // única forma sem mínimo — em vez de deixar uma opção escondida marcada.
+  useEffect(() => {
+    if (!isPaymentMethodAvailable(method, cartTotal)) {
+      onMethodChange("inter_pix");
+    }
+  }, [method, cartTotal, onMethodChange]);
 
   return (
     <div className="space-y-5">

@@ -353,7 +353,16 @@ export function CheckoutForm({
   }
 
   if (boletoResult) {
-    return <BoletoPaymentResult result={boletoResult} />;
+    return (
+      <BoletoPaymentResult
+        result={boletoResult}
+        onPaid={() =>
+          router.push(
+            `/checkout/confirmacao?provider=inter_boleto&reference=${encodeURIComponent(boletoResult.requestCode)}`,
+          )
+        }
+      />
+    );
   }
 
   const profileState: CheckoutStepState =
