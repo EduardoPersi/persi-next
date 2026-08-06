@@ -80,7 +80,7 @@ export function Footer() {
         aria-labelledby="newsletter-title"
         className="bg-[#1246ab] text-white"
       >
-        <Container className="flex flex-col gap-3 py-4 md:gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <Container className="flex flex-col gap-3 py-4 md:gap-4 lg:flex-row lg:items-center lg:justify-center lg:gap-10">
           <div className="mx-auto flex w-full max-w-[92%] items-center gap-2 md:mx-0 md:w-auto md:max-w-none md:gap-3">
             <Image
               src="/images/footer/newsletter.webp"
@@ -107,7 +107,7 @@ export function Footer() {
               name="email"
               placeholder="E-mail"
               autoComplete="email"
-              className="box-border h-11 w-full min-w-0 rounded-[6px] border border-slate-200 bg-white px-4 text-sm leading-normal text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20 md:w-auto md:flex-1 md:rounded-md"
+              className="box-border h-11 w-full min-w-0 rounded-[6px] border border-slate-200 bg-white px-4 text-sm leading-normal text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20 md:h-[55px] md:w-auto md:flex-1 md:rounded-md"
             />
             <button
               type="button"
