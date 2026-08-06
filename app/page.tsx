@@ -3,14 +3,17 @@ import { BrandCarousel } from "@/components/Brand/BrandCarousel";
 import { HomeCategoryCarousel } from "@/components/Category/HomeCategoryCarousel";
 import { Header } from "@/components/Header/Header";
 import { HeroBanner } from "@/components/HeroBanner/HeroBanner";
+import { HomeBenefits } from "@/components/home/HomeBenefits";
 import { InstagramFeed } from "@/components/home/InstagramFeed";
 import { InstagramSkeleton } from "@/components/home/InstagramSkeleton";
+import { NewArrivalsCarousel } from "@/components/Product/NewArrivalsCarousel";
 import { ProductGrid } from "@/components/Product/ProductGrid";
 import { ProductGridSkeleton } from "@/components/Product/ProductGridSkeleton";
 import { RecentlyViewedProducts } from "@/components/Product/RecentlyViewedProducts";
 import { Container } from "@/components/UI/Container";
 import { getAllProductBrands } from "@/services/woocommerce/brands";
 import { getAllProductCategories } from "@/services/woocommerce/categories";
+import { getProducts } from "@/services/woocommerce/products";
 
 const HIDDEN_CATEGORY_SLUGS = new Set([
   "sem-categoria",
@@ -18,9 +21,12 @@ const HIDDEN_CATEGORY_SLUGS = new Set([
 ]);
 
 export default async function Home() {
-  const [allCategories, allBrands] = await Promise.all([
+  const [allCategories, allBrands, newArrivals] = await Promise.all([
     getAllProductCategories().catch(() => []),
     getAllProductBrands().catch(() => []),
+    getProducts({ perPage: 10, order: "desc", orderby: "date" }).catch(
+      () => [],
+    ),
   ]);
   const mainCategories = allCategories
     .filter(
@@ -57,10 +63,24 @@ export default async function Home() {
 
       <HeroBanner />
 
+      <section className="border-b border-slate-200 bg-white py-6">
+        <Container>
+          <HomeBenefits />
+        </Container>
+      </section>
+
       {mainCategories.length > 0 ? (
         <section className="bg-white py-8 sm:py-10">
           <Container>
             <HomeCategoryCarousel categories={mainCategories} />
+          </Container>
+        </section>
+      ) : null}
+
+      {newArrivals.length > 0 ? (
+        <section className="bg-white pb-8 sm:pb-10">
+          <Container>
+            <NewArrivalsCarousel products={newArrivals} />
           </Container>
         </section>
       ) : null}
