@@ -6,6 +6,9 @@ import CategoryPage, {
 import InstitutionalPage, {
   generateMetadata as generateInstitutionalMetadata,
 } from "@/app/_storefront/institutional-page";
+import PostPage, {
+  generateMetadata as generatePostMetadata,
+} from "@/app/_storefront/post-page";
 import ProductPage, {
   generateMetadata as generateProductMetadata,
 } from "@/app/_storefront/product-page";
@@ -15,6 +18,8 @@ import {
 } from "@/lib/routing/storefrontUrls";
 import { isInstitutionalRouteSlug } from "@/lib/constants/institutionalPages";
 import { getAllProductCategories } from "@/services/woocommerce/categories";
+import { getProductBySlug } from "@/services/woocommerce/products";
+import { getBlogPostBySlug } from "@/services/wordpress/posts";
 
 type PublicPageProps = {
   params: Promise<{ segments: string[] }>;
@@ -32,11 +37,14 @@ async function resolvePublicRoute(segments: string[]) {
   const category = findCategoryByPath(segments, categories);
   if (category) return { type: "category" as const, slug: category.slug };
 
-  if (
-    segments.length === 1 &&
-    !RESERVED_ROOT_SLUGS.has(segments[0])
-  ) {
-    return { type: "product" as const, slug: segments[0] };
+  if (segments.length === 1 && !RESERVED_ROOT_SLUGS.has(segments[0])) {
+    const slug = segments[0];
+
+    const product = await getProductBySlug(slug).catch(() => undefined);
+    if (product) return { type: "product" as const, slug };
+
+    const post = await getBlogPostBySlug(slug).catch(() => undefined);
+    if (post) return { type: "post" as const, slug };
   }
 
   return undefined;
@@ -57,6 +65,9 @@ export async function generateMetadata({
   if (route.type === "category") {
     return generateCategoryMetadata({ params: routeParams, searchParams });
   }
+  if (route.type === "post") {
+    return generatePostMetadata({ params: routeParams });
+  }
   return generateProductMetadata({ params: routeParams });
 }
 
@@ -74,6 +85,9 @@ export default async function PublicPage({
   }
   if (route.type === "category") {
     return CategoryPage({ params: routeParams, searchParams });
+  }
+  if (route.type === "post") {
+    return PostPage({ params: routeParams });
   }
   return ProductPage({ params: routeParams });
 }

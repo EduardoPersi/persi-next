@@ -35,6 +35,13 @@ export function getProductHref(slug: string) {
   return `/${encodeURIComponent(slug)}`;
 }
 
+// Posts do blog vivem no mesmo namespace de URL "achatado" que produtos e
+// categorias (sem prefixo /blog/), preservando as URLs já indexadas do
+// WordPress.
+export function getPostHref(slug: string) {
+  return getProductHref(slug);
+}
+
 export function getCategoryPath<T extends CategoryNode>(
   category: CategoryNode,
   categories: readonly T[],

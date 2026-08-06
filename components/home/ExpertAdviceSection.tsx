@@ -1,4 +1,6 @@
 import Image from "next/image";
+import Link from "next/link";
+import { getPostHref } from "@/lib/routing/storefrontUrls";
 import { getLatestBlogPosts } from "@/services/wordpress/posts";
 import type { BlogPost } from "@/types/blogPost";
 
@@ -22,8 +24,8 @@ function BlogPostCard({ post }: { post: BlogPost }) {
     .join(" / ");
 
   return (
-    <a
-      href={post.link}
+    <Link
+      href={getPostHref(post.slug)}
       className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition duration-200 hover:-translate-y-1 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
     >
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
@@ -64,7 +66,7 @@ function BlogPostCard({ post }: { post: BlogPost }) {
           Continuar lendo
         </span>
       </div>
-    </a>
+    </Link>
   );
 }
 

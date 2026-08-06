@@ -15,3 +15,7 @@ export interface BlogPost {
   };
   categories: string[];
 }
+
+export interface BlogPostDetail extends BlogPost {
+  contentHtml: string;
+}

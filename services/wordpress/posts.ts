@@ -1,6 +1,7 @@
 import "server-only";
+import { sanitizeBlogContent } from "@/lib/formatting/sanitizeBlogContent";
 import { stripHtml } from "@/services/woocommerce/mappers";
-import type { BlogPost } from "@/types/blogPost";
+import type { BlogPost, BlogPostDetail } from "@/types/blogPost";
 
 const REQUEST_TIMEOUT_MS = 5_000;
 
@@ -26,6 +27,7 @@ interface WordPressPostResponse {
   date: string;
   title: { rendered: string };
   excerpt: { rendered: string };
+  content: { rendered: string };
   _embedded?: {
     author?: WordPressEmbeddedAuthor[];
     "wp:featuredmedia"?: WordPressEmbeddedMedia[];
@@ -76,6 +78,13 @@ function mapPost(post: WordPressPostResponse): BlogPost {
   };
 }
 
+function mapPostDetail(post: WordPressPostResponse): BlogPostDetail {
+  return {
+    ...mapPost(post),
+    contentHtml: sanitizeBlogContent(post.content?.rendered ?? ""),
+  };
+}
+
 export async function getLatestBlogPosts(limit = 3): Promise<BlogPost[]> {
   const wordpressUrl = process.env.WORDPRESS_URL;
   if (!wordpressUrl) return [];
@@ -97,5 +106,35 @@ export async function getLatestBlogPosts(limit = 3): Promise<BlogPost[]> {
     return data.filter(isWordPressPost).map(mapPost);
   } catch {
     return [];
+  }
+}
+
+export async function getBlogPostBySlug(
+  slug: string,
+): Promise<BlogPostDetail | undefined> {
+  const wordpressUrl = process.env.WORDPRESS_URL;
+  if (!wordpressUrl) return undefined;
+
+  try {
+    const response = await fetch(
+      new URL(
+        `/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_embed=1`,
+        wordpressUrl,
+      ),
+      {
+        headers: { Accept: "application/json" },
+        next: { revalidate: 3600 },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      },
+    );
+    if (!response.ok) return undefined;
+
+    const data: unknown = await response.json();
+    if (!Array.isArray(data)) return undefined;
+
+    const post = data.filter(isWordPressPost)[0];
+    return post ? mapPostDetail(post) : undefined;
+  } catch {
+    return undefined;
   }
 }
