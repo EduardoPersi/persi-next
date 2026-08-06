@@ -98,17 +98,19 @@ export function Footer() {
             </h2>
           </div>
 
-          <form className="mx-auto flex w-full max-w-[92%] flex-col gap-2 md:mx-0 md:max-w-none md:flex-row md:gap-3 lg:max-w-[720px]">
+          <form className="mx-auto flex w-full max-w-[92%] flex-col gap-2 md:mx-0 md:max-w-none md:flex-row md:gap-3 lg:w-[720px]">
             <label htmlFor="footer-email" className="sr-only">
               E-mail
             </label>
-            <EmailAutocompleteInput
-              id="footer-email"
-              name="email"
-              placeholder="E-mail"
-              autoComplete="email"
-              className="box-border h-11 w-full min-w-0 rounded-[6px] border border-slate-200 bg-white px-4 text-sm leading-normal text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20 md:h-[55px] md:w-auto md:flex-1 md:rounded-md"
-            />
+            <div className="w-full md:min-w-0 md:flex-1">
+              <EmailAutocompleteInput
+                id="footer-email"
+                name="email"
+                placeholder="E-mail"
+                autoComplete="email"
+                className="box-border h-11 w-full min-w-0 rounded-[6px] border border-slate-200 bg-white px-4 text-sm leading-normal text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20 md:rounded-md"
+              />
+            </div>
             <button
               type="button"
               className="box-border flex h-11 min-h-0 w-full items-center justify-center rounded-[6px] bg-[#ff6a00] px-8 text-sm font-medium leading-normal text-white transition-colors duration-200 hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#1246ab] md:w-auto md:rounded-md"
