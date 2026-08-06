@@ -55,12 +55,12 @@ export function WhatsAppFloatingButton() {
         >
           <div className="flex items-center justify-between bg-[#075E54] px-4 py-3 text-white">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-white">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full">
                 {/* eslint-disable-next-line @next/next/no-img-element -- ícone estático de 32px, otimização do next/image é desnecessária */}
                 <img
                   src="/favicon.ico"
                   alt=""
-                  className="h-6 w-6 object-contain"
+                  className="h-full w-full object-cover"
                 />
               </span>
               <span className="font-semibold">Persi</span>
