@@ -3,6 +3,8 @@ import { BrandCarousel } from "@/components/Brand/BrandCarousel";
 import { HomeCategoryCarousel } from "@/components/Category/HomeCategoryCarousel";
 import { Header } from "@/components/Header/Header";
 import { HeroBanner } from "@/components/HeroBanner/HeroBanner";
+import { ExpertAdviceSection } from "@/components/home/ExpertAdviceSection";
+import { ExpertAdviceSkeleton } from "@/components/home/ExpertAdviceSkeleton";
 import { HomeBenefits } from "@/components/home/HomeBenefits";
 import { InstagramFeed } from "@/components/home/InstagramFeed";
 import { InstagramSkeleton } from "@/components/home/InstagramSkeleton";
@@ -122,6 +124,10 @@ export default async function Home() {
             <InstagramFeed />
           </Suspense>
           <RecentlyViewedProducts />
+
+          <Suspense fallback={<ExpertAdviceSkeleton />}>
+            <ExpertAdviceSection />
+          </Suspense>
         </Container>
       </section>
     </>

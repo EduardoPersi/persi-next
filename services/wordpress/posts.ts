@@ -1,0 +1,101 @@
+import "server-only";
+import { stripHtml } from "@/services/woocommerce/mappers";
+import type { BlogPost } from "@/types/blogPost";
+
+const REQUEST_TIMEOUT_MS = 5_000;
+
+interface WordPressEmbeddedTerm {
+  name: string;
+  taxonomy: string;
+}
+
+interface WordPressEmbeddedAuthor {
+  name: string;
+  avatar_urls?: Record<string, string>;
+}
+
+interface WordPressEmbeddedMedia {
+  source_url?: string;
+  alt_text?: string;
+}
+
+interface WordPressPostResponse {
+  id: number;
+  slug: string;
+  link: string;
+  date: string;
+  title: { rendered: string };
+  excerpt: { rendered: string };
+  _embedded?: {
+    author?: WordPressEmbeddedAuthor[];
+    "wp:featuredmedia"?: WordPressEmbeddedMedia[];
+    "wp:term"?: WordPressEmbeddedTerm[][];
+  };
+}
+
+function isWordPressPost(value: unknown): value is WordPressPostResponse {
+  if (!value || typeof value !== "object") return false;
+
+  const post = value as Partial<WordPressPostResponse>;
+  return (
+    typeof post.id === "number" &&
+    typeof post.slug === "string" &&
+    typeof post.link === "string" &&
+    typeof post.date === "string" &&
+    typeof post.title?.rendered === "string" &&
+    typeof post.excerpt?.rendered === "string"
+  );
+}
+
+function mapPost(post: WordPressPostResponse): BlogPost {
+  const featuredMedia = post._embedded?.["wp:featuredmedia"]?.[0];
+  const author = post._embedded?.author?.[0];
+  const categories = (post._embedded?.["wp:term"] ?? [])
+    .flat()
+    .filter((term) => term.taxonomy === "category")
+    .map((term) => stripHtml(term.name));
+
+  return {
+    id: post.id,
+    slug: post.slug,
+    link: post.link,
+    title: stripHtml(post.title.rendered),
+    excerpt: stripHtml(post.excerpt.rendered),
+    date: post.date,
+    image: featuredMedia?.source_url
+      ? {
+          src: featuredMedia.source_url,
+          alt: stripHtml(featuredMedia.alt_text || ""),
+        }
+      : undefined,
+    author: {
+      name: author?.name ? stripHtml(author.name) : "Persi Materiais",
+      avatarUrl: author?.avatar_urls?.["48"],
+    },
+    categories,
+  };
+}
+
+export async function getLatestBlogPosts(limit = 3): Promise<BlogPost[]> {
+  const wordpressUrl = process.env.WORDPRESS_URL;
+  if (!wordpressUrl) return [];
+
+  try {
+    const response = await fetch(
+      new URL(`/wp-json/wp/v2/posts?per_page=${limit}&_embed=1`, wordpressUrl),
+      {
+        headers: { Accept: "application/json" },
+        next: { revalidate: 3600 },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      },
+    );
+    if (!response.ok) return [];
+
+    const data: unknown = await response.json();
+    if (!Array.isArray(data)) return [];
+
+    return data.filter(isWordPressPost).map(mapPost);
+  } catch {
+    return [];
+  }
+}
