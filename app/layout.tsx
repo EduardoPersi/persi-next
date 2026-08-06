@@ -4,6 +4,7 @@ import { CartProvider } from "@/components/Cart/CartProvider";
 import { Footer } from "@/components/Footer/Footer";
 import { FooterVisibility } from "@/components/Footer/FooterVisibility";
 import { BackToTopButton } from "@/components/UI/BackToTopButton";
+import { WhatsAppFloatingButton } from "@/components/UI/WhatsAppFloatingButton";
 import { OverlayManagerProvider } from "@/context/OverlayManager";
 import "./globals.css";
 import { SITE_URL } from "@/lib/routing/storefrontUrls";
@@ -60,6 +61,7 @@ export default async function RootLayout({
                     <Footer />
                   </FooterVisibility>
                   <BackToTopButton />
+                  <WhatsAppFloatingButton />
                 </CartProvider>
               </CustomerListsProvider>
             </AccountProvider>
