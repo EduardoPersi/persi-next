@@ -1,5 +1,10 @@
-import { CreditCard, ShieldCheck, Truck } from "lucide-react";
+"use client";
+
+import { CreditCard, ShieldCheck, Store } from "lucide-react";
+import { A11y } from "swiper/modules";
+import { Swiper, SwiperSlide } from "swiper/react";
 import { WhatsAppIcon } from "@/components/UI/SocialIcons";
+import "swiper/css";
 
 const BENEFITS = [
   {
@@ -8,9 +13,9 @@ const BENEFITS = [
     description: "No cartão de crédito",
   },
   {
-    icon: Truck,
-    title: "Frete grátis",
-    description: "Para Jundiaí e região. Consulte as regras",
+    icon: Store,
+    title: "Compre no site, retire na loja",
+    description: "Praticidade sem pagar frete",
   },
   {
     icon: ShieldCheck,
@@ -30,30 +35,45 @@ export function HomeBenefits() {
       <h2 id="home-benefits-title" className="sr-only">
         Vantagens de comprar na Persi
       </h2>
-      <ul className="grid grid-cols-2 gap-y-4 sm:grid-cols-4 sm:gap-y-0 sm:divide-x sm:divide-slate-200">
+
+      <Swiper
+        modules={[A11y]}
+        slidesPerView={1.6}
+        spaceBetween={12}
+        watchOverflow
+        breakpoints={{
+          480: { slidesPerView: 2.2, spaceBetween: 16 },
+          640: {
+            slidesPerView: 4,
+            spaceBetween: 0,
+            allowTouchMove: false,
+            simulateTouch: false,
+          },
+        }}
+        wrapperClass="sm:divide-x sm:divide-slate-200"
+      >
         {BENEFITS.map((benefit) => {
           const Icon = benefit.icon;
           return (
-            <li
-              key={benefit.title}
-              className="flex items-start gap-3 px-2 sm:justify-center sm:px-4"
-            >
-              <Icon
-                className="mt-0.5 h-6 w-6 shrink-0 text-[#ff6a00]"
-                aria-hidden="true"
-              />
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-[#0c2d72]">
-                  {benefit.title}
-                </p>
-                <p className="mt-0.5 text-xs leading-4 text-slate-500">
-                  {benefit.description}
-                </p>
+            <SwiperSlide key={benefit.title} className="h-auto!">
+              <div className="flex h-full items-start gap-3 px-2 sm:justify-center sm:px-4">
+                <Icon
+                  className="mt-0.5 h-6 w-6 shrink-0 text-[#ff6a00]"
+                  aria-hidden="true"
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-[#0c2d72]">
+                    {benefit.title}
+                  </p>
+                  <p className="mt-0.5 text-xs leading-4 text-slate-500">
+                    {benefit.description}
+                  </p>
+                </div>
               </div>
-            </li>
+            </SwiperSlide>
           );
         })}
-      </ul>
+      </Swiper>
     </section>
   );
 }
