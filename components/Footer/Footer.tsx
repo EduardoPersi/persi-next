@@ -98,7 +98,7 @@ export function Footer() {
             </h2>
           </div>
 
-          <form className="mx-auto flex w-full max-w-[92%] flex-col gap-2 md:mx-0 md:max-w-none md:flex-row md:gap-3 lg:max-w-xl">
+          <form className="mx-auto flex w-full max-w-[92%] flex-col gap-2 md:mx-0 md:max-w-none md:flex-row md:gap-3 lg:max-w-[720px]">
             <label htmlFor="footer-email" className="sr-only">
               E-mail
             </label>

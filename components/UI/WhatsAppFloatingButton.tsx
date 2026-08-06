@@ -104,16 +104,16 @@ export function WhatsAppFloatingButton() {
         onClick={handleToggle}
         aria-label="Falar com a Persi Materiais pelo WhatsApp"
         aria-expanded={isPreviewVisible}
-        className="group relative flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2"
+        className="group relative flex h-[70px] w-[70px] items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2"
       >
         <span
           className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#25D366] opacity-0 group-hover:opacity-75"
           aria-hidden="true"
         />
-        <WhatsAppIcon className="relative h-7 w-7" aria-hidden="true" />
+        <WhatsAppIcon className="relative h-[35px] w-[35px]" aria-hidden="true" />
         {!hasOpened ? (
           <span
-            className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-red-500"
+            className="absolute -right-1 -top-1 h-[17.5px] w-[17.5px] rounded-full border-2 border-white bg-red-500"
             aria-hidden="true"
           />
         ) : null}
