@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
 import { WhatsAppIcon } from "@/components/UI/SocialIcons";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { useCookieConsent } from "@/hooks/useCookieConsent";
 
 const HIDDEN_PREFIXES = ["/checkout", "/carrinho"];
 const WHATSAPP_NUMBER = "551139648294";
@@ -16,6 +17,7 @@ export function WhatsAppFloatingButton() {
   const [isHovering, setIsHovering] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { bannerVisible } = useCookieConsent();
 
   useClickOutside({
     isOpen,
@@ -43,7 +45,9 @@ export function WhatsAppFloatingButton() {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-24 right-4 z-40 flex flex-col items-end gap-3 sm:right-6"
+      className={`fixed right-4 z-40 flex flex-col items-end gap-3 transition-[bottom] sm:right-6 ${
+        bannerVisible ? "bottom-44" : "bottom-24"
+      }`}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
