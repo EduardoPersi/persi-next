@@ -14,6 +14,7 @@ import {
   writeCookieConsent,
   type CookieConsentValue,
 } from "@/lib/consent/cookieConsent";
+import { updateGoogleConsent } from "@/lib/analytics/consentMode";
 
 interface CookieConsentContextValue {
   consent: CookieConsentValue | null;
@@ -32,6 +33,7 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
     const stored = readCookieConsent();
     if (stored) {
       setConsent(stored);
+      updateGoogleConsent(stored);
       return;
     }
     setBannerVisible(true);
@@ -41,12 +43,14 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
     writeCookieConsent("accepted");
     setConsent("accepted");
     setBannerVisible(false);
+    updateGoogleConsent("accepted");
   }, []);
 
   const decline = useCallback(() => {
     writeCookieConsent("declined");
     setConsent("declined");
     setBannerVisible(false);
+    updateGoogleConsent("declined");
   }, []);
 
   const value = useMemo(

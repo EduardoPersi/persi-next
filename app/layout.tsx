@@ -7,6 +7,10 @@ import { FooterVisibility } from "@/components/Footer/FooterVisibility";
 import { BackToTopButton } from "@/components/UI/BackToTopButton";
 import { WhatsAppFloatingButton } from "@/components/UI/WhatsAppFloatingButton";
 import { CookieConsentBanner } from "@/components/UI/CookieConsentBanner";
+import {
+  GoogleTagManagerNoScript,
+  GoogleTagManagerScript,
+} from "@/components/layout/GoogleTagManager";
 import { OverlayManagerProvider } from "@/context/OverlayManager";
 import "./globals.css";
 import { SITE_URL } from "@/lib/routing/storefrontUrls";
@@ -54,6 +58,8 @@ export default async function RootLayout({
   return (
     <html lang="pt-BR" className={`${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
+        <GoogleTagManagerScript />
+        <GoogleTagManagerNoScript />
         <CookieConsentProvider>
           <NavigationProvider menu={megaMenu}>
             <OverlayManagerProvider>
