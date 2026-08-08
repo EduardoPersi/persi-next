@@ -129,6 +129,38 @@ export function parseAccountSession(value: unknown): AccountSessionResult {
   };
 }
 
+export interface GoogleOneTapPayload {
+  credential: string;
+}
+
+export function parseGoogleOneTapPayload(rawBody: string): GoogleOneTapPayload {
+  if (Buffer.byteLength(rawBody, "utf8") > ACCOUNT_BODY_LIMIT_BYTES) {
+    throw new AccountValidationError();
+  }
+
+  let value: unknown;
+  try {
+    value = JSON.parse(rawBody);
+  } catch {
+    throw new AccountValidationError();
+  }
+
+  if (!isRecord(value)) throw new AccountValidationError();
+  const keys = Object.keys(value);
+  if (keys.length !== 1 || keys[0] !== "credential") {
+    throw new AccountValidationError();
+  }
+  if (
+    typeof value.credential !== "string" ||
+    value.credential.length < 1 ||
+    value.credential.length > 16_384
+  ) {
+    throw new AccountValidationError();
+  }
+
+  return { credential: value.credential };
+}
+
 export function isJsonContentType(value: string | null): boolean {
   return /^application\/json(?:\s*;|$)/i.test(value?.trim() ?? "");
 }

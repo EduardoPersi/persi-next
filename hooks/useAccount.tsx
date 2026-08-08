@@ -22,6 +22,7 @@ interface AccountContextValue {
   customer: AccountCustomer | null;
   login(payload: AccountLoginPayload): Promise<void>;
   logout(): Promise<void>;
+  applySession(result: AccountSessionResult): void;
 }
 
 const AccountContext = createContext<AccountContextValue | null>(null);
@@ -110,6 +111,16 @@ export function AccountProvider({
     setStatus("authenticated");
   }, []);
 
+  const applySession = useCallback((result: AccountSessionResult) => {
+    if (!result.authenticated) {
+      setCustomer(null);
+      setStatus("anonymous");
+      return;
+    }
+    setCustomer(result.customer);
+    setStatus("authenticated");
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await fetch("/api/account/logout", {
@@ -130,8 +141,8 @@ export function AccountProvider({
   }, []);
 
   const value = useMemo(
-    () => ({ status, customer, login, logout }),
-    [customer, login, logout, status],
+    () => ({ status, customer, login, logout, applySession }),
+    [applySession, customer, login, logout, status],
   );
 
   return (

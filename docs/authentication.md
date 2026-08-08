@@ -67,6 +67,48 @@ Negócio protegido por Bearer:
 - `DELETE /wp-json/persi-account/v1/stock-notifications/{id}`
 - endpoints `/wp-json/persi-headless/v1/customer-lists/*`
 
+## Google One Tap (login automático)
+
+Além do fluxo de redirect (`/api/auth/google/start` → `/api/auth/google/callback`,
+botão "Entrar com Google"), o site oferece login automático via **Google
+Identity Services (GSI/One Tap)**: um popup nativo do Google, renderizado pelo
+componente client `components/Account/GoogleOneTap.tsx`, que aparece para
+visitantes não autenticados em qualquer página fora de `/entrar`,
+`/criar-conta`, `/esqueci-minha-senha`, `/redefinir-senha`, `/checkout` e
+`/minha-conta`.
+
+O One Tap usa o **mesmo `GOOGLE_CLIENT_ID`** do fluxo de redirect (exposto ao
+navegador como `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, pois o script GSI roda no
+client) e reaproveita a mesma validação de ID token
+(`lib/account/oauth/google.ts::validateGoogleIdToken`) e o mesmo endpoint
+WordPress `/wp-json/persi-auth/v1/oauth/token` — nenhuma mudança foi
+necessária no plugin PHP.
+
+```text
+GSI (client) --credential--> POST /api/auth/google/one-tap
+                                  │ valida nonce + ID token (mesma validação do redirect)
+                                  ▼
+                        POST /wp-json/persi-auth/v1/oauth/token (mesmo endpoint)
+                                  ▼
+                     cookie __Host-persi_jwt_session + JSON de sessão
+```
+
+Diferenças em relação ao fluxo de redirect:
+
+- Não há `code`/PKCE: o GSI já entrega o `id_token` (`credential`) diretamente
+  no navegador.
+- O nonce é obtido por `GET /api/auth/google/one-tap/nonce` (cookie HttpOnly de
+  5 minutos, `path` restrito a `/api/auth/google/one-tap`) em vez de fazer
+  parte de uma transação de redirect com `state`.
+- A resposta é JSON (não um redirect de página inteira), consumida pelo
+  `fetch` do componente, que atualiza o `AccountProvider` via
+  `useAccount().applySession(...)` sem recarregar a página.
+
+Requer, fora deste repositório, que o domínio do site esteja cadastrado em
+**"Authorized JavaScript origins"** do mesmo OAuth Client ID no Google Cloud
+Console (separado das "Authorized redirect URIs" já configuradas para o fluxo
+de redirect).
+
 ## Sessão e logout
 
 Existe somente o cookie `__Host-persi_jwt_session`, com `HttpOnly`, `Secure`,

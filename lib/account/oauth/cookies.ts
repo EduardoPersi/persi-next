@@ -19,6 +19,19 @@ const COOKIE_NAMES = {
   },
 } as const;
 
+export const GOOGLE_ONE_TAP_NONCE_COOKIE = "persi_google_onetap_nonce";
+export const GOOGLE_ONE_TAP_NONCE_MAX_AGE = 5 * 60;
+
+export function getGoogleOneTapNonceCookieOptions(isProduction: boolean) {
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax" as const,
+    path: "/api/auth/google/one-tap",
+    maxAge: GOOGLE_ONE_TAP_NONCE_MAX_AGE,
+  };
+}
+
 type ConfiguredOAuthProvider = keyof typeof COOKIE_NAMES;
 
 export function getOAuthCookieNames(

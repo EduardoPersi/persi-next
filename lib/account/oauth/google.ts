@@ -104,6 +104,12 @@ function requireServerValue(
   return value;
 }
 
+export function getGoogleOneTapClientId(
+  environment: NodeJS.ProcessEnv = process.env,
+): string {
+  return requireServerValue(environment, "GOOGLE_CLIENT_ID");
+}
+
 export function getGoogleOAuthConfig(
   environment: NodeJS.ProcessEnv = process.env,
 ): GoogleOAuthConfig {
