@@ -5,6 +5,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/UI/Button";
 import { EmailAutocompleteInput } from "@/components/UI/EmailAutocompleteInput";
+import { RecaptchaNotice } from "@/components/UI/RecaptchaNotice";
 import Link from "next/link";
 import { useAccount } from "@/hooks/useAccount";
 import { useRecaptcha } from "@/hooks/useRecaptcha";
@@ -133,6 +134,7 @@ export function AccountLoginForm({
       >
         {loading ? "Entrando..." : "Entrar"}
       </Button>
+      <RecaptchaNotice className="text-center" />
 
       {variant === "drawer" ? (
         <div className="flex items-center justify-between gap-3 text-sm">

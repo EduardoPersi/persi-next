@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/UI/Button";
 import { EmailAutocompleteInput } from "@/components/UI/EmailAutocompleteInput";
 import { PasswordInput } from "@/components/UI/PasswordInput";
+import { RecaptchaNotice } from "@/components/UI/RecaptchaNotice";
 import {
   formatBrazilianPhone,
   validateBrazilianPhone,
@@ -203,6 +204,7 @@ export function AccountRegisterForm() {
       >
         {loading ? "Criando conta..." : "Criar minha conta"}
       </Button>
+      <RecaptchaNotice className="text-center" />
     </form>
   );
 }

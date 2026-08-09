@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { EmailAutocompleteInput } from "@/components/UI/EmailAutocompleteInput";
+import { RecaptchaNotice } from "@/components/UI/RecaptchaNotice";
 import { useRecaptcha } from "@/hooks/useRecaptcha";
 
 interface BackInStockFormProps {
@@ -188,6 +189,7 @@ export function BackInStockForm({
             ? "O cadastro por e-mail estará disponível em breve."
             : message}
       </p>
+      <RecaptchaNotice className="mt-2" />
 
       <a
         href={whatsappUrl}

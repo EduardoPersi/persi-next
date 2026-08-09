@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/UI/Button";
 import { PasswordInput } from "@/components/UI/PasswordInput";
+import { RecaptchaNotice } from "@/components/UI/RecaptchaNotice";
 import { useRecaptcha } from "@/hooks/useRecaptcha";
 
 const inputClassName =
@@ -86,6 +87,7 @@ export function AccountResetPasswordForm({
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Redefinindo..." : "Redefinir senha"}
       </Button>
+      <RecaptchaNotice className="text-center" />
     </form>
   );
 }

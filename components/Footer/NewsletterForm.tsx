@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { EmailAutocompleteInput } from "@/components/UI/EmailAutocompleteInput";
+import { RecaptchaNotice } from "@/components/UI/RecaptchaNotice";
 import { useRecaptcha } from "@/hooks/useRecaptcha";
 
 type SubmissionState = "idle" | "submitting" | "success" | "error";
@@ -107,6 +108,7 @@ export function NewsletterForm() {
       >
         {message}
       </p>
+      <RecaptchaNotice tone="light" className="text-center md:text-left" />
     </form>
   );
 }
