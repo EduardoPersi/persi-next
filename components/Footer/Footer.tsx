@@ -10,6 +10,7 @@ import { WhatsAppIcon } from "@/components/UI/SocialIcons";
 import { NewsletterForm } from "@/components/Footer/NewsletterForm";
 
 import { Container } from "@/components/UI/Container";
+import { PAYMENT_ICONS } from "@/lib/constants/paymentIcons";
 
 const categories = [
   { label: "Acabamentos", href: "/acabamentos" },
@@ -328,14 +329,23 @@ export function Footer() {
             >
               Formas de pagamento
             </h2>
-            <Image
-              src="/images/footer/pagamentos.webp"
-              alt="Formas de pagamento aceitas pela Persi Materiais"
-              width={295}
-              height={82}
-              sizes="(min-width: 1024px) 230px, (min-width: 768px) 40vw, 100vw"
-              className="mt-3 h-auto w-full max-w-[190px] object-contain md:max-w-[230px]"
-            />
+            <ul className="mt-3 grid max-w-[190px] grid-cols-3 gap-2 md:max-w-[230px]">
+              {PAYMENT_ICONS.map((icon) => (
+                <li
+                  key={icon.file}
+                  className="flex aspect-[10/7] items-center justify-center rounded-lg border border-slate-200 bg-white p-1.5"
+                >
+                  <Image
+                    src={`/images/footer/${icon.file}.webp`}
+                    alt={icon.label}
+                    width={500}
+                    height={350}
+                    sizes="60px"
+                    className="h-auto w-full object-contain"
+                  />
+                </li>
+              ))}
+            </ul>
           </section>
 
           <section aria-labelledby="footer-security-title">

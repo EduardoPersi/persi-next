@@ -4,17 +4,9 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { Container } from "@/components/UI/Container";
+import { PAYMENT_ICONS } from "@/lib/constants/paymentIcons";
 
 const HIDDEN_FULL_FOOTER_PREFIXES = ["/checkout"];
-
-const PAYMENT_ICONS = [
-  { file: "visa", label: "Visa" },
-  { file: "elo", label: "Elo" },
-  { file: "amex", label: "American Express" },
-  { file: "mastercard", label: "Mastercard" },
-  { file: "pix", label: "Pix" },
-  { file: "boleto", label: "Boleto" },
-] as const;
 
 // Recebe o <Footer /> completo (renderizado no servidor) como children e só
 // decide, no client, se ele deve aparecer — evita duplicar o Footer.tsx em
