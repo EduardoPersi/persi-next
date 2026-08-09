@@ -10,6 +10,7 @@ import {
   validateBrazilianPhone,
   type BrazilianPhoneError,
 } from "@/lib/account/phoneValidation";
+import { useRecaptcha } from "@/hooks/useRecaptcha";
 
 const input =
   "min-h-11 w-full rounded-xl border border-slate-300 px-3 focus:border-[#0c2d72] focus:outline-none focus:ring-2 focus:ring-[#0c2d72]/20";
@@ -21,6 +22,7 @@ export function AccountRegisterForm() {
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] =
     useState<BrazilianPhoneError | null>(null);
+  const { getRecaptchaToken } = useRecaptcha();
 
   function updatePhone(value: string) {
     const formattedPhone = formatBrazilianPhone(value);
@@ -37,21 +39,23 @@ export function AccountRegisterForm() {
     if (currentPhoneError) return;
 
     const data = new FormData(event.currentTarget);
-    const payload = {
-      name: String(data.get("name") ?? ""),
-      email: String(data.get("email") ?? ""),
-      phone,
-      cpf: "",
-      password: String(data.get("password") ?? ""),
-      passwordConfirmation: String(
-        data.get("passwordConfirmation") ?? "",
-      ),
-      acceptTerms: data.get("acceptTerms") === "on",
-    };
 
     setLoading(true);
     setMessage("");
     try {
+      const recaptchaToken = (await getRecaptchaToken("account_register")) ?? "";
+      const payload = {
+        name: String(data.get("name") ?? ""),
+        email: String(data.get("email") ?? ""),
+        phone,
+        cpf: "",
+        password: String(data.get("password") ?? ""),
+        passwordConfirmation: String(
+          data.get("passwordConfirmation") ?? "",
+        ),
+        acceptTerms: data.get("acceptTerms") === "on",
+        recaptchaToken,
+      };
       const response = await fetch("/api/account/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

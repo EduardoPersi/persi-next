@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/UI/Button";
 import { PasswordInput } from "@/components/UI/PasswordInput";
+import { useRecaptcha } from "@/hooks/useRecaptcha";
 
 const inputClassName =
   "min-h-11 w-full rounded-xl border border-slate-300 px-3 outline-none focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20";
@@ -16,6 +17,7 @@ export function AccountResetPasswordForm({
 }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const { getRecaptchaToken } = useRecaptcha();
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,6 +26,7 @@ export function AccountResetPasswordForm({
     setLoading(true);
     setMessage("");
     try {
+      const recaptchaToken = (await getRecaptchaToken("account_reset_password")) ?? "";
       const response = await fetch("/api/account/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -32,6 +35,7 @@ export function AccountResetPasswordForm({
           key: keyValue,
           password: String(data.get("password") ?? ""),
           passwordConfirmation: String(data.get("passwordConfirmation") ?? ""),
+          recaptchaToken,
         }),
       });
       const body = await response.json();

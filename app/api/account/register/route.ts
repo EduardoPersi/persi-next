@@ -4,6 +4,7 @@ import { AccountValidationError, isJsonContentType, validateMutationSource } fro
 import { getPrivateAccountHeaders } from "@/lib/account/responsePolicy";
 import { registerAccount } from "@/services/account/access";
 import { AccountServiceError, getAccountClientConfig } from "@/services/account/client";
+import { getRequestIp, verifyRecaptcha } from "@/lib/recaptcha/verify";
 export const dynamic = "force-dynamic"; export const revalidate = 0; export const runtime = "nodejs";
 const response = (body: object, status: number) => NextResponse.json(body, { status, headers: getPrivateAccountHeaders() });
 export async function POST(request: Request) {
@@ -21,7 +22,20 @@ export async function POST(request: Request) {
         "ACCOUNT_REGISTER_PAYLOAD_INVALID",
       );
     }
-    return response(await registerAccount(parseRegisterPayload(await request.text()), { config }), 201);
+    const { recaptchaToken, ...payload } = parseRegisterPayload(await request.text());
+    const { band } = await verifyRecaptcha({
+      token: recaptchaToken,
+      action: "account_register",
+      form: "account-register",
+      ip: getRequestIp(request.headers),
+    });
+    if (band === "reject") {
+      throw new AccountValidationError(
+        "Recaptcha rejected",
+        "ACCOUNT_REGISTER_PAYLOAD_INVALID",
+      );
+    }
+    return response(await registerAccount(payload, { config }), 201);
   } catch (error) {
     const status =
       error instanceof AccountValidationError

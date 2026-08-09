@@ -9,6 +9,9 @@ import {
   STOCK_POLICY_VERSION,
 } from "@/lib/stock-notifications/validation";
 import { getStockHmacConfig } from "@/services/woocommerce/stockNotifications";
+import { getRequestIp, verifyRecaptcha } from "@/lib/recaptcha/verify";
+
+const RECAPTCHA_ACTION = "stock_notification_subscribe";
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 5;
@@ -51,20 +54,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let subscription;
+  let parsed;
   try {
-    const parsed = parseBrowserStockSubscription(body);
-    const origin = getStockHmacConfig().origin;
-    subscription = {
-      ...parsed,
-      privacyPolicyVersion: STOCK_POLICY_VERSION,
-      privacyPolicyUrl: `${origin}${STOCK_POLICY_PATH}`,
-    };
+    parsed = parseBrowserStockSubscription(body);
   } catch {
-    subscription = undefined;
+    parsed = undefined;
   }
 
-  if (!subscription) {
+  if (!parsed) {
     return NextResponse.json(
       {
         code: "validation_error",
@@ -74,7 +71,30 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const { band } = await verifyRecaptcha({
+    token: parsed.recaptchaToken,
+    action: RECAPTCHA_ACTION,
+    form: "stock-notifications",
+    ip: getRequestIp(request.headers),
+  });
+  if (band === "reject") {
+    return NextResponse.json(
+      { code: "validation_error", message: "Não foi possível concluir o cadastro." },
+      { status: 400 },
+    );
+  }
+
   try {
+    const origin = getStockHmacConfig().origin;
+    const subscription = {
+      productId: parsed.productId,
+      variationId: parsed.variationId,
+      email: parsed.email,
+      consent: parsed.consent,
+      website: parsed.website,
+      privacyPolicyVersion: STOCK_POLICY_VERSION,
+      privacyPolicyUrl: `${origin}${STOCK_POLICY_PATH}`,
+    };
     const result =
       await subscribeToBackInStockNotification(subscription);
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { EmailAutocompleteInput } from "@/components/UI/EmailAutocompleteInput";
+import { useRecaptcha } from "@/hooks/useRecaptcha";
 
 interface BackInStockFormProps {
   productId: number;
@@ -27,6 +28,7 @@ export function BackInStockForm({
 }: BackInStockFormProps) {
   const [state, setState] = useState<SubmissionState>("idle");
   const [message, setMessage] = useState("");
+  const { getRecaptchaToken } = useRecaptcha();
   const variationPending = requiresVariation && !variationId;
   const whatsappMessage = encodeURIComponent(
     `Olá, gostaria de consultar a disponibilidade do produto ${productName}. ${productUrl}`,
@@ -61,6 +63,7 @@ export function BackInStockForm({
     setMessage("");
 
     try {
+      const recaptchaToken = (await getRecaptchaToken("stock_notification_subscribe")) ?? "";
       const response = await fetch("/api/stock-notifications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -70,6 +73,7 @@ export function BackInStockForm({
           email,
           website,
           consent,
+          recaptchaToken,
         }),
       });
       const result = (await response.json()) as {

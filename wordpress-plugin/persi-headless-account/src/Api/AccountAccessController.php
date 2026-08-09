@@ -22,7 +22,7 @@ final class AccountAccessController {
 	) {}
 
 	public function register_routes(): void {
-		foreach ( array( '/register' => 'register', '/forgot-password' => 'forgot_password', '/reset-password' => 'reset_password' ) as $route => $callback ) {
+		foreach ( array( '/register' => 'register', '/forgot-password' => 'forgot_password', '/reset-password' => 'reset_password', '/login-guard' => 'login_guard' ) as $route => $callback ) {
 			register_rest_route( self::NAMESPACE, $route, array( 'methods' => \WP_REST_Server::CREATABLE, 'callback' => array( $this, $callback ), 'permission_callback' => '__return_true' ) );
 		}
 	}
@@ -102,6 +102,20 @@ final class AccountAccessController {
 		if ( is_wp_error( $user ) || ! $user instanceof \WP_User ) return Response::json( array( 'message' => 'Link ou dados inválidos.' ), 400 );
 		reset_password( $user, $input['password'] );
 		return Response::json( array( 'reset' => true ) );
+	}
+
+	public function login_guard( \WP_REST_Request $request ): \WP_REST_Response {
+		if ( ! $this->valid_json( $request ) ) return Response::json( array( 'message' => 'Dados inválidos.' ), 400 );
+		try {
+			$identifier = $this->validator->login_guard( $request->get_body() );
+		} catch ( ValidationException $error ) {
+			return Response::json( array( 'message' => 'Dados inválidos.' ), 400 );
+		}
+		$buckets = $this->buckets( 'login', $identifier );
+		$retry = $this->limiter->retry_after( $buckets );
+		if ( $retry > 0 ) return Response::json( array( 'message' => 'Muitas tentativas.' ), 429, $retry );
+		foreach ( $buckets as $bucket ) $this->limiter->record_failure( $bucket );
+		return Response::json( array( 'allowed' => true ) );
 	}
 
 	private function valid_json( \WP_REST_Request $request ): bool {

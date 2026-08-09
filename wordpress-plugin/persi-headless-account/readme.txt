@@ -1,7 +1,7 @@
 === Persi Headless Account ===
 Requires at least: 6.4
 Requires PHP: 8.1
-Stable tag: 1.0.5
+Stable tag: 1.0.6
 
 APIs privadas da conta Persi protegidas por JWT emitido e validado
 exclusivamente pelo plugin JWT Authentication for WP REST API.
@@ -16,8 +16,14 @@ exclusivamente pelo plugin JWT Authentication for WP REST API.
 
 == Endpoints ==
 
-Públicos: registro, recuperação de senha e
-`POST /wp-json/persi-auth/v1/oauth/token`.
+Públicos: registro, recuperação de senha,
+`POST /wp-json/persi-auth/v1/oauth/token` e
+`POST /wp-json/persi-account/v1/login-guard` (pré-checagem de rate limit
+para o login por credencial — reaproveita o mesmo `RateLimiter` já usado em
+registro/recuperação de senha, tabela `wp_persi_account_rate_limits`; não
+autentica nada, só bloqueia com 429 quando o bucket IP+identificador excede
+o limite. O login em si continua emitido pelo plugin JWT Authentication
+for WP REST API, sem nenhuma mudança).
 
 Diagnóstico sem secrets: `GET /wp-json/persi-auth/v1/health`.
 

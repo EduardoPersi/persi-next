@@ -12,6 +12,9 @@ export type RegisterPayload = {
   passwordConfirmation: string;
   acceptTerms: true;
 };
+export type RegisterPayloadWithRecaptcha = RegisterPayload & {
+  recaptchaToken: string;
+};
 export const RECOVERY_MESSAGE = "Se existir uma conta com este e-mail, enviaremos as instruções.";
 
 function invalid(code: string): never {
@@ -50,7 +53,14 @@ function object(
   return value as Record<string, unknown>;
 }
 
-export function parseRegisterPayload(raw: string): RegisterPayload {
+function recaptchaToken(value: Record<string, unknown>, invalidCode: string): string {
+  if (typeof value.recaptchaToken !== "string" || value.recaptchaToken.length > 2048) {
+    invalid(invalidCode);
+  }
+  return value.recaptchaToken as string;
+}
+
+export function parseRegisterPayload(raw: string): RegisterPayloadWithRecaptcha {
   const value = object(
     raw,
     [
@@ -61,12 +71,14 @@ export function parseRegisterPayload(raw: string): RegisterPayload {
       "password",
       "passwordConfirmation",
       "acceptTerms",
+      "recaptchaToken",
     ],
-    ["name", "email", "password", "passwordConfirmation", "acceptTerms"],
+    ["name", "email", "password", "passwordConfirmation", "acceptTerms", "recaptchaToken"],
     "ACCOUNT_REGISTER_PAYLOAD_INVALID",
   );
   const phone = value.phone ?? "";
   const cpf = value.cpf ?? "";
+  const token = recaptchaToken(value, "ACCOUNT_REGISTER_PAYLOAD_INVALID");
 
   if (typeof value.name !== "string" || value.name.trim().length < 3) {
     invalid("ACCOUNT_REGISTER_PAYLOAD_INVALID");
@@ -109,15 +121,18 @@ export function parseRegisterPayload(raw: string): RegisterPayload {
     password: value.password,
     passwordConfirmation: value.password,
     acceptTerms: true,
+    recaptchaToken: token,
   };
 }
 export function parseForgotPayload(raw: string) {
-  const value = object(raw, ["email"]);
+  const value = object(raw, ["email", "recaptchaToken"]);
   if (typeof value.email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email.trim())) throw new AccountValidationError();
-  return { email: value.email.trim().toLowerCase() };
+  const token = recaptchaToken(value, "ACCOUNT_PAYLOAD_INVALID");
+  return { email: value.email.trim().toLowerCase(), recaptchaToken: token };
 }
 export function parseResetPayload(raw: string) {
-  const value = object(raw, ["login","key","password","passwordConfirmation"]);
+  const value = object(raw, ["login","key","password","passwordConfirmation","recaptchaToken"]);
   if (typeof value.login !== "string" || !value.login.trim() || typeof value.key !== "string" || !value.key.trim() || typeof value.password !== "string" || value.password.length < 8 || value.password !== value.passwordConfirmation) throw new AccountValidationError();
-  return { login: value.login.trim(), key: value.key.trim(), password: value.password, passwordConfirmation: value.password };
+  const token = recaptchaToken(value, "ACCOUNT_PAYLOAD_INVALID");
+  return { login: value.login.trim(), key: value.key.trim(), password: value.password, passwordConfirmation: value.password, recaptchaToken: token };
 }

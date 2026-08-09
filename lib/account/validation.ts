@@ -30,6 +30,7 @@ export interface AccountLoginPayload {
   identifier: string;
   password: string;
   remember: boolean;
+  recaptchaToken: string;
 }
 
 export class AccountValidationError extends Error {
@@ -63,13 +64,15 @@ export function parseAccountLoginPayload(rawBody: string): AccountLoginPayload {
 
   if (!isRecord(value)) throw new AccountValidationError();
   const keys = Object.keys(value).sort();
-  if (keys.join(",") !== "identifier,password,remember") {
+  if (keys.join(",") !== "identifier,password,recaptchaToken,remember") {
     throw new AccountValidationError();
   }
   if (
     typeof value.identifier !== "string" ||
     typeof value.password !== "string" ||
-    typeof value.remember !== "boolean"
+    typeof value.remember !== "boolean" ||
+    typeof value.recaptchaToken !== "string" ||
+    value.recaptchaToken.length > 2048
   ) {
     throw new AccountValidationError();
   }
@@ -88,6 +91,7 @@ export function parseAccountLoginPayload(rawBody: string): AccountLoginPayload {
     identifier,
     password: value.password,
     remember: value.remember,
+    recaptchaToken: value.recaptchaToken,
   };
 }
 

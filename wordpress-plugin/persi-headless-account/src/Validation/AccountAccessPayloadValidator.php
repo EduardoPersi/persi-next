@@ -60,4 +60,13 @@ final class AccountAccessPayloadValidator {
 		}
 		return array( 'login' => trim( $value['login'] ), 'key' => trim( $value['key'] ), 'password' => $value['password'] );
 	}
+
+	public function login_guard( string $raw_body ): string {
+		$value = $this->decode( $raw_body, array( 'identifier' ) );
+		$identifier = trim( (string) $value['identifier'] );
+		if ( '' === $identifier || mb_strlen( $identifier ) > 320 ) {
+			throw new ValidationException( 'invalid_payload' );
+		}
+		return $identifier;
+	}
 }

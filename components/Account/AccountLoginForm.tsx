@@ -7,6 +7,7 @@ import { Button } from "@/components/UI/Button";
 import { EmailAutocompleteInput } from "@/components/UI/EmailAutocompleteInput";
 import Link from "next/link";
 import { useAccount } from "@/hooks/useAccount";
+import { useRecaptcha } from "@/hooks/useRecaptcha";
 
 const inputClassName =
   "min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20";
@@ -22,6 +23,7 @@ export function AccountLoginForm({
 }) {
   const router = useRouter();
   const { login } = useAccount();
+  const { getRecaptchaToken } = useRecaptcha();
   const messageId = useId();
   const identifierId = useId();
   const passwordId = useId();
@@ -40,7 +42,8 @@ export function AccountLoginForm({
     setLoading(true);
     setMessage("");
     try {
-      await login({ identifier, password, remember });
+      const recaptchaToken = (await getRecaptchaToken("account_login")) ?? "";
+      await login({ identifier, password, remember, recaptchaToken });
       onSuccess?.();
       router.push(callbackPath === "/minha-conta" ? callbackPath : "/minha-conta");
       router.refresh();
