@@ -1,6 +1,6 @@
 const TONE_CLASSES = {
   muted: "text-slate-500 hover:[&_a]:text-slate-700",
-  light: "text-white/70 hover:[&_a]:text-white",
+  light: "text-white/35 hover:[&_a]:text-white/70 [&_a]:decoration-white/35 hover:[&_a]:decoration-white/70",
 } as const;
 
 export function RecaptchaNotice({

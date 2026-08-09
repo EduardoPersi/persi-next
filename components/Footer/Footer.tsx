@@ -81,8 +81,8 @@ export function Footer() {
         aria-labelledby="newsletter-title"
         className="bg-[#1246ab] text-white"
       >
-        <Container className="flex flex-col gap-3 py-4 md:gap-4 lg:flex-row lg:items-center lg:justify-center lg:gap-10">
-          <div className="mx-auto flex w-full max-w-[92%] items-center gap-2 md:mx-0 md:w-auto md:max-w-none md:gap-3">
+        <Container className="flex flex-col gap-3 py-4 md:gap-4 lg:flex-row lg:items-start lg:justify-center lg:gap-10">
+          <div className="mx-auto flex w-full max-w-[92%] items-center gap-2 md:mx-0 md:w-auto md:max-w-none md:gap-3 lg:pt-2">
             <Image
               src="/images/footer/newsletter.webp"
               alt=""
