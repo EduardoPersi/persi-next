@@ -18,6 +18,8 @@ final class Persi_Headless_Plugin {
 		if ( get_option( 'persi_headless_db_version' ) !== PERSI_HEADLESS_VERSION ) {
 			require_once PERSI_HEADLESS_PATH . 'includes/stock-notifications/class-repository.php';
 			Persi_Headless_Stock_Repository::install();
+			require_once PERSI_HEADLESS_PATH . 'includes/newsletter/class-repository.php';
+			Persi_Headless_Newsletter_Repository::install();
 			update_option( 'persi_headless_db_version', PERSI_HEADLESS_VERSION, false );
 		}
 

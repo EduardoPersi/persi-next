@@ -4,7 +4,7 @@ Tags: woocommerce, headless, rest-api
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.2.0
+Stable tag: 0.3.0
 License: GPLv2 or later
 
 Integração oficial e independente do tema entre WooCommerce e o frontend Next.js da Persi.
@@ -24,6 +24,9 @@ GET /wp-json/persi/v1/products/{id}/bought-together
 POST /wp-json/persi/v1/stock-notifications/subscribe
 GET /wp-json/persi/v1/stock-notifications/confirm/{token}
 GET /wp-json/persi/v1/stock-notifications/unsubscribe/{token}
+POST /wp-json/persi/v1/newsletter/subscribe
+GET /wp-json/persi/v1/newsletter/confirm/{token}
+GET /wp-json/persi/v1/newsletter/unsubscribe/{token}
 
 As rotas GET retornam somente produtos publicados e dados públicos. A inscrição
 retorna mensagem neutra, usa honeypot, rate limit e double opt-in por padrão.
@@ -63,3 +66,25 @@ mas não entram na fila até uma nova inscrição consentida.
 Headers do Cloudflare só são aceitos quando TRUST_PROXY_HEADERS é true e o
 REMOTE_ADDR pertence à lista explícita TRUSTED_PROXY_IPS. Mantenha false quando
 a cadeia de proxy não tiver sido homologada.
+
+== Segurança da newsletter ==
+
+Módulo independente do de estoque, mesma arquitetura de assinatura HMAC e
+double opt-in, mas com inscrição global por e-mail (sem produto/variação) e
+sem fila de envio — este plugin apenas registra e confirma inscritos; o
+disparo de campanhas fica a cargo de uma ferramenta de e-mail marketing que
+consuma a lista depois.
+
+Configure no wp-config.php ou no ambiente do servidor:
+
+define( 'PERSI_HEADLESS_NEWSLETTER_HMAC_SECRET', 'substitua-por-segredo-aleatorio-forte' );
+define( 'PERSI_HEADLESS_NEWSLETTER_HMAC_KEY_ID', 'primary' );
+define( 'PERSI_HEADLESS_NEWSLETTER_ALLOWED_ORIGINS', 'https://frontend.example' );
+define( 'PERSI_HEADLESS_NEWSLETTER_FRONTEND_URL', 'https://frontend.example' );
+define( 'PERSI_HEADLESS_NEWSLETTER_TRUST_PROXY_HEADERS', false );
+define( 'PERSI_HEADLESS_NEWSLETTER_TRUSTED_PROXY_IPS', '' );
+
+O segredo é exclusivo deste módulo (não reutiliza o de estoque) e nunca deve
+usar NEXT_PUBLIC_. Inscrições `pending` sem confirmação expiram em 7 dias;
+inscrições `unsubscribed` são anonimizadas em 30 dias; inscrições `confirmed`
+permanecem ativas indefinidamente até o próprio inscrito cancelar.

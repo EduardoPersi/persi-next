@@ -12,6 +12,9 @@ class Persi_Headless_Activator {
 		require_once PERSI_HEADLESS_PATH . 'includes/stock-notifications/class-repository.php';
 		Persi_Headless_Stock_Repository::install();
 
+		require_once PERSI_HEADLESS_PATH . 'includes/newsletter/class-repository.php';
+		Persi_Headless_Newsletter_Repository::install();
+
 		$defaults = array(
 			'frontend_urls' => array( 'https://app.persimateriais.com.br' ),
 			'modules'       => array(
@@ -19,6 +22,7 @@ class Persi_Headless_Activator {
 				'bought_together'    => true,
 				'stock_notifications'=> true,
 				'order_bump'         => false,
+				'newsletter'         => true,
 			),
 			'double_opt_in' => true,
 			'batch_size'    => 25,

@@ -9,6 +9,7 @@ class Persi_Headless_Module_Manager {
 			'bought_together'     => 'bought-together/class-bought-together.php',
 			'stock_notifications' => 'stock-notifications/class-stock-notifications.php',
 			'order_bump'          => 'order-bump/class-order-bump.php',
+			'newsletter'          => 'newsletter/class-newsletter.php',
 		);
 
 		foreach ( $modules as $key => $file ) {
