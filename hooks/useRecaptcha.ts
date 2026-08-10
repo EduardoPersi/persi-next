@@ -45,7 +45,12 @@ export function useRecaptcha() {
             grecaptcha.execute(siteKey, { action }).then(resolve, reject);
           });
         });
-      } catch {
+      } catch (error) {
+        // Não bloqueia o envio do formulário por isso (o servidor trata a
+        // ausência de token como zona cinzenta, não como bloqueio) — só
+        // deixa rastro no console para diagnosticar (ex.: domínio não
+        // cadastrado na chave do reCAPTCHA).
+        console.warn("[recaptcha] falha ao gerar token", action, error);
         return null;
       }
     },

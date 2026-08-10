@@ -12,8 +12,8 @@ test("HMAC de estoque assina corpo bruto e canonical sem newline final",()=>{
  assert.equal(result.canonical,canonical);assert.equal(result.canonical.endsWith("\n"),false);assert.equal(result.headers["X-Persi-Signature"],`v1=${createHmac("sha256",config.secret).update(canonical).digest("hex")}`);
 });
 test("payload do navegador é fechado e consentimento obrigatório",()=>{
- const valid={productId:1,email:"CLIENTE@example.test",website:"",consent:true};
- assert.deepEqual(parseBrowserStockSubscription(valid),{productId:1,variationId:0,email:"cliente@example.test",website:"",consent:true});
+ const valid={productId:1,email:"CLIENTE@example.test",website:"",consent:true,recaptchaToken:"test-recaptcha-token"};
+ assert.deepEqual(parseBrowserStockSubscription(valid),{productId:1,variationId:0,email:"cliente@example.test",website:"",consent:true,recaptchaToken:"test-recaptcha-token"});
  assert.throws(()=>parseBrowserStockSubscription({...valid,consent:false}));
  assert.throws(()=>parseBrowserStockSubscription({...valid,privacyPolicyVersion:"forjada"}));
  assert.throws(()=>parseBrowserStockSubscription({...valid,website:"bot"}));

@@ -44,16 +44,23 @@ export async function verifyRecaptcha(input: {
   const ipHash = input.ip ? hashIp(input.ip) : null;
 
   if (!input.token) {
+    // Sem token não é prova de bot — o navegador pode ter falhado em gerar um
+    // por motivo alheio ao visitante (script bloqueado, domínio não
+    // cadastrado no reCAPTCHA, instabilidade do Google). Bloquear aqui
+    // derrubaria o formulário inteiro por qualquer uma dessas causas; trata
+    // como zona cinzenta e deixa a barreira de cada fluxo (double opt-in ou
+    // rate limit) ser o backstop real.
     console.log("[recaptcha]", {
       form: input.form,
       action: input.action,
       success: false,
       score: null,
-      band: "reject" satisfies RecaptchaBand,
+      band: "gray" satisfies RecaptchaBand,
+      reason: "no_token",
       hostname: null,
       ipHash,
     });
-    return { band: "reject", score: null };
+    return { band: "gray", score: null };
   }
 
   try {
@@ -105,12 +112,12 @@ export async function verifyRecaptcha(input: {
       action: input.action,
       success: false,
       score: null,
-      band: "reject" satisfies RecaptchaBand,
+      band: "gray" satisfies RecaptchaBand,
+      reason: "network_error",
       hostname: null,
       ipHash,
-      errorCodes: ["network_error"],
     });
-    return { band: "reject", score: null };
+    return { band: "gray", score: null };
   }
 }
 

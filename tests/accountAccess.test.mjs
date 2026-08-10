@@ -26,6 +26,7 @@ const valid = {
   password: "segura123",
   passwordConfirmation: "segura123",
   acceptTerms: true,
+  recaptchaToken: "test-recaptcha-token",
 };
 
 function assertValidationCode(payload, expectedCode) {
@@ -105,10 +106,17 @@ test("contrato de cadastro rejeita propriedades desconhecidas", () => {
 });
 
 test("recuperação valida e-mail", () => {
-  assert.deepEqual(parseForgotPayload('{"email":"ANA@example.test"}'), {
-    email: "ana@example.test",
-  });
-  assert.throws(() => parseForgotPayload('{"email":"invalido"}'));
+  assert.deepEqual(
+    parseForgotPayload(
+      '{"email":"ANA@example.test","recaptchaToken":"test-recaptcha-token"}',
+    ),
+    { email: "ana@example.test", recaptchaToken: "test-recaptcha-token" },
+  );
+  assert.throws(() =>
+    parseForgotPayload(
+      '{"email":"invalido","recaptchaToken":"test-recaptcha-token"}',
+    ),
+  );
 });
 
 test("cadastro público não retorna IDs, token, senha ou segredo", async () => {
