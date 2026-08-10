@@ -53,6 +53,15 @@ export async function pagbankRequest<T>(
   const parsedBody = await response.json().catch(() => null);
 
   if (!response.ok) {
+    console.error("[pagbank-client]", {
+      path,
+      method,
+      status: response.status,
+      errorMessages:
+        parsedBody && typeof parsedBody === "object" && "error_messages" in parsedBody
+          ? (parsedBody as { error_messages: unknown }).error_messages
+          : parsedBody,
+    });
     throw new PagBankPaymentError(
       response.status >= 400 && response.status < 600 ? response.status : 502,
       "O PagBank recusou a requisição",
