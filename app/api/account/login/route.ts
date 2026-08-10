@@ -45,6 +45,17 @@ export async function POST(request: Request) {
           : error instanceof AccountServiceError && [429, 503].includes(error.status)
             ? error.status
             : 502;
+    console.error("[account-login]", {
+      status,
+      name: error instanceof Error ? error.name : "UNKNOWN",
+      code:
+        error instanceof AccountValidationError
+          ? error.code
+          : error instanceof AccountServiceError
+            ? error.code
+            : undefined,
+      message: error instanceof Error ? error.message : undefined,
+    });
     const message =
       status === 401
         ? "Não foi possível entrar com os dados informados."
