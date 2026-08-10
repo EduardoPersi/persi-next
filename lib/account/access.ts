@@ -54,7 +54,7 @@ function object(
 }
 
 function recaptchaToken(value: Record<string, unknown>, invalidCode: string): string {
-  if (typeof value.recaptchaToken !== "string" || value.recaptchaToken.length > 2048) {
+  if (typeof value.recaptchaToken !== "string" || value.recaptchaToken.length > 4096) {
     invalid(invalidCode);
   }
   return value.recaptchaToken as string;

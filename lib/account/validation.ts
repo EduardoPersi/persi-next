@@ -72,7 +72,7 @@ export function parseAccountLoginPayload(rawBody: string): AccountLoginPayload {
     typeof value.password !== "string" ||
     typeof value.remember !== "boolean" ||
     typeof value.recaptchaToken !== "string" ||
-    value.recaptchaToken.length > 2048
+    value.recaptchaToken.length > 4096
   ) {
     throw new AccountValidationError();
   }
