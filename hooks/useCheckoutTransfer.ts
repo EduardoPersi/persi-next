@@ -11,7 +11,7 @@ export function useCheckoutTransfer() {
   const [checkoutError, setCheckoutError] = useState("");
   const requestGate = useRef(new CheckoutTransferRequestGate());
 
-  const prepareCheckout = useCallback(async () => {
+  const prepareCheckout = useCallback(async (onBeforeRedirect?: () => void) => {
     if (!requestGate.current.tryStart()) return;
 
     setIsPreparingCheckout(true);
@@ -19,6 +19,7 @@ export function useCheckoutTransfer() {
 
     try {
       const transferUrl = await requestCheckoutTransfer();
+      onBeforeRedirect?.();
       window.location.assign(transferUrl);
     } catch {
       setCheckoutError(

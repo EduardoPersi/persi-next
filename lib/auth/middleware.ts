@@ -1,4 +1,4 @@
-const PRIVATE_PATHS = ["/minha-conta", "/checkout"] as const;
+const PRIVATE_PATHS = ["/minha-conta"] as const;
 const AUTH_PATHS = ["/entrar"] as const;
 
 export function isPrivateAuthPath(pathname: string): boolean {
