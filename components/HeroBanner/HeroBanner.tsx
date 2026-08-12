@@ -119,14 +119,14 @@ export function HeroBanner() {
       >
         {SLIDES.map((slide, index) => (
           <SwiperSlide key={slide.id}>
-            <div className="relative aspect-[4/5] w-full lg:aspect-auto lg:h-[clamp(360px,26vw,500px)]">
+            <div className="relative aspect-[3/2] w-full lg:aspect-auto lg:h-[clamp(360px,26vw,500px)]">
               <picture>
                 <source media="(min-width: 1024px)" srcSet={slide.desktopImage} />
                 <img
                   src={slide.mobileImage}
                   alt={slide.alt}
-                  width={768}
-                  height={960}
+                  width={750}
+                  height={900}
                   loading={index === 0 ? "eager" : "lazy"}
                   fetchPriority={index === 0 ? "high" : "auto"}
                   className="absolute inset-0 h-full w-full object-cover"
@@ -156,16 +156,16 @@ export function HeroBanner() {
       <button
         type="button"
         aria-label="Slide anterior"
-        className="hero-banner-previous absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#0c2d72] shadow-md transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] sm:left-4"
+        className="hero-banner-previous absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-white transition hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 sm:left-4"
       >
-        <ChevronLeft aria-hidden="true" />
+        <ChevronLeft className="h-8 w-8 drop-shadow-[0_1px_4px_rgba(0,0,0,0.65)]" aria-hidden="true" />
       </button>
       <button
         type="button"
         aria-label="Próximo slide"
-        className="hero-banner-next absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#0c2d72] shadow-md transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] sm:right-4"
+        className="hero-banner-next absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-white transition hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 sm:right-4"
       >
-        <ChevronRight aria-hidden="true" />
+        <ChevronRight className="h-8 w-8 drop-shadow-[0_1px_4px_rgba(0,0,0,0.65)]" aria-hidden="true" />
       </button>
       <div className="hero-banner-pagination absolute! bottom-3! z-10! flex justify-center [&_.swiper-pagination-bullet]:h-2.5 [&_.swiper-pagination-bullet]:w-2.5 [&_.swiper-pagination-bullet]:bg-white [&_.swiper-pagination-bullet]:opacity-70 [&_.swiper-pagination-bullet-active]:w-7 [&_.swiper-pagination-bullet-active]:rounded-full [&_.swiper-pagination-bullet-active]:bg-[#ff6a00] [&_.swiper-pagination-bullet-active]:opacity-100" />
     </section>

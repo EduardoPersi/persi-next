@@ -157,9 +157,14 @@ svg {
   display: block;
 }
 
-img {
-  max-width: 100%;
-  height: auto;
+/* Em @layer para que utilitários do Tailwind (ex.: h-full) continuem
+   vencendo a cascata; sem isso, imagens absolutas com object-cover
+   (como o HeroBanner) não preenchiam o contêiner e deixavam um vão. */
+@layer base {
+  img {
+    max-width: 100%;
+    height: auto;
+  }
 }
 
 .product-card-primary-image,
