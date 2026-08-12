@@ -131,7 +131,7 @@ export function ProductCard({
   });
 
   return (
-    <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition duration-200 hover:-translate-y-1 hover:shadow-md">
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition duration-200 hover:-translate-y-1 hover:shadow-md active:translate-y-0 active:shadow-sm">
       <Link
         href={href}
         className="product-card-image-link relative block aspect-square overflow-hidden bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-inset"

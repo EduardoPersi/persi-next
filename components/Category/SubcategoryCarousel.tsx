@@ -189,7 +189,7 @@ export function SubcategoryCarousel({
                 disabled={isPending}
                 aria-pressed={isSelected}
                 aria-current={isSelected ? "page" : undefined}
-                className="group/item flex h-full w-full flex-col items-center text-center disabled:cursor-wait disabled:opacity-60"
+                className="tap-feedback group/item flex h-full w-full flex-col items-center rounded-[6px] py-1 text-center disabled:cursor-wait disabled:opacity-60"
               >
                 <span
                   className={`flex aspect-square w-14 items-center justify-center overflow-hidden rounded-full bg-white p-1 transition-[box-shadow] sm:w-16 lg:w-20 ${

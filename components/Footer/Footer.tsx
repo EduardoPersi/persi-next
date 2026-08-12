@@ -54,7 +54,7 @@ const usefulLinks = [
 ];
 
 const footerLinkClasses =
-  "inline-flex min-h-9 items-center text-sm text-slate-600 transition-colors hover:text-[#ff6a00]";
+  "tap-feedback inline-flex min-h-9 items-center rounded-md text-sm text-slate-600 transition-colors hover:text-[#ff6a00]";
 
 type FooterLinksProps = {
   items: ReadonlyArray<{ label: string; href: string }>;
@@ -132,7 +132,7 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Conversar com a Persi Materiais pelo WhatsApp"
-                  className="flex min-h-9 items-center gap-3 hover:text-[#ff6a00]"
+                  className="tap-feedback flex min-h-9 items-center gap-3 rounded-md transition-colors hover:text-[#ff6a00]"
                 >
                   <WhatsAppIcon
                     aria-hidden="true"
@@ -144,7 +144,7 @@ export function Footer() {
               <li>
                 <a
                   href="tel:+5511996340689"
-                  className="flex min-h-9 items-center gap-3 hover:text-[#ff6a00]"
+                  className="tap-feedback flex min-h-9 items-center gap-3 rounded-md transition-colors hover:text-[#ff6a00]"
                 >
                   <Phone
                     aria-hidden="true"
@@ -156,7 +156,7 @@ export function Footer() {
               <li>
                 <a
                   href="mailto:vendas@persimateriais.com.br"
-                  className="flex min-h-9 items-center gap-3 break-all hover:text-[#ff6a00]"
+                  className="tap-feedback flex min-h-9 items-center gap-3 break-all rounded-md transition-colors hover:text-[#ff6a00]"
                 >
                   <Mail
                     aria-hidden="true"
@@ -230,12 +230,12 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Acessar Facebook da Persi Materiais"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#1877f2] text-white transition duration-200 hover:scale-105 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1877f2] focus-visible:ring-offset-2 md:h-10 md:w-10"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#1877f2] text-white transition duration-200 hover:scale-105 hover:opacity-90 active:scale-95 active:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1877f2] focus-visible:ring-offset-2"
                 >
                   <svg
                     aria-hidden="true"
                     viewBox="0 0 24 24"
-                    className="h-4 w-4 fill-current md:h-5 md:w-5"
+                    className="h-5 w-5 fill-current"
                   >
                     <path d="M13.5 21v-8h2.8l.42-3.2H13.5V7.75c0-.93.26-1.56 1.62-1.56h1.73V3.33c-.3-.04-1.33-.13-2.52-.13-2.5 0-4.2 1.52-4.2 4.32V9.8H7.3V13h2.83v8h3.37Z" />
                   </svg>
@@ -246,12 +246,12 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Acessar Instagram da Persi Materiais"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#feda75] via-[#d62976] to-[#4f5bd5] text-white transition duration-200 hover:scale-105 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d62976] focus-visible:ring-offset-2 md:h-10 md:w-10"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#feda75] via-[#d62976] to-[#4f5bd5] text-white transition duration-200 hover:scale-105 hover:opacity-90 active:scale-95 active:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d62976] focus-visible:ring-offset-2"
                 >
                   <svg
                     aria-hidden="true"
                     viewBox="0 0 24 24"
-                    className="h-4 w-4 fill-none stroke-current md:h-5 md:w-5"
+                    className="h-5 w-5 fill-none stroke-current"
                     strokeWidth="2"
                   >
                     <rect x="3" y="3" width="18" height="18" rx="5" />
@@ -265,12 +265,12 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Acessar YouTube da Persi Materiais"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#ff0000] text-white transition duration-200 hover:scale-105 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff0000] focus-visible:ring-offset-2 md:h-10 md:w-10"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#ff0000] text-white transition duration-200 hover:scale-105 hover:opacity-90 active:scale-95 active:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff0000] focus-visible:ring-offset-2"
                 >
                   <svg
                     aria-hidden="true"
                     viewBox="0 0 24 24"
-                    className="h-4 w-4 fill-current md:h-5 md:w-5"
+                    className="h-5 w-5 fill-current"
                   >
                     <path d="M21.58 7.19a2.74 2.74 0 0 0-1.93-1.94C17.95 4.8 12 4.8 12 4.8s-5.95 0-7.65.45a2.74 2.74 0 0 0-1.93 1.94A28.5 28.5 0 0 0 2 12a28.5 28.5 0 0 0 .42 4.81 2.74 2.74 0 0 0 1.93 1.94c1.7.45 7.65.45 7.65.45s5.95 0 7.65-.45a2.74 2.74 0 0 0 1.93-1.94A28.5 28.5 0 0 0 22 12a28.5 28.5 0 0 0-.42-4.81ZM10 15.1V8.9l5.2 3.1-5.2 3.1Z" />
                   </svg>
@@ -281,12 +281,12 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Acessar TikTok da Persi Materiais"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-black text-white transition duration-200 hover:scale-105 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 md:h-10 md:w-10"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-black text-white transition duration-200 hover:scale-105 hover:opacity-80 active:scale-95 active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
                 >
                   <svg
                     aria-hidden="true"
                     viewBox="0 0 24 24"
-                    className="h-4 w-4 fill-current md:h-5 md:w-5"
+                    className="h-5 w-5 fill-current"
                   >
                     <path d="M16.6 3c.3 1.8 1.33 2.88 3.1 3.22v3.03a8.2 8.2 0 0 1-3.07-.72v5.74a6.27 6.27 0 1 1-5.4-6.21v3.08a3.23 3.23 0 1 0 2.33 3.1V3h3.04Z" />
                   </svg>
@@ -369,7 +369,7 @@ export function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Verificar a segurança do site da Persi Materiais no Google Safe Browsing"
-                className="inline-flex max-w-full"
+                className="tap-feedback inline-flex max-w-full rounded-md"
               >
                 <Image
                   src="/images/footer/site-seguro.webp"

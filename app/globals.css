@@ -147,6 +147,21 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Substitui o highlight nativo de toque (desativado acima) para itens que
+   não usam Button/IconButton: itens de menu, breadcrumbs, links inline. */
+.tap-feedback,
+.tap-feedback-inverse {
+  transition: background-color var(--persi-transition-fast) var(--persi-ease);
+}
+
+.tap-feedback:active {
+  background-color: color-mix(in srgb, var(--persi-primary) 12%, transparent);
+}
+
+.tap-feedback-inverse:active {
+  background-color: color-mix(in srgb, white 15%, transparent);
+}
+
 button:not(:disabled),
 a {
   cursor: pointer;

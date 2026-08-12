@@ -227,7 +227,7 @@ export function AccountDropdown({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={dropdownId}
-        className="flex h-10 items-center justify-center gap-2 rounded-xl px-2 text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-wait disabled:opacity-70 xl:px-3"
+        className="flex min-h-11 items-center justify-center gap-2 rounded-xl px-2 text-white transition-colors duration-150 hover:bg-white/10 active:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-wait disabled:opacity-70 xl:px-3"
       >
         <User size={compact ? 21 : 23} className="shrink-0" aria-hidden="true" />
         {!compact ? (
@@ -319,7 +319,7 @@ export function AccountDropdown({
                         <Link
                           href={item.href}
                           onClick={closeDropdown}
-                          className="group flex min-h-12 items-center gap-3 rounded-[10px] px-3 text-sm font-medium transition-colors hover:bg-[#0c2d72]/8 hover:text-[#0c2d72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                          className="group flex min-h-12 items-center gap-3 rounded-[10px] px-3 text-sm font-medium transition-colors duration-150 hover:bg-[#0c2d72]/8 hover:text-[#0c2d72] active:bg-[#0c2d72]/14 active:text-[#0c2d72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
                         >
                           <Icon
                             className="h-5 w-5 shrink-0 text-slate-500 transition-colors group-hover:text-[#0c2d72]"
@@ -350,7 +350,7 @@ export function AccountDropdown({
                     type="button"
                     onClick={handleLogout}
                     disabled={loggingOut}
-                    className="group flex min-h-12 w-full items-center gap-3 rounded-[10px] px-3 text-left text-sm font-medium transition-colors hover:bg-[#0c2d72]/8 hover:text-[#0c2d72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] disabled:cursor-wait disabled:opacity-60"
+                    className="group flex min-h-12 w-full items-center gap-3 rounded-[10px] px-3 text-left text-sm font-medium transition-colors duration-150 hover:bg-[#0c2d72]/8 hover:text-[#0c2d72] active:bg-[#0c2d72]/14 active:text-[#0c2d72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] disabled:cursor-wait disabled:opacity-60"
                   >
                     <LogOut
                       className="h-5 w-5 shrink-0 text-slate-500 transition-colors group-hover:text-[#0c2d72]"

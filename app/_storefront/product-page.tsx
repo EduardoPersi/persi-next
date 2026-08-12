@@ -216,7 +216,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <li>
                 <Link
                   href="/"
-                  className="rounded-sm hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                  className="tap-feedback rounded-sm px-0.5 transition-colors hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
                 >
                   Home
                 </Link>
@@ -229,7 +229,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   <span aria-hidden="true">›</span>
                   <Link
                     href={item.href ?? "/"}
-                    className="rounded-sm hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                    className="tap-feedback rounded-sm px-0.5 transition-colors hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
                   >
                     {item.label}
                   </Link>

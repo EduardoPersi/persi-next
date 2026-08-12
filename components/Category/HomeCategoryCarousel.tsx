@@ -127,7 +127,7 @@ export function HomeCategoryCarousel({
           <SwiperSlide key={category.id} className="h-auto!">
             <Link
               href={getCategoryHref(category, categories)}
-              className="group/item flex h-full w-full flex-col items-center rounded-[6px] text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+              className="tap-feedback group/item flex h-full w-full flex-col items-center rounded-[6px] py-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
               aria-label={`Ver categoria ${category.name}`}
             >
               <span className="flex aspect-square w-14 items-center justify-center overflow-hidden rounded-full bg-white p-1 ring-1 ring-slate-200 sm:w-16 lg:w-20">

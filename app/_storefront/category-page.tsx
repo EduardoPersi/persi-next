@@ -437,7 +437,7 @@ export default async function CategoryPage({
               <li>
                 <Link
                   href="/"
-                  className="rounded-sm hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                  className="tap-feedback rounded-sm px-0.5 transition-colors hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
                 >
                   Home
                 </Link>
@@ -467,7 +467,7 @@ export default async function CategoryPage({
                           breadcrumbCategory,
                           categories,
                         )}
-                        className="rounded-sm hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                        className="tap-feedback rounded-sm px-0.5 transition-colors hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
                       >
                         {breadcrumbCategory.name}
                       </Link>

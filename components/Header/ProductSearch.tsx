@@ -260,8 +260,8 @@ export function ProductSearch({
           aria-label={isLoading ? "Pesquisando produtos" : "Pesquisar"}
           className={
             isDesktop
-              ? "flex items-center justify-center px-4 text-[#0c2d72] transition hover:bg-slate-100"
-              : "flex items-center justify-center px-4 text-[#0c2d72]"
+              ? "flex items-center justify-center px-4 text-[#0c2d72] transition-colors hover:bg-slate-100 active:bg-slate-200"
+              : "flex items-center justify-center px-4 text-[#0c2d72] transition-colors active:bg-slate-200"
           }
         >
           {isLoading ? (
@@ -326,7 +326,7 @@ export function ProductSearch({
                       setIsFocused(false);
                       setActiveIndex(-1);
                     }}
-                    className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0c2d72]"
+                    className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-slate-50 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0c2d72]"
                   >
                     <Image
                       src={product.image?.src || FALLBACK_IMAGE}

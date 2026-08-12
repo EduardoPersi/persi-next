@@ -80,7 +80,7 @@ export function MiniCart() {
             ref={closeButtonRef}
             type="button"
             onClick={closeCart}
-            className="inline-flex h-9 items-center gap-1 rounded-md px-2 text-sm font-medium transition hover:bg-slate-100"
+            className="inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-sm font-medium transition-colors hover:bg-slate-100 active:bg-slate-200"
             aria-label="Fechar carrinho"
           >
             <X size={18} aria-hidden="true" />
@@ -134,7 +134,7 @@ export function MiniCart() {
                         isLoading || item.quantity <= item.minQuantity
                       }
                       aria-label={`Diminuir quantidade de ${item.name}`}
-                      className="flex h-full w-7 items-center justify-center rounded-l-md text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
+                      className="relative flex h-full w-7 items-center justify-center rounded-l-md text-slate-700 transition-colors before:absolute before:-bottom-2 before:-left-2 before:-top-2 before:right-0 before:content-[''] hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-300"
                     >
                       <Minus className="h-3 w-3" aria-hidden="true" />
                     </button>
@@ -180,7 +180,7 @@ export function MiniCart() {
                         isLoading || item.quantity >= (item.maxQuantity ?? 999)
                       }
                       aria-label={`Aumentar quantidade de ${item.name}`}
-                      className="flex h-full w-7 items-center justify-center rounded-r-md text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
+                      className="relative flex h-full w-7 items-center justify-center rounded-r-md text-slate-700 transition-colors before:absolute before:-bottom-2 before:-right-2 before:-top-2 before:left-0 before:content-[''] hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-300"
                     >
                       <Plus className="h-3 w-3" aria-hidden="true" />
                     </button>
@@ -199,7 +199,7 @@ export function MiniCart() {
                   disabled={pendingItemKey === item.key}
                   aria-label={`Remover ${item.name} do carrinho`}
                   title="Remover produto"
-                  className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:cursor-wait disabled:opacity-50"
+                  className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition-colors before:absolute before:-inset-2 before:content-[''] hover:bg-red-50 hover:text-red-700 active:bg-red-100 active:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:cursor-wait disabled:opacity-50"
                 >
                   {pendingItemKey === item.key ? (
                     <span className="h-3 w-3 animate-spin rounded-full border border-slate-300 border-t-[#0c2d72]" />
@@ -227,7 +227,7 @@ export function MiniCart() {
             <button
               type="button"
               onClick={closeCart}
-              className="mt-8 w-full rounded-md bg-[#0c2d72] py-3 font-medium text-white transition hover:bg-[#17439f]"
+              className="mt-8 w-full rounded-md bg-[#0c2d72] py-3 font-medium text-white transition-colors hover:bg-[#17439f] active:bg-[#0a2456]"
             >
               CONTINUAR COMPRANDO
             </button>
@@ -250,7 +250,7 @@ export function MiniCart() {
           <Link
             href="/carrinho"
             onClick={closeCart}
-            className="mb-3 inline-flex h-11 w-full items-center justify-center rounded-md border border-[#0c2d72] px-4 font-medium text-[#0c2d72] transition hover:bg-slate-50"
+            className="mb-3 inline-flex h-11 w-full items-center justify-center rounded-md border border-[#0c2d72] px-4 font-medium text-[#0c2d72] transition-colors hover:bg-slate-50 active:bg-slate-100"
           >
             Ver carrinho
           </Link>
@@ -264,7 +264,7 @@ export function MiniCart() {
               closeCart();
             }}
             aria-disabled={!cart?.items.length || isLoading || Boolean(pendingItemKey)}
-            className="flex w-full items-center justify-center rounded-md bg-[#ff6a00] py-3 font-medium text-white transition hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 aria-disabled:cursor-wait aria-disabled:bg-slate-200 aria-disabled:text-slate-500 aria-disabled:pointer-events-none"
+            className="flex w-full items-center justify-center rounded-md bg-[#ff6a00] py-3 font-medium text-white transition-colors hover:bg-[#e85f00] active:bg-[#cc5200] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 aria-disabled:cursor-wait aria-disabled:bg-slate-200 aria-disabled:text-slate-500 aria-disabled:pointer-events-none"
           >
             FINALIZAR COMPRA
           </Link>

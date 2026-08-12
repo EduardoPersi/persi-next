@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { A11y, Autoplay, Navigation, Pagination } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperInstance } from "swiper";
+import { IconButton } from "@/components/UI/IconButton";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
@@ -153,20 +154,20 @@ export function HeroBanner() {
         ))}
       </Swiper>
 
-      <button
-        type="button"
+      <IconButton
+        variant="inverse"
         aria-label="Slide anterior"
-        className="hero-banner-previous absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-white transition hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 sm:left-4"
+        className="hero-banner-previous absolute left-2 top-1/2 z-10 -translate-y-1/2 focus-visible:ring-offset-2 sm:left-4"
       >
         <ChevronLeft className="h-8 w-8 drop-shadow-[0_1px_4px_rgba(0,0,0,0.65)]" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
+      </IconButton>
+      <IconButton
+        variant="inverse"
         aria-label="Próximo slide"
-        className="hero-banner-next absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-white transition hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 sm:right-4"
+        className="hero-banner-next absolute right-2 top-1/2 z-10 -translate-y-1/2 focus-visible:ring-offset-2 sm:right-4"
       >
         <ChevronRight className="h-8 w-8 drop-shadow-[0_1px_4px_rgba(0,0,0,0.65)]" aria-hidden="true" />
-      </button>
+      </IconButton>
       <div className="hero-banner-pagination absolute! bottom-3! z-10! flex justify-center [&_.swiper-pagination-bullet]:h-2.5 [&_.swiper-pagination-bullet]:w-2.5 [&_.swiper-pagination-bullet]:bg-white [&_.swiper-pagination-bullet]:opacity-70 [&_.swiper-pagination-bullet-active]:w-7 [&_.swiper-pagination-bullet-active]:rounded-full [&_.swiper-pagination-bullet-active]:bg-[#ff6a00] [&_.swiper-pagination-bullet-active]:opacity-100" />
     </section>
   );
