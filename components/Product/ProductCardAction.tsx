@@ -39,10 +39,22 @@ export function ProductCardAction({
   }
 
   if (!canAddDirectly) {
+    if (!available) {
+      return (
+        <div className="mt-3">
+          <Link
+            href={href}
+            className="inline-flex h-10 min-h-10 w-full items-center justify-center rounded-[6px] bg-slate-600 px-3 text-center text-base font-medium uppercase text-white transition-colors hover:bg-slate-700 active:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-600 focus-visible:ring-offset-2 md:text-sm"
+          >
+            Avise-me
+          </Link>
+          <div className="mt-1 min-h-4" aria-hidden="true" />
+        </div>
+      );
+    }
+
     const label =
-      available && (productType === "variable" || hasOptions)
-        ? "Ver opções"
-        : "Ver produto";
+      productType === "variable" || hasOptions ? "Ver opções" : "Ver produto";
 
     return (
       <div className="mt-3">
