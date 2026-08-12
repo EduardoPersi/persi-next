@@ -4,6 +4,7 @@ import {
   randomBytes,
 } from "node:crypto";
 import { validateCheckoutTransferUrl } from "./checkoutTransferUrl.ts";
+import type { CheckoutStoreAddress } from "../../types/checkout.ts";
 
 export const CHECKOUT_TRANSFER_PATH =
   "/wp-json/persi-headless/v1/checkout-transfer";
@@ -22,6 +23,8 @@ export interface CheckoutTransferPayload {
     rateId: "";
     packageIndex: 0;
   };
+  billingAddress: CheckoutStoreAddress;
+  shippingAddress: CheckoutStoreAddress;
 }
 
 export interface CheckoutTransferConfig {
@@ -177,8 +180,51 @@ export function getCheckoutTransferConfig(
   };
 }
 
+function requireStoreAddressField(
+  value: string | undefined,
+  field: string,
+): string {
+  if (!value || !value.trim()) {
+    throw new CheckoutTransferError(422, `Missing address field: ${field}`);
+  }
+  return value.trim();
+}
+
+function validateStoreAddress(
+  address: CheckoutStoreAddress,
+): CheckoutStoreAddress {
+  return {
+    firstName: requireStoreAddressField(address.firstName, "firstName"),
+    lastName: requireStoreAddressField(address.lastName, "lastName"),
+    company: address.company?.trim() || undefined,
+    address1: requireStoreAddressField(address.address1, "address1"),
+    address2: address.address2?.trim() || undefined,
+    city: requireStoreAddressField(address.city, "city"),
+    state: requireStoreAddressField(address.state, "state").toUpperCase(),
+    postcode: requireStoreAddressField(address.postcode, "postcode").replace(
+      /\D/g,
+      "",
+    ),
+    country: "BR",
+    ...(address.email || address.phone
+      ? {
+          email: address.email
+            ? requireStoreAddressField(address.email, "email")
+            : undefined,
+          phone: address.phone
+            ? requireStoreAddressField(address.phone, "phone").replace(
+                /\D/g,
+                "",
+              )
+            : undefined,
+        }
+      : {}),
+  };
+}
+
 export function buildCheckoutTransferPayload(
   items: CheckoutTransferItem[],
+  customer: { billingAddress: CheckoutStoreAddress; shippingAddress: CheckoutStoreAddress },
 ): CheckoutTransferPayload {
   if (items.length < 1 || items.length > 100) {
     throw new CheckoutTransferError(422, "Cart cannot be transferred");
@@ -211,6 +257,8 @@ export function buildCheckoutTransferPayload(
       rateId: "",
       packageIndex: 0,
     },
+    billingAddress: validateStoreAddress(customer.billingAddress),
+    shippingAddress: validateStoreAddress(customer.shippingAddress),
   };
 }
 

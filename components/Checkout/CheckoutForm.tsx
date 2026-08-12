@@ -180,13 +180,13 @@ export function CheckoutForm({
   useBeforeUnloadWarning(hasUnsavedProgress && !hasCreatedOrder);
   useTabAttentionTitle(!hasCreatedOrder);
 
-  const goToPayment = async () => {
+  const goToPayment = async (values: CheckoutFormValues) => {
     setStatusMessage("");
     // Sinaliza a saída como intencional antes do redirect (suprime o aviso
     // de "sair sem salvar" do useBeforeUnloadWarning) só depois que o link
     // de transferência é confirmado — se prepareCheckout falhar, o aviso
     // continua ativo normalmente.
-    await prepareCheckout(() => setHasCreatedOrder());
+    await prepareCheckout(values, () => setHasCreatedOrder());
   };
 
   const addressReady =

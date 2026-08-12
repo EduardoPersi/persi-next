@@ -1,15 +1,17 @@
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   buildCheckoutTransferPayload,
   CheckoutTransferError,
   createCheckoutTransfer,
   getCheckoutTransferConfig,
 } from "@/lib/commerce/checkoutTransfer";
+import { mapCheckoutFormToWooAddress } from "@/lib/commerce/checkoutAddress";
 import {
   getCartTokenCookieOptions,
   getPrivateCartHeaders,
 } from "@/lib/commerce/cartResponsePolicy";
+import { checkoutSchema } from "@/lib/validation/checkout";
 import { getAuthoritativeCheckoutItems } from "@/services/checkout/headlessCheckout";
 import {
   CartServiceError,
@@ -64,7 +66,7 @@ function getDiagnosticCode(error: unknown): string {
   return "CHECKOUT_RESPONSE_INVALID";
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   let activeCartToken = (await cookies()).get(CART_TOKEN_COOKIE)?.value;
 
   try {
@@ -74,11 +76,25 @@ export async function POST() {
       throw new CheckoutTransferError(422, "Cart token is missing");
     }
 
+    let requestBody: unknown;
+    try {
+      requestBody = await request.json();
+    } catch {
+      throw new CheckoutTransferError(422, "Invalid checkout data");
+    }
+
+    const parsedForm = checkoutSchema.safeParse(requestBody);
+    if (!parsedForm.success) {
+      throw new CheckoutTransferError(422, "Invalid checkout data");
+    }
+
+    const customer = mapCheckoutFormToWooAddress(parsedForm.data);
+
     const cartResult = await getCart(activeCartToken);
     activeCartToken = cartResult.cartToken ?? activeCartToken;
 
     const items = await getAuthoritativeCheckoutItems(cartResult.cart);
-    const payload = buildCheckoutTransferPayload(items);
+    const payload = buildCheckoutTransferPayload(items, customer);
     const transfer = await createCheckoutTransfer(payload, configuration);
 
     return createPrivateResponse(
