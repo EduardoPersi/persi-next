@@ -11,6 +11,7 @@ import { NewsletterForm } from "@/components/Footer/NewsletterForm";
 
 import { Container } from "@/components/UI/Container";
 import { PAYMENT_ICONS } from "@/lib/constants/paymentIcons";
+import { STORE_INFO } from "@/lib/constants/storeInfo";
 
 const categories = [
   { label: "Acabamentos", href: "/acabamentos" },
@@ -123,12 +124,12 @@ export function Footer() {
                   <strong className="font-semibold text-slate-800">
                     ENDEREÇO:
                   </strong>{" "}
-                  Rua Itirapina, 163, Vila Lacerda, Jundiaí - SP
+                  {STORE_INFO.address.line}
                 </address>
               </li>
               <li>
                 <a
-                  href="https://wa.me/551139648294"
+                  href={STORE_INFO.whatsapp.href}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Conversar com a Persi Materiais pelo WhatsApp"
@@ -138,31 +139,31 @@ export function Footer() {
                     aria-hidden="true"
                     className="h-5 w-5 shrink-0 text-[#ff6a00]"
                   />
-                  WhatsApp: (11) 3964-8294
+                  WhatsApp: {STORE_INFO.whatsapp.label}
                 </a>
               </li>
               <li>
                 <a
-                  href="tel:+5511996340689"
+                  href={STORE_INFO.phone.href}
                   className="tap-feedback flex min-h-9 items-center gap-3 rounded-md transition-colors hover:text-[#ff6a00]"
                 >
                   <Phone
                     aria-hidden="true"
                     className="h-5 w-5 shrink-0 text-[#ff6a00]"
                   />
-                  Telefone: (11) 99634-0689
+                  Telefone: {STORE_INFO.phone.label}
                 </a>
               </li>
               <li>
                 <a
-                  href="mailto:vendas@persimateriais.com.br"
+                  href={STORE_INFO.email.href}
                   className="tap-feedback flex min-h-9 items-center gap-3 break-all rounded-md transition-colors hover:text-[#ff6a00]"
                 >
                   <Mail
                     aria-hidden="true"
                     className="h-5 w-5 shrink-0 text-[#ff6a00]"
                   />
-                  E-mail: vendas@persimateriais.com.br
+                  E-mail: {STORE_INFO.email.label}
                 </a>
               </li>
               <li className="flex items-start gap-3">
@@ -175,9 +176,9 @@ export function Footer() {
                     Horário de atendimento:
                   </strong>
                   <br />
-                  Segunda a sexta: 7h30 às 18h
+                  {STORE_INFO.hours.weekdays}
                   <br />
-                  Sábado: 7h30 às 14h
+                  {STORE_INFO.hours.saturday}
                 </span>
               </li>
             </ul>

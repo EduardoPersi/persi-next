@@ -39,6 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     { url: url("/"), changeFrequency: "daily", priority: 1 },
     { url: url("/promocoes"), changeFrequency: "daily", priority: 0.8 },
+    { url: url("/contato"), changeFrequency: "monthly", priority: 0.4 },
     ...Object.keys(institutionalPageMap).map((slug) => ({
       url: url(`/${slug}`),
       changeFrequency: "monthly" as const,

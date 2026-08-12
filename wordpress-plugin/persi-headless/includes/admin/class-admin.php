@@ -6,6 +6,7 @@ class Persi_Headless_Admin {
 	public function register() {
 		require_once PERSI_HEADLESS_PATH . 'includes/stock-notifications/class-configuration.php';
 		require_once PERSI_HEADLESS_PATH . 'includes/newsletter/class-configuration.php';
+		require_once PERSI_HEADLESS_PATH . 'includes/contact/class-configuration.php';
 		add_action( 'admin_menu', array( $this, 'menu' ), 60 );
 		add_action( 'admin_init', array( $this, 'settings' ) );
 		add_action( 'admin_post_persi_headless_clear_cache', array( $this, 'clear_cache' ) );
@@ -30,6 +31,7 @@ class Persi_Headless_Admin {
 				'bought_together' => ! empty( $input['modules']['bought_together'] ),
 				'stock_notifications' => ! empty( $input['modules']['stock_notifications'] ),
 				'newsletter' => ! empty( $input['modules']['newsletter'] ),
+				'contact' => ! empty( $input['modules']['contact'] ),
 				'order_bump' => false,
 			),
 			'double_opt_in' => ! empty( $input['double_opt_in'] ),
@@ -72,12 +74,16 @@ class Persi_Headless_Admin {
 					<tr><th>HMAC de newsletter</th><td><?php echo Persi_Headless_Newsletter_Configuration::secret() ? 'Configurado' : 'Não configurado'; ?></td></tr>
 					<tr><th>Origens HMAC (newsletter)</th><td><?php echo esc_html( implode( ', ', Persi_Headless_Newsletter_Configuration::origins() ) ); ?></td></tr>
 					<tr><th>Última falha segura (newsletter)</th><td><code><?php $newsletter_failure = get_option( 'persi_headless_newsletter_last_failure', array() ); echo esc_html( $newsletter_failure['code'] ?? 'nenhuma' ); ?></code></td></tr>
+					<tr><th>HMAC de contato</th><td><?php echo Persi_Headless_Contact_Configuration::secret() ? 'Configurado' : 'Não configurado'; ?></td></tr>
+					<tr><th>Origens HMAC (contato)</th><td><?php echo esc_html( implode( ', ', Persi_Headless_Contact_Configuration::origins() ) ); ?></td></tr>
+					<tr><th>Destinatário (contato)</th><td><code><?php echo esc_html( Persi_Headless_Contact_Configuration::recipient() ); ?></code></td></tr>
+					<tr><th>Última falha segura (contato)</th><td><code><?php $contact_failure = get_option( 'persi_headless_contact_last_failure', array() ); echo esc_html( $contact_failure['code'] ?? 'nenhuma' ); ?></code></td></tr>
 				</tbody>
 			</table>
 			<form method="post" action="options.php">
 				<?php settings_fields( 'persi_headless' ); ?>
 				<h2><?php esc_html_e( 'Módulos', 'persi-headless' ); ?></h2>
-				<?php foreach ( array( 'product_families' => 'Famílias de produtos', 'bought_together' => 'Compre junto', 'stock_notifications' => 'Retorno ao estoque', 'newsletter' => 'Newsletter' ) as $key => $label ) : ?>
+				<?php foreach ( array( 'product_families' => 'Famílias de produtos', 'bought_together' => 'Compre junto', 'stock_notifications' => 'Retorno ao estoque', 'newsletter' => 'Newsletter', 'contact' => 'Formulário de contato' ) as $key => $label ) : ?>
 					<p><label><input type="checkbox" name="<?php echo esc_attr( Persi_Headless_Settings::OPTION ); ?>[modules][<?php echo esc_attr( $key ); ?>]" value="1" <?php checked( ! empty( $modules[ $key ] ) ); ?>> <?php echo esc_html( $label ); ?></label></p>
 				<?php endforeach; ?>
 				<p><label><input type="checkbox" disabled> <?php esc_html_e( 'Order bump (reservado, desabilitado)', 'persi-headless' ); ?></label></p>

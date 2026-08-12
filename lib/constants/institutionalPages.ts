@@ -35,10 +35,6 @@ export const institutionalPageMap = {
     wordpressSlug: "frete-gratis-na-regiao",
     title: "Frete grátis na região",
   },
-  contato: {
-    wordpressSlug: "contato",
-    title: "Contato",
-  },
   "rastrear-pedido": {
     wordpressSlug: "rastrear-pedido",
     title: "Rastrear pedido",
