@@ -54,6 +54,11 @@ export function RouteTransitionProvider({
       if (anchor.closest(`[${SKIP_ATTRIBUTE}]`)) return;
       if (anchor.target && anchor.target !== "_self") return;
       if (anchor.hasAttribute("download")) return;
+      // Links que se desabilitam condicionalmente (ex.: "Finalizar compra"
+      // com carrinho vazio) sinalizam isso via aria-disabled — checar aqui
+      // em vez de depender do preventDefault do próprio onClick do link,
+      // já que agora capturamos o clique antes dele (ver comentário abaixo).
+      if (anchor.getAttribute("aria-disabled") === "true") return;
 
       const href = anchor.getAttribute("href");
       if (!href || href.startsWith("#")) return;
@@ -74,8 +79,17 @@ export function RouteTransitionProvider({
       navigate(`${url.pathname}${url.search}${url.hash}`);
     }
 
-    document.addEventListener("click", handleClick);
-    return () => document.removeEventListener("click", handleClick);
+    // Fase de captura (não a de bubble, padrão do addEventListener): o
+    // próprio <Link> do Next.js já chama preventDefault() no seu próprio
+    // onClick para fazer a navegação client-side dele. Um listener em
+    // bubble no document roda DEPOIS desse onClick, então "event.
+    // defaultPrevented" já vinha true e este handler nunca chegava a
+    // interceptar nada — o Next navegava por conta própria, sem overlay
+    // nenhum. Capturando antes, somos nós quem chama preventDefault()
+    // primeiro; o Link, ao rodar depois, vê defaultPrevented=true e cede
+    // a navegação para o nosso router.push()/startTransition().
+    document.addEventListener("click", handleClick, true);
+    return () => document.removeEventListener("click", handleClick, true);
   }, [isPending, navigate]);
 
   const value = useMemo(
