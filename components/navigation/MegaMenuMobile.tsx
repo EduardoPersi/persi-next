@@ -10,14 +10,19 @@ function MobileCategory({ category, depth = 0, onNavigate }: { category: Navigat
 
   return (
     <li>
-      <div className="flex min-h-12 items-stretch rounded-lg hover:bg-slate-100" style={{ paddingLeft: `${Math.min(depth, 4) * 12}px` }}>
+      <div className="tap-feedback flex min-h-12 items-stretch rounded-lg transition-colors hover:bg-slate-100" style={{ paddingLeft: `${Math.min(depth, 4) * 12}px` }}>
         <Link href={category.href} onClick={onNavigate} className="flex min-w-0 flex-1 items-center px-3 py-3 font-semibold text-[#071f5c]">
           <span className="truncate">{category.name}</span>
-          {typeof category.count === "number" ? <span className="ml-1 text-xs font-normal text-[#6b7280]">({category.count})</span> : null}
         </Link>
-        {category.children.length ? <button type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-label={`${open ? "Recolher" : "Expandir"} ${category.name}`} className="flex w-12 items-center justify-center rounded-lg text-[#0c2d72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"><ChevronDown className={`h-5 w-5 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" /></button> : null}
+        {category.children.length ? <button type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-label={`${open ? "Recolher" : "Expandir"} ${category.name}`} className="tap-feedback flex w-12 items-center justify-center rounded-lg text-[#0c2d72] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"><ChevronDown className={`h-5 w-5 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" /></button> : null}
       </div>
-      {category.children.length && open ? <ul className="border-l border-slate-200 pl-1">{category.children.map((child) => <MobileCategory key={child.id} category={child} depth={depth + 1} onNavigate={onNavigate} />)}</ul> : null}
+      {category.children.length ? (
+        <div className={`grid overflow-hidden transition-[grid-template-rows] duration-200 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+          <ul className="min-h-0 overflow-hidden border-l border-slate-200 pl-1">
+            {category.children.map((child) => <MobileCategory key={child.id} category={child} depth={depth + 1} onNavigate={onNavigate} />)}
+          </ul>
+        </div>
+      ) : null}
     </li>
   );
 }

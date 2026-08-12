@@ -20,6 +20,7 @@ import { getHeaderAccountAction } from "@/lib/account/headerNavigation";
 import type { AccountSessionResult } from "@/lib/account/validation";
 import { AccountDrawer } from "@/components/Account/AccountDrawer";
 import { AccountDropdown } from "@/components/Account/AccountDropdown";
+import { IconButton } from "@/components/UI/IconButton";
 import { MiniCart } from "./MiniCart";
 import { MobileMenu } from "./MobileMenu";
 import { ProductSearch } from "./ProductSearch";
@@ -94,7 +95,7 @@ function HeaderActions({
         <>
           <a
             href="#"
-            className="hidden whitespace-nowrap text-sm text-white/70 transition hover:text-white lg:block"
+            className="tap-feedback-inverse hidden whitespace-nowrap rounded-md px-1.5 py-1 text-sm text-white/70 transition-colors hover:text-white lg:block"
           >
             Rastrear pedido
           </a>
@@ -103,8 +104,8 @@ function HeaderActions({
       ) : null}
 
       <div className="md:hidden">
-        <button
-          type="button"
+        <IconButton
+          variant="inverse"
           onClick={onAccountAction}
           disabled={!canOpenAccountDrawer}
           aria-label={accountLabel}
@@ -114,10 +115,10 @@ function HeaderActions({
           aria-controls={
             canOpenAccountDrawer ? "account-drawer" : undefined
           }
-          className="flex h-10 items-center justify-center rounded-md px-2 transition hover:bg-white/10 disabled:cursor-wait disabled:opacity-70"
+          className="disabled:cursor-wait"
         >
           <User size={compact ? 21 : 23} className="shrink-0" />
-        </button>
+        </IconButton>
       </div>
 
       <AccountDropdown
@@ -132,27 +133,27 @@ function HeaderActions({
       <Link
         href="/favoritos"
         aria-label={`Favoritos: ${favoritesCount} ${favoritesCount === 1 ? "produto" : "produtos"}`}
-        className="relative hidden h-10 w-10 items-center justify-center p-2 transition hover:text-[#ff6a00] md:flex"
+        className="relative hidden min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-white transition-colors duration-150 hover:bg-white/10 hover:text-[#ff6a00] active:bg-white/20 active:text-[#ff6a00] md:flex"
       >
         <Heart size={compact ? 21 : 24} />
         <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff6a00] px-1 text-[10px] font-bold leading-none text-white">{favoritesCount}</span>
       </Link>
 
-      <button
-        type="button"
+      <IconButton
+        variant="inverse"
         onClick={onOpenCart}
         aria-label={
           isCartPage ? "Atualizar página do carrinho" : "Abrir mini carrinho"
         }
         aria-expanded={isCartPage ? undefined : isCartOpen}
         aria-controls={isCartPage ? undefined : "mini-cart-drawer"}
-        className="relative flex h-10 w-10 items-center justify-center p-2 transition hover:text-white/80"
+        className="relative"
       >
         <ShoppingCart className={compact ? "h-6 w-6" : "h-7 w-7"} />
         <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff6a00] px-1 text-[10px] font-bold leading-none text-white">
           {itemsCount}
         </span>
-      </button>
+      </IconButton>
     </nav>
   );
 }
@@ -259,15 +260,15 @@ function HeaderContent() {
       <div className="bg-[#0c2d72] text-white">
         <div className="mx-auto max-w-7xl px-4 py-3 sm:py-3">
           <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
+            <IconButton
+              variant="inverse"
               aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((current) => !current)}
-              className="flex h-10 w-10 items-center justify-center rounded-md hover:bg-white/10 lg:hidden"
+              className="lg:hidden"
             >
               {menuOpen ? <X size={27} /> : <Menu size={27} />}
-            </button>
+            </IconButton>
 
             <HeaderLogo />
             <ProductSearch variant="desktop" />
@@ -298,7 +299,7 @@ function HeaderContent() {
           <MegaMenu />
           <a
             href="#"
-            className="hidden items-center gap-2 px-4 py-3 text-base font-semibold hover:bg-black/10 lg:flex"
+            className="tap-feedback-inverse hidden items-center gap-2 px-4 py-3 text-base font-semibold transition-colors hover:bg-black/10 lg:flex"
           >
             <MapPin size={18} />
             Nossa Loja
@@ -318,15 +319,15 @@ function HeaderContent() {
       >
         <div className="mx-auto max-w-7xl px-4 py-2">
           <div className="hidden items-center gap-2 sm:gap-3 md:flex">
-            <button
-              type="button"
+            <IconButton
+              variant="inverse"
               aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((current) => !current)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md hover:bg-white/10 lg:hidden"
+              className="shrink-0 lg:hidden"
             >
               {menuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+            </IconButton>
             <HeaderLogo compact />
             <ProductSearch variant="desktop" />
             <HeaderActions
@@ -357,6 +358,7 @@ function HeaderContent() {
         onClose={closeMenu}
         accountHref={accountHref}
         accountStatus={accountStatus}
+        customerName={customer?.firstName || customer?.displayName || ""}
         onAccountAction={handleAccountAction}
       />
       <AccountDrawer

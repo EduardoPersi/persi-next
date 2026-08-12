@@ -5,7 +5,6 @@ import {
   ChevronRight,
   Heart,
   MapPin,
-  Menu,
   Package,
   User,
   X,
@@ -13,12 +12,14 @@ import {
 import { Drawer } from "./Drawer";
 import { MegaMenuMobile } from "@/components/navigation/MegaMenuMobile";
 import { useNavigation } from "@/components/navigation/NavigationProvider";
+import { IconButton } from "@/components/UI/IconButton";
 
 type MobileMenuProps = {
   open: boolean;
   onClose: () => void;
   accountHref?: "/entrar" | "/minha-conta";
   accountStatus: "loading" | "authenticated" | "anonymous";
+  customerName?: string;
   onAccountAction: () => void;
 };
 
@@ -27,38 +28,35 @@ export function MobileMenu({
   onClose,
   accountHref,
   accountStatus,
+  customerName,
   onAccountAction,
 }: MobileMenuProps) {
   const { categories } = useNavigation();
+  const accountLabel =
+    accountStatus === "authenticated" && customerName
+      ? customerName
+      : "Minha Conta";
 
   return (
     <Drawer open={open} onClose={onClose} side="left">
       <div className="flex h-full flex-col">
-        <header className="flex items-center justify-between border-b px-5 py-4">
-          <div className="flex items-center gap-2">
-            <Menu size={22} />
-            <h2 className="text-lg font-bold">Menu</h2>
-          </div>
+        <header className="flex items-center justify-end px-5 pt-3">
+          <h2 className="sr-only">Menu</h2>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar menu"
-            className="rounded-md p-2 transition hover:bg-slate-100"
-          >
+          <IconButton onClick={onClose} aria-label="Fechar menu">
             <X size={22} />
-          </button>
+          </IconButton>
         </header>
 
-        <div className="border-b px-3 py-3">
+        <div className="border-b px-3 pb-3">
           {accountHref ? (
             <Link
               href={accountHref}
               onClick={onClose}
-              className="flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition hover:bg-slate-100"
+              className="tap-feedback flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition-colors hover:bg-slate-100"
             >
               <User size={20} />
-              Minha Conta
+              {accountLabel}
             </Link>
           ) : (
             <button
@@ -68,17 +66,17 @@ export function MobileMenu({
                 onClose();
                 onAccountAction();
               }}
-              className="flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition hover:bg-slate-100 disabled:cursor-wait disabled:opacity-60"
+              className="tap-feedback flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition-colors hover:bg-slate-100 disabled:cursor-wait disabled:opacity-60"
             >
               <User size={20} />
-              Minha Conta
+              {accountLabel}
             </button>
           )}
 
           <Link
             href="/favoritos"
             onClick={onClose}
-            className="flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition hover:bg-slate-100"
+            className="tap-feedback flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition-colors hover:bg-slate-100"
           >
             <Heart size={20} />
             Favoritos
@@ -87,7 +85,7 @@ export function MobileMenu({
           <Link
             href="/minha-conta/pedidos"
             onClick={onClose}
-            className="flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition hover:bg-slate-100"
+            className="tap-feedback flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition-colors hover:bg-slate-100"
           >
             <Package size={20} />
             Meus Pedidos
@@ -96,7 +94,7 @@ export function MobileMenu({
           <Link
             href="/contato"
             onClick={onClose}
-            className="flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition hover:bg-slate-100"
+            className="tap-feedback flex items-center gap-3 rounded-md px-3 py-3 text-[17px] font-semibold transition-colors hover:bg-slate-100"
           >
             <MapPin size={20} />
             Nossa Loja
@@ -108,7 +106,7 @@ export function MobileMenu({
             <Link
               href="/promocoes"
               onClick={onClose}
-              className="flex items-center justify-between rounded-md px-3 py-3.5 text-[17px] font-semibold text-[#0c2d72] transition hover:bg-slate-100"
+              className="tap-feedback flex items-center justify-between rounded-md px-3 py-3.5 text-[17px] font-semibold text-[#0c2d72] transition-colors hover:bg-slate-100"
             >
               <span>Promoções</span>
               <ChevronRight size={18} className="text-[#ff6a00]" />

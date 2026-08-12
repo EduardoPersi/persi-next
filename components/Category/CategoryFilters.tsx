@@ -234,9 +234,6 @@ function FilterForm({
                 <span className="min-w-0 flex-1 truncate">
                   {category.name}
                 </span>
-                <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] leading-none text-slate-400">
-                  ({category.count})
-                </span>
               </label>
             ))}
           </div>
@@ -297,9 +294,6 @@ function FilterForm({
                 ) : null}
                 <span className="min-w-0 flex-1 truncate peer-checked:font-semibold peer-checked:text-[#0c2d72]">
                   {brand.name}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] leading-none text-slate-400">
-                  ({brand.count})
                 </span>
               </label>
             ))}
@@ -376,9 +370,6 @@ function FilterForm({
                   <span className="min-w-0 flex-1 truncate peer-checked:font-semibold peer-checked:text-[#0c2d72]">
                     {option.name}
                   </span>
-                  <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] leading-none text-slate-400">
-                    ({option.count})
-                  </span>
                 </label>
               ))}
             </div>
@@ -419,9 +410,6 @@ function FilterForm({
                 className="h-4 w-4 accent-[#0c2d72]"
               />
               <span className="flex-1">Em estoque</span>
-              <span className="text-xs text-slate-400">
-                ({filterData.inStockCount})
-              </span>
             </label>
           ) : null}
         </div>
