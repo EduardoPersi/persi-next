@@ -70,6 +70,8 @@ export interface Product {
   ean?: string | null;
   shortDescription: string;
   description: string;
+  shortDescriptionHtml?: string;
+  descriptionHtml?: string;
   price: number;
   regularPrice?: number;
   salePrice?: number;

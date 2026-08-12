@@ -5,6 +5,7 @@ export interface ProductCategory {
   name: string;
   slug: string;
   description: string;
+  descriptionHtml?: string;
   parent: number;
   count?: number;
   image?: ProductImage;

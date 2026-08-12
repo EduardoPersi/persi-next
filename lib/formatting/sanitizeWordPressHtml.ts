@@ -28,15 +28,16 @@ const ALLOWED_TAGS = [
 ];
 
 // Conteúdo do WordPress vem com a marcação do Elementor (divs/spans com
-// classes e estilo inline). Como o post é re-renderizado com a tipografia
-// do próprio site (não a aparência do Elementor), tags fora da lista abaixo
-// são descartadas mas o texto interno é preservado — não usamos allowedTags
-// mais permissivo para não herdar layout/estilo do editor de página.
-export function sanitizeBlogContent(html: string): string {
+// classes e estilo inline). Como o conteúdo é re-renderizado com a
+// tipografia do próprio site (não a aparência do Elementor), tags fora da
+// lista abaixo são descartadas mas o texto interno é preservado — não
+// usamos allowedTags mais permissivo para não herdar layout/estilo do
+// editor de página.
+export function sanitizeWordPressHtml(html: string): string {
   return sanitizeHtml(html, {
     allowedTags: ALLOWED_TAGS,
     allowedAttributes: {
-      a: ["href", "target", "rel"],
+      a: ["href", "target", "rel", "title"],
       img: ["src", "alt", "width", "height", "srcset", "sizes", "loading"],
     },
     allowedSchemes: ["http", "https", "mailto", "tel"],

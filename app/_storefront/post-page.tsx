@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/Header/Header";
 import { Container } from "@/components/UI/Container";
+import { WordPressContent } from "@/components/UI/WordPressContent";
 import { getPostHref, SITE_URL } from "@/lib/routing/storefrontUrls";
 import { getBlogPostBySlug } from "@/services/wordpress/posts";
 
@@ -147,10 +148,7 @@ export default async function PostPage({ params }: PostPageProps) {
               </div>
             ) : null}
 
-            <div
-              className="institutional-content mt-7"
-              dangerouslySetInnerHTML={{ __html: post.contentHtml }}
-            />
+            <WordPressContent html={post.contentHtml} className="mt-7" />
           </article>
 
           <p className="mt-6">

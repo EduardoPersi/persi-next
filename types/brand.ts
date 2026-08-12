@@ -5,6 +5,7 @@ export interface ProductBrand {
   name: string;
   slug: string;
   description: string;
+  descriptionHtml?: string;
   count: number;
   image?: ProductImage;
   permalink?: string;

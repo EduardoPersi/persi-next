@@ -245,15 +245,22 @@ svg {
 }
 
 .institutional-content {
+  --wp-content-heading-color: #071f5c;
   color: var(--persi-foreground);
   font-size: 1rem;
   line-height: 1.75;
 }
 
+/* Produto/categoria/marca usam o mesmo azul de destaque já em produção
+   nessas páginas (#0c2d72), diferente do azul de página institucional. */
+.institutional-content--storefront {
+  --wp-content-heading-color: #0c2d72;
+}
+
 .institutional-content :where(h2, h3, h4) {
   margin-top: 1.75em;
   margin-bottom: 0.65em;
-  color: #071f5c;
+  color: var(--wp-content-heading-color);
 }
 
 .institutional-content h2 {

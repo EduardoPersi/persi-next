@@ -13,6 +13,7 @@ import { Header } from "@/components/Header/Header";
 import { ProductCard } from "@/components/Product/ProductCard";
 import { RecentlyViewedProducts } from "@/components/Product/RecentlyViewedProducts";
 import { Container } from "@/components/UI/Container";
+import { WordPressContent } from "@/components/UI/WordPressContent";
 import { getBrandByIdentifier } from "@/services/woocommerce/brands";
 import { getAllProductCategories } from "@/services/woocommerce/categories";
 import { getCategoryFilterData } from "@/services/woocommerce/filters";
@@ -374,6 +375,9 @@ export default async function CategoryPage({
   const contextDescription = selectedBrand
     ? selectedBrand.description
     : category.description;
+  const contextDescriptionHtml = selectedBrand
+    ? selectedBrand.descriptionHtml
+    : category.descriptionHtml;
   const filterValues: CategoryFilterValues = {
     minPrice,
     maxPrice,
@@ -593,7 +597,7 @@ export default async function CategoryPage({
             </div>
           </div>
 
-          {contextDescription ? (
+          {contextDescriptionHtml ? (
             <section
               className="mt-10 border-t border-slate-200 pt-8"
               aria-labelledby="category-description-title"
@@ -604,9 +608,11 @@ export default async function CategoryPage({
               >
                 Sobre {contextName}
               </h2>
-              <p className="mt-4 whitespace-pre-line text-left leading-7 text-slate-700">
-                {contextDescription}
-              </p>
+              <WordPressContent
+                html={contextDescriptionHtml}
+                variant="storefront"
+                className="mt-4"
+              />
             </section>
           ) : null}
 

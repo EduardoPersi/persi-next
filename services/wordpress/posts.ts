@@ -1,5 +1,5 @@
 import "server-only";
-import { sanitizeBlogContent } from "@/lib/formatting/sanitizeBlogContent";
+import { sanitizeWordPressHtml } from "@/lib/formatting/sanitizeWordPressHtml";
 import { stripHtml } from "@/services/woocommerce/mappers";
 import type { BlogPost, BlogPostDetail } from "@/types/blogPost";
 
@@ -81,7 +81,7 @@ function mapPost(post: WordPressPostResponse): BlogPost {
 function mapPostDetail(post: WordPressPostResponse): BlogPostDetail {
   return {
     ...mapPost(post),
-    contentHtml: sanitizeBlogContent(post.content?.rendered ?? ""),
+    contentHtml: sanitizeWordPressHtml(post.content?.rendered ?? ""),
   };
 }
 

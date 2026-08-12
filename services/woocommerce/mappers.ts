@@ -9,6 +9,7 @@ import type {
   WooCommerceStoreProduct,
 } from "@/types/woocommerce";
 import { getProductHref } from "../../lib/routing/storefrontUrls.ts";
+import { sanitizeWordPressHtml } from "../../lib/formatting/sanitizeWordPressHtml.ts";
 
 const namedEntities: Record<string, string> = {
   amp: "&",
@@ -123,6 +124,10 @@ export function mapStoreProduct(
   const shortDescription =
     stripHtml(product.short_description) ||
     description.slice(0, 240);
+  const descriptionHtml = sanitizeWordPressHtml(product.description);
+  const shortDescriptionHtml = sanitizeWordPressHtml(
+    product.short_description,
+  );
   const minorUnit = product.prices.currency_minor_unit;
   const price =
     convertMinorUnitPrice(product.prices.price, minorUnit) ?? 0;
@@ -152,6 +157,8 @@ export function mapStoreProduct(
     sku: product.sku,
     shortDescription,
     description,
+    shortDescriptionHtml,
+    descriptionHtml,
     price,
     regularPrice,
     salePrice,
@@ -261,6 +268,7 @@ export function mapStoreCategory(
     name: stripHtml(category.name),
     slug: category.slug,
     description: stripHtml(category.description ?? ""),
+    descriptionHtml: sanitizeWordPressHtml(category.description ?? ""),
     parent: category.parent,
     count: category.count,
     image: category.image

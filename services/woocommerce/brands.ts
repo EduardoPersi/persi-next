@@ -42,6 +42,7 @@ export async function getProductBrands(
         name: mappedBrand.name,
         slug: mappedBrand.slug,
         description: mappedBrand.description,
+        descriptionHtml: mappedBrand.descriptionHtml,
         count: mappedBrand.count ?? 0,
         image: mappedBrand.image,
         permalink: mappedBrand.permalink,

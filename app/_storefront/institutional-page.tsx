@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { InstitutionalPageLayout } from "@/components/Institutional/InstitutionalPageLayout";
+import { WordPressContent } from "@/components/UI/WordPressContent";
 import {
   institutionalPageMap,
   isInstitutionalRouteSlug,
@@ -56,7 +57,7 @@ export default async function InstitutionalPage({
 
   return (
     <InstitutionalPageLayout title={config.title}>
-      <div dangerouslySetInnerHTML={{ __html: page.content }} />
+      <WordPressContent html={page.content} bare />
     </InstitutionalPageLayout>
   );
 }

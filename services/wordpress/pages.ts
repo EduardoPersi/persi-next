@@ -1,3 +1,4 @@
+import { sanitizeWordPressHtml } from "@/lib/formatting/sanitizeWordPressHtml";
 import type { InstitutionalPage } from "@/types/wordpress";
 
 const WORDPRESS_PAGES_PATH = "/wp-json/wp/v2/pages";
@@ -20,22 +21,12 @@ function getRenderedString(value: WordPressRenderedValue | undefined) {
   return typeof value?.rendered === "string" ? value.rendered : "";
 }
 
-function sanitizeWordPressHtml(html: string) {
+// Páginas institucionais não têm H1 próprio no conteúdo do WordPress — o
+// título da página já é renderizado como H1 pelo layout do Next.js, então
+// rebaixamos qualquer H1 vindo do editor para H2 antes de sanitizar, para
+// não duplicar o nível de heading principal da página.
+function downgradeH1ToH2(html: string) {
   return html
-    .replace(
-      /<(script|style|iframe|object|embed|form|input|button|textarea|select|svg|math)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,
-      "",
-    )
-    .replace(
-      /<(script|style|iframe|object|embed|form|input|button|textarea|select|svg|math)\b[^>]*\/?>/gi,
-      "",
-    )
-    .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(/\s(?:style|srcdoc)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(
-      /\s(href|src)\s*=\s*(["'])\s*(?:javascript|vbscript|data):[\s\S]*?\2/gi,
-      "",
-    )
     .replace(/<h1(\s[^>]*)?>/gi, "<h2$1>")
     .replace(/<\/h1>/gi, "</h2>");
 }
@@ -110,7 +101,7 @@ export async function getWordPressPageBySlug(
 
     const title = getRenderedString(page.title);
     const content = removeRepeatedPageTitle(
-      sanitizeWordPressHtml(getRenderedString(page.content)),
+      sanitizeWordPressHtml(downgradeH1ToH2(getRenderedString(page.content))),
       title,
     );
     if (!title || !content) return null;
@@ -120,7 +111,9 @@ export async function getWordPressPageBySlug(
       slug: page.slug,
       title,
       content,
-      excerpt: sanitizeWordPressHtml(getRenderedString(page.excerpt)),
+      excerpt: sanitizeWordPressHtml(
+        downgradeH1ToH2(getRenderedString(page.excerpt)),
+      ),
       modified: page.modified,
     };
   } catch {
