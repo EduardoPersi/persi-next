@@ -4,7 +4,7 @@ Tags: woocommerce, headless, rest-api
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.3.0
+Stable tag: 0.3.1
 License: GPLv2 or later
 
 Integração oficial e independente do tema entre WooCommerce e o frontend Next.js da Persi.
@@ -27,6 +27,7 @@ GET /wp-json/persi/v1/stock-notifications/unsubscribe/{token}
 POST /wp-json/persi/v1/newsletter/subscribe
 GET /wp-json/persi/v1/newsletter/confirm/{token}
 GET /wp-json/persi/v1/newsletter/unsubscribe/{token}
+POST /wp-json/persi/v1/contact/submit
 
 As rotas GET retornam somente produtos publicados e dados públicos. A inscrição
 retorna mensagem neutra, usa honeypot, rate limit e double opt-in por padrão.
@@ -88,3 +89,24 @@ O segredo é exclusivo deste módulo (não reutiliza o de estoque) e nunca deve
 usar NEXT_PUBLIC_. Inscrições `pending` sem confirmação expiram em 7 dias;
 inscrições `unsubscribed` são anonimizadas em 30 dias; inscrições `confirmed`
 permanecem ativas indefinidamente até o próprio inscrito cancelar.
+
+== Segurança do formulário de contato ==
+
+Mesma arquitetura de assinatura HMAC dos módulos acima, mas sem tabela de
+banco: a mensagem não é armazenada, só validada, limitada por taxa e
+encaminhada por e-mail (`wp_mail`) ao destinatário configurado. A proteção
+contra replay usa um transient (expira sozinho) em vez de nonce persistido.
+
+Configure no wp-config.php ou no ambiente do servidor:
+
+define( 'PERSI_HEADLESS_CONTACT_HMAC_SECRET', 'substitua-por-segredo-aleatorio-forte' );
+define( 'PERSI_HEADLESS_CONTACT_HMAC_KEY_ID', 'primary' );
+define( 'PERSI_HEADLESS_CONTACT_ALLOWED_ORIGINS', 'https://frontend.example' );
+define( 'PERSI_HEADLESS_CONTACT_RECIPIENT_EMAIL', 'vendas@persimateriais.com.br' );
+define( 'PERSI_HEADLESS_CONTACT_TRUST_PROXY_HEADERS', false );
+define( 'PERSI_HEADLESS_CONTACT_TRUSTED_PROXY_IPS', '' );
+
+O segredo é exclusivo deste módulo (não reutiliza os de estoque/newsletter) e
+nunca deve usar NEXT_PUBLIC_. Sem `PERSI_HEADLESS_CONTACT_RECIPIENT_EMAIL`
+configurado, as mensagens vão para o e-mail administrativo padrão do
+WordPress.
