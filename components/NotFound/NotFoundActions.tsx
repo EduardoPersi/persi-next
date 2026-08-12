@@ -4,19 +4,21 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, House } from "lucide-react";
 import { Button } from "@/components/UI/Button";
 import { WhatsAppIcon } from "@/components/UI/SocialIcons";
+import { useRouteTransition } from "@/hooks/useRouteTransition";
 
 const WHATSAPP_URL =
   "https://wa.me/551139648294?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20para%20encontrar%20um%20produto.";
 
 export function NotFoundNavigationActions() {
   const router = useRouter();
+  const { navigate } = useRouteTransition();
 
   return (
     <div className="grid w-full gap-3 sm:grid-cols-2">
       <Button
         size="lg"
         className="w-full"
-        onClick={() => router.push("/")}
+        onClick={() => navigate("/")}
         aria-label="Voltar para a Página Inicial"
       >
         <House className="h-5 w-5" aria-hidden="true" />

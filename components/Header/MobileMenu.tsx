@@ -39,7 +39,7 @@ export function MobileMenu({
 
   return (
     <Drawer open={open} onClose={onClose} side="left">
-      <div className="relative flex h-full flex-col">
+      <div className="relative flex h-full flex-col" data-route-transition-skip>
         <h2 className="sr-only">Menu</h2>
         <IconButton
           onClick={onClose}

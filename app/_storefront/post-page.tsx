@@ -97,7 +97,7 @@ export default async function PostPage({ params }: PostPageProps) {
       <Header />
       <main className="py-5 sm:py-8 lg:py-10">
         <Container size="md">
-          <nav aria-label="Breadcrumb" className="mb-4">
+          <nav aria-label="Breadcrumb" className="mb-4" data-route-transition-skip>
             <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 sm:text-sm">
               <li>
                 <Link href="/" className="hover:text-[#ff6a00]">

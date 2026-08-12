@@ -211,7 +211,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       <main className="pb-6 pt-3 sm:pb-8 sm:pt-4 lg:pb-10 lg:pt-5">
         <Container>
           <div className="flex min-w-0 items-center justify-between gap-4">
-            <nav aria-label="Breadcrumb" className="min-w-0">
+            <nav aria-label="Breadcrumb" className="min-w-0" data-route-transition-skip>
               <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 sm:text-sm">
               <li>
                 <Link

@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { LoaderCircle, Search } from "lucide-react";
 import {
   type FormEvent,
@@ -18,6 +17,7 @@ import type {
 } from "@/types/search";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useOverlayManager } from "@/hooks/useOverlayManager";
+import { useRouteTransition } from "@/hooks/useRouteTransition";
 import { getProductHref } from "@/lib/routing/storefrontUrls";
 
 interface ProductSearchProps {
@@ -50,7 +50,7 @@ export function ProductSearch({
   variant,
   compact = false,
 }: ProductSearchProps) {
-  const router = useRouter();
+  const { navigate } = useRouteTransition();
   const resultsId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -152,7 +152,7 @@ export function ProductSearch({
     if (!trimmedQuery) return;
 
     closeSearch();
-    router.push(`/busca?q=${encodeURIComponent(trimmedQuery)}`);
+    navigate(`/busca?q=${encodeURIComponent(trimmedQuery)}`);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -185,7 +185,7 @@ export function ProductSearch({
       event.preventDefault();
       const product = products[activeIndex];
       closeSearch();
-      router.push(getProductHref(product.slug));
+      navigate(getProductHref(product.slug));
     }
   }
 

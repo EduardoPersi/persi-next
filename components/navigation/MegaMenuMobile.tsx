@@ -29,5 +29,5 @@ function MobileCategory({ category, depth = 0, onNavigate }: { category: Navigat
 
 export function MegaMenuMobile({ categories, onNavigate }: { categories: NavigationCategory[]; onNavigate: () => void }) {
   if (!categories.length) return <p className="px-3 py-4 text-sm text-slate-500">Categorias temporariamente indisponíveis.</p>;
-  return <nav aria-label="Categorias de produtos"><ul>{categories.map((category) => <MobileCategory key={category.id} category={category} onNavigate={onNavigate} />)}</ul></nav>;
+  return <nav aria-label="Categorias de produtos" data-route-transition-skip><ul>{categories.map((category) => <MobileCategory key={category.id} category={category} onNavigate={onNavigate} />)}</ul></nav>;
 }

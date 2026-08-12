@@ -13,6 +13,8 @@ import {
   GoogleTagManagerScript,
 } from "@/components/layout/GoogleTagManager";
 import { OverlayManagerProvider } from "@/context/OverlayManager";
+import { RouteTransitionProvider } from "@/context/RouteTransition";
+import { RouteTransitionOverlay } from "@/components/UI/RouteTransitionOverlay";
 import "./globals.css";
 import { SITE_URL } from "@/lib/routing/storefrontUrls";
 import { AccountProvider } from "@/hooks/useAccount";
@@ -61,27 +63,29 @@ export default async function RootLayout({
       <body className="flex min-h-full flex-col">
         <GoogleTagManagerScript />
         <GoogleTagManagerNoScript />
-        <CookieConsentProvider>
-          <NavigationProvider menu={megaMenu}>
-            <OverlayManagerProvider>
-              <AccountProvider>
-                <CustomerListsProvider>
-                  <CartProvider>
-                    <div className="flex-1">{children}</div>
-                    <FooterVisibility>
-                      <Footer />
-                    </FooterVisibility>
-                    <BackToTopButton />
-                    <WhatsAppFloatingButton />
-                    <GoogleOneTap />
-                    <RecaptchaScript />
-                    <CookieConsentBanner />
-                  </CartProvider>
-                </CustomerListsProvider>
-              </AccountProvider>
-            </OverlayManagerProvider>
-          </NavigationProvider>
-        </CookieConsentProvider>
+        <RouteTransitionProvider>
+          <CookieConsentProvider>
+            <NavigationProvider menu={megaMenu}>
+              <OverlayManagerProvider>
+                <AccountProvider>
+                  <CustomerListsProvider>
+                    <CartProvider>
+                      <RouteTransitionOverlay>{children}</RouteTransitionOverlay>
+                      <FooterVisibility>
+                        <Footer />
+                      </FooterVisibility>
+                      <BackToTopButton />
+                      <WhatsAppFloatingButton />
+                      <GoogleOneTap />
+                      <RecaptchaScript />
+                      <CookieConsentBanner />
+                    </CartProvider>
+                  </CustomerListsProvider>
+                </AccountProvider>
+              </OverlayManagerProvider>
+            </NavigationProvider>
+          </CookieConsentProvider>
+        </RouteTransitionProvider>
       </body>
     </html>
   );

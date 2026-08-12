@@ -123,7 +123,12 @@ export function MegaMenuDesktop({ menu }: { menu: MegaMenuData }) {
   const preview = selectedCategory ?? menu.categories[0];
 
   return (
-    <div className="relative" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
+    <div
+      className="relative"
+      data-route-transition-skip
+      onMouseEnter={cancelClose}
+      onMouseLeave={scheduleClose}
+    >
       <nav className="flex items-center" aria-label="Categorias de produtos">
         <button type="button" data-mega-trigger aria-expanded={openMenuId !== null} aria-controls="mega-menu-panel" onMouseEnter={() => open("all")} onFocus={() => open("all")} onKeyDown={(event) => handleTriggerKeyDown(event, "all")} className="tap-feedback-inverse flex min-h-12 items-center gap-2 border-r border-white/40 px-3 text-base font-semibold text-white transition-colors hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white lg:px-4">
           <Grid3X3 className="h-5 w-5" aria-hidden="true" /> Todas as Categorias <ChevronDown className="h-4 w-4" aria-hidden="true" />

@@ -436,7 +436,7 @@ export default async function CategoryPage({
       <Header />
       <main className="py-3 sm:py-6 lg:py-10">
         <Container>
-          <nav aria-label="Breadcrumb">
+          <nav aria-label="Breadcrumb" data-route-transition-skip>
             <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 sm:text-sm">
               <li>
                 <Link

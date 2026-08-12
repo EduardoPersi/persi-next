@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
 import {
   FormProvider,
@@ -14,6 +13,7 @@ import { Button } from "@/components/UI/Button";
 import { useBeforeUnloadWarning } from "@/hooks/useBeforeUnloadWarning";
 import { useCart } from "@/hooks/useCart";
 import { usePostcodeAddressLookup } from "@/hooks/usePostcodeAddressLookup";
+import { useRouteTransition } from "@/hooks/useRouteTransition";
 import { useTabAttentionTitle } from "@/hooks/useTabAttentionTitle";
 import { applyAccountPrefill } from "@/lib/commerce/checkoutAccountPrefill";
 import { getFirstCheckoutErrorPath } from "@/lib/commerce/checkout";
@@ -101,7 +101,7 @@ export function CheckoutForm({
   onOrderCreated: setHasCreatedOrder,
 }: CheckoutFormProps) {
   const { cart, isCheckoutUpdating, refreshCart } = useCart();
-  const router = useRouter();
+  const { navigate } = useRouteTransition();
   const [statusMessage, setStatusMessage] = useState("");
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [installments, setInstallments] = useState(1);
@@ -247,7 +247,7 @@ export function CheckoutForm({
 
       if (result.alreadyInitiated) {
         setHasCreatedOrder();
-        router.push(`/checkout/confirmacao?orderId=${result.orderId}`);
+        navigate(`/checkout/confirmacao?orderId=${result.orderId}`);
         return;
       }
 
@@ -264,7 +264,7 @@ export function CheckoutForm({
       }
 
       setHasCreatedOrder();
-      router.push(
+      navigate(
         `/checkout/confirmacao?provider=pagbank_card&reference=${encodeURIComponent(result.chargeId)}`,
       );
     } catch {
@@ -340,7 +340,7 @@ export function CheckoutForm({
       <PixPaymentResult
         result={pixResult}
         onPaid={() =>
-          router.push(
+          navigate(
             `/checkout/confirmacao?provider=inter_pix&reference=${encodeURIComponent(pixResult.txid)}`,
           )
         }
@@ -357,7 +357,7 @@ export function CheckoutForm({
       <BoletoPaymentResult
         result={boletoResult}
         onPaid={() =>
-          router.push(
+          navigate(
             `/checkout/confirmacao?provider=inter_boleto&reference=${encodeURIComponent(boletoResult.requestCode)}`,
           )
         }
