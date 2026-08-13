@@ -9,6 +9,7 @@ import {
   parseCheckoutTransferResponse,
   signCheckoutTransferRequest,
 } from "../lib/commerce/checkoutTransfer.ts";
+import { buildCheckoutTransferUrl } from "../lib/commerce/checkoutTransferUrl.ts";
 import {
   CheckoutTransferRequestGate,
   requestCheckoutTransfer,
@@ -27,6 +28,13 @@ const config = {
   origin: "https://persimateriais.com.br",
   secret: "test-only-secret",
 };
+
+test("monta a transferência no caminho público coberto pelo Worker", () => {
+  assert.equal(
+    buildCheckoutTransferUrl("abc123"),
+    "https://persimateriais.com.br/checkout/transfer?token=abc123",
+  );
+});
 
 const simplePayload = buildCheckoutTransferPayload([
   { productId: 123, variationId: 0, quantity: 2 },

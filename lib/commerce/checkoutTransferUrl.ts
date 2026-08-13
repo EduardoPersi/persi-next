@@ -8,6 +8,15 @@ function validToken(value: string | null): value is string {
   return Boolean(value && /^[A-Za-z0-9_-]{43}$/.test(value));
 }
 
+export function buildCheckoutTransferUrl(token: string): string {
+  if (!/^[A-Za-z0-9_-]+$/.test(token)) {
+    throw new Error("Invalid checkout transfer token");
+  }
+
+  const query = new URLSearchParams({ [PUBLIC_TRANSFER_PARAMETER]: token });
+  return `https://${PUBLIC_CHECKOUT_HOST}${PUBLIC_TRANSFER_PATH}?${query.toString()}`;
+}
+
 export function validateCheckoutTransferUrl(value: unknown): string | null {
   if (typeof value !== "string" || !value) return null;
 
@@ -55,9 +64,7 @@ export function toPublicCheckoutTransferUrl(value: unknown): string | null {
       return null;
     }
 
-    const publicUrl = new URL(PUBLIC_TRANSFER_PATH, `https://${PUBLIC_CHECKOUT_HOST}`);
-    publicUrl.searchParams.set(PUBLIC_TRANSFER_PARAMETER, token);
-    return publicUrl.toString();
+    return buildCheckoutTransferUrl(token);
   } catch {
     return null;
   }
