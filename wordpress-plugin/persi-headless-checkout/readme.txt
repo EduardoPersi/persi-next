@@ -2,7 +2,7 @@
 Contributors: persimateriais
 Requires at least: 6.4
 Requires PHP: 7.4
-Stable tag: 0.5.1
+Stable tag: 0.5.2
 License: Proprietary
 
 Núcleo seguro e incremental para transferências temporárias de checkout headless.
@@ -31,7 +31,8 @@ Núcleo seguro e incremental para transferências temporárias de checkout headl
   estiver configurada.
 * Usa aquisição atômica e impede dois consumos concorrentes.
 * Preserva um snapshot básico do carrinho para recuperação em caso de falha.
-* Não aplica cupons nem seleciona frete.
+* Reaplica cupons recebidos e exige que o WooCommerce os valide e recalcule.
+* Não fixa o frete transferido; o checkout nativo recalcula as opções.
 * Não processa pagamentos.
 
 == Consumo do token ==

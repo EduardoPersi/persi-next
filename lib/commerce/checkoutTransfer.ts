@@ -18,7 +18,7 @@ export interface CheckoutTransferItem {
 
 export interface CheckoutTransferPayload {
   items: CheckoutTransferItem[];
-  couponCodes: [];
+  couponCodes: string[];
   shippingMethod: {
     rateId: "";
     packageIndex: 0;
@@ -230,6 +230,7 @@ export function buildCheckoutTransferPayload(
   items: CheckoutTransferItem[],
   customer: { billingAddress: CheckoutStoreAddress; shippingAddress: CheckoutStoreAddress } | undefined,
   ownerToken: string,
+  couponCodes: string[] = [],
 ): CheckoutTransferPayload {
   if (items.length < 1 || items.length > 100) {
     throw new CheckoutTransferError(422, "Cart cannot be transferred");
@@ -259,9 +260,22 @@ export function buildCheckoutTransferPayload(
     };
   });
 
+  if (couponCodes.length > 20) {
+    throw new CheckoutTransferError(422, "Too many coupon codes");
+  }
+
+  const normalizedCouponCodes = [...new Set(couponCodes.map((code) => code.trim()))];
+  if (
+    normalizedCouponCodes.some(
+      (code) => !code || code.length > 100 || /[\u0000-\u001f\u007f]/.test(code),
+    )
+  ) {
+    throw new CheckoutTransferError(422, "Cart contains an invalid coupon code");
+  }
+
   return {
     items: validatedItems,
-    couponCodes: [],
+    couponCodes: normalizedCouponCodes,
     shippingMethod: {
       rateId: "",
       packageIndex: 0,

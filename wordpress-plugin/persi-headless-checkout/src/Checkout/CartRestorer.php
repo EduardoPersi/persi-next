@@ -84,7 +84,7 @@ final class CartRestorer {
 	}
 
 	public function snapshot_current_cart(): array {
-		$snapshot = array();
+		$items = array();
 
 		foreach ( WC()->cart->get_cart() as $cart_item ) {
 			$cart_item_data = $cart_item;
@@ -107,7 +107,7 @@ final class CartRestorer {
 				unset( $cart_item_data[ $reserved_key ] );
 			}
 
-			$snapshot[] = array(
+			$items[] = array(
 				'product_id'    => (int) $cart_item['product_id'],
 				'variation_id'  => (int) $cart_item['variation_id'],
 				'quantity'      => (int) $cart_item['quantity'],
@@ -116,11 +116,15 @@ final class CartRestorer {
 			);
 		}
 
-		return $snapshot;
+		return array(
+			'items'        => $items,
+			'coupon_codes' => WC()->cart->get_applied_coupons(),
+		);
 	}
 
 	public function restore_validated_items(
 		array $items,
+		array $coupon_codes,
 		array $billing_address,
 		array $shipping_address,
 		string $owner_token
@@ -151,6 +155,12 @@ final class CartRestorer {
 				// do cliente — setar depois deixaria o carrinho com totais
 				// calculados para o endereço antigo (ou nenhum).
 				$this->apply_customer_details( $billing_address, $shipping_address );
+			}
+
+			foreach ( $coupon_codes as $coupon_code ) {
+				if ( ! WC()->cart->apply_coupon( $coupon_code ) ) {
+					throw new CartRestoreException( 'coupon_invalid' );
+				}
 			}
 			// Guardado na sessão do WooCommerce (não no pedido ainda, que só
 			// existe quando o cliente confirma o checkout nativo) — o hook
@@ -216,7 +226,7 @@ final class CartRestorer {
 			WC()->cart->empty_cart();
 			$fully_recovered = true;
 
-			foreach ( $snapshot as $item ) {
+			foreach ( $snapshot['items'] ?? array() as $item ) {
 				$cart_item_key = WC()->cart->add_to_cart(
 					$item['product_id'],
 					$item['quantity'],
@@ -226,6 +236,12 @@ final class CartRestorer {
 				);
 
 				if ( false === $cart_item_key ) {
+					$fully_recovered = false;
+				}
+			}
+
+			foreach ( $snapshot['coupon_codes'] ?? array() as $coupon_code ) {
+				if ( ! WC()->cart->apply_coupon( $coupon_code ) ) {
 					$fully_recovered = false;
 				}
 			}

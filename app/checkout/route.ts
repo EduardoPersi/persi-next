@@ -38,7 +38,12 @@ export async function GET(request: NextRequest) {
     activeCartToken = cartResult.cartToken ?? activeCartToken;
 
     const items = await getAuthoritativeCheckoutItems(cartResult.cart);
-    const payload = buildCheckoutTransferPayload(items, undefined, activeCartToken);
+    const payload = buildCheckoutTransferPayload(
+      items,
+      undefined,
+      activeCartToken,
+      cartResult.cart.coupons.map(({ code }) => code),
+    );
     const transfer = await createCheckoutTransfer(payload, configuration);
 
     const response = NextResponse.redirect(transfer.transferUrl, 303);

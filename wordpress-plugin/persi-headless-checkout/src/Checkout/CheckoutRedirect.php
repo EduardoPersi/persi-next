@@ -109,6 +109,7 @@ final class CheckoutRedirect {
 			$cart_was_cleared = true;
 			$this->cart_restorer->restore_validated_items(
 				$validated_items,
+				$payload['couponCodes'],
 				$payload['billingAddress'] ?? array(),
 				$payload['shippingAddress'] ?? array(),
 				$payload['ownerToken']
@@ -244,6 +245,7 @@ final class CheckoutRedirect {
 			'variation_parent_mismatch',
 			'variation_invalid',
 			'cart_add_failed',
+			'coupon_invalid',
 			'cart_restore_failed',
 			'state_update_failed',
 			'snapshot_recovery_failed',

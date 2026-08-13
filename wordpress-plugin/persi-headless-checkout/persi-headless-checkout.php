@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Persi Headless Checkout
  * Description: Núcleo seguro para transferências temporárias de checkout headless.
- * Version: 0.5.1
+ * Version: 0.5.2
  * Requires at least: 6.4
  * Requires PHP: 7.4
  * WC requires at least: 8.2
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'PERSI_HEADLESS_CHECKOUT_VERSION', '0.5.1' );
+define( 'PERSI_HEADLESS_CHECKOUT_VERSION', '0.5.2' );
 define( 'PERSI_HEADLESS_CHECKOUT_FILE', __FILE__ );
 define( 'PERSI_HEADLESS_CHECKOUT_PATH', plugin_dir_path( __FILE__ ) );
 

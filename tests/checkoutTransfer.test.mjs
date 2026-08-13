@@ -28,10 +28,10 @@ const config = {
 
 const simplePayload = buildCheckoutTransferPayload([
   { productId: 123, variationId: 0, quantity: 2 },
-]);
+], undefined, "cart-owner-token");
 const variationPayload = buildCheckoutTransferPayload([
   { productId: 123, variationId: 456, quantity: 1 },
-]);
+], undefined, "cart-owner-token");
 
 test("assinatura é determinística para corpo, timestamp e nonce iguais", () => {
   const options = {
@@ -68,7 +68,7 @@ test("corpo adulterado produz outra assinatura", () => {
   const tampered = signCheckoutTransferRequest(
     buildCheckoutTransferPayload([
       { productId: 123, variationId: 0, quantity: 3 },
-    ]),
+    ], undefined, "cart-owner-token"),
     config,
     options,
   );
@@ -101,16 +101,42 @@ test("configuração rejeita segredo ou endpoint ausente", () => {
 });
 
 test("carrinho vazio é rejeitado e payloads simples/variáveis são mínimos", () => {
-  assert.throws(() => buildCheckoutTransferPayload([]), CheckoutTransferError);
+  assert.throws(
+    () => buildCheckoutTransferPayload([], undefined, "cart-owner-token"),
+    CheckoutTransferError,
+  );
   assert.deepEqual(simplePayload, {
     items: [{ productId: 123, variationId: 0, quantity: 2 }],
     couponCodes: [],
     shippingMethod: { rateId: "", packageIndex: 0 },
+    ownerToken: "cart-owner-token",
   });
   assert.deepEqual(variationPayload.items, [
     { productId: 123, variationId: 456, quantity: 1 },
   ]);
   assert.doesNotMatch(JSON.stringify(simplePayload), /price|total|stock|tax/i);
+});
+
+test("cupons autoritativos são normalizados sem transferir valores comerciais", () => {
+  const payload = buildCheckoutTransferPayload(
+    [{ productId: 123, variationId: 0, quantity: 1 }],
+    undefined,
+    "cart-owner-token",
+    [" PROMO10 ", "PROMO10", "frete-gratis"],
+  );
+
+  assert.deepEqual(payload.couponCodes, ["PROMO10", "frete-gratis"]);
+  assert.doesNotMatch(JSON.stringify(payload), /subtotal|shippingCost|total|price/i);
+  assert.throws(
+    () =>
+      buildCheckoutTransferPayload(
+        [{ productId: 123, variationId: 0, quantity: 1 }],
+        undefined,
+        "cart-owner-token",
+        ["cupom\ninválido"],
+      ),
+    CheckoutTransferError,
+  );
 });
 
 test("leitura autoritativa resolve produto simples e pai da variação", async () => {
@@ -210,7 +236,7 @@ test("cliente rejeita resposta sem URL e não depende de payload do carrinho", a
     });
   };
 
-  await assert.rejects(requestCheckoutTransfer(fetchMock));
+  await assert.rejects(requestCheckoutTransfer(undefined, fetchMock));
   assert.equal(request.url, "/api/checkout-transfer");
   assert.equal(request.options.method, "POST");
   assert.equal(request.options.body, undefined);
