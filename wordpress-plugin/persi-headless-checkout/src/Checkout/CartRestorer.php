@@ -141,11 +141,17 @@ final class CartRestorer {
 				}
 			}
 
-			// Aplicado antes do persist_cart() de propósito: calculate_totals()
-			// (chamado lá dentro) recalcula frete/imposto com base no endereço
-			// do cliente — setar depois deixaria o carrinho com totais
-			// calculados para o endereço antigo (ou nenhum).
-			$this->apply_customer_details( $billing_address, $shipping_address );
+			// Ausente quando a transferência parte direto do carrinho (sem
+			// passar pelas etapas de Perfil/Endereço do Next.js) — o checkout
+			// nativo pede contato e endereço do zero nesse caso, sem nada
+			// para pré-preencher aqui.
+			if ( ! empty( $billing_address ) ) {
+				// Aplicado antes do persist_cart() de propósito: calculate_totals()
+				// (chamado lá dentro) recalcula frete/imposto com base no endereço
+				// do cliente — setar depois deixaria o carrinho com totais
+				// calculados para o endereço antigo (ou nenhum).
+				$this->apply_customer_details( $billing_address, $shipping_address );
+			}
 			// Guardado na sessão do WooCommerce (não no pedido ainda, que só
 			// existe quando o cliente confirma o checkout nativo) — o hook
 			// OrderOwnerToken lê este valor de volta em

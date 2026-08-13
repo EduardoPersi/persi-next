@@ -7,6 +7,7 @@ import {
   getCheckoutTransferConfig,
 } from "@/lib/commerce/checkoutTransfer";
 import { mapCheckoutFormToWooAddress } from "@/lib/commerce/checkoutAddress";
+import type { CheckoutCustomerPayload } from "@/types/checkout";
 import {
   getCartTokenCookieOptions,
   getPrivateCartHeaders,
@@ -76,19 +77,27 @@ export async function POST(request: NextRequest) {
       throw new CheckoutTransferError(422, "Cart token is missing");
     }
 
-    let requestBody: unknown;
-    try {
-      requestBody = await request.json();
-    } catch {
-      throw new CheckoutTransferError(422, "Invalid checkout data");
-    }
+    // Corpo vazio: transferência direto do carrinho, sem passar pelas etapas
+    // de Perfil/Endereço do Next.js — o checkout nativo do WooCommerce
+    // coleta contato e endereço do zero nesse caso.
+    const rawBody = await request.text();
+    let customer: CheckoutCustomerPayload | undefined;
 
-    const parsedForm = checkoutSchema.safeParse(requestBody);
-    if (!parsedForm.success) {
-      throw new CheckoutTransferError(422, "Invalid checkout data");
-    }
+    if (rawBody.trim()) {
+      let requestBody: unknown;
+      try {
+        requestBody = JSON.parse(rawBody);
+      } catch {
+        throw new CheckoutTransferError(422, "Invalid checkout data");
+      }
 
-    const customer = mapCheckoutFormToWooAddress(parsedForm.data);
+      const parsedForm = checkoutSchema.safeParse(requestBody);
+      if (!parsedForm.success) {
+        throw new CheckoutTransferError(422, "Invalid checkout data");
+      }
+
+      customer = mapCheckoutFormToWooAddress(parsedForm.data);
+    }
 
     const cartResult = await getCart(activeCartToken);
     activeCartToken = cartResult.cartToken ?? activeCartToken;

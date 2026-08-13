@@ -13,7 +13,7 @@ export function useCheckoutTransfer() {
   const requestGate = useRef(new CheckoutTransferRequestGate());
 
   const prepareCheckout = useCallback(
-    async (formValues: CheckoutFormValues, onBeforeRedirect?: () => void) => {
+    async (formValues?: CheckoutFormValues, onBeforeRedirect?: () => void) => {
       if (!requestGate.current.tryStart()) return;
 
       setIsPreparingCheckout(true);

@@ -23,8 +23,11 @@ export interface CheckoutTransferPayload {
     rateId: "";
     packageIndex: 0;
   };
-  billingAddress: CheckoutStoreAddress;
-  shippingAddress: CheckoutStoreAddress;
+  // Ausentes quando a transferência é feita direto do carrinho, sem passar
+  // pelas etapas de Perfil/Endereço do Next.js — o checkout nativo do
+  // WooCommerce coleta contato e endereço do zero nesse caso.
+  billingAddress?: CheckoutStoreAddress;
+  shippingAddress?: CheckoutStoreAddress;
   ownerToken: string;
 }
 
@@ -225,7 +228,7 @@ function validateStoreAddress(
 
 export function buildCheckoutTransferPayload(
   items: CheckoutTransferItem[],
-  customer: { billingAddress: CheckoutStoreAddress; shippingAddress: CheckoutStoreAddress },
+  customer: { billingAddress: CheckoutStoreAddress; shippingAddress: CheckoutStoreAddress } | undefined,
   ownerToken: string,
 ): CheckoutTransferPayload {
   if (items.length < 1 || items.length > 100) {
@@ -263,8 +266,12 @@ export function buildCheckoutTransferPayload(
       rateId: "",
       packageIndex: 0,
     },
-    billingAddress: validateStoreAddress(customer.billingAddress),
-    shippingAddress: validateStoreAddress(customer.shippingAddress),
+    ...(customer
+      ? {
+          billingAddress: validateStoreAddress(customer.billingAddress),
+          shippingAddress: validateStoreAddress(customer.shippingAddress),
+        }
+      : {}),
     ownerToken: ownerToken.trim(),
   };
 }

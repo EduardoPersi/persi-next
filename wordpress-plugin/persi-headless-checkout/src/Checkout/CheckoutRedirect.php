@@ -109,8 +109,8 @@ final class CheckoutRedirect {
 			$cart_was_cleared = true;
 			$this->cart_restorer->restore_validated_items(
 				$validated_items,
-				$payload['billingAddress'],
-				$payload['shippingAddress'],
+				$payload['billingAddress'] ?? array(),
+				$payload['shippingAddress'] ?? array(),
 				$payload['ownerToken']
 			);
 

@@ -19,7 +19,7 @@ export class CheckoutTransferRequestGate {
 }
 
 export async function requestCheckoutTransfer(
-  formValues: CheckoutFormValues,
+  formValues?: CheckoutFormValues,
   fetchImplementation: typeof fetch = fetch,
 ): Promise<string> {
   const response = await fetchImplementation("/api/checkout-transfer", {
@@ -27,7 +27,7 @@ export async function requestCheckoutTransfer(
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
     credentials: "same-origin",
-    body: JSON.stringify(formValues),
+    ...(formValues ? { body: JSON.stringify(formValues) } : {}),
   });
   const body = (await response.json().catch(() => null)) as
     | { transferUrl?: unknown }

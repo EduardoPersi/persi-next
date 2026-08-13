@@ -2,7 +2,7 @@
 Contributors: persimateriais
 Requires at least: 6.4
 Requires PHP: 7.4
-Stable tag: 0.4.0
+Stable tag: 0.5.0
 License: Proprietary
 
 Núcleo seguro e incremental para transferências temporárias de checkout headless.
@@ -18,7 +18,10 @@ Núcleo seguro e incremental para transferências temporárias de checkout headl
 * Consome o token somente na página base do checkout.
 * Restaura produtos simples e variações comuns após pré-validação completa.
 * Pré-preenche cobrança e entrega (WC()->customer) com os dados de contato e
-  endereço já digitados no Next.js, evitando redigitação no checkout nativo.
+  endereço já digitados no Next.js, quando enviados — billingAddress/
+  shippingAddress são opcionais em conjunto: ausentes quando a transferência
+  parte direto do carrinho, sem passar pelas etapas de Perfil/Endereço, o
+  checkout nativo coleta contato e endereço do zero nesse caso.
 * Guarda o Cart-Token original na sessão do WooCommerce e o copia como
   meta_data (_persi_checkout_owner_token) do pedido assim que ele é criado
   pelo checkout nativo, para a tela de confirmação do Next.js reconhecer o

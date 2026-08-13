@@ -32,17 +32,29 @@ final class TransferPayloadValidator {
 		}
 
 		$this->reject_forbidden_fields( $payload );
-		$this->assert_exact_keys(
+		// billingAddress/shippingAddress são opcionais em conjunto: ausentes
+		// quando a transferência parte direto do carrinho (sem passar pelas
+		// etapas de Perfil/Endereço do Next.js) — o checkout nativo coleta
+		// contato e endereço do zero nesse caso.
+		$this->assert_keys_with_optional(
 			$payload,
-			array( 'items', 'couponCodes', 'shippingMethod', 'billingAddress', 'shippingAddress', 'ownerToken' )
+			array( 'items', 'couponCodes', 'shippingMethod', 'ownerToken' ),
+			array( 'billingAddress', 'shippingAddress' )
 		);
+
+		$has_billing_address  = array_key_exists( 'billingAddress', $payload );
+		$has_shipping_address = array_key_exists( 'shippingAddress', $payload );
+
+		if ( $has_billing_address !== $has_shipping_address ) {
+			throw new ValidationException( 'unknown_or_missing_property' );
+		}
 
 		return array(
 			'items'           => $this->validate_items( $payload['items'] ),
 			'couponCodes'     => $this->validate_coupon_codes( $payload['couponCodes'] ),
 			'shippingMethod'  => $this->validate_shipping_method( $payload['shippingMethod'] ),
-			'billingAddress'  => $this->validate_store_address( $payload['billingAddress'], true ),
-			'shippingAddress' => $this->validate_store_address( $payload['shippingAddress'], false ),
+			'billingAddress'  => $has_billing_address ? $this->validate_store_address( $payload['billingAddress'], true ) : null,
+			'shippingAddress' => $has_shipping_address ? $this->validate_store_address( $payload['shippingAddress'], false ) : null,
 			'ownerToken'      => $this->validate_owner_token( $payload['ownerToken'] ),
 		);
 	}
@@ -265,6 +277,17 @@ final class TransferPayloadValidator {
 		sort( $allowed_keys );
 
 		if ( $actual_keys !== $allowed_keys ) {
+			throw new ValidationException( 'unknown_or_missing_property' );
+		}
+	}
+
+	private function assert_keys_with_optional( array $value, array $required_keys, array $optional_keys ): void {
+		$actual_keys  = array_keys( $value );
+		$allowed_keys = array_merge( $required_keys, $optional_keys );
+		$missing      = array_diff( $required_keys, $actual_keys );
+		$unknown      = array_diff( $actual_keys, $allowed_keys );
+
+		if ( ! empty( $missing ) || ! empty( $unknown ) ) {
 			throw new ValidationException( 'unknown_or_missing_property' );
 		}
 	}
