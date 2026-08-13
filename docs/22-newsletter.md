@@ -34,10 +34,10 @@ habilitado por padrão em WooCommerce > Persi Headless:
 Defina apenas no servidor:
 
 ```dotenv
-WORDPRESS_NEWSLETTER_ENDPOINT=https://persimateriais.com.br/wp-json/persi/v1/newsletter/subscribe
+WORDPRESS_NEWSLETTER_ENDPOINT=https://loja.persimateriais.com.br/wp-json/persi/v1/newsletter/subscribe
 PERSI_HEADLESS_NEWSLETTER_HMAC_SECRET=
 PERSI_HEADLESS_NEWSLETTER_HMAC_KEY_ID=primary
-PERSI_HEADLESS_NEWSLETTER_ORIGIN=https://app.persimateriais.com.br
+PERSI_HEADLESS_NEWSLETTER_ORIGIN=https://persimateriais.com.br
 ```
 
 O navegador envia os dados para `POST /api/newsletter`. A rota valida o

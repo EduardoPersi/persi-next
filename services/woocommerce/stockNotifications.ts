@@ -23,7 +23,7 @@ export class StockNotificationError extends Error {
 }
 
 export const DEFAULT_STOCK_NOTIFICATION_ENDPOINT =
-  "https://persimateriais.com.br/wp-json/persi/v1/stock-notifications/subscribe";
+  "https://loja.persimateriais.com.br/wp-json/persi/v1/stock-notifications/subscribe";
 
 export function getStockNotificationEndpoint(
   environment: NodeJS.ProcessEnv = process.env,
@@ -39,7 +39,7 @@ export function getStockNotificationEndpoint(
   }
   if (
     endpoint.protocol !== "https:" ||
-    !["persimateriais.com.br", "www.persimateriais.com.br"].includes(endpoint.hostname) ||
+    endpoint.hostname !== "loja.persimateriais.com.br" ||
     endpoint.pathname !== "/wp-json/persi/v1/stock-notifications/subscribe" ||
     endpoint.search ||
     endpoint.hash ||

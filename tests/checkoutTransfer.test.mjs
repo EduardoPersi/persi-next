@@ -17,12 +17,12 @@ import { getAuthoritativeCheckoutItems } from "../services/checkout/headlessChec
 
 const token = "A".repeat(43);
 const transferUrl =
-  `https://persimateriais.com.br/checkout/?persi_checkout_transfer=${token}`;
+  `https://loja.persimateriais.com.br/checkout/?persi_checkout_transfer=${token}`;
 const config = {
   endpoint:
-    "https://persimateriais.com.br/wp-json/persi-headless/v1/checkout-transfer",
+    "https://loja.persimateriais.com.br/wp-json/persi-headless/v1/checkout-transfer",
   keyId: "primary",
-  origin: "https://app.persimateriais.com.br",
+  origin: "https://persimateriais.com.br",
   secret: "test-only-secret",
 };
 

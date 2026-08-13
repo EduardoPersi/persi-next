@@ -29,7 +29,7 @@ do WordPress é criado por esta implementação.
 Defina apenas no servidor:
 
 ```dotenv
-WORDPRESS_STOCK_NOTIFICATION_ENDPOINT=https://persimateriais.com.br/wp-json/persi/v1/stock-notifications/subscribe
+WORDPRESS_STOCK_NOTIFICATION_ENDPOINT=https://loja.persimateriais.com.br/wp-json/persi/v1/stock-notifications/subscribe
 ```
 
 O navegador envia os dados para `POST /api/stock-notifications`. A rota valida
@@ -48,7 +48,7 @@ com HMAC SHA-256 usando configuração exclusiva:
 ```dotenv
 PERSI_HEADLESS_STOCK_HMAC_SECRET=
 PERSI_HEADLESS_STOCK_HMAC_KEY_ID=primary
-PERSI_HEADLESS_STOCK_ORIGIN=https://app.persimateriais.com.br
+PERSI_HEADLESS_STOCK_ORIGIN=https://persimateriais.com.br
 ```
 
 Confirmação e remoção usam páginas headless, tokens de uso único, respostas

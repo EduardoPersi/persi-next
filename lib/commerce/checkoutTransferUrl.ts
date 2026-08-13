@@ -1,4 +1,4 @@
-const CHECKOUT_HOST = "persimateriais.com.br";
+const CHECKOUT_HOST = "loja.persimateriais.com.br";
 const TRANSFER_PARAMETER = "persi_checkout_transfer";
 
 export function validateCheckoutTransferUrl(value: unknown): string | null {
@@ -6,9 +6,7 @@ export function validateCheckoutTransferUrl(value: unknown): string | null {
 
   try {
     const url = new URL(value);
-    const belongsToCheckoutHost =
-      url.hostname === CHECKOUT_HOST ||
-      url.hostname.endsWith(`.${CHECKOUT_HOST}`);
+    const belongsToCheckoutHost = url.hostname === CHECKOUT_HOST;
     const token = url.searchParams.get(TRANSFER_PARAMETER);
 
     if (

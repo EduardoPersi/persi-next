@@ -13,7 +13,7 @@ import {
 import { AccountServiceError } from "../services/account/client.ts";
 
 const config = {
-  endpoint: "https://persimateriais.com.br/wp-json/persi-account/v1",
+  endpoint: "https://loja.persimateriais.com.br/wp-json/persi-account/v1",
   keyId: "primary",
   origin: "https://frontend.example.test",
   secret: "test-secret-placeholder",

@@ -19,7 +19,7 @@ export class NewsletterError extends Error {
 }
 
 export const DEFAULT_NEWSLETTER_ENDPOINT =
-  "https://persimateriais.com.br/wp-json/persi/v1/newsletter/subscribe";
+  "https://loja.persimateriais.com.br/wp-json/persi/v1/newsletter/subscribe";
 
 export function getNewsletterEndpoint(
   environment: NodeJS.ProcessEnv = process.env,
@@ -35,7 +35,7 @@ export function getNewsletterEndpoint(
   }
   if (
     endpoint.protocol !== "https:" ||
-    !["persimateriais.com.br", "www.persimateriais.com.br"].includes(endpoint.hostname) ||
+    endpoint.hostname !== "loja.persimateriais.com.br" ||
     endpoint.pathname !== "/wp-json/persi/v1/newsletter/subscribe" ||
     endpoint.search ||
     endpoint.hash ||

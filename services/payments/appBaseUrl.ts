@@ -7,11 +7,9 @@ export class AppBaseUrlError extends Error {
 
 // Origem pública onde este app está hospedado — usada para montar as URLs de
 // webhook/callback enviadas ao Inter e ao PagBank. Nunca deve ficar
-// hardcoded no código: hoje aponta para o domínio de teste
-// (app.persimateriais.com.br), e vai trocar para o domínio definitivo
-// (persimateriais.com.br) sem precisar caçar strings no código — só trocar a
-// variável de ambiente e re-registrar os webhooks (ver
-// scripts/register-inter-webhooks.mjs).
+// hardcoded no código: hoje aponta para o domínio definitivo
+// (persimateriais.com.br). Ao trocar esta variável, é preciso re-registrar
+// os webhooks (ver scripts/register-inter-webhooks.mjs).
 export function getAppBaseUrl(environment: NodeJS.ProcessEnv = process.env): string {
   const raw = environment.APP_BASE_URL?.trim();
   if (!raw) {

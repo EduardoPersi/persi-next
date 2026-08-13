@@ -25,7 +25,7 @@ class Persi_Headless_Admin {
 		$urls = preg_split( '/\r\n|\r|\n/', (string) ( $input['frontend_urls_text'] ?? '' ) );
 		$urls = array_values( array_filter( array_map( 'esc_url_raw', array_map( 'trim', $urls ) ) ) );
 		return array(
-			'frontend_urls' => $urls ?: array( 'https://app.persimateriais.com.br' ),
+			'frontend_urls' => $urls ?: array( 'https://persimateriais.com.br' ),
 			'modules' => array(
 				'product_families' => ! empty( $input['modules']['product_families'] ),
 				'bought_together' => ! empty( $input['modules']['bought_together'] ),

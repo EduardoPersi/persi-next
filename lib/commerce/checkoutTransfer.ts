@@ -99,7 +99,7 @@ function validateEndpoint(value: string): string {
 
   if (
     endpoint.protocol !== "https:" ||
-    endpoint.hostname !== "persimateriais.com.br" ||
+    endpoint.hostname !== "loja.persimateriais.com.br" ||
     endpoint.pathname !== CHECKOUT_TRANSFER_PATH ||
     endpoint.search ||
     endpoint.hash ||

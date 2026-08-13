@@ -19,7 +19,6 @@ export const FACEBOOK_USERINFO_ENDPOINT =
 export const FACEBOOK_OAUTH_CALLBACK_PATH =
   "/api/auth/facebook/callback";
 export const FACEBOOK_OAUTH_ALLOWED_REDIRECT_URIS = [
-  `https://app.persimateriais.com.br${FACEBOOK_OAUTH_CALLBACK_PATH}`,
   `https://persimateriais.com.br${FACEBOOK_OAUTH_CALLBACK_PATH}`,
 ] as const;
 
@@ -225,7 +224,7 @@ export function getFacebookOAuthErrorOrigin(
     redirectUri as FacebookOAuthConfig["redirectUri"],
   )
     ? new URL(redirectUri as string).origin
-    : "https://app.persimateriais.com.br";
+    : "https://persimateriais.com.br";
 }
 
 export const facebookOAuthProvider: OAuthProvider<

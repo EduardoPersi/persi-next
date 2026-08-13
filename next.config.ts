@@ -33,11 +33,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "persimateriais.com.br",
-      },
-      {
-        protocol: "https",
-        hostname: "www.persimateriais.com.br",
+        hostname: "loja.persimateriais.com.br",
       },
       {
         protocol: "https",

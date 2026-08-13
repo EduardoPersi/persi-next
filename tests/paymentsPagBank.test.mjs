@@ -7,7 +7,7 @@ import { createCardCharge, getCardChargeStatus } from "../services/payments/pagb
 // isso, como os demais módulos com essa guarda no projeto, não é importado
 // diretamente por testes unitários.
 
-process.env.APP_BASE_URL = "https://app.persimateriais.com.br";
+process.env.APP_BASE_URL = "https://persimateriais.com.br";
 
 test("createCardCharge monta o pedido e extrai a primeira cobrança", async () => {
   const calls = [];
@@ -40,7 +40,7 @@ test("createCardCharge monta o pedido e extrai a primeira cobrança", async () =
   assert.equal(calls[0].body.charges[0].payment_method.card.encrypted, "tok_abc");
   assert.equal(calls[0].body.charges[0].amount.value, 19990);
   assert.deepEqual(calls[0].body.notification_urls, [
-    "https://app.persimateriais.com.br/api/webhooks/pagbank",
+    "https://persimateriais.com.br/api/webhooks/pagbank",
   ]);
   assert.equal(calls[0].body.customer.tax_id, "12345678909");
 });

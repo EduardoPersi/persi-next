@@ -8,10 +8,7 @@ import { ProductCardActions } from "./ProductCardActions";
 const PRODUCT_FALLBACK_IMAGE =
   "/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas.webp";
 
-const ALLOWED_IMAGE_HOSTS = new Set([
-  "persimateriais.com.br",
-  "www.persimateriais.com.br",
-]);
+const ALLOWED_IMAGE_HOSTS = new Set(["loja.persimateriais.com.br"]);
 
 function getProductImageSource(image: string): string {
   const normalizedImage = image.trim();

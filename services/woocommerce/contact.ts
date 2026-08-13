@@ -16,7 +16,7 @@ export class ContactError extends Error {
 }
 
 export const DEFAULT_CONTACT_ENDPOINT =
-  "https://persimateriais.com.br/wp-json/persi/v1/contact/submit";
+  "https://loja.persimateriais.com.br/wp-json/persi/v1/contact/submit";
 
 export function getContactEndpoint(
   environment: NodeJS.ProcessEnv = process.env,
@@ -31,9 +31,7 @@ export function getContactEndpoint(
   }
   if (
     endpoint.protocol !== "https:" ||
-    !["persimateriais.com.br", "www.persimateriais.com.br"].includes(
-      endpoint.hostname,
-    ) ||
+    endpoint.hostname !== "loja.persimateriais.com.br" ||
     endpoint.pathname !== "/wp-json/persi/v1/contact/submit" ||
     endpoint.search ||
     endpoint.hash ||

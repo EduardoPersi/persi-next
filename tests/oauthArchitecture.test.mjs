@@ -27,7 +27,7 @@ const facebookConfig = {
   clientSecret: "test-only-facebook-secret",
   graphApiVersion: "v23.0",
   redirectUri:
-    "https://app.persimateriais.com.br/api/auth/facebook/callback",
+    "https://persimateriais.com.br/api/auth/facebook/callback",
 };
 
 test("providers Google e Facebook compartilham contrato comum", () => {
