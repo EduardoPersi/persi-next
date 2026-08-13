@@ -7,6 +7,7 @@ defined( 'ABSPATH' ) || exit;
 final class Configuration {
 	public const CART_URL_CONSTANT = 'PERSI_HEADLESS_CHECKOUT_CART_URL';
 	public const CONFIRMATION_URL_CONSTANT = 'PERSI_HEADLESS_CHECKOUT_CONFIRMATION_URL';
+	public const PUBLIC_CHECKOUT_URL_CONSTANT = 'PERSI_HEADLESS_CHECKOUT_PUBLIC_CHECKOUT_URL';
 
 	public function cart_url(): string {
 		if ( defined( self::CART_URL_CONSTANT ) ) {
@@ -45,6 +46,34 @@ final class Configuration {
 
 	public function has_invalid_configured_confirmation_url(): bool {
 		return defined( self::CONFIRMATION_URL_CONSTANT ) && '' === $this->confirmation_url();
+	}
+
+	public function public_checkout_url(): string {
+		if ( ! defined( self::PUBLIC_CHECKOUT_URL_CONSTANT ) ) {
+			return '';
+		}
+
+		$configured_url = constant( self::PUBLIC_CHECKOUT_URL_CONSTANT );
+
+		if ( ! is_string( $configured_url ) ) {
+			return '';
+		}
+
+		$validated = self::validate_http_url( $configured_url );
+		$parts     = '' !== $validated ? wp_parse_url( $validated ) : false;
+
+		if (
+			false === $parts
+			|| 'https' !== strtolower( $parts['scheme'] ?? '' )
+			|| 'persimateriais.com.br' !== strtolower( $parts['host'] ?? '' )
+			|| '/checkout/' !== ( $parts['path'] ?? '' )
+			|| isset( $parts['query'] )
+			|| isset( $parts['fragment'] )
+		) {
+			return '';
+		}
+
+		return $validated;
 	}
 
 	public static function validate_http_url( string $url ): string {

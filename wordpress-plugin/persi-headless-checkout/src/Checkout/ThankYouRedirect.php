@@ -29,6 +29,13 @@ final class ThankYouRedirect {
 			return;
 		}
 
+		// No modo reverse proxy, order-received deve permanecer sob a URL
+		// pública do checkout. Redirecionar para /checkout/confirmacao faria o
+		// Worker tratar a antiga página Next como uma rota WooCommerce.
+		if ( '' !== $this->configuration->public_checkout_url() ) {
+			return;
+		}
+
 		$confirmation_url = $this->configuration->confirmation_url();
 
 		if ( '' === $confirmation_url ) {

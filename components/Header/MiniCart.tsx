@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useCart } from "@/hooks/useCart";
+import { useCheckoutTransfer } from "@/hooks/useCheckoutTransfer";
 
 export function MiniCart() {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -19,6 +20,8 @@ export function MiniCart() {
     removeItem,
     updateItem,
   } = useCart();
+  const { checkoutError, isPreparingCheckout, prepareCheckout } =
+    useCheckoutTransfer();
   const formatter = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: cart?.currencyCode ?? "BRL",
@@ -234,9 +237,9 @@ export function MiniCart() {
           </main>
         )}
 
-        {error ? (
+        {error || checkoutError ? (
           <p className="shrink-0 px-6 pb-3 text-sm text-red-700" role="status">
-            {error}
+            {error || checkoutError}
           </p>
         ) : null}
 
@@ -254,27 +257,19 @@ export function MiniCart() {
           >
             Ver carrinho
           </Link>
-          {/* <a> normal de propósito: /checkout não é mais uma página do
-              Next.js, é uma rota que já redireciona pro checkout nativo do
-              WooCommerce — precisa de navegação de página inteira, não da
-              navegação client-side de um <Link>. data-route-transition-skip
-              também impede o overlay global de interceptar este clique. */}
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-          <a
-            href="/checkout"
-            data-route-transition-skip
-            onClick={(event) => {
-              if (!cart?.items.length || isLoading || Boolean(pendingItemKey)) {
-                event.preventDefault();
-                return;
-              }
-              closeCart();
-            }}
-            aria-disabled={!cart?.items.length || isLoading || Boolean(pendingItemKey)}
-            className="flex w-full items-center justify-center rounded-md bg-[#ff6a00] py-3 font-medium text-white transition-colors hover:bg-[#e85f00] active:bg-[#cc5200] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 aria-disabled:cursor-wait aria-disabled:bg-slate-200 aria-disabled:text-slate-500 aria-disabled:pointer-events-none"
+          <button
+            type="button"
+            onClick={() => void prepareCheckout(undefined, closeCart)}
+            disabled={
+              !cart?.items.length ||
+              isLoading ||
+              Boolean(pendingItemKey) ||
+              isPreparingCheckout
+            }
+            className="flex w-full items-center justify-center rounded-md bg-[#ff6a00] py-3 font-medium text-white transition-colors hover:bg-[#e85f00] active:bg-[#cc5200] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-200 disabled:text-slate-500"
           >
-            FINALIZAR COMPRA
-          </a>
+            {isPreparingCheckout ? "PREPARANDO..." : "FINALIZAR COMPRA"}
+          </button>
         </footer>
       </aside>
     </>

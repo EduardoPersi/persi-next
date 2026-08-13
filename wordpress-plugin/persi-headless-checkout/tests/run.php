@@ -241,5 +241,15 @@ $test( 'adaptador restaura Array.includes e não remove loading por CSS', static
 	$assert( false === strpos( $source, "add_action( 'wp_enqueue_scripts'" ) );
 } );
 
+$test( 'modo proxy preserva order-received no checkout público', static function () use ( $assert ): void {
+	$source = file_get_contents( dirname( __DIR__ ) . '/src/Checkout/ThankYouRedirect.php' );
+	$config = file_get_contents( dirname( __DIR__ ) . '/src/Support/Configuration.php' );
+
+	$assert( false !== strpos( $source, "public_checkout_url()" ) );
+	$assert( false !== strpos( $config, "PERSI_HEADLESS_CHECKOUT_PUBLIC_CHECKOUT_URL" ) );
+	$assert( false !== strpos( $config, "'persimateriais.com.br'" ) );
+	$assert( false !== strpos( $config, "'/checkout/'" ) );
+} );
+
 echo "\n{$passed} passed, {$failed} failed.\n";
 exit( 0 === $failed ? 0 : 1 );

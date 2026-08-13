@@ -1,0 +1,6 @@
+name = "persi-checkout-proxy"
+main = "src/index.js"
+compatibility_date = "2026-08-13"
+
+# A rota deve permanecer limitada ao checkout. Configure no dashboard:
+# persimateriais.com.br/checkout/*

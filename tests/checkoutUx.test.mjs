@@ -41,16 +41,13 @@ test("useTabAttentionTitle escuta visibilitychange e sempre restaura o título o
   assert.match(source, /document\.title = originalTitleRef\.current/);
 });
 
-test("CheckoutForm liga os dois hooks de UX e os desliga assim que o pedido é criado", () => {
+test("CheckoutForm liga os dois hooks de UX e os desliga antes da transferência", () => {
   const source = read("components/Checkout/CheckoutForm.tsx");
   assert.match(source, /useBeforeUnloadWarning\(hasUnsavedProgress && !hasCreatedOrder\)/);
   assert.match(source, /useTabAttentionTitle\(!hasCreatedOrder\)/);
-  // Todos os quatro ramos de sucesso do submit precisam marcar o pedido
-  // como criado antes de seguir (Pix, boleto, cartão/carteira, já iniciado).
-  // `hasCreatedOrder` é elevado a CheckoutPageClient (onOrderCreated) para
-  // que a página de checkout não trate o carrinho esvaziado pós-pagamento
-  // como "carrinho vazio" e derrube a tela do Pix/boleto.
+  // O checkout híbrido possui um único ramo de sucesso: antes de navegar
+  // para o checkout WooCommerce, o callback desarma os avisos do Next.js.
   assert.match(source, /onOrderCreated: setHasCreatedOrder/);
   const setHasCreatedOrderCount = source.split("setHasCreatedOrder()").length - 1;
-  assert.equal(setHasCreatedOrderCount, 4);
+  assert.equal(setHasCreatedOrderCount, 1);
 });

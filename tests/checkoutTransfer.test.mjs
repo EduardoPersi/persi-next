@@ -18,6 +18,8 @@ import { getAuthoritativeCheckoutItems } from "../services/checkout/headlessChec
 const token = "A".repeat(43);
 const transferUrl =
   `https://loja.persimateriais.com.br/checkout/?persi_checkout_transfer=${token}`;
+const publicTransferUrl =
+  `https://persimateriais.com.br/checkout/transfer?token=${token}`;
 const config = {
   endpoint:
     "https://loja.persimateriais.com.br/wp-json/persi-headless/v1/checkout-transfer",
@@ -211,7 +213,7 @@ test("resposta exige transferUrl HTTPS no domínio esperado", () => {
       transferUrl,
       expiresAt: new Date().toISOString(),
     }).transferUrl,
-    transferUrl,
+    publicTransferUrl,
   );
 });
 

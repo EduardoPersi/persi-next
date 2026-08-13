@@ -1,5 +1,46 @@
 # Cloudflare — checkout WooCommerce híbrido
 
+## Reverse proxy no domínio público
+
+O Worker versionado está em `cloudflare/persi-checkout-proxy/` e deve manter
+somente a rota `persimateriais.com.br/checkout/*`.
+
+Fluxo:
+
+```text
+POST Next /api/checkout-transfer
+→ WordPress cria token de uso único
+→ Next devolve /checkout/transfer?token=...
+→ Worker converte para loja.../checkout/?persi_checkout_transfer=...
+→ WordPress restaura e persiste a sessão
+→ Worker converte cookies em host-only, Path=/checkout/
+→ redirect para persimateriais.com.br/checkout/
+```
+
+O Worker também traduz, dentro desse namespace:
+
+```text
+/checkout/?wc-ajax=...       → loja.../checkout/?wc-ajax=...
+/checkout/admin-ajax.php     → loja.../wp-admin/admin-ajax.php
+```
+
+Somente URLs funcionais de checkout são reescritas no HTML. Assets em
+`loja.persimateriais.com.br/wp-content/` permanecem no backend. Todas as
+respostas proxied recebem `Cache-Control: private, no-store, no-cache,
+must-revalidate, max-age=0`.
+
+Antes do deploy, publicar o Worker e confirmar no dashboard que a rota não
+foi ampliada para `persimateriais.com.br/*`.
+
+No `wp-config.php`, habilitar explicitamente o modo proxy:
+
+```php
+define( 'PERSI_HEADLESS_CHECKOUT_PUBLIC_CHECKOUT_URL', 'https://persimateriais.com.br/checkout/' );
+```
+
+Nesse modo, o plugin não redireciona `order-received` para a antiga rota Next
+`/checkout/confirmacao`; o pedido recebido permanece sob o Worker.
+
 ## Causa raiz
 
 O checkout clássico cria requisições `POST` na raiz do backend usando a query

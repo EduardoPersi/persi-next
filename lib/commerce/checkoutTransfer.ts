@@ -3,7 +3,7 @@ import {
   createHmac,
   randomBytes,
 } from "node:crypto";
-import { validateCheckoutTransferUrl } from "./checkoutTransferUrl.ts";
+import { toPublicCheckoutTransferUrl } from "./checkoutTransferUrl.ts";
 import type { CheckoutStoreAddress } from "../../types/checkout.ts";
 
 export const CHECKOUT_TRANSFER_PATH =
@@ -369,7 +369,7 @@ export function parseCheckoutTransferResponse(
   }
 
   const response = value as Record<string, unknown>;
-  const transferUrl = validateCheckoutTransferUrl(response.transferUrl);
+  const transferUrl = toPublicCheckoutTransferUrl(response.transferUrl);
   const expiresAt =
     typeof response.expiresAt === "string" &&
     Number.isFinite(Date.parse(response.expiresAt))

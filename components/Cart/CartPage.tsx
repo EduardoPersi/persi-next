@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
+import { useCheckoutTransfer } from "@/hooks/useCheckoutTransfer";
 import { ProductQuantity } from "@/components/Product/ProductQuantity";
 import { ShippingCalculator } from "@/components/Shipping/ShippingCalculator";
 import { getCartShippingContextKey } from "@/lib/commerce/shippingCalculator";
@@ -22,6 +23,8 @@ export function CartPage() {
     removeItem,
     updateItem,
   } = useCart();
+  const { checkoutError, isPreparingCheckout, prepareCheckout } =
+    useCheckoutTransfer();
   const formatter = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: cart?.currencyCode ?? "BRL",
@@ -228,25 +231,19 @@ export function CartPage() {
             </dd>
           </div>
         </dl>
-        {/* <a> normal de propósito: /checkout não é mais uma página do
-            Next.js, é uma rota que já redireciona pro checkout nativo do
-            WooCommerce — precisa de uma navegação de página inteira, não da
-            navegação client-side de um <Link>. data-route-transition-skip
-            também impede o overlay global de interceptar este clique. */}
-        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-        <a
-          href="/checkout"
-          data-route-transition-skip
-          aria-disabled={isLoading || Boolean(pendingItemKey)}
-          onClick={(event) => {
-            if (isLoading || Boolean(pendingItemKey)) event.preventDefault();
-          }}
-          className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-[#ff6a00] px-4 font-semibold text-white transition hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 aria-disabled:cursor-wait aria-disabled:bg-slate-200 aria-disabled:text-slate-500 aria-disabled:pointer-events-none"
+        <button
+          type="button"
+          disabled={isLoading || Boolean(pendingItemKey) || isPreparingCheckout}
+          onClick={() => void prepareCheckout()}
+          className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-[#ff6a00] px-4 font-semibold text-white transition hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-200 disabled:text-slate-500"
         >
-          Finalizar compra
-        </a>
-        <p className="mt-2 text-center text-sm text-slate-500" role="status">
-          Você será direcionado ao checkout seguro.
+          {isPreparingCheckout ? "Preparando checkout..." : "Finalizar compra"}
+        </button>
+        <p
+          className={`mt-2 text-center text-sm ${checkoutError ? "text-red-700" : "text-slate-500"}`}
+          role="status"
+        >
+          {checkoutError || "Você será direcionado ao checkout seguro."}
         </p>
       </aside>
     </div>

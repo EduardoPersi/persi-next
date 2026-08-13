@@ -2,7 +2,7 @@
 Contributors: persimateriais
 Requires at least: 6.4
 Requires PHP: 7.4
-Stable tag: 0.5.5
+Stable tag: 0.5.6
 License: Proprietary
 
 Núcleo seguro e incremental para transferências temporárias de checkout headless.
@@ -24,6 +24,7 @@ Núcleo seguro e incremental para transferências temporárias de checkout headl
   checkout nativo coleta contato e endereço do zero nesse caso.
 * Recria a sessão autenticada do WooCommerce quando a transferência assinada
   informa o cliente.
+* Mantém order-received sob o checkout público quando o reverse proxy está ativo.
 * Guarda o Cart-Token original na sessão do WooCommerce e o copia como
   meta_data (_persi_checkout_owner_token) do pedido assim que ele é criado
   pelo checkout nativo, para a tela de confirmação do Next.js reconhecer o
