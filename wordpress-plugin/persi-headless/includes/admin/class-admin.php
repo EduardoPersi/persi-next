@@ -32,6 +32,7 @@ class Persi_Headless_Admin {
 				'stock_notifications' => ! empty( $input['modules']['stock_notifications'] ),
 				'newsletter' => ! empty( $input['modules']['newsletter'] ),
 				'contact' => ! empty( $input['modules']['contact'] ),
+				'storefront_lockdown' => ! empty( $input['modules']['storefront_lockdown'] ),
 				'order_bump' => false,
 			),
 			'double_opt_in' => ! empty( $input['double_opt_in'] ),
@@ -83,7 +84,7 @@ class Persi_Headless_Admin {
 			<form method="post" action="options.php">
 				<?php settings_fields( 'persi_headless' ); ?>
 				<h2><?php esc_html_e( 'Módulos', 'persi-headless' ); ?></h2>
-				<?php foreach ( array( 'product_families' => 'Famílias de produtos', 'bought_together' => 'Compre junto', 'stock_notifications' => 'Retorno ao estoque', 'newsletter' => 'Newsletter', 'contact' => 'Formulário de contato' ) as $key => $label ) : ?>
+				<?php foreach ( array( 'product_families' => 'Famílias de produtos', 'bought_together' => 'Compre junto', 'stock_notifications' => 'Retorno ao estoque', 'newsletter' => 'Newsletter', 'contact' => 'Formulário de contato', 'storefront_lockdown' => 'Fechar a vitrine ao público (só o checkout continua acessível)' ) as $key => $label ) : ?>
 					<p><label><input type="checkbox" name="<?php echo esc_attr( Persi_Headless_Settings::OPTION ); ?>[modules][<?php echo esc_attr( $key ); ?>]" value="1" <?php checked( ! empty( $modules[ $key ] ) ); ?>> <?php echo esc_html( $label ); ?></label></p>
 				<?php endforeach; ?>
 				<p><label><input type="checkbox" disabled> <?php esc_html_e( 'Order bump (reservado, desabilitado)', 'persi-headless' ); ?></label></p>

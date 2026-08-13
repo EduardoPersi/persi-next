@@ -4,7 +4,7 @@ Tags: woocommerce, headless, rest-api
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.3.2
+Stable tag: 0.4.0
 License: GPLv2 or later
 
 Integração oficial e independente do tema entre WooCommerce e o frontend Next.js da Persi.
@@ -110,3 +110,18 @@ O segredo é exclusivo deste módulo (não reutiliza os de estoque/newsletter) e
 nunca deve usar NEXT_PUBLIC_. Sem `PERSI_HEADLESS_CONTACT_RECIPIENT_EMAIL`
 configurado, as mensagens vão para o e-mail administrativo padrão do
 WordPress.
+
+== Fechar a vitrine ao público ==
+
+Módulo opcional (desativado por padrão) que redireciona (301) qualquer
+página pública deste WordPress para a primeira URL configurada em
+"Origens do frontend" — exceto o checkout nativo (para onde o Next.js manda
+o cliente de propósito durante o pagamento) e usuários com permissão de
+gerenciar o WooCommerce, que continuam navegando normalmente para suporte e
+conferência de pedidos.
+
+REST API (/wp-json), wp-admin, uploads de mídia (wp-content) e as chamadas
+wc-ajax do próprio checkout nunca passam pelo redirecionamento — só páginas
+de tema (home, categoria, produto, busca, minha conta, carrinho etc.) são
+afetadas. Ative depois de confirmar que o checkout nativo está funcionando
+de ponta a ponta.

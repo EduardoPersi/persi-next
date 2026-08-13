@@ -11,6 +11,7 @@ class Persi_Headless_Module_Manager {
 			'order_bump'          => 'order-bump/class-order-bump.php',
 			'newsletter'          => 'newsletter/class-newsletter.php',
 			'contact'             => 'contact/class-contact.php',
+			'storefront_lockdown' => 'storefront-lockdown/class-storefront-lockdown.php',
 		);
 
 		foreach ( $modules as $key => $file ) {
