@@ -38,12 +38,49 @@ test("resposta proxied preserva múltiplos cookies, no-store e redirect público
 test("checkout, wc-ajax e admin-ajax ficam limitados ao namespace público", () => {
   assert.equal(
     buildOriginUrl("https://persimateriais.com.br/checkout/?wc-ajax=update_order_review").toString(),
-    "https://loja.persimateriais.com.br/checkout/?wc-ajax=update_order_review",
+    "https://loja.persimateriais.com.br/?wc-ajax=update_order_review",
   );
   assert.equal(
     buildOriginUrl("https://persimateriais.com.br/checkout/admin-ajax.php?action=smart_checkout_auth").toString(),
     "https://loja.persimateriais.com.br/wp-admin/admin-ajax.php?action=smart_checkout_auth",
   );
+});
+
+test("proxy preserva POST, corpo, content-type e cookies do wc-ajax", async () => {
+  let forwarded;
+  const response = await handleRequest(
+    new Request(
+      "https://persimateriais.com.br/checkout/?wc-ajax=update_order_review",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          Cookie: "wp_woocommerce_session_hash=session",
+          Origin: "https://persimateriais.com.br",
+          Referer: "https://persimateriais.com.br/checkout/",
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: "security=nonce&post_data=billing_country%3DBR",
+      },
+    ),
+    async (url, init) => {
+      forwarded = { url: url.toString(), init };
+      return Response.json({ result: "success" });
+    },
+  );
+
+  assert.equal(forwarded.url, "https://loja.persimateriais.com.br/?wc-ajax=update_order_review");
+  assert.equal(forwarded.init.method, "POST");
+  assert.equal(
+    new TextDecoder().decode(forwarded.init.body),
+    "security=nonce&post_data=billing_country%3DBR",
+  );
+  assert.equal(forwarded.init.headers.get("content-type"), "application/x-www-form-urlencoded; charset=UTF-8");
+  assert.equal(forwarded.init.headers.get("cookie"), "wp_woocommerce_session_hash=session");
+  assert.equal(forwarded.init.headers.get("origin"), "https://loja.persimateriais.com.br");
+  assert.equal(forwarded.init.headers.get("referer"), "https://loja.persimateriais.com.br/checkout/?wc-ajax=update_order_review");
+  assert.equal(forwarded.init.headers.get("x-requested-with"), "XMLHttpRequest");
+  assert.equal(response.status, 200);
 });
 
 test("cookies se tornam host-only sem perder atributos", () => {
@@ -75,11 +112,13 @@ test("somente redirects e URLs funcionais do checkout são reescritos", () => {
     "https://persimateriais.com.br/carrinho",
   );
   const html = rewriteCheckoutHtml(
-    'ajax="https://loja.persimateriais.com.br/?wc-ajax=x" asset="https://loja.persimateriais.com.br/wp-content/a.js" action="https://loja.persimateriais.com.br/checkout/"',
+    'ajax="https://loja.persimateriais.com.br/?wc-ajax=x" admin="/wp-admin/admin-ajax.php" escaped="\\/wp-admin\\/admin-ajax.php" asset="https://loja.persimateriais.com.br/wp-content/a.js" action="https://loja.persimateriais.com.br/checkout/"',
   );
   assert.match(html, /persimateriais\.com\.br\/checkout\/\?wc-ajax=x/);
   assert.match(html, /loja\.persimateriais\.com\.br\/wp-content\/a\.js/);
   assert.match(html, /action="https:\/\/persimateriais\.com\.br\/checkout\/"/);
+  assert.match(html, /admin="\/checkout\/admin-ajax\.php"/);
+  assert.match(html, /escaped="\\\/checkout\\\/admin-ajax\.php"/);
 });
 
 test("token malformado é rejeitado no edge sem chegar ao WordPress", async () => {

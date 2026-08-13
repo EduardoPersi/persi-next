@@ -6,7 +6,11 @@ export function buildOriginUrl(input) {
   const publicUrl = new URL(input);
   const originUrl = new URL(publicUrl.pathname + publicUrl.search, BACKEND_ORIGIN);
 
-  if (publicUrl.pathname === "/checkout/transfer") {
+  if (publicUrl.searchParams.has("wc-ajax")) {
+    // wc_get_endpoint_url() publica o AJAX na raiz. Encaminhar o POST para
+    // /checkout/ permite que canonical/SEO intervenham antes do handler.
+    originUrl.pathname = "/";
+  } else if (publicUrl.pathname === "/checkout/transfer") {
     const token = publicUrl.searchParams.get("token");
     originUrl.pathname = "/checkout/";
     originUrl.search = "";
@@ -53,6 +57,9 @@ export function rewriteCheckoutHtml(html) {
     ["https:\\/\\/loja.persimateriais.com.br\\/?wc-ajax=", "https:\\/\\/persimateriais.com.br\\/checkout\\/?wc-ajax="],
     ["https:\\/\\/loja.persimateriais.com.br\\/wp-admin\\/admin-ajax.php", "https:\\/\\/persimateriais.com.br\\/checkout\\/admin-ajax.php"],
     ["https:\\/\\/loja.persimateriais.com.br\\/checkout\\/", "https:\\/\\/persimateriais.com.br\\/checkout\\/"],
+    ['"/wp-admin/admin-ajax.php"', '"/checkout/admin-ajax.php"'],
+    ["'/wp-admin/admin-ajax.php'", "'/checkout/admin-ajax.php'"],
+    ["\\/wp-admin\\/admin-ajax.php", "\\/checkout\\/admin-ajax.php"],
   ];
 
   return replacements.reduce(
@@ -91,6 +98,7 @@ export async function handleRequest(request, fetchImplementation = fetch) {
 
   const originUrl = buildOriginUrl(publicUrl);
   const headers = new Headers(request.headers);
+  headers.delete("Content-Length");
   headers.set("X-Forwarded-Host", publicUrl.host);
   headers.set("X-Forwarded-Proto", "https");
   if (headers.has("Origin")) headers.set("Origin", BACKEND_ORIGIN);
@@ -98,10 +106,14 @@ export async function handleRequest(request, fetchImplementation = fetch) {
     headers.set("Referer", `${BACKEND_ORIGIN}${publicUrl.pathname}${publicUrl.search}`);
   }
 
+  const requestBody =
+    request.method === "GET" || request.method === "HEAD"
+      ? undefined
+      : await request.arrayBuffer();
   const originResponse = await fetchImplementation(originUrl, {
     method: request.method,
     headers,
-    body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
+    body: requestBody,
     redirect: "manual",
   });
   const responseHeaders = new Headers(originResponse.headers);
