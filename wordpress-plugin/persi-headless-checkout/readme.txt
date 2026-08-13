@@ -2,7 +2,7 @@
 Contributors: persimateriais
 Requires at least: 6.4
 Requires PHP: 7.4
-Stable tag: 0.5.2
+Stable tag: 0.5.3
 License: Proprietary
 
 Núcleo seguro e incremental para transferências temporárias de checkout headless.
@@ -34,6 +34,10 @@ Núcleo seguro e incremental para transferências temporárias de checkout headl
 * Reaplica cupons recebidos e exige que o WooCommerce os valide e recalcule.
 * Não fixa o frete transferido; o checkout nativo recalcula as opções.
 * Não processa pagamentos.
+* Autoriza a inicialização do WC Smart Checkout no backend
+  `loja.persimateriais.com.br` sem alterar o plugin de terceiros.
+* Preserva a tela de identificação por e-mail e o guest checkout configurado
+  pelo próprio WC Smart Checkout.
 
 == Consumo do token ==
 

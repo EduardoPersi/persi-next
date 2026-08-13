@@ -9,8 +9,10 @@ require_once dirname( __DIR__ ) . '/src/Security/AuthenticationException.php';
 require_once dirname( __DIR__ ) . '/src/Security/AuthenticationResult.php';
 require_once dirname( __DIR__ ) . '/src/Security/RequestAuthenticator.php';
 require_once dirname( __DIR__ ) . '/src/Checkout/TransferRepository.php';
+require_once dirname( __DIR__ ) . '/src/Compatibility/SmartCheckout.php';
 
 use Persi\HeadlessCheckout\Checkout\TransferRepository;
+use Persi\HeadlessCheckout\Compatibility\SmartCheckout;
 use Persi\HeadlessCheckout\Security\AuthenticationException;
 use Persi\HeadlessCheckout\Security\RequestAuthenticator;
 
@@ -189,6 +191,22 @@ $test( 'nonce repetido continua rejeitado pelo repositório', static function ()
 
 	$assert( 'created' === $repository->create( $record ) );
 	$assert( 'replay' === $repository->create( $record ) );
+} );
+
+$test( 'compatibilidade do Smart Checkout é limitada ao backend e ao checkout', static function () use ( $assert ): void {
+	$assert( SmartCheckout::should_inject( 'loja.persimateriais.com.br', true ) );
+	$assert( SmartCheckout::should_inject( 'LOJA.PERSIMATERIAIS.COM.BR.', true ) );
+	$assert( ! SmartCheckout::should_inject( 'persimateriais.com.br', true ) );
+	$assert( ! SmartCheckout::should_inject( 'loja.persimateriais.com.br', false ) );
+} );
+
+$test( 'adaptador restaura Array.includes e não remove loading por CSS', static function () use ( $assert ): void {
+	$script = SmartCheckout::inline_script();
+
+	$assert( false !== strpos( $script, 'loja.persimateriais.com.br' ) );
+	$assert( false !== strpos( $script, 'Array.prototype.includes = originalIncludes' ) );
+	$assert( false === strpos( $script, 'smart-checkout-loading' ) );
+	$assert( false === strpos( $script, 'updated_checkout' ) );
 } );
 
 echo "\n{$passed} passed, {$failed} failed.\n";

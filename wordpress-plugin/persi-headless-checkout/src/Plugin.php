@@ -9,6 +9,7 @@ use Persi\HeadlessCheckout\Checkout\OrderOwnerToken;
 use Persi\HeadlessCheckout\Checkout\ThankYouRedirect;
 use Persi\HeadlessCheckout\Checkout\TransferRepository;
 use Persi\HeadlessCheckout\Checkout\TransferService;
+use Persi\HeadlessCheckout\Compatibility\SmartCheckout;
 use Persi\HeadlessCheckout\Security\RequestAuthenticator;
 use Persi\HeadlessCheckout\Security\TransferToken;
 use Persi\HeadlessCheckout\Support\Configuration;
@@ -59,11 +60,13 @@ final class Plugin {
 		);
 		$owner_token    = new OrderOwnerToken();
 		$thank_you      = new ThankYouRedirect( $configuration );
+		$smart_checkout = new SmartCheckout();
 
 		add_action( 'rest_api_init', array( $controller, 'register_routes' ) );
 		$redirect->register();
 		$owner_token->register();
 		$thank_you->register();
+		$smart_checkout->register();
 	}
 
 	public static function render_woocommerce_notice(): void {
