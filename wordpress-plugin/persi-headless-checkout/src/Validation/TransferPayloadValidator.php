@@ -49,14 +49,24 @@ final class TransferPayloadValidator {
 			throw new ValidationException( 'unknown_or_missing_property' );
 		}
 
-		return array(
-			'items'           => $this->validate_items( $payload['items'] ),
-			'couponCodes'     => $this->validate_coupon_codes( $payload['couponCodes'] ),
-			'shippingMethod'  => $this->validate_shipping_method( $payload['shippingMethod'] ),
-			'billingAddress'  => $has_billing_address ? $this->validate_store_address( $payload['billingAddress'], true ) : null,
-			'shippingAddress' => $has_shipping_address ? $this->validate_store_address( $payload['shippingAddress'], false ) : null,
-			'ownerToken'      => $this->validate_owner_token( $payload['ownerToken'] ),
+		// Sem entrada para 'billingAddress'/'shippingAddress' quando ausentes
+		// (nunca null) — o payload validado é serializado e guardado, e
+		// relido/revalidado por este mesmo método no consumo do token; uma
+		// chave presente com valor null seria tratada como "endereço
+		// inválido" na segunda passada, derrubando a transferência.
+		$validated = array(
+			'items'          => $this->validate_items( $payload['items'] ),
+			'couponCodes'    => $this->validate_coupon_codes( $payload['couponCodes'] ),
+			'shippingMethod' => $this->validate_shipping_method( $payload['shippingMethod'] ),
+			'ownerToken'     => $this->validate_owner_token( $payload['ownerToken'] ),
 		);
+
+		if ( $has_billing_address ) {
+			$validated['billingAddress']  = $this->validate_store_address( $payload['billingAddress'], true );
+			$validated['shippingAddress'] = $this->validate_store_address( $payload['shippingAddress'], false );
+		}
+
+		return $validated;
 	}
 
 	// O Cart-Token é um JWT do WooCommerce Store API (opaco para este plugin) —
