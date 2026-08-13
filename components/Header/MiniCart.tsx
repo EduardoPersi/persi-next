@@ -68,11 +68,11 @@ export function MiniCart() {
         aria-label="Mini carrinho"
         aria-hidden={!open}
         inert={!open}
-        className={`fixed right-0 top-0 z-50 flex h-screen w-full max-w-[360px] flex-col bg-white shadow-2xl transition-transform duration-300 ${
+        className={`fixed inset-y-0 right-0 z-50 flex h-[100dvh] max-h-[100dvh] w-full max-w-[360px] flex-col overflow-hidden bg-white shadow-2xl transition-transform duration-300 ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <header className="flex items-center justify-between border-b px-5 py-4">
+        <header className="shrink-0 flex items-center justify-between border-b px-5 py-4">
           <h2 className="text-lg font-semibold">
             Carrinho ({cart?.itemsCount ?? 0})
           </h2>
@@ -89,7 +89,7 @@ export function MiniCart() {
         </header>
 
         {cart?.items.length ? (
-          <main className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+          <main className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5">
             {cart.items.map((item) => (
               <article key={item.key} className="relative flex gap-3 pr-5">
                 {item.image ? (
@@ -211,7 +211,7 @@ export function MiniCart() {
             ))}
           </main>
         ) : (
-          <main className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+          <main className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto overscroll-contain px-8 text-center">
             <ShoppingCart
               size={72}
               strokeWidth={1.4}
@@ -235,12 +235,12 @@ export function MiniCart() {
         )}
 
         {error ? (
-          <p className="px-6 pb-3 text-sm text-red-700" role="status">
+          <p className="shrink-0 px-6 pb-3 text-sm text-red-700" role="status">
             {error}
           </p>
         ) : null}
 
-        <footer className="border-t p-5">
+        <footer className="shrink-0 border-t px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5">
           <div className="mb-4 flex items-center justify-between">
             <span className="text-sm text-slate-600">Subtotal</span>
             <strong className="text-lg">
