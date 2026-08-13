@@ -254,8 +254,15 @@ export function MiniCart() {
           >
             Ver carrinho
           </Link>
-          <Link
+          {/* <a> normal de propósito: /checkout não é mais uma página do
+              Next.js, é uma rota que já redireciona pro checkout nativo do
+              WooCommerce — precisa de navegação de página inteira, não da
+              navegação client-side de um <Link>. data-route-transition-skip
+              também impede o overlay global de interceptar este clique. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a
             href="/checkout"
+            data-route-transition-skip
             onClick={(event) => {
               if (!cart?.items.length || isLoading || Boolean(pendingItemKey)) {
                 event.preventDefault();
@@ -267,7 +274,7 @@ export function MiniCart() {
             className="flex w-full items-center justify-center rounded-md bg-[#ff6a00] py-3 font-medium text-white transition-colors hover:bg-[#e85f00] active:bg-[#cc5200] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 aria-disabled:cursor-wait aria-disabled:bg-slate-200 aria-disabled:text-slate-500 aria-disabled:pointer-events-none"
           >
             FINALIZAR COMPRA
-          </Link>
+          </a>
         </footer>
       </aside>
     </>

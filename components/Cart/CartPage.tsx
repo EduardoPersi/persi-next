@@ -228,8 +228,15 @@ export function CartPage() {
             </dd>
           </div>
         </dl>
-        <Link
+        {/* <a> normal de propósito: /checkout não é mais uma página do
+            Next.js, é uma rota que já redireciona pro checkout nativo do
+            WooCommerce — precisa de uma navegação de página inteira, não da
+            navegação client-side de um <Link>. data-route-transition-skip
+            também impede o overlay global de interceptar este clique. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+        <a
           href="/checkout"
+          data-route-transition-skip
           aria-disabled={isLoading || Boolean(pendingItemKey)}
           onClick={(event) => {
             if (isLoading || Boolean(pendingItemKey)) event.preventDefault();
@@ -237,7 +244,7 @@ export function CartPage() {
           className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-[#ff6a00] px-4 font-semibold text-white transition hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 aria-disabled:cursor-wait aria-disabled:bg-slate-200 aria-disabled:text-slate-500 aria-disabled:pointer-events-none"
         >
           Finalizar compra
-        </Link>
+        </a>
         <p className="mt-2 text-center text-sm text-slate-500" role="status">
           Você será direcionado ao checkout seguro.
         </p>

@@ -13,12 +13,12 @@ test("CheckoutHeader não inclui menu de categorias, busca, mini-cart ou conta (
 });
 
 test("checkout usa o CheckoutHeader em vez do Header completo em todas as suas páginas", () => {
-  const checkoutPage = read("app/checkout/page.tsx");
+  // /checkout não renderiza nada (é só um redirecionamento pro checkout
+  // nativo do WooCommerce, sem cabeçalho nenhum) — só a confirmação ainda é
+  // uma página de verdade.
   const confirmationPage = read("app/checkout/confirmacao/page.tsx");
-  for (const source of [checkoutPage, confirmationPage]) {
-    assert.match(source, /CheckoutHeader/);
-    assert.doesNotMatch(source, /<Header\s*\/>/);
-  }
+  assert.match(confirmationPage, /CheckoutHeader/);
+  assert.doesNotMatch(confirmationPage, /<Header\s*\/>/);
 });
 
 test("FooterVisibility esconde o rodapé completo só nas rotas de checkout", () => {
