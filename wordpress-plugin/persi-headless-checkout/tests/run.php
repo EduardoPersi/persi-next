@@ -202,11 +202,14 @@ $test( 'compatibilidade do Smart Checkout é limitada ao backend e ao checkout',
 
 $test( 'adaptador restaura Array.includes e não remove loading por CSS', static function () use ( $assert ): void {
 	$script = SmartCheckout::inline_script();
+	$source = file_get_contents( dirname( __DIR__ ) . '/src/Compatibility/SmartCheckout.php' );
 
 	$assert( false !== strpos( $script, 'loja.persimateriais.com.br' ) );
 	$assert( false !== strpos( $script, 'Array.prototype.includes = originalIncludes' ) );
 	$assert( false === strpos( $script, 'smart-checkout-loading' ) );
 	$assert( false === strpos( $script, 'updated_checkout' ) );
+	$assert( false !== strpos( $source, "add_action( 'wc_smart_checkout_scripts'" ) );
+	$assert( false === strpos( $source, "add_action( 'wp_enqueue_scripts'" ) );
 } );
 
 echo "\n{$passed} passed, {$failed} failed.\n";

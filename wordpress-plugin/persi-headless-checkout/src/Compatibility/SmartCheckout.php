@@ -9,7 +9,11 @@ final class SmartCheckout {
 	private const SCRIPT_HANDLE = 'wc-smart-checkout';
 
 	public function register(): void {
-		add_action( 'wp_enqueue_scripts', array( $this, 'add_domain_compatibility' ), PHP_INT_MAX );
+		// O WC Smart Checkout registra e enfileira o handle em
+		// wp_enqueue_scripts/PHP_INT_MAX. Como este plugin carrega antes dele,
+		// usar o mesmo hook cria uma corrida e wp_script_is() ainda retorna false.
+		// Este evento próprio é disparado pelo fornecedor após o enqueue.
+		add_action( 'wc_smart_checkout_scripts', array( $this, 'add_domain_compatibility' ), PHP_INT_MAX );
 	}
 
 	public function add_domain_compatibility(): void {

@@ -2,7 +2,7 @@
 Contributors: persimateriais
 Requires at least: 6.4
 Requires PHP: 7.4
-Stable tag: 0.5.3
+Stable tag: 0.5.4
 License: Proprietary
 
 Núcleo seguro e incremental para transferências temporárias de checkout headless.
