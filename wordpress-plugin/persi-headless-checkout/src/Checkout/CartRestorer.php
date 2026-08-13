@@ -25,6 +25,22 @@ final class CartRestorer {
 		}
 	}
 
+	public function authenticate_customer( int $customer_id ): void {
+		$user = get_user_by( 'id', $customer_id );
+
+		if ( ! $user instanceof \WP_User ) {
+			throw new CartRestoreException( 'authenticated_customer_not_found' );
+		}
+
+		wp_set_current_user( $customer_id );
+		wp_set_auth_cookie( $customer_id, false, is_ssl() );
+	}
+
+	public function clear_customer_authentication(): void {
+		wp_clear_auth_cookie();
+		wp_set_current_user( 0 );
+	}
+
 	public function prevalidate( array $items ): array {
 		$validated = array();
 		$seen      = array();

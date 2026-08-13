@@ -28,6 +28,7 @@ export interface CheckoutTransferPayload {
   // WooCommerce coleta contato e endereço do zero nesse caso.
   billingAddress?: CheckoutStoreAddress;
   shippingAddress?: CheckoutStoreAddress;
+  authenticatedCustomerId?: number;
   ownerToken: string;
 }
 
@@ -231,6 +232,7 @@ export function buildCheckoutTransferPayload(
   customer: { billingAddress: CheckoutStoreAddress; shippingAddress: CheckoutStoreAddress } | undefined,
   ownerToken: string,
   couponCodes: string[] = [],
+  authenticatedCustomerId?: number,
 ): CheckoutTransferPayload {
   if (items.length < 1 || items.length > 100) {
     throw new CheckoutTransferError(422, "Cart cannot be transferred");
@@ -238,6 +240,13 @@ export function buildCheckoutTransferPayload(
 
   if (!ownerToken || !ownerToken.trim()) {
     throw new CheckoutTransferError(422, "Cart token is missing");
+  }
+
+  if (
+    authenticatedCustomerId !== undefined &&
+    (!Number.isInteger(authenticatedCustomerId) || authenticatedCustomerId < 1)
+  ) {
+    throw new CheckoutTransferError(422, "Authenticated customer is invalid");
   }
 
   const validatedItems = items.map((item) => {
@@ -285,6 +294,9 @@ export function buildCheckoutTransferPayload(
           billingAddress: validateStoreAddress(customer.billingAddress),
           shippingAddress: validateStoreAddress(customer.shippingAddress),
         }
+      : {}),
+    ...(authenticatedCustomerId !== undefined
+      ? { authenticatedCustomerId }
       : {}),
     ownerToken: ownerToken.trim(),
   };

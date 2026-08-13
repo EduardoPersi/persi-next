@@ -10,6 +10,7 @@ import { getCartTokenCookieOptions } from "@/lib/commerce/cartResponsePolicy";
 import { getAuthoritativeCheckoutItems } from "@/services/checkout/headlessCheckout";
 import { CartServiceError, getCart } from "@/services/woocommerce/cart";
 import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
+import { getServerAccountSession } from "@/services/account/serverSession";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,7 +35,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(cartUrl, 303);
     }
 
-    const cartResult = await getCart(activeCartToken);
+    const [cartResult, accountSession] = await Promise.all([
+      getCart(activeCartToken),
+      getServerAccountSession(),
+    ]);
     activeCartToken = cartResult.cartToken ?? activeCartToken;
 
     const items = await getAuthoritativeCheckoutItems(cartResult.cart);
@@ -43,6 +47,7 @@ export async function GET(request: NextRequest) {
       undefined,
       activeCartToken,
       cartResult.cart.coupons.map(({ code }) => code),
+      accountSession?.customer.id,
     );
     const transfer = await createCheckoutTransfer(payload, configuration);
 

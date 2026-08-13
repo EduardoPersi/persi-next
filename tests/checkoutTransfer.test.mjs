@@ -139,6 +139,30 @@ test("cupons autoritativos são normalizados sem transferir valores comerciais",
   );
 });
 
+test("cliente autenticado é transferido por ID e convidado permanece sem identidade", () => {
+  const authenticated = buildCheckoutTransferPayload(
+    [{ productId: 123, variationId: 0, quantity: 1 }],
+    undefined,
+    "cart-owner-token",
+    [],
+    42,
+  );
+
+  assert.equal(authenticated.authenticatedCustomerId, 42);
+  assert.equal("authenticatedCustomerId" in simplePayload, false);
+  assert.throws(
+    () =>
+      buildCheckoutTransferPayload(
+        [{ productId: 123, variationId: 0, quantity: 1 }],
+        undefined,
+        "cart-owner-token",
+        [],
+        0,
+      ),
+    CheckoutTransferError,
+  );
+});
+
 test("leitura autoritativa resolve produto simples e pai da variação", async () => {
   const cart = {
     items: [

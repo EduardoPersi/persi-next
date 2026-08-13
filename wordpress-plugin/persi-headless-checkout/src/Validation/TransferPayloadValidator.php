@@ -39,7 +39,7 @@ final class TransferPayloadValidator {
 		$this->assert_keys_with_optional(
 			$payload,
 			array( 'items', 'couponCodes', 'shippingMethod', 'ownerToken' ),
-			array( 'billingAddress', 'shippingAddress' )
+			array( 'billingAddress', 'shippingAddress', 'authenticatedCustomerId' )
 		);
 
 		$has_billing_address  = array_key_exists( 'billingAddress', $payload );
@@ -64,6 +64,13 @@ final class TransferPayloadValidator {
 		if ( $has_billing_address ) {
 			$validated['billingAddress']  = $this->validate_store_address( $payload['billingAddress'], true );
 			$validated['shippingAddress'] = $this->validate_store_address( $payload['shippingAddress'], false );
+		}
+
+		if ( array_key_exists( 'authenticatedCustomerId', $payload ) ) {
+			if ( ! is_int( $payload['authenticatedCustomerId'] ) || $payload['authenticatedCustomerId'] < 1 ) {
+				throw new ValidationException( 'invalid_authenticated_customer_id' );
+			}
+			$validated['authenticatedCustomerId'] = $payload['authenticatedCustomerId'];
 		}
 
 		return $validated;

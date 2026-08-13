@@ -10,11 +10,15 @@ require_once dirname( __DIR__ ) . '/src/Security/AuthenticationResult.php';
 require_once dirname( __DIR__ ) . '/src/Security/RequestAuthenticator.php';
 require_once dirname( __DIR__ ) . '/src/Checkout/TransferRepository.php';
 require_once dirname( __DIR__ ) . '/src/Compatibility/SmartCheckout.php';
+require_once dirname( __DIR__ ) . '/src/Validation/ValidationException.php';
+require_once dirname( __DIR__ ) . '/src/Validation/TransferPayloadValidator.php';
 
 use Persi\HeadlessCheckout\Checkout\TransferRepository;
 use Persi\HeadlessCheckout\Compatibility\SmartCheckout;
 use Persi\HeadlessCheckout\Security\AuthenticationException;
 use Persi\HeadlessCheckout\Security\RequestAuthenticator;
+use Persi\HeadlessCheckout\Validation\TransferPayloadValidator;
+use Persi\HeadlessCheckout\Validation\ValidationException;
 
 $passed = 0;
 $failed = 0;
@@ -198,6 +202,31 @@ $test( 'compatibilidade do Smart Checkout é limitada ao backend e ao checkout',
 	$assert( SmartCheckout::should_inject( 'LOJA.PERSIMATERIAIS.COM.BR.', true ) );
 	$assert( ! SmartCheckout::should_inject( 'persimateriais.com.br', true ) );
 	$assert( ! SmartCheckout::should_inject( 'loja.persimateriais.com.br', false ) );
+} );
+
+$test( 'identidade autenticada é opcional e exige ID positivo', static function () use ( $assert, $throws ): void {
+	$validator = new TransferPayloadValidator();
+	$base = array(
+		'items' => array( array( 'productId' => 123, 'variationId' => 0, 'quantity' => 1 ) ),
+		'couponCodes' => array(),
+		'shippingMethod' => array( 'rateId' => '', 'packageIndex' => 0 ),
+		'ownerToken' => 'cart-owner-token',
+	);
+
+	$guest = $validator->validate_json( json_encode( $base ) );
+	$assert( ! isset( $guest['authenticatedCustomerId'] ) );
+
+	$base['authenticatedCustomerId'] = 42;
+	$customer = $validator->validate_json( json_encode( $base ) );
+	$assert( 42 === $customer['authenticatedCustomerId'] );
+
+	$base['authenticatedCustomerId'] = 0;
+	$throws(
+		static function () use ( $validator, $base ): void {
+			$validator->validate_json( json_encode( $base ) );
+		},
+		ValidationException::class
+	);
 } );
 
 $test( 'adaptador restaura Array.includes e não remove loading por CSS', static function () use ( $assert ): void {

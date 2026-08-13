@@ -103,6 +103,13 @@ final class CheckoutRedirect {
 		$cart_was_cleared = false;
 
 		try {
+			if ( isset( $payload['authenticatedCustomerId'] ) ) {
+				$this->cart_restorer->authenticate_customer( $payload['authenticatedCustomerId'] );
+			} else {
+				// A sessão do subdomínio pode sobreviver ao logout feito no Next.js.
+				// Uma transferência anônima deve sempre chegar como convidado.
+				$this->cart_restorer->clear_customer_authentication();
+			}
 			$this->cart_restorer->initialize_woocommerce();
 			$validated_items = $this->cart_restorer->prevalidate( $payload['items'] );
 			$snapshot        = $this->cart_restorer->snapshot_current_cart();

@@ -19,6 +19,7 @@ import {
   getCart,
 } from "@/services/woocommerce/cart";
 import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
+import { getServerAccountSession } from "@/services/account/serverSession";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -99,7 +100,10 @@ export async function POST(request: NextRequest) {
       customer = mapCheckoutFormToWooAddress(parsedForm.data);
     }
 
-    const cartResult = await getCart(activeCartToken);
+    const [cartResult, accountSession] = await Promise.all([
+      getCart(activeCartToken),
+      getServerAccountSession(),
+    ]);
     activeCartToken = cartResult.cartToken ?? activeCartToken;
 
     const items = await getAuthoritativeCheckoutItems(cartResult.cart);
@@ -108,6 +112,7 @@ export async function POST(request: NextRequest) {
       customer,
       activeCartToken,
       cartResult.cart.coupons.map(({ code }) => code),
+      accountSession?.customer.id,
     );
     const transfer = await createCheckoutTransfer(payload, configuration);
 
