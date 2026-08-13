@@ -25,6 +25,7 @@ export interface CheckoutTransferPayload {
   };
   billingAddress: CheckoutStoreAddress;
   shippingAddress: CheckoutStoreAddress;
+  ownerToken: string;
 }
 
 export interface CheckoutTransferConfig {
@@ -225,9 +226,14 @@ function validateStoreAddress(
 export function buildCheckoutTransferPayload(
   items: CheckoutTransferItem[],
   customer: { billingAddress: CheckoutStoreAddress; shippingAddress: CheckoutStoreAddress },
+  ownerToken: string,
 ): CheckoutTransferPayload {
   if (items.length < 1 || items.length > 100) {
     throw new CheckoutTransferError(422, "Cart cannot be transferred");
+  }
+
+  if (!ownerToken || !ownerToken.trim()) {
+    throw new CheckoutTransferError(422, "Cart token is missing");
   }
 
   const validatedItems = items.map((item) => {
@@ -259,6 +265,7 @@ export function buildCheckoutTransferPayload(
     },
     billingAddress: validateStoreAddress(customer.billingAddress),
     shippingAddress: validateStoreAddress(customer.shippingAddress),
+    ownerToken: ownerToken.trim(),
   };
 }
 

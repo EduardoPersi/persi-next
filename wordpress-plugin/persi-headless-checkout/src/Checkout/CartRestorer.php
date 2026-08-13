@@ -122,7 +122,8 @@ final class CartRestorer {
 	public function restore_validated_items(
 		array $items,
 		array $billing_address,
-		array $shipping_address
+		array $shipping_address,
+		string $owner_token
 	): void {
 		WC()->cart->empty_cart();
 
@@ -145,6 +146,11 @@ final class CartRestorer {
 			// do cliente — setar depois deixaria o carrinho com totais
 			// calculados para o endereço antigo (ou nenhum).
 			$this->apply_customer_details( $billing_address, $shipping_address );
+			// Guardado na sessão do WooCommerce (não no pedido ainda, que só
+			// existe quando o cliente confirma o checkout nativo) — o hook
+			// OrderOwnerToken lê este valor de volta em
+			// woocommerce_checkout_update_order_meta e o copia para o pedido.
+			WC()->session->set( 'persi_checkout_owner_token', $owner_token );
 			$this->persist_cart();
 		} catch ( \Throwable $exception ) {
 			if ( $exception instanceof CartRestoreException ) {

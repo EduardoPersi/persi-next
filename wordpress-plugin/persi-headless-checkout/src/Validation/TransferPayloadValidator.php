@@ -34,7 +34,7 @@ final class TransferPayloadValidator {
 		$this->reject_forbidden_fields( $payload );
 		$this->assert_exact_keys(
 			$payload,
-			array( 'items', 'couponCodes', 'shippingMethod', 'billingAddress', 'shippingAddress' )
+			array( 'items', 'couponCodes', 'shippingMethod', 'billingAddress', 'shippingAddress', 'ownerToken' )
 		);
 
 		return array(
@@ -43,7 +43,20 @@ final class TransferPayloadValidator {
 			'shippingMethod'  => $this->validate_shipping_method( $payload['shippingMethod'] ),
 			'billingAddress'  => $this->validate_store_address( $payload['billingAddress'], true ),
 			'shippingAddress' => $this->validate_store_address( $payload['shippingAddress'], false ),
+			'ownerToken'      => $this->validate_owner_token( $payload['ownerToken'] ),
 		);
+	}
+
+	// O Cart-Token é um JWT do WooCommerce Store API (opaco para este plugin) —
+	// só precisa sobreviver íntegro até virar meta_data do pedido, para a
+	// tela de confirmação no Next.js confirmar depois quem tem direito de ver
+	// os detalhes (ver services/payments/statusAuthorization.ts).
+	private function validate_owner_token( $owner_token ): string {
+		if ( ! $this->required_string( $owner_token, 4096 ) ) {
+			throw new ValidationException( 'invalid_owner_token' );
+		}
+
+		return $owner_token;
 	}
 
 	private function validate_items( $items ): array {

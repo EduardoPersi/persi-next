@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     activeCartToken = cartResult.cartToken ?? activeCartToken;
 
     const items = await getAuthoritativeCheckoutItems(cartResult.cart);
-    const payload = buildCheckoutTransferPayload(items, customer);
+    const payload = buildCheckoutTransferPayload(items, customer, activeCartToken);
     const transfer = await createCheckoutTransfer(payload, configuration);
 
     return createPrivateResponse(

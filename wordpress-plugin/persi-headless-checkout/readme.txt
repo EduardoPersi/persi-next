@@ -2,7 +2,7 @@
 Contributors: persimateriais
 Requires at least: 6.4
 Requires PHP: 7.4
-Stable tag: 0.3.0
+Stable tag: 0.4.0
 License: Proprietary
 
 Núcleo seguro e incremental para transferências temporárias de checkout headless.
@@ -19,6 +19,13 @@ Núcleo seguro e incremental para transferências temporárias de checkout headl
 * Restaura produtos simples e variações comuns após pré-validação completa.
 * Pré-preenche cobrança e entrega (WC()->customer) com os dados de contato e
   endereço já digitados no Next.js, evitando redigitação no checkout nativo.
+* Guarda o Cart-Token original na sessão do WooCommerce e o copia como
+  meta_data (_persi_checkout_owner_token) do pedido assim que ele é criado
+  pelo checkout nativo, para a tela de confirmação do Next.js reconhecer o
+  dono do pedido.
+* Redireciona o cliente de volta ao Next.js (?provider=woocommerce&orderId=)
+  assim que o pedido é recebido, se PERSI_HEADLESS_CHECKOUT_CONFIRMATION_URL
+  estiver configurada.
 * Usa aquisição atômica e impede dois consumos concorrentes.
 * Preserva um snapshot básico do carrinho para recuperação em caso de falha.
 * Não aplica cupons nem seleciona frete.
@@ -49,6 +56,10 @@ define(
     'PERSI_HEADLESS_CHECKOUT_CART_URL',
     'https://yellowgreen-ram-345959.hostingersite.com/carrinho'
 );
+define(
+    'PERSI_HEADLESS_CHECKOUT_CONFIRMATION_URL',
+    'https://persimateriais.com.br/checkout/confirmacao'
+);
 
 O segredo também pode ser fornecido pela variável de ambiente
 PERSI_HEADLESS_CHECKOUT_HMAC_SECRET. A constante tem precedência.
@@ -57,6 +68,11 @@ O Key ID não diferencia letras maiúsculas e minúsculas.
 Se PERSI_HEADLESS_CHECKOUT_CART_URL não existir, o plugin usa a URL retornada
 por wc_get_cart_url(). Uma constante presente, mas inválida, não usa fallback
 e gera um aviso administrativo.
+
+Se PERSI_HEADLESS_CHECKOUT_CONFIRMATION_URL não existir, o cliente não é
+redirecionado de volta ao Next.js — permanece na própria página de pedido
+recebido do WooCommerce (degradação segura). Uma constante presente, mas
+inválida, também não redireciona e gera um aviso administrativo.
 
 == Assinatura v1 ==
 

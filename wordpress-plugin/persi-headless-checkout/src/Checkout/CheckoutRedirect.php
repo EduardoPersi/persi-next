@@ -110,7 +110,8 @@ final class CheckoutRedirect {
 			$this->cart_restorer->restore_validated_items(
 				$validated_items,
 				$payload['billingAddress'],
-				$payload['shippingAddress']
+				$payload['shippingAddress'],
+				$payload['ownerToken']
 			);
 
 			$used_at = gmdate( 'Y-m-d H:i:s' );

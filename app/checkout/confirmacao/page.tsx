@@ -19,7 +19,9 @@ import {
 } from "@/services/payments/reconcile";
 import { isAuthorizedForOrderStatus } from "@/services/payments/statusAuthorization";
 import {
+  categorizeOrderStatus,
   findOrderByPaymentReference,
+  getOrderById,
   getOrderConfirmationDetails,
   type OrderConfirmationDetails,
   type PaymentProvider,
@@ -68,7 +70,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   pagbank_google_pay: "Google Pay - PagBank",
 };
 
-async function resolveStatus(
+async function resolveInterOrPagBankStatus(
   provider: string | undefined,
   reference: string | undefined,
 ): Promise<{ category: PaymentStatusCategory; order: WooCommerceOrder } | null> {
@@ -106,6 +108,44 @@ async function resolveStatus(
   }
 }
 
+// Checkout nativo do WooCommerce: o pedido já sai criado com o status final
+// do gateway (não existe "reference" de um provedor externo pra reconsultar
+// — o próprio WooCommerce é a fonte de verdade aqui), então só falta a mesma
+// checagem de autorização (nunca confiar só na query string) antes de
+// mostrar qualquer detalhe.
+async function resolveWooCommerceStatus(
+  orderId: string | undefined,
+): Promise<{ category: PaymentStatusCategory; order: WooCommerceOrder } | null> {
+  if (!orderId) return null;
+  const numericOrderId = Number(orderId);
+  if (!Number.isInteger(numericOrderId) || numericOrderId < 1) return null;
+
+  try {
+    const order = await getOrderById(numericOrderId);
+
+    const requestCartToken = (await cookies()).get(CART_TOKEN_COOKIE)?.value;
+    const session = await getServerAccountSession();
+    if (!isAuthorizedForOrderStatus(order, requestCartToken, session?.customer.email)) {
+      return null;
+    }
+
+    return { category: categorizeOrderStatus(order.status), order };
+  } catch {
+    return null;
+  }
+}
+
+async function resolveStatus(params: {
+  provider?: string;
+  reference?: string;
+  orderId?: string;
+}): Promise<{ category: PaymentStatusCategory; order: WooCommerceOrder } | null> {
+  if (params.provider === "woocommerce") {
+    return resolveWooCommerceStatus(params.orderId);
+  }
+  return resolveInterOrPagBankStatus(params.provider, params.reference);
+}
+
 function formatMoney(value: string, currency: string): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency }).format(
     Number(value) || 0,
@@ -119,7 +159,10 @@ function PaidConfirmation({
   provider: string;
   details: OrderConfirmationDetails;
 }) {
-  const paymentMethodLabel = PAYMENT_METHOD_LABELS[provider] ?? provider;
+  const paymentMethodLabel =
+    provider === "woocommerce"
+      ? details.paymentMethodLabel || "Forma de pagamento confirmada"
+      : (PAYMENT_METHOD_LABELS[provider] ?? provider);
 
   return (
     <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
@@ -243,7 +286,7 @@ export default async function CheckoutConfirmationPage({
   searchParams,
 }: ConfirmationPageProps) {
   const params = await searchParams;
-  const resolved = await resolveStatus(params.provider, params.reference);
+  const resolved = await resolveStatus(params);
   const isPaid = resolved?.category === "paid";
   const details = isPaid
     ? await getOrderConfirmationDetails(resolved.order.id).catch(() => null)

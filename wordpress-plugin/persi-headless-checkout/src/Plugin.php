@@ -5,6 +5,8 @@ namespace Persi\HeadlessCheckout;
 use Persi\HeadlessCheckout\Api\CheckoutTransferController;
 use Persi\HeadlessCheckout\Checkout\CartRestorer;
 use Persi\HeadlessCheckout\Checkout\CheckoutRedirect;
+use Persi\HeadlessCheckout\Checkout\OrderOwnerToken;
+use Persi\HeadlessCheckout\Checkout\ThankYouRedirect;
 use Persi\HeadlessCheckout\Checkout\TransferRepository;
 use Persi\HeadlessCheckout\Checkout\TransferService;
 use Persi\HeadlessCheckout\Security\RequestAuthenticator;
@@ -32,6 +34,10 @@ final class Plugin {
 			add_action( 'admin_notices', array( self::class, 'render_cart_url_notice' ) );
 		}
 
+		if ( $configuration->has_invalid_configured_confirmation_url() ) {
+			add_action( 'admin_notices', array( self::class, 'render_confirmation_url_notice' ) );
+		}
+
 		$logger         = new Logger();
 		$authenticator  = new RequestAuthenticator();
 		$validator      = new TransferPayloadValidator();
@@ -51,9 +57,13 @@ final class Plugin {
 			$logger,
 			$configuration
 		);
+		$owner_token    = new OrderOwnerToken();
+		$thank_you      = new ThankYouRedirect( $configuration );
 
 		add_action( 'rest_api_init', array( $controller, 'register_routes' ) );
 		$redirect->register();
+		$owner_token->register();
+		$thank_you->register();
 	}
 
 	public static function render_woocommerce_notice(): void {
@@ -83,6 +93,16 @@ final class Plugin {
 
 		echo '<div class="notice notice-warning"><p>';
 		echo esc_html__( 'Persi Headless Checkout: a URL de retorno do carrinho configurada é inválida.', 'persi-headless-checkout' );
+		echo '</p></div>';
+	}
+
+	public static function render_confirmation_url_notice(): void {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
+
+		echo '<div class="notice notice-warning"><p>';
+		echo esc_html__( 'Persi Headless Checkout: a URL de confirmação do pedido configurada é inválida.', 'persi-headless-checkout' );
 		echo '</p></div>';
 	}
 }

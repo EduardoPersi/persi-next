@@ -239,6 +239,14 @@ export async function findOrderByPaymentReference(
   return order ? toOrder(order) : null;
 }
 
+export async function getOrderById(
+  orderId: number,
+  get: WooGetFn = defaultGet,
+): Promise<WooCommerceOrder> {
+  const response = await get<WooCommerceOrderApiResponse>(`orders/${orderId}`);
+  return toOrder(response);
+}
+
 const PAID_ORDER_STATUSES = new Set(["processing", "completed"]);
 
 export async function markOrderAsPaid(
@@ -278,6 +286,17 @@ export async function markOrderAsFailed(
   });
 
   return toOrder(response);
+}
+
+// Reaproveitado pela tela de confirmação para pedidos criados diretamente
+// pelo checkout nativo do WooCommerce (não passam por markOrderAsPaid/
+// markOrderAsFailed, então o status já vem definido pelo próprio gateway).
+export function categorizeOrderStatus(
+  status: string,
+): "paid" | "pending" | "failed" {
+  if (PAID_ORDER_STATUSES.has(status)) return "paid";
+  if (FAILED_ORDER_STATUSES.has(status)) return "failed";
+  return "pending";
 }
 
 // Usado pela varredura de expiração (app/api/cron/expire-pending-payments) —
@@ -337,12 +356,18 @@ export interface OrderConfirmationDetails {
   discountLabel: string;
   discountTotal: string;
   total: string;
+  // Só preenchido para pedidos do checkout nativo do WooCommerce (provider
+  // "woocommerce") — Inter/PagBank continuam usando PAYMENT_METHOD_LABELS
+  // fixo na página de confirmação, já que esses pedidos nunca tiveram um
+  // gateway nativo configurado que gerasse este título.
+  paymentMethodLabel: string;
 }
 
 interface WooCommerceOrderDetailsApiResponse {
   id: number;
   currency: string;
   total: string;
+  payment_method_title?: string;
   billing?: {
     first_name?: string;
     last_name?: string;
@@ -403,5 +428,6 @@ export async function getOrderConfirmationDetails(
     discountLabel: discountFees[0]?.name ?? "Desconto",
     discountTotal: sumMoneyStrings(discountFees.map((fee) => fee.total)).replace(/^-/, ""),
     total: response.total,
+    paymentMethodLabel: response.payment_method_title ?? "",
   };
 }
