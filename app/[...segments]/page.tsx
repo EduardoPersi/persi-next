@@ -31,9 +31,9 @@ async function resolvePublicRoute(segments: string[]) {
     return { type: "institutional" as const, slug: segments[0] };
   }
 
-  const categories = await getAllProductCategories({ hideEmpty: false }).catch(
-    () => [],
-  );
+  // Falha temporária do catálogo não significa rota inexistente. Deixe a
+  // error boundary oferecer uma nova tentativa em vez de produzir um falso 404.
+  const categories = await getAllProductCategories({ hideEmpty: false });
   const category = findCategoryByPath(segments, categories);
   if (category) return { type: "category" as const, slug: category.slug };
 

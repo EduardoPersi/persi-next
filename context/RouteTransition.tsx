@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useTransition,
   type ReactNode,
 } from "react";
@@ -27,6 +28,11 @@ export function RouteTransitionProvider({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const navigationInProgress = useRef(false);
+
+  useEffect(() => {
+    if (!isPending) navigationInProgress.current = false;
+  }, [isPending]);
 
   const navigate = useCallback(
     (href: string) => {
@@ -44,8 +50,6 @@ export function RouteTransitionProvider({
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
         return;
       }
-      if (isPending) return;
-
       const target = event.target;
       if (!(target instanceof Element)) return;
 
@@ -76,6 +80,8 @@ export function RouteTransitionProvider({
       if (nextTarget === currentTarget) return;
 
       event.preventDefault();
+      if (navigationInProgress.current || isPending) return;
+      navigationInProgress.current = true;
       navigate(`${url.pathname}${url.search}${url.hash}`);
     }
 

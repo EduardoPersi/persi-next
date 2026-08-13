@@ -1,3 +1,5 @@
+import { isTransientHttpStatus, withSingleRetry } from "@/lib/network/retry";
+
 const STORE_API_PATH = "/wp-json/wc/store/v1";
 const DEFAULT_REVALIDATE_SECONDS = 120;
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -75,16 +77,36 @@ export async function storeApiGetWithMeta<T>(
   const url = getStoreApiUrl(endpoint, options.query);
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        Accept: "application/json",
+    const request = async () => {
+      const response = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+        },
+        next: {
+          revalidate:
+            options.revalidate ?? DEFAULT_REVALIDATE_SECONDS,
+        },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+
+      if (!response.ok) return { response, data: undefined };
+
+      try {
+        return { response, data: (await response.json()) as T };
+      } catch {
+        throw new StoreApiError("A Store API retornou JSON inválido.");
+      }
+    };
+    const result = await withSingleRetry(request, {
+      shouldRetryResult: ({ response }) => isTransientHttpStatus(response.status),
+      onRetry: (reason) => {
+        console.warn("[woocommerce-store-retry]", {
+          endpoint,
+          reason,
+        });
       },
-      next: {
-        revalidate:
-          options.revalidate ?? DEFAULT_REVALIDATE_SECONDS,
-      },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
+    const { response, data } = result;
 
     if (!response.ok) {
       throw new StoreApiError(
@@ -94,7 +116,7 @@ export async function storeApiGetWithMeta<T>(
     }
 
     return {
-      data: (await response.json()) as T,
+      data: data as T,
       total: Number(response.headers.get("X-WP-Total")) || 0,
       totalPages:
         Number(response.headers.get("X-WP-TotalPages")) || 0,
