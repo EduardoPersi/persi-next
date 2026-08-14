@@ -16,3 +16,6 @@ define a ordem no carrossel. Use nomes sem espaços ou acentos para que o
 Preferir imagens em WebP ou AVIF, já otimizadas para a área em que serão
 exibidas. Manter uma versão para desktop e outra para celular evita cortes
 indesejados e reduz o tamanho transferido em dispositivos móveis.
+
+As versões mobile atuais usam `375 × 280 px`. Ao substituí-las, preserve essa
+proporção para evitar cortes e mudanças de layout no carregamento do hero.

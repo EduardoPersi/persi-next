@@ -25,10 +25,10 @@ export function HeroBanner() {
   return (
     <section data-hero-banner aria-label="Destaques da Persi Materiais" aria-roledescription="carrossel" className="group/hero relative overflow-hidden bg-slate-900">
       {SLIDES.map((slide, index) => (
-        <article key={slide.id} data-hero-slide aria-label={`${index + 1} de ${SLIDES.length}`} aria-hidden={index !== 0} hidden={index !== 0} className="relative aspect-[3/2] w-full lg:aspect-auto lg:h-[clamp(360px,26vw,500px)]">
+        <article key={slide.id} data-hero-slide aria-label={`${index + 1} de ${SLIDES.length}`} aria-hidden={index !== 0} hidden={index !== 0} className="relative aspect-[375/280] w-full lg:aspect-auto lg:h-[clamp(360px,26vw,500px)]">
           <picture>
             <source media="(min-width: 1024px)" srcSet={slide.desktopImage} />
-            <img src={slide.mobileImage} alt={slide.alt} width={750} height={900} loading={index === 0 ? "eager" : "lazy"} fetchPriority={index === 0 ? "high" : "low"} decoding={index === 0 ? "sync" : "async"} className="absolute inset-0 h-full w-full object-cover" />
+            <img src={slide.mobileImage} alt={slide.alt} width={375} height={280} loading={index === 0 ? "eager" : "lazy"} fetchPriority={index === 0 ? "high" : "low"} decoding={index === 0 ? "sync" : "async"} className="absolute inset-0 h-full w-full object-cover" />
           </picture>
           <div className="absolute inset-0 flex items-center justify-center px-12 py-12 sm:px-[30%] sm:py-8">
             <div className="max-w-xl text-center text-white [text-shadow:0_2px_8px_rgb(0_0_0/55%)]">
