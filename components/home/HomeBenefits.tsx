@@ -1,10 +1,5 @@
-"use client";
-
 import { CreditCard, ShieldCheck, Store } from "lucide-react";
-import { A11y } from "swiper/modules";
-import { Swiper, SwiperSlide } from "swiper/react";
 import { WhatsAppIcon } from "@/components/UI/SocialIcons";
-import "swiper/css";
 
 const BENEFITS = [
   {
@@ -36,26 +31,11 @@ export function HomeBenefits() {
         Vantagens de comprar na Persi
       </h2>
 
-      <Swiper
-        modules={[A11y]}
-        slidesPerView={1.6}
-        spaceBetween={12}
-        watchOverflow
-        breakpoints={{
-          480: { slidesPerView: 2.2, spaceBetween: 16 },
-          640: {
-            slidesPerView: 4,
-            spaceBetween: 0,
-            allowTouchMove: false,
-            simulateTouch: false,
-          },
-        }}
-        wrapperClass="sm:divide-x sm:divide-slate-200"
-      >
+      <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto sm:grid sm:grid-cols-4 sm:gap-0 sm:divide-x sm:divide-slate-200 sm:overflow-visible">
         {BENEFITS.map((benefit) => {
           const Icon = benefit.icon;
           return (
-            <SwiperSlide key={benefit.title} className="h-auto!">
+            <div key={benefit.title} className="min-w-[62%] snap-start sm:min-w-0">
               <div className="flex h-full items-start gap-3 px-2 sm:justify-center sm:px-4">
                 <Icon
                   className="mt-0.5 h-6 w-6 shrink-0 text-[#ff6a00]"
@@ -70,10 +50,10 @@ export function HomeBenefits() {
                   </p>
                 </div>
               </div>
-            </SwiperSlide>
+            </div>
           );
         })}
-      </Swiper>
+      </div>
     </section>
   );
 }

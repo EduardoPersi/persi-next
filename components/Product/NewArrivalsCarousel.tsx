@@ -121,7 +121,7 @@ export function NewArrivalsCarousel({ products }: NewArrivalsCarouselProps) {
         onUnlock={() => setHasOverflow(true)}
         className="mt-5 pb-9!"
       >
-        {products.map((product, index) => (
+        {products.map((product) => (
           <SwiperSlide key={product.id} className="h-auto!">
             <ProductCard
               name={product.name}
@@ -135,7 +135,6 @@ export function NewArrivalsCarousel({ products }: NewArrivalsCarouselProps) {
               brand={product.brands[0]?.name}
               badge="Novo"
               available={product.available}
-              priority={index < 2}
               productId={product.id}
               productSlug={product.slug}
             />

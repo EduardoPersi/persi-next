@@ -9,7 +9,7 @@ export function RecaptchaScript() {
   return (
     <Script
       src={`https://www.google.com/recaptcha/api.js?render=${siteKey}`}
-      strategy="afterInteractive"
+      strategy="lazyOnload"
     />
   );
 }
