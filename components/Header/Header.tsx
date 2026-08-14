@@ -161,6 +161,7 @@ function HeaderActions({
 function HeaderContent() {
   const pathname = usePathname();
   const fullHeaderRef = useRef<HTMLElement>(null);
+  const fullHeaderHeightRef = useRef(0);
   const lastScrollYRef = useRef(0);
   const frameRef = useRef<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -212,6 +213,17 @@ function HeaderContent() {
 
   useEffect(() => {
     lastScrollYRef.current = window.scrollY;
+    const header = fullHeaderRef.current;
+    const updateHeaderHeight = () => {
+      fullHeaderHeightRef.current = header?.getBoundingClientRect().height ?? 0;
+    };
+    updateHeaderHeight();
+    const resizeObserver = header
+      ? new ResizeObserver(([entry]) => {
+          fullHeaderHeightRef.current = entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height;
+        })
+      : null;
+    if (header) resizeObserver?.observe(header);
 
     function handleScroll() {
       if (frameRef.current !== null) return;
@@ -220,7 +232,7 @@ function HeaderContent() {
         const currentScrollY = Math.max(window.scrollY, 0);
         const previousScrollY = lastScrollYRef.current;
         const scrollDifference = currentScrollY - previousScrollY;
-        const fullHeaderHeight = fullHeaderRef.current?.offsetHeight ?? 0;
+        const fullHeaderHeight = fullHeaderHeightRef.current;
 
         if (currentScrollY <= 8) {
           setShowCompactHeader(false);
@@ -242,6 +254,7 @@ function HeaderContent() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", handleScroll);
+      resizeObserver?.disconnect();
       if (frameRef.current !== null) {
         window.cancelAnimationFrame(frameRef.current);
       }

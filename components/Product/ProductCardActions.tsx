@@ -1,9 +1,14 @@
 "use client";
 
 import { Heart, Search } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
 import { useFavorites } from "@/hooks/useFavorites";
-import { QuickViewModal } from "./QuickViewModal";
+
+const QuickViewModal = dynamic(
+  () => import("./QuickViewModal").then((module) => module.QuickViewModal),
+  { ssr: false },
+);
 
 interface ProductCardActionsProps {
   productId: number;

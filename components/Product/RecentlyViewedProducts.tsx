@@ -6,8 +6,6 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { A11y, Navigation } from "swiper/modules";
-import { Swiper, SwiperSlide } from "swiper/react";
 import {
   RECENTLY_VIEWED_LIMIT,
   RECENTLY_VIEWED_STORAGE_KEY,
@@ -16,8 +14,6 @@ import {
   RecentlyViewedProductCard,
   type RecentlyViewedProductData,
 } from "./RecentlyViewedProductCard";
-import "swiper/css";
-import "swiper/css/navigation";
 
 function subscribeToStorage(onStoreChange: () => void) {
   window.addEventListener("storage", onStoreChange);
@@ -150,26 +146,13 @@ export function RecentlyViewedProducts({
           <RecentlyViewedProductCard product={products[0]} />
         </div>
       ) : (
-        <Swiper
-          modules={[Navigation, A11y]}
-          slidesPerView={1.25}
-          spaceBetween={12}
-          watchOverflow
-          breakpoints={{
-            480: { slidesPerView: 1.5, spaceBetween: 12 },
-            640: { slidesPerView: 2.5, spaceBetween: 14 },
-            768: { slidesPerView: 3, spaceBetween: 16 },
-            1024: { slidesPerView: 4, spaceBetween: 16 },
-            1280: { slidesPerView: 5, spaceBetween: 16 },
-          }}
-          className="mt-5"
-        >
+        <div className="mt-5 grid auto-cols-[80%] grid-flow-col gap-3 overflow-x-auto overscroll-x-contain pb-2 snap-x snap-mandatory min-[480px]:auto-cols-[66%] sm:auto-cols-[40%] sm:gap-3.5 md:auto-cols-[calc((100%-2rem)/3)] md:gap-4 lg:auto-cols-[calc((100%-3rem)/4)] xl:auto-cols-[calc((100%-4rem)/5)]">
           {products.map((product) => (
-            <SwiperSlide key={product.id} className="h-auto!">
+            <div key={product.id} className="h-full snap-start">
               <RecentlyViewedProductCard product={product} />
-            </SwiperSlide>
+            </div>
           ))}
-        </Swiper>
+        </div>
       )}
     </section>
   );

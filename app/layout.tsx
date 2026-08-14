@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { CartProvider } from "@/components/Cart/CartProvider";
 import { GoogleOneTap } from "@/components/Account/GoogleOneTap";
-import { RecaptchaScript } from "@/components/layout/RecaptchaScript";
 import { Footer } from "@/components/Footer/Footer";
 import { FooterVisibility } from "@/components/Footer/FooterVisibility";
 import { BackToTopButton } from "@/components/UI/BackToTopButton";
@@ -77,7 +76,6 @@ export default async function RootLayout({
                       <BackToTopButton />
                       <WhatsAppFloatingButton />
                       <GoogleOneTap />
-                      <RecaptchaScript />
                       <CookieConsentBanner />
                     </CartProvider>
                   </CustomerListsProvider>

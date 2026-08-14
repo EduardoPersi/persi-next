@@ -12,13 +12,55 @@ function getGrecaptcha(): Grecaptcha | undefined {
 }
 
 const READY_TIMEOUT_MS = 4000;
+let recaptchaLoader: Promise<Grecaptcha | null> | null = null;
+
+function loadRecaptcha(siteKey: string): Promise<Grecaptcha | null> {
+  const existing = getGrecaptcha();
+  if (existing) return Promise.resolve(existing);
+  if (recaptchaLoader) return recaptchaLoader;
+
+  recaptchaLoader = new Promise((resolve) => {
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[data-persi-recaptcha="true"]',
+    );
+    const script = existingScript ?? document.createElement("script");
+    let settled = false;
+
+    const finish = async () => {
+      if (settled) return;
+      settled = true;
+      resolve(await waitForGrecaptcha());
+    };
+    const fail = () => {
+      if (settled) return;
+      settled = true;
+      recaptchaLoader = null;
+      resolve(null);
+    };
+
+    script.addEventListener("load", finish, { once: true });
+    script.addEventListener("error", fail, { once: true });
+
+    if (!existingScript) {
+      script.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
+      script.async = true;
+      script.dataset.persiRecaptcha = "true";
+      document.head.append(script);
+    }
+  });
+
+  return recaptchaLoader;
+}
 
 function waitForGrecaptcha(): Promise<Grecaptcha | null> {
   const existing = getGrecaptcha();
   if (existing) return Promise.resolve(existing);
 
   return new Promise((resolve) => {
-    const timeout = setTimeout(() => resolve(null), READY_TIMEOUT_MS);
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+      resolve(null);
+    }, READY_TIMEOUT_MS);
     const interval = setInterval(() => {
       const grecaptcha = getGrecaptcha();
       if (grecaptcha) {
@@ -36,7 +78,7 @@ export function useRecaptcha() {
       const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
       if (!siteKey) return null;
 
-      const grecaptcha = await waitForGrecaptcha();
+      const grecaptcha = await loadRecaptcha(siteKey);
       if (!grecaptcha) return null;
 
       try {

@@ -40,6 +40,7 @@ export function GoogleOneTap() {
   const { status, applySession } = useAccount();
   const pathname = usePathname();
   const [scriptReady, setScriptReady] = useState(false);
+  const [canLoadScript, setCanLoadScript] = useState(false);
   const initialized = useRef(false);
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -66,6 +67,13 @@ export function GoogleOneTap() {
     },
     [applySession],
   );
+
+  useEffect(() => {
+    if (!eligible) return;
+
+    const timeout = window.setTimeout(() => setCanLoadScript(true), 10_000);
+    return () => window.clearTimeout(timeout);
+  }, [eligible]);
 
   useEffect(() => {
     if (!eligible || !scriptReady || initialized.current || !clientId) return;
@@ -97,7 +105,7 @@ export function GoogleOneTap() {
     };
   }, [clientId, eligible, handleCredentialResponse, scriptReady]);
 
-  if (!clientId) return null;
+  if (!clientId || !eligible || !canLoadScript) return null;
 
   return (
     <Script
