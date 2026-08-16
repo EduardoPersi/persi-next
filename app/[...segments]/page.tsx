@@ -40,10 +40,20 @@ async function resolvePublicRoute(segments: string[]) {
   if (segments.length === 1 && !RESERVED_ROOT_SLUGS.has(segments[0])) {
     const slug = segments[0];
 
-    const product = await getProductBySlug(slug).catch(() => undefined);
+    const product = await getProductBySlug(slug).catch((error) => {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Erro ao resolver produto pela rota pública:", error);
+      }
+      return undefined;
+    });
     if (product) return { type: "product" as const, slug };
 
-    const post = await getBlogPostBySlug(slug).catch(() => undefined);
+    const post = await getBlogPostBySlug(slug).catch((error) => {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Erro ao resolver post pela rota pública:", error);
+      }
+      return undefined;
+    });
     if (post) return { type: "post" as const, slug };
   }
 
