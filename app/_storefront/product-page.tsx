@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/Header/Header";
+import { JsonLd } from "@/components/SEO/JsonLd";
 import { ProductCard } from "@/components/Product/ProductCard";
 import { ProductDetails } from "@/components/Product/ProductDetails";
 import { ProductGallery } from "@/components/Product/ProductGallery";
@@ -198,14 +199,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
-      />
+      <JsonLd data={[breadcrumbJsonLd, productJsonLd]} />
       <Header />
       <RecentlyViewedTracker slug={product.slug} />
       <main className="pb-6 pt-3 sm:pb-8 sm:pt-4 lg:pb-10 lg:pt-5">

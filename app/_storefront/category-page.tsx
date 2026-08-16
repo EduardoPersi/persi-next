@@ -14,6 +14,7 @@ import { ProductCard } from "@/components/Product/ProductCard";
 import { RecentlyViewedProducts } from "@/components/Product/RecentlyViewedProducts";
 import { Container } from "@/components/UI/Container";
 import { WordPressContent } from "@/components/UI/WordPressContent";
+import { JsonLd } from "@/components/SEO/JsonLd";
 import { getBrandByIdentifier } from "@/services/woocommerce/brands";
 import { getAllProductCategories } from "@/services/woocommerce/categories";
 import { getCategoryFilterData } from "@/services/woocommerce/filters";
@@ -28,6 +29,10 @@ import {
   SITE_URL,
 } from "@/lib/routing/storefrontUrls";
 import { buildBreadcrumbListJsonLd } from "@/lib/seo/productBreadcrumb";
+import {
+  buildCollectionPageJsonLd,
+  buildProductItemListJsonLd,
+} from "@/lib/seo/structuredData";
 
 type RawSearchParams = Record<
   string,
@@ -378,6 +383,8 @@ export default async function CategoryPage({
   const contextDescriptionHtml = selectedBrand
     ? selectedBrand.descriptionHtml
     : category.descriptionHtml;
+  const contextImage =
+    selectedBrand?.image ?? selectedSubcategory?.image ?? category.image;
   const filterValues: CategoryFilterValues = {
     minPrice,
     maxPrice,
@@ -410,29 +417,26 @@ export default async function CategoryPage({
       current: index === breadcrumbCategories.length - 1,
     })),
   ];
-  const categoryJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "CollectionPage",
+  const categoryJsonLd = buildCollectionPageJsonLd({
     name: contextName,
-    description: contextDescription || undefined,
+    description: contextDescription,
     url: categoryUrl,
-  };
+    image: contextImage?.src,
+    brand: selectedBrand ? { name: selectedBrand.name } : undefined,
+  });
   const breadcrumbJsonLd = buildBreadcrumbListJsonLd(
     categoryBreadcrumbItems,
     SITE_URL,
     pathname,
   );
+  const itemListJsonLd = buildProductItemListJsonLd(
+    productsPage.products,
+    SITE_URL,
+  );
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(categoryJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-      />
+      <JsonLd data={[categoryJsonLd, breadcrumbJsonLd, itemListJsonLd]} />
       <Header />
       <main className="py-3 sm:py-6 lg:py-10">
         <Container>
