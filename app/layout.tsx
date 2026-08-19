@@ -11,6 +11,7 @@ import {
   GoogleTagManagerNoScript,
   GoogleTagManagerScript,
 } from "@/components/layout/GoogleTagManager";
+import { AnalyticsPageView } from "@/components/layout/AnalyticsPageView";
 import { OverlayManagerProvider } from "@/context/OverlayManager";
 import { RouteTransitionProvider } from "@/context/RouteTransition";
 import { RouteTransitionOverlay } from "@/components/UI/RouteTransitionOverlay";
@@ -62,6 +63,7 @@ export default async function RootLayout({
       <body className="flex min-h-full flex-col">
         <GoogleTagManagerScript />
         <GoogleTagManagerNoScript />
+        <AnalyticsPageView />
         <RouteTransitionProvider>
           <CookieConsentProvider>
             <NavigationProvider menu={megaMenu}>

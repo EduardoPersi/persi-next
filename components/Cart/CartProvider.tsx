@@ -15,6 +15,7 @@ import {
   createSingleCartInitializer,
   LatestCartRequest,
 } from "@/lib/commerce/cartClient";
+import { pushEcommerceEvent } from "@/lib/analytics/gtm";
 
 interface CartContextValue {
   cart: Cart | null;
@@ -115,7 +116,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       setError("");
 
-      const payload =
+      const payload: AddCartItemInput & { quantity: number } =
         typeof input === "number"
           ? { productId: input, quantity }
           : { ...input, quantity: input.quantity ?? 1 };
@@ -144,6 +145,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
           setCart(result);
           setIsOpen(true);
         }
+
+        // Centralizado aqui (em vez de em cada botão "Adicionar ao
+        // carrinho") porque addItem é o único ponto por onde todos os
+        // pontos de entrada (produto, card de produto, quick view, compre
+        // junto) realmente passam — evita esquecer algum deles.
+        const addedItem = result.items.find(
+          (item) =>
+            item.productId === payload.productId &&
+            item.variationId === payload.variationId,
+        );
+        if (addedItem) {
+          pushEcommerceEvent("add_to_cart", {
+            currency: result.currencyCode,
+            value: addedItem.price * payload.quantity,
+            items: [
+              {
+                item_id: addedItem.sku || String(addedItem.productId),
+                item_name: addedItem.name,
+                price: addedItem.price,
+                quantity: payload.quantity,
+              },
+            ],
+          });
+        }
+
         return {
           success: true,
           message: "Produto adicionado ao carrinho.",

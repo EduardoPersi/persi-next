@@ -8,6 +8,7 @@ import {
   Truck,
 } from "lucide-react";
 import { Button } from "@/components/UI/Button";
+import { pushEcommerceEvent } from "@/lib/analytics/gtm";
 import { useCart } from "@/hooks/useCart";
 import {
   canAttributeOptionMatch,
@@ -119,6 +120,27 @@ export function ProductPurchasePanel({
     observer.observe(purchaseButton);
     return () => observer.disconnect();
   }, [product.available]);
+
+  useEffect(() => {
+    pushEcommerceEvent("view_item", {
+      currency: product.currencyCode,
+      value: product.price,
+      items: [
+        {
+          item_id: product.sku || String(product.id),
+          item_name: product.name,
+          item_brand: brand?.name ?? product.brand,
+          item_category: product.categories[0]?.name,
+          price: product.price,
+          quantity: 1,
+        },
+      ],
+    });
+    // Deve disparar uma única vez por produto visitado — não a cada troca de
+    // variação selecionada (isso seria select_item/select_content, não
+    // view_item).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
 
   async function handlePurchase() {
     if (!isSupportedType) return;
