@@ -208,6 +208,10 @@ export function mapStoreProduct(
     hasOptions: product.has_options,
     isPurchasable: product.is_purchasable,
     commercialText: stripHtml(product.price_html),
+    stockQuantity:
+      typeof product.low_stock_remaining === "number"
+        ? product.low_stock_remaining
+        : undefined,
   };
 }
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/Header/Header";
+import { FlashDeals } from "@/components/FlashDeals/FlashDeals";
 import { JsonLd } from "@/components/SEO/JsonLd";
 import { ProductCard } from "@/components/Product/ProductCard";
 import { ProductDetails } from "@/components/Product/ProductDetails";
@@ -263,6 +264,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </div>
 
           <ProductDetails product={product} />
+
+          <div className="mt-12">
+            <FlashDeals context={{ type: "product", product }} />
+          </div>
 
           <RecentlyViewedProducts
             title="Quem viu, viu também"

@@ -8,6 +8,7 @@ import { ExpertAdviceSkeleton } from "@/components/home/ExpertAdviceSkeleton";
 import { HomeBenefits } from "@/components/home/HomeBenefits";
 import { InstagramFeed } from "@/components/home/InstagramFeed";
 import { InstagramSkeleton } from "@/components/home/InstagramSkeleton";
+import { FlashDeals } from "@/components/FlashDeals/FlashDeals";
 import { NewArrivalsCarousel } from "@/components/Product/NewArrivalsCarousel";
 import { ProductGrid } from "@/components/Product/ProductGrid";
 import { ProductGridSkeleton } from "@/components/Product/ProductGridSkeleton";
@@ -100,6 +101,14 @@ export default async function Home() {
 
           <Suspense fallback={<ProductGridSkeleton />}>
             <ProductGrid />
+          </Suspense>
+        </Container>
+      </section>
+
+      <section className="bg-white py-8 sm:py-10">
+        <Container>
+          <Suspense fallback={null}>
+            <FlashDeals context={{ type: "home" }} />
           </Suspense>
         </Container>
       </section>
