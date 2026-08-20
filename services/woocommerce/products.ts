@@ -29,6 +29,7 @@ export interface GetProductsOptions {
     | readonly ("instock" | "outofstock" | "onbackorder")[];
   onSale?: boolean;
   brand?: string | number;
+  tag?: string | number;
   attributes?: Array<{
     taxonomy: string;
     slug: string;
@@ -77,6 +78,7 @@ export async function getProductsPage(
       stock_status: options.stockStatus,
       on_sale: options.onSale,
       brand: options.brand,
+      tag: options.tag,
       order: options.order,
       orderby: options.orderby,
     };

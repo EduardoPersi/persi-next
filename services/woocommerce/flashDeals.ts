@@ -11,6 +11,7 @@ const REVALIDATE_SECONDS = 300;
 const SLOT_DURATION_MS = 30 * 60 * 1000;
 const CANDIDATE_LIMIT = 48;
 const DEALS_LIMIT = 6;
+const HOME_FLASH_DEALS_TAG = "ofertas-relampago";
 
 function discountPercentage(product: Product): number {
   if (!product.regularPrice || product.regularPrice <= product.price) return 0;
@@ -49,9 +50,30 @@ async function loadDeals(query: { category?: number; brand?: number } = {}) {
   return rankProducts([popular, recent]);
 }
 
+async function loadTaggedHomeDeals() {
+  const base = {
+    tag: HOME_FLASH_DEALS_TAG,
+    perPage: CANDIDATE_LIMIT,
+    onSale: true,
+    stockStatus: "instock" as const,
+    revalidate: REVALIDATE_SECONDS,
+  };
+  const [popular, recent] = await Promise.all([
+    getProducts({ ...base, order: "desc", orderby: "popularity" }),
+    getProducts({ ...base, order: "desc", orderby: "date" }),
+  ]);
+  return rankProducts([popular, recent]);
+}
+
 const getCachedHomeDeals = unstable_cache(
   () => loadDeals(),
   ["flash-deals", "home", "v1"],
+  { revalidate: REVALIDATE_SECONDS },
+);
+
+const getCachedTaggedHomeDeals = unstable_cache(
+  loadTaggedHomeDeals,
+  ["flash-deals", "home", HOME_FLASH_DEALS_TAG, "v1"],
   { revalidate: REVALIDATE_SECONDS },
 );
 
@@ -102,7 +124,10 @@ export async function getFlashDeals(
 ): Promise<FlashDealsResult> {
   let products: Product[] = [];
 
-  if (context.type === "home") products = await getCachedHomeDeals();
+  if (context.type === "home") {
+    products = await getCachedTaggedHomeDeals().catch(() => []);
+    if (products.length === 0) products = await getCachedHomeDeals();
+  }
   if (context.type === "category") products = await getCachedCategoryDeals(context.categoryId);
   if (context.type === "brand") products = await getCachedBrandDeals(context.brandId);
 

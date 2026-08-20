@@ -5,6 +5,7 @@ import { FlashDealCard } from "./FlashDealCard";
 import { FlashDealsAnalytics } from "./FlashDealsAnalytics";
 import { FlashDealsCarousel } from "./FlashDealsCarousel";
 import { FlashDealsTimer } from "./FlashDealsTimer";
+import { HomeFlashDealsCarousel } from "./HomeFlashDealsCarousel";
 
 export async function FlashDeals({ context }: { context: FlashDealsContext }) {
   const result = await getFlashDeals(context).catch(() => undefined);
@@ -22,9 +23,22 @@ export async function FlashDeals({ context }: { context: FlashDealsContext }) {
           </div>
           <FlashDealsTimer endsAt={result.endsAt} />
         </div>
-        <FlashDealsCarousel>
-          {result.products.map((product) => <FlashDealCard key={product.id} product={product} />)}
-        </FlashDealsCarousel>
+        {context.type === "home" ? (
+          <>
+            <HomeFlashDealsCarousel>
+              {result.products.map((product) => <FlashDealCard key={product.id} product={product} />)}
+            </HomeFlashDealsCarousel>
+            <div className="hidden md:block">
+              <FlashDealsCarousel>
+                {result.products.map((product) => <FlashDealCard key={product.id} product={product} />)}
+              </FlashDealsCarousel>
+            </div>
+          </>
+        ) : (
+          <FlashDealsCarousel>
+            {result.products.map((product) => <FlashDealCard key={product.id} product={product} />)}
+          </FlashDealsCarousel>
+        )}
       </section>
     </FlashDealsAnalytics>
   );

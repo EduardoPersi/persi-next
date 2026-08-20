@@ -10,7 +10,6 @@ import { LoadMoreButton } from "@/components/Category/LoadMoreButton";
 import { CategorySort } from "@/components/Category/CategorySort";
 import { SubcategoryCarousel } from "@/components/Category/SubcategoryCarousel";
 import { Header } from "@/components/Header/Header";
-import { FlashDeals } from "@/components/FlashDeals/FlashDeals";
 import { ProductCard } from "@/components/Product/ProductCard";
 import { RecentlyViewedProducts } from "@/components/Product/RecentlyViewedProducts";
 import { Container } from "@/components/UI/Container";
@@ -494,19 +493,6 @@ export default async function CategoryPage({
             selectedSlug={selectedSubcategory?.slug}
             includeMainCategory={!selectedSubcategory}
           />
-
-          <div className="mt-6">
-            <FlashDeals
-              context={
-                selectedBrand
-                  ? { type: "brand", brandId: selectedBrand.id }
-                  : {
-                      type: "category",
-                      categoryId: selectedSubcategory?.id ?? category.id,
-                    }
-              }
-            />
-          </div>
 
           <div className="mt-4 sm:mt-6 lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start lg:gap-4">
             <div className="hidden lg:block">

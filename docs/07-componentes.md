@@ -77,7 +77,7 @@ Na Home não exibir botão de compra.
 ### Objetivo e localização
 
 `components/FlashDeals` concentra a seção reutilizável de Ofertas Relâmpago
-da Home, produto, categoria e marca. O acesso ao WooCommerce fica isolado em
+da Home e da página de produto. O acesso ao WooCommerce fica isolado em
 `services/woocommerce/flashDeals.ts`.
 
 ### Uso e estados
