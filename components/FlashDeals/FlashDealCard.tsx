@@ -5,6 +5,7 @@ import { getProductPaymentInfo } from "@/lib/commerce/productPayment";
 import { getProductHref } from "@/lib/routing/storefrontUrls";
 import type { Product } from "@/types/product";
 import { ProductCardAction } from "@/components/Product/ProductCardAction";
+import { FreeShippingBadge } from "@/components/Product/FreeShippingBadge";
 
 const FALLBACK_IMAGE = "/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas.webp";
 
@@ -51,6 +52,7 @@ export function FlashDealCard({ product }: { product: Product }) {
         {discount > 0 ? (
           <span className="absolute right-2 top-2 z-10 rounded-md bg-emerald-700 px-2 py-1 text-xs font-bold text-white">-{discount}%</span>
         ) : null}
+        {product.freeShipping ? <span className="absolute bottom-2 left-2 z-10"><FreeShippingBadge compact /></span> : null}
         <Image src={safeImage(product.image?.src)} alt={product.image?.alt || product.name} fill sizes="(min-width: 1280px) 16vw, (min-width: 768px) 25vw, 50vw" className="object-contain p-3" />
       </Link>
       <div className="flex flex-1 flex-col p-3">

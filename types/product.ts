@@ -98,4 +98,5 @@ export interface Product {
   installmentText?: string;
   stockQuantity?: number;
   specifications?: ProductSpecification[];
+  freeShipping?: boolean;
 }

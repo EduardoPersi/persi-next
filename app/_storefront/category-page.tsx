@@ -565,6 +565,7 @@ export default async function CategoryPage({
                           showAddToCart
                           productId={product.id}
                           productSlug={product.slug}
+                          freeShipping={product.freeShipping}
                           productType={product.type}
                           isPurchasable={product.isPurchasable}
                           hasOptions={product.hasOptions}

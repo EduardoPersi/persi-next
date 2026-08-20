@@ -132,6 +132,7 @@ export function NewArrivalsCarousel({ products }: NewArrivalsCarouselProps) {
               regularPrice={product.onSale ? product.regularPrice : undefined}
               currencyCode={product.currencyCode}
               commercialText={product.commercialText}
+              freeShipping={product.freeShipping}
               brand={product.brands[0]?.name}
               badge="Novo"
               available={product.available}

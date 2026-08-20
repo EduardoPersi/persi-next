@@ -82,6 +82,7 @@ export function writeShippingCache(
 ): void {
   try {
     storage.setItem(cacheKey(entry.contextKey), JSON.stringify(entry));
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("persi:shipping-cache"));
   } catch {
     // O cálculo continua funcionando quando o armazenamento está indisponível.
   }

@@ -45,6 +45,7 @@ interface WooCartItem {
   totals?: WooMoneyFields & {
     line_total?: string;
   };
+  extensions?: { persi?: { free_shipping?: boolean } };
 }
 
 interface WooCartCoupon {
@@ -261,6 +262,7 @@ function mapCartItem(item: WooCartItem, minorUnit: number): CartItem | null {
       : undefined,
     price: minorToMajor(item.prices?.price, minorUnit),
     total: minorToMajor(item.totals?.line_total, minorUnit),
+    freeShipping: item.extensions?.persi?.free_shipping === true,
   };
 }
 

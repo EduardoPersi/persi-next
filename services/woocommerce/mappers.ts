@@ -208,6 +208,7 @@ export function mapStoreProduct(
     hasOptions: product.has_options,
     isPurchasable: product.is_purchasable,
     commercialText: stripHtml(product.price_html),
+    freeShipping: product.extensions?.persi?.free_shipping === true,
     stockQuantity:
       typeof product.low_stock_remaining === "number"
         ? product.low_stock_remaining

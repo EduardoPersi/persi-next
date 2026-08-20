@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
             }
           : undefined,
         price: product.price,
+        freeShipping: product.freeShipping,
         regularPrice: product.regularPrice,
         pixPrice: product.pixPrice,
         currencyCode: product.currencyCode,

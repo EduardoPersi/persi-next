@@ -26,6 +26,7 @@ import { ProductFamilyOptions } from "./ProductFamilyOptions";
 import { ProductPaymentMethods } from "./ProductPaymentMethods";
 import { ProductQuantity } from "./ProductQuantity";
 import { ShippingCalculator } from "@/components/Shipping/ShippingCalculator";
+import { ProductFreeShippingNotice } from "./ProductFreeShippingNotice";
 import { getProductShippingContextKey } from "@/lib/commerce/shippingCalculator";
 import type { SelectedShippingRate } from "@/types/shipping";
 
@@ -125,6 +126,7 @@ export function ProductPurchasePanel({
     pushEcommerceEvent("view_item", {
       currency: product.currencyCode,
       value: product.price,
+      free_shipping: product.freeShipping === true,
       items: [
         {
           item_id: product.sku || String(product.id),
@@ -132,6 +134,7 @@ export function ProductPurchasePanel({
           item_brand: brand?.name ?? product.brand,
           item_category: product.categories[0]?.name,
           price: product.price,
+          free_shipping: product.freeShipping === true,
           quantity: 1,
         },
       ],
@@ -246,6 +249,7 @@ export function ProductPurchasePanel({
             cartão
           </p>
         )}
+        {product.freeShipping ? <ProductFreeShippingNotice contextKey={shippingContextKey} /> : null}
         <ProductPaymentMethods
           payment={payment}
           currencyCode={product.currencyCode}

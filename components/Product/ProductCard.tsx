@@ -4,6 +4,7 @@ import { getProductPaymentInfo } from "@/lib/commerce/productPayment";
 import type { ProductImage } from "@/types/product";
 import { ProductCardAction } from "./ProductCardAction";
 import { ProductCardActions } from "./ProductCardActions";
+import { FreeShippingBadge } from "./FreeShippingBadge";
 
 const PRODUCT_FALLBACK_IMAGE =
   "/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas.webp";
@@ -93,6 +94,7 @@ export type ProductCardProps = {
   isPurchasable?: boolean;
   hasOptions?: boolean;
   showActions?: boolean;
+  freeShipping?: boolean;
 };
 
 export function ProductCard({
@@ -113,6 +115,7 @@ export function ProductCard({
   isPurchasable = false,
   hasOptions = false,
   showActions = true,
+  freeShipping = false,
 }: ProductCardProps) {
   const imageSrc = getProductImageSource(image);
   const secondaryImage = images?.[1];
@@ -137,6 +140,9 @@ export function ProductCard({
           <span className="absolute left-2 top-2 z-10 rounded-md bg-[#ff6a00] px-2 py-1 text-xs font-semibold text-white">
             {badge}
           </span>
+        ) : null}
+        {freeShipping ? (
+          <span className="absolute bottom-2 left-2 z-10"><FreeShippingBadge compact /></span>
         ) : null}
 
         {!available ? (

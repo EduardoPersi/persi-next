@@ -22,6 +22,7 @@ export interface CartItem {
   };
   price: number;
   total: number;
+  freeShipping?: boolean;
 }
 
 export interface AddCartItemInput {

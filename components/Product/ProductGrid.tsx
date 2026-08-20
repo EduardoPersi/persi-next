@@ -67,6 +67,7 @@ export async function ProductGrid() {
           available={product.available}
           productId={product.id}
           productSlug={product.slug}
+          freeShipping={product.freeShipping}
         />
       ))}
     </div>

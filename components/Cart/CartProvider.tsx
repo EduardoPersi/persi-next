@@ -159,12 +159,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
           pushEcommerceEvent("add_to_cart", {
             currency: result.currencyCode,
             value: addedItem.price * payload.quantity,
+            free_shipping: addedItem.freeShipping === true,
             items: [
               {
                 item_id: addedItem.sku || String(addedItem.productId),
                 item_name: addedItem.name,
                 price: addedItem.price,
                 quantity: payload.quantity,
+                free_shipping: addedItem.freeShipping === true,
               },
             ],
           });

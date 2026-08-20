@@ -253,6 +253,7 @@ export default async function PromotionsPage({
                           images={product.images}
                           href={getProductHref(product.slug)}
                           price={product.price}
+                          freeShipping={product.freeShipping}
                           regularPrice={product.regularPrice}
                           currencyCode={product.currencyCode}
                           commercialText={product.commercialText}

@@ -39,6 +39,7 @@ export function NotFoundProductCarousel({
             regularPrice={product.onSale ? product.regularPrice : undefined}
             currencyCode={product.currencyCode}
             commercialText={product.commercialText}
+            freeShipping={product.freeShipping}
             brand={product.brands[0]?.name}
             badge={product.onSale ? "Oferta" : undefined}
             available={product.available}

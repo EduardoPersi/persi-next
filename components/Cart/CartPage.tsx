@@ -6,6 +6,7 @@ import { Trash2 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useCheckoutTransfer } from "@/hooks/useCheckoutTransfer";
 import { ProductQuantity } from "@/components/Product/ProductQuantity";
+import { FreeShippingBadge } from "@/components/Product/FreeShippingBadge";
 import { ShippingCalculator } from "@/components/Shipping/ShippingCalculator";
 import { getCartShippingContextKey } from "@/lib/commerce/shippingCalculator";
 import { formatStoreMoney, isZeroMoney } from "@/lib/formatting/money";
@@ -98,6 +99,8 @@ export function CartPage() {
                       {item.name}
                     </h3>
                   )}
+
+                  {item.freeShipping ? <div className="mt-2"><FreeShippingBadge compact /></div> : null}
 
                   {item.variation.length > 0 ? (
                     <dl className="mt-1 text-xs text-slate-600 md:mt-2 md:text-sm">
@@ -208,6 +211,9 @@ export function CartPage() {
                 : "A calcular"}
             </dd>
           </div>
+          {cart.hasCalculatedShipping && cart.items.every((item) => item.freeShipping) && isZeroMoney(cart.totals.shipping) ? (
+            <p className="text-sm font-semibold text-emerald-700">✓ Frete Grátis</p>
+          ) : null}
           {!isZeroMoney(cart.totals.discount) ? (
             <div className="flex justify-between gap-4">
               <dt className="text-slate-600">Descontos</dt>

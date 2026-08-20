@@ -30,6 +30,8 @@ final class Persi_Headless_Plugin {
 
 		require_once PERSI_HEADLESS_PATH . 'includes/class-module-manager.php';
 		( new Persi_Headless_Module_Manager() )->load();
+		require_once PERSI_HEADLESS_PATH . 'includes/product-flags/class-product-flags.php';
+		( new Persi_Headless_Product_Flags() )->register();
 
 		add_action( 'save_post_product', array( 'Persi_Headless_Cache', 'invalidate' ) );
 		add_action( 'woocommerce_product_set_stock', array( 'Persi_Headless_Cache', 'invalidate' ) );

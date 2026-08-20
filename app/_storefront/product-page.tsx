@@ -177,6 +177,20 @@ export default async function ProductPage({ params }: ProductPageProps) {
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",
       itemCondition: "https://schema.org/NewCondition",
+      shippingDetails: product.freeShipping
+        ? {
+            "@type": "OfferShippingDetails",
+            shippingRate: {
+              "@type": "MonetaryAmount",
+              value: 0,
+              currency: product.currencyCode,
+            },
+            shippingDestination: {
+              "@type": "DefinedRegion",
+              addressCountry: "BR",
+            },
+          }
+        : undefined,
     },
     aggregateRating:
       product.reviewCount > 0
@@ -307,6 +321,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     available={relatedProduct.available}
                     productId={relatedProduct.id}
                     productSlug={relatedProduct.slug}
+                    freeShipping={relatedProduct.freeShipping}
                   />
                 ))}
               </div>

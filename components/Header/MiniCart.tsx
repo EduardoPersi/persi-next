@@ -6,6 +6,7 @@ import { Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useCart } from "@/hooks/useCart";
 import { useCheckoutTransfer } from "@/hooks/useCheckoutTransfer";
+import { FreeShippingBadge } from "@/components/Product/FreeShippingBadge";
 
 export function MiniCart() {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -108,6 +109,7 @@ export function MiniCart() {
                   <h3 className="line-clamp-2 text-sm font-medium leading-5 text-slate-900">
                     {item.name}
                   </h3>
+                  {item.freeShipping ? <div className="mt-1"><FreeShippingBadge compact /></div> : null}
                   {item.variation.length > 0 ? (
                     <dl className="mt-1 text-xs text-slate-500">
                       {item.variation.map((attribute) => (

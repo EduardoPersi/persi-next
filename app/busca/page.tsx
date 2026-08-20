@@ -364,6 +364,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                             images={product.images}
                             href={getProductHref(product.slug)}
                             price={product.price}
+                            freeShipping={product.freeShipping}
                             regularPrice={product.onSale ? product.regularPrice : undefined}
                             currencyCode={product.currencyCode}
                             commercialText={product.commercialText}

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getProductHref } from "@/lib/routing/storefrontUrls";
+import { FreeShippingBadge } from "./FreeShippingBadge";
 
 export interface RecentlyViewedProductData {
   id: number;
@@ -15,6 +16,7 @@ export interface RecentlyViewedProductData {
   pixPrice?: number;
   currencyCode: string;
   commercialText?: string;
+  freeShipping?: boolean;
 }
 
 interface RecentlyViewedProductCardProps {
@@ -66,6 +68,7 @@ export function RecentlyViewedProductCard({
             {product.commercialText}
           </span>
         ) : null}
+        {product.freeShipping ? <span className="mt-2 block"><FreeShippingBadge compact /></span> : null}
       </span>
     </Link>
   );
