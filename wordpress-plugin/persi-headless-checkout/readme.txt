@@ -2,8 +2,15 @@
 Contributors: persimateriais
 Requires at least: 6.4
 Requires PHP: 7.4
-Stable tag: 0.5.6
+Stable tag: 0.5.7
 License: Proprietary
+
+== Changelog ==
+
+= 0.5.7 =
+* Mantém o consumo atômico e único do token seguido de redirect 303 sem token.
+* Adiciona diagnóstico temporário opt-in sem tokens, cookies ou dados pessoais.
+* Documenta e testa a exclusão de AJAX, REST e endpoints internos do consumo.
 
 Núcleo seguro e incremental para transferências temporárias de checkout headless.
 

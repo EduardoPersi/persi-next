@@ -13,7 +13,7 @@ final class Persi_Headless_Storefront_Lockdown {
 	}
 
 	public function maybe_redirect() {
-		if ( is_admin() || wp_doing_ajax() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) return;
+		if ( self::is_technical_request() ) return;
 		if ( function_exists( 'is_checkout' ) && is_checkout() ) return;
 		// Deixa quem administra a loja (ex.: suporte, conferência de pedido)
 		// continuar navegando o site normalmente.
@@ -24,5 +24,20 @@ final class Persi_Headless_Storefront_Lockdown {
 
 		wp_redirect( $target, 301 );
 		exit;
+	}
+
+	public static function is_technical_request() {
+		if ( is_admin() || wp_doing_ajax() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) return true;
+		if ( isset( $_GET['wc-ajax'] ) || isset( $_GET['wc-api'] ) ) return true;
+
+		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '/';
+		$path = wp_parse_url( $request_uri, PHP_URL_PATH );
+		if ( ! is_string( $path ) ) return false;
+
+		return 0 === strpos( $path, '/wp-json/' )
+			|| '/wp-json' === $path
+			|| '/wp-admin/admin-ajax.php' === $path
+			|| 0 === strpos( $path, '/wc-api/' )
+			|| '/wc-api' === $path;
 	}
 }

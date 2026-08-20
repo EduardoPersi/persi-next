@@ -15,12 +15,8 @@ final class Persi_Headless_Plugin {
 	public function run() {
 		require_once PERSI_HEADLESS_PATH . 'includes/class-settings.php';
 		require_once PERSI_HEADLESS_PATH . 'includes/cache/class-cache.php';
-		if ( get_option( 'persi_headless_db_version' ) !== PERSI_HEADLESS_VERSION ) {
-			require_once PERSI_HEADLESS_PATH . 'includes/stock-notifications/class-repository.php';
-			Persi_Headless_Stock_Repository::install();
-			require_once PERSI_HEADLESS_PATH . 'includes/newsletter/class-repository.php';
-			Persi_Headless_Newsletter_Repository::install();
-			update_option( 'persi_headless_db_version', PERSI_HEADLESS_VERSION, false );
+		if ( get_option( 'persi_headless_db_version' ) !== PERSI_HEADLESS_DATABASE_VERSION ) {
+			add_action( 'admin_init', array( $this, 'maybe_upgrade_database' ), 1 );
 		}
 
 		if ( ! class_exists( 'WooCommerce' ) ) {
@@ -38,6 +34,22 @@ final class Persi_Headless_Plugin {
 		if ( is_admin() ) {
 			require_once PERSI_HEADLESS_PATH . 'includes/admin/class-admin.php';
 			( new Persi_Headless_Admin() )->register();
+		}
+	}
+
+	public function maybe_upgrade_database() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) return;
+		if ( get_option( 'persi_headless_db_version' ) === PERSI_HEADLESS_DATABASE_VERSION ) return;
+		if ( ! add_option( 'persi_headless_db_upgrade_lock', time(), '', false ) ) return;
+
+		try {
+			require_once PERSI_HEADLESS_PATH . 'includes/stock-notifications/class-repository.php';
+			Persi_Headless_Stock_Repository::install();
+			require_once PERSI_HEADLESS_PATH . 'includes/newsletter/class-repository.php';
+			Persi_Headless_Newsletter_Repository::install();
+			update_option( 'persi_headless_db_version', PERSI_HEADLESS_DATABASE_VERSION, false );
+		} finally {
+			delete_option( 'persi_headless_db_upgrade_lock' );
 		}
 	}
 

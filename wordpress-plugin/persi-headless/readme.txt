@@ -4,10 +4,17 @@ Tags: woocommerce, headless, rest-api
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.5.2
+Stable tag: 0.5.3
 License: GPLv2 or later
 
 Integração oficial e independente do tema entre WooCommerce e o frontend Next.js da Persi.
+
+== Changelog ==
+
+= 0.5.3 =
+* Desacopla a versão do banco da versão funcional do plugin.
+* Executa upgrades de esquema somente no admin e com lock atômico.
+* Preserva explicitamente REST, wc-ajax, wc-api e admin-ajax no storefront lockdown.
 
 == Installation ==
 

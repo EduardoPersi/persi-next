@@ -34,6 +34,6 @@ class Persi_Headless_Activator {
 		if ( false === get_option( 'persi_headless_settings', false ) ) {
 			add_option( 'persi_headless_settings', $defaults, '', false );
 		}
-		add_option( 'persi_headless_db_version', PERSI_HEADLESS_VERSION, '', false );
+		add_option( 'persi_headless_db_version', PERSI_HEADLESS_DATABASE_VERSION, '', false );
 	}
 }

@@ -14,6 +14,7 @@ use Persi\HeadlessCheckout\Security\RequestAuthenticator;
 use Persi\HeadlessCheckout\Security\TransferToken;
 use Persi\HeadlessCheckout\Support\Configuration;
 use Persi\HeadlessCheckout\Support\Logger;
+use Persi\HeadlessCheckout\Support\RequestDiagnostics;
 use Persi\HeadlessCheckout\Validation\TransferPayloadValidator;
 
 defined( 'ABSPATH' ) || exit;
@@ -61,12 +62,14 @@ final class Plugin {
 		$owner_token    = new OrderOwnerToken();
 		$thank_you      = new ThankYouRedirect( $configuration );
 		$smart_checkout = new SmartCheckout();
+		$diagnostics    = new RequestDiagnostics();
 
 		add_action( 'rest_api_init', array( $controller, 'register_routes' ) );
 		$redirect->register();
 		$owner_token->register();
 		$thank_you->register();
 		$smart_checkout->register();
+		$diagnostics->register();
 	}
 
 	public static function render_woocommerce_notice(): void {
