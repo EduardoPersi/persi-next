@@ -45,7 +45,6 @@ interface WooCartItem {
   totals?: WooMoneyFields & {
     line_total?: string;
   };
-  extensions?: { persi?: { free_shipping?: boolean } };
 }
 
 interface WooCartCoupon {
@@ -222,7 +221,12 @@ function minorToMajor(value: string | undefined, minorUnit: number) {
     : 0;
 }
 
-function mapCartItem(item: WooCartItem, minorUnit: number): CartItem | null {
+function mapCartItem(
+  item: WooCartItem,
+  minorUnit: number,
+  freeShippingIds: ReadonlySet<number> = new Set(),
+  freeShippingSlugs: ReadonlySet<string> = new Set(),
+): CartItem | null {
   if (
     typeof item.key !== "string" ||
     typeof item.id !== "number" ||
@@ -232,6 +236,7 @@ function mapCartItem(item: WooCartItem, minorUnit: number): CartItem | null {
     return null;
   }
   const image = item.images?.[0];
+  const slug = getSlug(item.permalink);
   return {
     key: item.key,
     id: item.id,
@@ -240,7 +245,7 @@ function mapCartItem(item: WooCartItem, minorUnit: number): CartItem | null {
     name: stripHtml(item.name),
     sku: item.sku ? stripHtml(item.sku) : undefined,
     permalink: item.permalink,
-    slug: getSlug(item.permalink),
+    slug,
     variation: (item.variation ?? []).flatMap((attribute) =>
       attribute.attribute && attribute.value
         ? [{
@@ -262,7 +267,9 @@ function mapCartItem(item: WooCartItem, minorUnit: number): CartItem | null {
       : undefined,
     price: minorToMajor(item.prices?.price, minorUnit),
     total: minorToMajor(item.totals?.line_total, minorUnit),
-    freeShipping: item.extensions?.persi?.free_shipping === true,
+    freeShipping:
+      freeShippingIds.has(item.id) ||
+      (typeof slug === "string" && freeShippingSlugs.has(slug)),
   };
 }
 
@@ -383,14 +390,20 @@ function normalizeTaxLines(
   );
 }
 
-export function normalizeCart(value: unknown): Cart {
+export function normalizeCart(
+  value: unknown,
+  freeShippingIds: ReadonlySet<number> = new Set(),
+  freeShippingSlugs: ReadonlySet<string> = new Set(),
+): Cart {
   const cart = value && typeof value === "object" ? (value as WooCart) : {};
   const totals = cart.totals ?? {};
   const minorUnit = totals.currency_minor_unit ?? 2;
   const money = (amount: unknown) => mapMoney(amount, totals, totals);
   return {
     items: (cart.items ?? [])
-      .map((item) => mapCartItem(item, minorUnit))
+      .map((item) =>
+        mapCartItem(item, minorUnit, freeShippingIds, freeShippingSlugs),
+      )
       .filter((item): item is CartItem => item !== null),
     itemsCount: cart.items_count ?? 0,
     subtotal: minorToMajor(totals.total_items, minorUnit),
@@ -491,8 +504,22 @@ async function cartRequest(
       payload?.code,
     );
   }
+  let freeShippingIds: ReadonlySet<number> = new Set();
+  let freeShippingSlugs: ReadonlySet<string> = new Set();
+  try {
+    const { getFreeShippingProducts } = await import("./freeShipping.ts");
+    const freeShippingProducts = await getFreeShippingProducts();
+    freeShippingIds = freeShippingProducts.ids;
+    freeShippingSlugs = freeShippingProducts.slugs;
+  } catch {
+    // O carrinho e os cálculos oficiais nunca dependem do selo informativo.
+  }
   return {
-    cart: normalizeCart(payload),
+    cart: normalizeCart(
+      payload,
+      freeShippingIds,
+      freeShippingSlugs,
+    ),
     cartToken: response.headers.get("Cart-Token") ?? options.cartToken,
   };
 }

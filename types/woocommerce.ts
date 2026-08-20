@@ -80,10 +80,7 @@ export interface WooCommerceStoreProduct {
     text?: string;
     class?: string;
   };
-  extensions?: {
-    persi?: { free_shipping?: boolean };
-    [namespace: string]: unknown;
-  };
+  extensions?: Record<string, unknown>;
 }
 
 export interface WooCommerceStoreCategory {

@@ -10,6 +10,7 @@ import {
   mapStoreProduct,
   mapStoreVariation,
 } from "./mappers";
+import { getFreeShippingProducts } from "./freeShipping.ts";
 
 export interface GetProductsOptions {
   page?: number;
@@ -88,10 +89,13 @@ export async function getProductsPage(
     query[`attributes[${index}][slug]`] = attribute.slug;
   });
 
-  const response = await storeApiGetWithMeta<unknown>("products", {
-    query,
-    revalidate: options.revalidate,
-  });
+  const [response, freeShippingProducts] = await Promise.all([
+    storeApiGetWithMeta<unknown>("products", {
+      query,
+      revalidate: options.revalidate,
+    }),
+    getFreeShippingProducts(),
+  ]);
 
   if (!Array.isArray(response.data)) {
     throw new Error("A Store API retornou uma lista de produtos inválida.");
@@ -99,9 +103,10 @@ export async function getProductsPage(
 
   const products = response.data
     .filter(isWooCommerceStoreProduct)
-    .map((product: WooCommerceStoreProduct) =>
-      mapStoreProduct(product, options.featured ?? false),
-    );
+    .map((product: WooCommerceStoreProduct) => {
+      const mapped = mapStoreProduct(product, options.featured ?? false);
+      return { ...mapped, freeShipping: freeShippingProducts.ids.has(mapped.id) };
+    });
 
   return {
     products,
