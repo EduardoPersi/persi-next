@@ -180,8 +180,12 @@ export function CheckoutShippingPlaceholder() {
   };
 
   const packages = cart?.shippingPackages ?? [];
+  const availableRateCount = packages.reduce(
+    (total, shippingPackage) => total + shippingPackage.rates.length,
+    0,
+  );
   const effectiveStatus =
-    customerSynced && selectedShippingRateValid ? "ready" : status;
+    availableRateCount > 0 ? "ready" : status;
   const isBusy =
     isCheckoutUpdating ||
     effectiveStatus === "validating" ||
@@ -193,11 +197,13 @@ export function CheckoutShippingPlaceholder() {
     <div className="border-t border-slate-200 pt-5">
       <h3 className="mb-3 text-xs font-bold text-slate-700">Entrega</h3>
       <div aria-live="polite" className="min-h-6 text-xs text-slate-600">
-        {!addressComplete
-          ? "Informe seu endereço para calcular a entrega."
-          : isBusy
-            ? "Calculando opções de entrega…"
-            : message}
+        {isBusy
+          ? "Calculando opções de entrega…"
+          : availableRateCount > 0
+            ? "Opções de entrega atualizadas."
+            : !addressComplete
+              ? "Informe seu endereço para calcular a entrega."
+              : message}
       </div>
 
       {effectiveStatus === "ready" && packages.length > 0 ? (

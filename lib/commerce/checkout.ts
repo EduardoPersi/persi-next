@@ -40,8 +40,6 @@ export function isAddressComplete(address: CheckoutAddress): boolean {
 interface CanAdvanceCheckoutAddressInput {
   needsShipping: boolean;
   addressComplete: boolean;
-  customerSynced: boolean;
-  hasCalculatedShipping: boolean;
   hasSelectedShippingRate: boolean;
   isUpdating: boolean;
 }
@@ -49,8 +47,6 @@ interface CanAdvanceCheckoutAddressInput {
 export function canAdvanceCheckoutAddress({
   needsShipping,
   addressComplete,
-  customerSynced,
-  hasCalculatedShipping,
   hasSelectedShippingRate,
   isUpdating,
 }: CanAdvanceCheckoutAddressInput): boolean {
@@ -58,8 +54,6 @@ export function canAdvanceCheckoutAddress({
   if (!needsShipping) return true;
   return (
     addressComplete &&
-    customerSynced &&
-    hasCalculatedShipping &&
     hasSelectedShippingRate
   );
 }

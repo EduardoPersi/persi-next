@@ -80,8 +80,6 @@ function canAdvance(overrides = {}) {
   return canAdvanceCheckoutAddress({
     needsShipping: true,
     addressComplete: isAddressComplete(form.billingAddress),
-    customerSynced: isCheckoutCustomerSynced(form, billingAddress, shippingAddress),
-    hasCalculatedShipping: true,
     hasSelectedShippingRate: hasSelectedShippingRate(selectedPackages),
     isUpdating: false,
     ...overrides,
@@ -90,6 +88,38 @@ function canAdvance(overrides = {}) {
 
 test("endereço preexistente sincronizado e Frete Econômico selecionado habilitam avanço", () => {
   assert.equal(canAdvance(), true);
+});
+
+test("Rua Conceição com Expresso selecionado habilita sem depender de customerSynced", () => {
+  const reproducedAddress = {
+    ...form.billingAddress,
+    postalCode: "13216-140",
+    addressLine1: "Rua Conceição",
+    number: "426",
+    city: "Jundiaí",
+    state: "SP",
+    recipientName: "Eduardo Pereira",
+    addressLine2: "",
+  };
+  const packages = [{
+    packageId: 0,
+    rates: [
+      { rateId: "local_pickup:1", name: "Retirada no local", selected: false },
+      { rateId: "flat_rate:2", name: "Frete Expresso", selected: true },
+    ],
+  }];
+
+  assert.equal(isAddressComplete(reproducedAddress), true);
+  assert.equal(hasSelectedShippingRate(packages), true);
+  assert.equal(
+    canAdvanceCheckoutAddress({
+      needsShipping: true,
+      addressComplete: true,
+      hasSelectedShippingRate: true,
+      isUpdating: false,
+    }),
+    true,
+  );
 });
 
 test("sem rate ou com rate antigo não selecionado o avanço permanece bloqueado", () => {
@@ -113,7 +143,7 @@ test("CEP alterado bloqueia durante sincronização e libera após resposta atua
     isCheckoutCustomerSynced(changedForm, billingAddress, shippingAddress),
     false,
   );
-  assert.equal(canAdvance({ customerSynced: false, isUpdating: true }), false);
+  assert.equal(canAdvance({ isUpdating: true }), false);
   assert.equal(canAdvance(), true);
 });
 
@@ -123,13 +153,37 @@ test("complemento vazio não bloqueia e request em andamento sempre bloqueia", (
   assert.equal(canAdvance({ isUpdating: true }), false);
 });
 
+test("número ou destinatário vazio bloqueiam endereço", () => {
+  assert.equal(
+    isAddressComplete({ ...form.billingAddress, number: "" }),
+    false,
+  );
+  assert.equal(
+    isAddressComplete({ ...form.billingAddress, recipientName: "" }),
+    false,
+  );
+});
+
+test("retirada selecionada também é rate válido", () => {
+  assert.equal(
+    hasSelectedShippingRate([{
+      packageId: 0,
+      rates: [{
+        rateId: "local_pickup:1",
+        name: "Retirada no local",
+        selected: true,
+      }],
+    }]),
+    true,
+  );
+  assert.equal(canAdvance(), true);
+});
+
 test("carrinho sem necessidade de entrega não exige rate", () => {
   assert.equal(
     canAdvanceCheckoutAddress({
       needsShipping: false,
       addressComplete: false,
-      customerSynced: false,
-      hasCalculatedShipping: false,
       hasSelectedShippingRate: false,
       isUpdating: false,
     }),

@@ -23,7 +23,6 @@ import {
 } from "@/lib/commerce/checkout";
 import {
   hasSelectedShippingRate,
-  isCheckoutCustomerSynced,
 } from "@/lib/commerce/checkoutAddress";
 import {
   formatPostcode,
@@ -194,13 +193,6 @@ export function CheckoutForm({
   const billingAddress = useWatch({ control: methods.control, name: "billingAddress" });
   const shippingAddress = useWatch({ control: methods.control, name: "shippingAddress" });
   const activeAddress = shipToBillingAddress ? billingAddress : shippingAddress;
-  const customerSynced = cart
-    ? isCheckoutCustomerSynced(
-        methods.getValues(),
-        cart.billingAddress,
-        cart.shippingAddress,
-      )
-    : false;
 
   // Só avisa ao sair da página depois que o cliente já preencheu algum
   // dado (endereço/contato) ou trocou a forma de pagamento padrão — e para
@@ -286,8 +278,6 @@ export function CheckoutForm({
   const addressReady = Boolean(cart) && canAdvanceCheckoutAddress({
     needsShipping: cart?.needsShipping ?? true,
     addressComplete: isAddressComplete(activeAddress),
-    customerSynced,
-    hasCalculatedShipping: cart?.hasCalculatedShipping ?? false,
     hasSelectedShippingRate: hasSelectedShippingRate(
       cart?.shippingPackages ?? [],
     ),
