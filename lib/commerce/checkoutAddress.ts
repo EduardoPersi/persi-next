@@ -4,6 +4,7 @@ import type {
   CheckoutFormValues,
   CheckoutStoreAddress,
 } from "@/types/checkout";
+import type { CartAddress, CheckoutShippingPackage } from "@/types/cart";
 
 function normalizePostcode(value: string): string {
   return value.replace(/\D/g, "");
@@ -81,4 +82,51 @@ export function mapCheckoutFormToWooAddress(
     billingAddress: mapAddress(form.billingAddress, form, true, false),
     shippingAddress: mapAddress(shippingSource, form, false, true),
   };
+}
+
+function normalizedAddressValue(value: string | undefined): string {
+  return (value ?? "").trim().toLocaleLowerCase("pt-BR");
+}
+
+function addressesMatch(
+  expected: CheckoutStoreAddress,
+  current: CartAddress | undefined,
+): boolean {
+  if (!current) return false;
+  return (
+    normalizedAddressValue(expected.firstName) === normalizedAddressValue(current.firstName) &&
+    normalizedAddressValue(expected.lastName) === normalizedAddressValue(current.lastName) &&
+    normalizedAddressValue(expected.company) === normalizedAddressValue(current.company) &&
+    normalizedAddressValue(expected.address1) === normalizedAddressValue(current.address1) &&
+    normalizedAddressValue(expected.address2) === normalizedAddressValue(current.address2) &&
+    normalizedAddressValue(expected.city) === normalizedAddressValue(current.city) &&
+    normalizedAddressValue(expected.state) === normalizedAddressValue(current.state) &&
+    expected.postcode.replace(/\D/g, "") === (current.postcode ?? "").replace(/\D/g, "") &&
+    normalizedAddressValue(expected.country) === normalizedAddressValue(current.country) &&
+    normalizedAddressValue(expected.email) === normalizedAddressValue(current.email) &&
+    (expected.phone ?? "").replace(/\D/g, "") === (current.phone ?? "").replace(/\D/g, "")
+  );
+}
+
+export function isCheckoutCustomerSynced(
+  form: CheckoutFormValues,
+  billingAddress: CartAddress | undefined,
+  shippingAddress: CartAddress | undefined,
+): boolean {
+  const expected = mapCheckoutFormToWooAddress(form);
+  return (
+    addressesMatch(expected.billingAddress, billingAddress) &&
+    addressesMatch(expected.shippingAddress, shippingAddress)
+  );
+}
+
+export function hasSelectedShippingRate(
+  packages: CheckoutShippingPackage[],
+): boolean {
+  return (
+    packages.length > 0 &&
+    packages.every((shippingPackage) =>
+      shippingPackage.rates.some((rate) => rate.selected),
+    )
+  );
 }

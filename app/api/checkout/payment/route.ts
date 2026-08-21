@@ -39,6 +39,35 @@ export const runtime = "nodejs";
 
 const GENERIC_ERROR_MESSAGE = "Não foi possível iniciar o pagamento. Tente novamente.";
 
+type PaymentStage =
+  | "request_validation"
+  | "cart_validation"
+  | "idempotency"
+  | "order_creation"
+  | "order_total_validation"
+  | "provider_request"
+  | "persistence"
+  | "confirmation";
+
+function getConfirmationUrl(checkoutAttemptId: string): string {
+  return `/checkout/confirmacao?attempt=${encodeURIComponent(checkoutAttemptId)}`;
+}
+
+function getDiagnosticCategory(error: unknown, stage: PaymentStage): string {
+  if (error instanceof InterPaymentError) {
+    if (error.code === "INTER_TIMEOUT") return "provider_timeout";
+    if (error.code === "INTER_AUTH_FAILED" || error.code === "INTER_CONFIG_MISSING") {
+      return "provider_auth_failed";
+    }
+    return "provider_request_failed";
+  }
+  if (error instanceof WooCommerceRestError) return "woocommerce_request_failed";
+  if (error instanceof CartServiceError) return "cart_request_failed";
+  if (error instanceof PagBankPaymentError) return "provider_request_failed";
+  if (error instanceof CheckoutTransferError) return error.diagnosticCode;
+  return `${stage}_failed`;
+}
+
 function isAuthorizedStagingDryRun(request: Request): boolean {
   const configured = process.env.CHECKOUT_STAGING_DRY_RUN_SECRET?.trim();
   const received = request.headers.get("x-persi-staging-dry-run")?.trim();
@@ -131,6 +160,11 @@ function getErrorStatus(error: unknown): number {
 
 export async function POST(request: Request) {
   let activeCartToken = (await cookies()).get(CART_TOKEN_COOKIE)?.value;
+  const startedAt = Date.now();
+  let stage: PaymentStage = "request_validation";
+  let checkoutAttemptId: string | undefined;
+  let paymentMethod: PersiPaymentMethod | undefined;
+  let orderId: number | undefined;
 
   try {
     if (!activeCartToken) {
@@ -146,6 +180,8 @@ export async function POST(request: Request) {
       throw new CheckoutTransferError(400, "Dados de pagamento inválidos");
     }
     const input = parsed.data;
+    checkoutAttemptId = input.idempotencyKey;
+    paymentMethod = input.method;
     if (typeof input.expectedAmount !== "number") {
       throw new CheckoutTransferError(400, "Total esperado ausente.");
     }
@@ -159,6 +195,7 @@ export async function POST(request: Request) {
       throw new CheckoutTransferError(422, "Forma de pagamento indisponível.");
     }
 
+    stage = "cart_validation";
     const cartResult = await getCart(activeCartToken);
     activeCartToken = cartResult.cartToken ?? activeCartToken;
     const cart = cartResult.cart;
@@ -180,7 +217,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const paymentMethod: PersiPaymentMethod = input.method;
+    stage = "idempotency";
     const reservation = await reserveCheckoutAttempt(input.idempotencyKey, paymentMethod);
     if (!reservation.acquired) {
       if (reservation.attempt.provider_reference && reservation.attempt.order_id) {
@@ -189,6 +226,7 @@ export async function POST(request: Request) {
           method: paymentMethod,
           orderId: Number(reservation.attempt.order_id),
           checkoutAttemptId: input.idempotencyKey,
+          confirmationUrl: getConfirmationUrl(input.idempotencyKey),
         };
         return createPrivateResponse(result, 200, activeCartToken);
       }
@@ -200,6 +238,7 @@ export async function POST(request: Request) {
     }
     const leaseToken = reservation.lease_token;
     if (!leaseToken) throw new Error("Checkout lease missing");
+    stage = "order_creation";
     const existingOrder = await findOrderByIdempotencyKey(input.idempotencyKey);
 
     if (existingOrder?.metaData._persi_payment_reference) {
@@ -208,6 +247,7 @@ export async function POST(request: Request) {
         method: paymentMethod,
         orderId: existingOrder.id,
         checkoutAttemptId: input.idempotencyKey,
+        confirmationUrl: getConfirmationUrl(input.idempotencyKey),
       };
       return createPrivateResponse(result, 200, activeCartToken);
     }
@@ -267,6 +307,7 @@ export async function POST(request: Request) {
           : undefined,
         couponCodes: cart.coupons.map(({ code }) => code),
       }));
+    orderId = order.id;
 
     if (reservation.attempt.state === "RESERVED") {
       await transitionCheckoutAttempt({
@@ -280,6 +321,7 @@ export async function POST(request: Request) {
     let attemptState = reservation.attempt.state;
     if (attemptState === "RESERVED") attemptState = "ORDER_CREATED";
 
+    stage = "order_total_validation";
     const authoritativeOrderAmount = Number(order.total);
     if (
       !Number.isFinite(authoritativeOrderAmount) ||
@@ -329,12 +371,16 @@ export async function POST(request: Request) {
       });
     }
 
+    stage = "provider_request";
     if (input.method === "inter_pix") {
       const txid = input.idempotencyKey.replace(/-/g, "");
       let charge;
       try {
         charge = await interPaymentGateway.getPix(txid);
-      } catch {
+      } catch (error) {
+        if (!(error instanceof InterPaymentError) || error.status !== 404) {
+          throw error;
+        }
         charge = await interPaymentGateway.createPix({
         txid: input.idempotencyKey.replace(/-/g, ""),
         amount,
@@ -343,6 +389,7 @@ export async function POST(request: Request) {
         description: `Pedido ${order.id}`,
         });
       }
+      stage = "persistence";
       await attachPaymentReference(order.id, { provider: "inter", externalId: charge.txid });
       await transitionCheckoutAttempt({ checkoutAttemptId: input.idempotencyKey, leaseToken, from: "PAYMENT_CREATING", to: "PAYMENT_CREATED", providerReference: charge.txid });
       result = {
@@ -354,6 +401,7 @@ export async function POST(request: Request) {
         qrCodeImageBase64: charge.qrCodeImageBase64,
         expiresAt: charge.expiresAt,
         checkoutAttemptId: input.idempotencyKey,
+        confirmationUrl: getConfirmationUrl(input.idempotencyKey),
       };
     } else if (input.method === "inter_boleto") {
       if (attemptState === "PAYMENT_CREATING") {
@@ -366,6 +414,7 @@ export async function POST(request: Request) {
         payerName,
         billingAddress,
       });
+      stage = "persistence";
       await attachPaymentReference(order.id, {
         provider: "inter",
         externalId: charge.requestCode,
@@ -380,6 +429,7 @@ export async function POST(request: Request) {
         barcode: charge.barcode,
         dueDate: charge.dueDate,
         checkoutAttemptId: input.idempotencyKey,
+        confirmationUrl: getConfirmationUrl(input.idempotencyKey),
       };
     } else {
       if (attemptState === "PAYMENT_CREATING") {
@@ -406,6 +456,7 @@ export async function POST(request: Request) {
         holderName: payerName,
         holderEmail: billingAddress.email ?? "",
       });
+      stage = "persistence";
       await attachPaymentReference(order.id, {
         provider: "pagbank",
         externalId: charge.chargeId,
@@ -417,9 +468,11 @@ export async function POST(request: Request) {
         chargeId: charge.chargeId,
         status: charge.status,
         checkoutAttemptId: input.idempotencyKey,
+        confirmationUrl: getConfirmationUrl(input.idempotencyKey),
       };
     }
 
+    stage = "confirmation";
     await transitionCheckoutAttempt({
       checkoutAttemptId: input.idempotencyKey,
       leaseToken,
@@ -427,17 +480,26 @@ export async function POST(request: Request) {
       to: "PAYMENT_PENDING",
     });
 
+    console.info("[checkout-payment] completed", {
+      checkoutAttemptId,
+      method: paymentMethod,
+      orderId,
+      stage,
+      durationMs: Date.now() - startedAt,
+    });
     return createPrivateResponse(result, 201, activeCartToken);
   } catch (error) {
     const status = getErrorStatus(error);
+    const category = getDiagnosticCategory(error, stage);
     console.error("[checkout-payment]", {
       status,
-      code:
-        error instanceof CheckoutTransferError
-          ? error.diagnosticCode
-          : error instanceof Error
-            ? error.name
-            : "UNKNOWN",
+      providerStatus: error instanceof InterPaymentError ? error.status : undefined,
+      category,
+      stage,
+      checkoutAttemptId,
+      method: paymentMethod,
+      orderId,
+      durationMs: Date.now() - startedAt,
     });
     // Só passa a mensagem adiante para erros 422 (dado inválido/ação do
     // cliente, ex.: valor abaixo do mínimo do boleto) — nunca para falhas
@@ -447,6 +509,6 @@ export async function POST(request: Request) {
       status === 422 && error instanceof Error && error.message
         ? error.message
         : GENERIC_ERROR_MESSAGE;
-    return createPrivateResponse({ message }, status, activeCartToken);
+    return createPrivateResponse({ code: category.toUpperCase(), message }, status, activeCartToken);
   }
 }

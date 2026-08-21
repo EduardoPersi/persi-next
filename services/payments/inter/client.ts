@@ -1,5 +1,7 @@
 import "server-only";
 import https from "node:https";
+import { createPrivateKey, X509Certificate } from "node:crypto";
+import { createSecureContext } from "node:tls";
 import axios, { AxiosError, type AxiosInstance } from "axios";
 import { InterPaymentError, type InterHttpMethod } from "./errors.ts";
 
@@ -47,6 +49,56 @@ function getInterConfig(): InterConfig {
     clientSecret: requireEnvironmentValue("INTER_CLIENT_SECRET"),
     certificate: decodeBase64Secret("INTER_CERTIFICATE_BASE64"),
     privateKey: decodeBase64Secret("INTER_PRIVATE_KEY_BASE64"),
+  };
+}
+
+export interface InterConfigurationDiagnostics {
+  interClientIdConfigured: boolean;
+  interSecretConfigured: boolean;
+  interCertificateConfigured: boolean;
+  interPrivateKeyConfigured: boolean;
+  interPixKeyConfigured: boolean;
+  interBaseUrlConfigured: boolean;
+  interCertificateValid: boolean;
+  interPrivateKeyValid: boolean;
+  interCertificateKeyPairValid: boolean;
+}
+
+export function getInterConfigurationDiagnostics(): InterConfigurationDiagnostics {
+  const certificateRaw = process.env.INTER_CERTIFICATE_BASE64?.trim() ?? "";
+  const privateKeyRaw = process.env.INTER_PRIVATE_KEY_BASE64?.trim() ?? "";
+  let certificateValid = false;
+  let privateKeyValid = false;
+  let pairValid = false;
+
+  try {
+    new X509Certificate(Buffer.from(certificateRaw, "base64"));
+    certificateValid = true;
+  } catch {}
+  try {
+    createPrivateKey(Buffer.from(privateKeyRaw, "base64"));
+    privateKeyValid = true;
+  } catch {}
+  if (certificateValid && privateKeyValid) {
+    try {
+      createSecureContext({
+        cert: Buffer.from(certificateRaw, "base64"),
+        key: Buffer.from(privateKeyRaw, "base64"),
+      });
+      pairValid = true;
+    } catch {}
+  }
+
+  return {
+    interClientIdConfigured: Boolean(process.env.INTER_CLIENT_ID?.trim()),
+    interSecretConfigured: Boolean(process.env.INTER_CLIENT_SECRET?.trim()),
+    interCertificateConfigured: Boolean(certificateRaw),
+    interPrivateKeyConfigured: Boolean(privateKeyRaw),
+    interPixKeyConfigured: Boolean(process.env.INTER_PIX_KEY?.trim()),
+    interBaseUrlConfigured: Boolean(process.env.INTER_API_BASE_URL?.trim()),
+    interCertificateValid: certificateValid,
+    interPrivateKeyValid: privateKeyValid,
+    interCertificateKeyPairValid: pairValid,
   };
 }
 
@@ -139,18 +191,32 @@ function toInterPaymentError(error: unknown, fallbackMessage: string): InterPaym
     // genérico é lançado abaixo) — registra a resposta real da API do Inter
     // no log do servidor para descobrir a causa (auth, certificado, corpo da
     // requisição) sem vazar detalhes internos na resposta HTTP.
+    const category =
+      error.code === "ECONNABORTED"
+        ? "provider_timeout"
+        : error.config?.url === "/oauth/v2/token"
+          ? "provider_auth_failed"
+          : "provider_request_failed";
     console.error("[inter-client]", {
-      url: error.config?.url,
+      path: error.config?.url,
       status,
-      data: error.response?.data,
+      category,
     });
     return new InterPaymentError(
       status >= 400 && status < 600 ? status : 502,
       fallbackMessage,
-      "INTER_API_ERROR",
+      category === "provider_timeout"
+        ? "INTER_TIMEOUT"
+        : category === "provider_auth_failed"
+          ? "INTER_AUTH_FAILED"
+          : "INTER_REQUEST_FAILED",
     );
   }
   return new InterPaymentError(502, fallbackMessage, "INTER_API_UNAVAILABLE");
+}
+
+export async function verifyInterAuthentication(): Promise<void> {
+  await getInterAccessToken(getInterConfig());
 }
 
 export async function interRequest<T>(

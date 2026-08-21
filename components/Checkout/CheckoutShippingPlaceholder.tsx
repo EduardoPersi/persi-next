@@ -5,7 +5,11 @@ import { useFormContext, useWatch } from "react-hook-form";
 import { Button } from "@/components/UI/Button";
 import { useCart } from "@/hooks/useCart";
 import { isAddressComplete } from "@/lib/commerce/checkout";
-import { mapCheckoutFormToWooAddress } from "@/lib/commerce/checkoutAddress";
+import {
+  hasSelectedShippingRate,
+  isCheckoutCustomerSynced,
+  mapCheckoutFormToWooAddress,
+} from "@/lib/commerce/checkoutAddress";
 import { formatStoreMoney, isZeroMoney } from "@/lib/formatting/money";
 import type { CheckoutFormValues, ShippingStatus } from "@/types/checkout";
 
@@ -20,6 +24,7 @@ const billingFields = [
   "billingAddress.neighborhood",
   "billingAddress.city",
   "billingAddress.state",
+  "billingAddress.recipientName",
 ] as const;
 
 const shippingFields = [
@@ -29,6 +34,7 @@ const shippingFields = [
   "shippingAddress.neighborhood",
   "shippingAddress.city",
   "shippingAddress.state",
+  "shippingAddress.recipientName",
 ] as const;
 
 export function CheckoutShippingPlaceholder() {
@@ -42,6 +48,7 @@ export function CheckoutShippingPlaceholder() {
   });
   const billingAddress = useWatch({ control, name: "billingAddress" });
   const shippingAddress = useWatch({ control, name: "shippingAddress" });
+  const contact = useWatch({ control, name: "contact" });
   const activeAddress = shipToBillingAddress
     ? billingAddress
     : shippingAddress;
@@ -51,11 +58,24 @@ export function CheckoutShippingPlaceholder() {
   // como dependência do efeito abaixo fazia esse próprio reset disparar o
   // cálculo de novo, sem parar. Uma chave por conteúdo resolve isso: só
   // muda quando os valores realmente mudam.
-  const addressKey = JSON.stringify(activeAddress);
+  const addressKey = JSON.stringify({
+    contact,
+    billingAddress,
+    shippingAddress,
+    shipToBillingAddress,
+  });
+  const customerSynced = cart
+    ? isCheckoutCustomerSynced(
+        getValues(),
+        cart.billingAddress,
+        cart.shippingAddress,
+      )
+    : false;
+  const selectedShippingRateValid = hasSelectedShippingRate(
+    cart?.shippingPackages ?? [],
+  );
   const [status, setStatus] = useState<ShippingStatus>(
-    cart?.shippingPackages.some((shippingPackage) =>
-      shippingPackage.rates.some((rate) => rate.selected),
-    )
+    hasSelectedShippingRate(cart?.shippingPackages ?? [])
       ? "ready"
       : "idle",
   );
@@ -132,12 +152,15 @@ export function CheckoutShippingPlaceholder() {
   // debounce evita disparar uma chamada a cada tecla digitada no número.
   useEffect(() => {
     if (!addressComplete) return;
+    if (customerSynced && selectedShippingRateValid) {
+      return;
+    }
     const timeout = window.setTimeout(() => {
       void updateAddress();
     }, 600);
     return () => window.clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressComplete, addressKey]);
+  }, [addressComplete, addressKey, customerSynced, selectedShippingRateValid]);
 
   const chooseRate = async (packageId: number | string, rateId: string) => {
     if (isCheckoutUpdating || status === "selecting-rate") return;
@@ -157,12 +180,14 @@ export function CheckoutShippingPlaceholder() {
   };
 
   const packages = cart?.shippingPackages ?? [];
+  const effectiveStatus =
+    customerSynced && selectedShippingRateValid ? "ready" : status;
   const isBusy =
     isCheckoutUpdating ||
-    status === "validating" ||
-    status === "updating-address" ||
-    status === "loading-rates" ||
-    status === "selecting-rate";
+    effectiveStatus === "validating" ||
+    effectiveStatus === "updating-address" ||
+    effectiveStatus === "loading-rates" ||
+    effectiveStatus === "selecting-rate";
 
   return (
     <div className="border-t border-slate-200 pt-5">
@@ -175,7 +200,7 @@ export function CheckoutShippingPlaceholder() {
             : message}
       </div>
 
-      {status === "ready" && packages.length > 0 ? (
+      {effectiveStatus === "ready" && packages.length > 0 ? (
         <div className="mt-4 space-y-5">
           {packages.map((shippingPackage, packageIndex) => (
             <fieldset
@@ -252,7 +277,7 @@ export function CheckoutShippingPlaceholder() {
         </div>
       ) : null}
 
-      {status === "error" || status === "unavailable" ? (
+      {effectiveStatus === "error" || effectiveStatus === "unavailable" ? (
         <Button
           type="button"
           variant="outline"

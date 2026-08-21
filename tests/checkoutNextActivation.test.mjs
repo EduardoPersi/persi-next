@@ -34,9 +34,11 @@ test("CTAs públicos navegam para /checkout sem chamar transferência", () => {
 
 test("frete obrigatório bloqueia pagamento e não exibe zero sem seleção", () => {
   const form = read("components/Checkout/CheckoutForm.tsx");
+  const address = read("lib/commerce/checkoutAddress.ts");
   const shipping = read("components/Checkout/CheckoutShippingPlaceholder.tsx");
   const summary = read("components/Checkout/CheckoutOrderSummary.tsx");
-  assert.match(form, /shippingPackage\.rates\.some\(\(rate\) => rate\.selected\)/);
+  assert.match(form, /hasSelectedShippingRate/);
+  assert.match(address, /shippingPackage\.rates\.some\(\(rate\) => rate\.selected\)/);
   assert.match(shipping, /Não encontramos uma opção de entrega para este endereço\./);
   assert.match(summary, /hasSelectedShippingRate/);
 });
@@ -44,10 +46,19 @@ test("frete obrigatório bloqueia pagamento e não exibe zero sem seleção", ()
 test("confirmação persiste tentativa na URL e recupera dados no servidor", () => {
   const form = read("components/Checkout/CheckoutForm.tsx");
   const confirmation = read("app/checkout/confirmacao/page.tsx");
-  assert.match(form, /\/checkout\/confirmacao\?attempt=/);
+  assert.match(form, /navigate\(result\.confirmationUrl\)/);
+  assert.match(read("types/payments.ts"), /confirmationUrl: string/);
   assert.match(confirmation, /getCheckoutAttempt/);
   assert.match(confirmation, /getPixCharge\(/);
   assert.match(confirmation, /getBoletoChargeStatus/);
+});
+
+test("Pix só cria cobrança quando a consulta determinística retorna 404", () => {
+  const payment = read("app/api/checkout/payment/route.ts");
+  assert.match(payment, /error instanceof InterPaymentError/);
+  assert.match(payment, /error\.status !== 404/);
+  assert.match(payment, /provider_timeout/);
+  assert.match(payment, /provider_auth_failed/);
 });
 
 test("teste de staging interrompe antes do gateway e exige um pedido", () => {

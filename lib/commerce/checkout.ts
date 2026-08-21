@@ -37,6 +37,33 @@ export function isAddressComplete(address: CheckoutAddress): boolean {
   );
 }
 
+interface CanAdvanceCheckoutAddressInput {
+  needsShipping: boolean;
+  addressComplete: boolean;
+  customerSynced: boolean;
+  hasCalculatedShipping: boolean;
+  hasSelectedShippingRate: boolean;
+  isUpdating: boolean;
+}
+
+export function canAdvanceCheckoutAddress({
+  needsShipping,
+  addressComplete,
+  customerSynced,
+  hasCalculatedShipping,
+  hasSelectedShippingRate,
+  isUpdating,
+}: CanAdvanceCheckoutAddressInput): boolean {
+  if (isUpdating) return false;
+  if (!needsShipping) return true;
+  return (
+    addressComplete &&
+    customerSynced &&
+    hasCalculatedShipping &&
+    hasSelectedShippingRate
+  );
+}
+
 const checkoutFieldOrder = [
   "contact.email",
   "contact.firstName",

@@ -9,6 +9,7 @@ export interface PixPaymentResult {
   qrCodeImageBase64: string;
   expiresAt: string;
   checkoutAttemptId: string;
+  confirmationUrl: string;
 }
 
 export interface BoletoPaymentResult {
@@ -20,6 +21,7 @@ export interface BoletoPaymentResult {
   barcode: string;
   dueDate: string;
   checkoutAttemptId: string;
+  confirmationUrl: string;
 }
 
 export interface CardPaymentResult {
@@ -28,6 +30,7 @@ export interface CardPaymentResult {
   chargeId: string;
   status: "AUTHORIZED" | "PAID" | "DECLINED" | "IN_ANALYSIS" | "CANCELED";
   checkoutAttemptId: string;
+  confirmationUrl: string;
 }
 
 export interface AlreadyInitiatedPaymentResult {
@@ -35,6 +38,7 @@ export interface AlreadyInitiatedPaymentResult {
   method: PersiPaymentMethod;
   orderId: number;
   checkoutAttemptId: string;
+  confirmationUrl: string;
 }
 
 export type PaymentInitiationResult =

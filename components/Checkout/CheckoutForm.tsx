@@ -16,7 +16,15 @@ import { usePostcodeAddressLookup } from "@/hooks/usePostcodeAddressLookup";
 import { useRouteTransition } from "@/hooks/useRouteTransition";
 import { useTabAttentionTitle } from "@/hooks/useTabAttentionTitle";
 import { applyAccountPrefill } from "@/lib/commerce/checkoutAccountPrefill";
-import { getFirstCheckoutErrorPath } from "@/lib/commerce/checkout";
+import {
+  canAdvanceCheckoutAddress,
+  getFirstCheckoutErrorPath,
+  isAddressComplete,
+} from "@/lib/commerce/checkout";
+import {
+  hasSelectedShippingRate,
+  isCheckoutCustomerSynced,
+} from "@/lib/commerce/checkoutAddress";
 import {
   formatPostcode,
   readLastShippingPostcode,
@@ -32,12 +40,7 @@ import {
 } from "@/lib/formatting/personalData";
 import { checkoutDefaultValues, checkoutSchema } from "@/lib/validation/checkout";
 import type { CheckoutFormValues } from "@/types/checkout";
-import type {
-  BoletoPaymentResult as BoletoPaymentResultData,
-  PixPaymentResult as PixPaymentResultData,
-} from "@/types/payments";
 import { CheckoutAddresses } from "./CheckoutAddresses";
-import { BoletoPaymentResult } from "./BoletoPaymentResult";
 import { CheckoutContactForm } from "./CheckoutContactForm";
 import { CheckoutMobileOrderSummary } from "./CheckoutMobileOrderSummary";
 import { CheckoutMobileStepper } from "./CheckoutMobileStepper";
@@ -47,7 +50,6 @@ import { CheckoutShippingPlaceholder } from "./CheckoutShippingPlaceholder";
 import { CheckoutStepCard, type CheckoutStepState } from "./CheckoutStepCard";
 import { CheckoutTerms } from "./CheckoutTerms";
 import { createIdempotencyKey, type CheckoutPaymentMethod } from "./paymentMethod";
-import { PixPaymentResult } from "./PixPaymentResult";
 import type { PaymentCardFieldsHandle } from "./PaymentCardFields";
 import type { PublicCheckoutCapabilities } from "@/lib/commerce/checkoutConfig";
 
@@ -110,8 +112,6 @@ export function CheckoutForm({
   const [statusMessage, setStatusMessage] = useState("");
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [installments, setInstallments] = useState(1);
-  const [pixResult, setPixResult] = useState<PixPaymentResultData | null>(null);
-  const [boletoResult, setBoletoResult] = useState<BoletoPaymentResultData | null>(null);
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("profile");
   const cardFieldsRef = useRef<PaymentCardFieldsHandle>(null);
   const checkoutAttemptIdRef = useRef(createIdempotencyKey());
@@ -192,12 +192,15 @@ export function CheckoutForm({
   });
   const contact = useWatch({ control: methods.control, name: "contact" });
   const billingAddress = useWatch({ control: methods.control, name: "billingAddress" });
-  const dirtyFields = methods.formState.dirtyFields;
-  const addressNeedsUpdate =
-    Boolean(dirtyFields.contact) ||
-    Boolean(dirtyFields.billingAddress) ||
-    Boolean(dirtyFields.shipToBillingAddress) ||
-    (!shipToBillingAddress && Boolean(dirtyFields.shippingAddress));
+  const shippingAddress = useWatch({ control: methods.control, name: "shippingAddress" });
+  const activeAddress = shipToBillingAddress ? billingAddress : shippingAddress;
+  const customerSynced = cart
+    ? isCheckoutCustomerSynced(
+        methods.getValues(),
+        cart.billingAddress,
+        cart.shippingAddress,
+      )
+    : false;
 
   // Só avisa ao sair da página depois que o cliente já preencheu algum
   // dado (endereço/contato) ou trocou a forma de pagamento padrão — e para
@@ -259,29 +262,13 @@ export function CheckoutForm({
 
       if (result.alreadyInitiated) {
         setHasCreatedOrder();
-        navigate(`/checkout/confirmacao?attempt=${encodeURIComponent(result.checkoutAttemptId)}`);
+        navigate(result.confirmationUrl);
         return;
       }
 
-      if (result.method === "inter_pix") {
+      if (result.method === "inter_pix" || result.method === "inter_boleto") {
         setHasCreatedOrder();
-        window.history.replaceState(
-          null,
-          "",
-          `/checkout/confirmacao?attempt=${encodeURIComponent(result.checkoutAttemptId)}`,
-        );
-        setPixResult(result);
-        return;
-      }
-
-      if (result.method === "inter_boleto") {
-        setHasCreatedOrder();
-        window.history.replaceState(
-          null,
-          "",
-          `/checkout/confirmacao?attempt=${encodeURIComponent(result.checkoutAttemptId)}`,
-        );
-        setBoletoResult(result);
+        navigate(result.confirmationUrl);
         return;
       }
 
@@ -296,15 +283,16 @@ export function CheckoutForm({
     }
   };
 
-  const addressReady =
-    Boolean(cart) &&
-    (!cart?.needsShipping ||
-      (!addressNeedsUpdate &&
-        cart.hasCalculatedShipping &&
-        cart.shippingPackages.length > 0 &&
-        cart.shippingPackages.every((shippingPackage) =>
-          shippingPackage.rates.some((rate) => rate.selected),
-        )));
+  const addressReady = Boolean(cart) && canAdvanceCheckoutAddress({
+    needsShipping: cart?.needsShipping ?? true,
+    addressComplete: isAddressComplete(activeAddress),
+    customerSynced,
+    hasCalculatedShipping: cart?.hasCalculatedShipping ?? false,
+    hasSelectedShippingRate: hasSelectedShippingRate(
+      cart?.shippingPackages ?? [],
+    ),
+    isUpdating: isCheckoutUpdating,
+  });
 
   const focusFirstError = (errors: FieldErrors<CheckoutFormValues>) => {
     setStatusMessage("Revise os campos destacados para continuar.");
@@ -356,36 +344,6 @@ export function CheckoutForm({
     setStatusMessage("");
     setCurrentStep("payment");
   };
-
-  if (pixResult) {
-    return (
-      <PixPaymentResult
-        result={pixResult}
-        onPaid={() =>
-          navigate(
-            `/checkout/confirmacao?provider=inter_pix&reference=${encodeURIComponent(pixResult.txid)}`,
-          )
-        }
-        onExpired={() => {
-          setPixResult(null);
-          setStatusMessage("O Pix anterior expirou. Gere um novo código para continuar.");
-        }}
-      />
-    );
-  }
-
-  if (boletoResult) {
-    return (
-      <BoletoPaymentResult
-        result={boletoResult}
-        onPaid={() =>
-          navigate(
-            `/checkout/confirmacao?provider=inter_boleto&reference=${encodeURIComponent(boletoResult.requestCode)}`,
-          )
-        }
-      />
-    );
-  }
 
   const profileState: CheckoutStepState =
     currentStep === "profile" ? "active" : "done";
