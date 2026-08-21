@@ -30,12 +30,7 @@ export function CheckoutStepCard({
   onEdit,
   children,
 }: CheckoutStepCardProps) {
-  const borderClass =
-    state === "done"
-      ? "border-emerald-300"
-      : state === "upcoming"
-        ? "border-black/25"
-        : "border-black";
+  const borderClass = "border-blue-200";
   // No mobile só a etapa ativa fica visível — voltar para uma etapa
   // concluída é feito pelo CheckoutMobileStepper no topo, então o resumo
   // "done" aqui seria redundante; etapas futuras também ficam escondidas
@@ -47,7 +42,7 @@ export function CheckoutStepCard({
     return (
       <section
         className={clsx(
-          "overflow-hidden rounded-xl border bg-white shadow-sm",
+          "overflow-hidden rounded-xl border bg-white shadow-[0_8px_24px_rgba(59,130,246,0.10)]",
           borderClass,
           visibilityClass,
         )}
@@ -56,14 +51,14 @@ export function CheckoutStepCard({
           type="button"
           onClick={onEdit}
           aria-label={`Editar ${title}`}
-          className="flex w-full flex-col items-start gap-3 p-4 text-left transition-colors hover:bg-emerald-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset sm:p-6"
+          className="flex w-full flex-col items-start gap-3 p-5 text-left transition-colors hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
         >
           <span className="flex items-center gap-3">
             <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0c2d72] text-sm font-bold text-white"
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-black text-xs font-bold text-white"
               aria-hidden="true"
             >
-              <Check size={16} />
+              <Check size={13} />
             </span>
             <h2 className="text-base font-bold text-black">{title}</h2>
           </span>
@@ -80,17 +75,17 @@ export function CheckoutStepCard({
   return (
     <section
       className={clsx(
-        "rounded-xl border bg-white p-4 shadow-sm sm:p-6",
+        "rounded-xl border bg-white p-5 shadow-[0_8px_24px_rgba(59,130,246,0.10)]",
         borderClass,
         visibilityClass,
       )}
       aria-current={state === "active" ? "step" : undefined}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <span
           className={clsx(
-            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white",
-            state === "upcoming" ? "bg-slate-300" : "bg-[#0c2d72]",
+            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white",
+            state === "upcoming" ? "bg-blue-200" : "bg-black",
           )}
           aria-hidden="true"
         >

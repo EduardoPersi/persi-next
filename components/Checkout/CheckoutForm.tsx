@@ -409,7 +409,7 @@ export function CheckoutForm({
         noValidate
         // eslint-disable-next-line react-hooks/refs -- cardFieldsRef só é lido dentro do callback de submit do react-hook-form, disparado por um evento real de submit, nunca durante a renderização.
         onSubmit={methods.handleSubmit(submitPayment, focusFirstError)}
-        className="grid gap-5 lg:grid-cols-2 lg:items-start"
+        className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start"
       >
         <CheckoutMobileStepper
           currentStep={currentStep}

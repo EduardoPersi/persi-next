@@ -64,6 +64,7 @@ export default async function CheckoutPage() {
             <CheckoutPageClient
               initialProfile={profile}
               initialAddresses={addresses}
+              initialGuestEmail={session?.customer.email}
               capabilities={capabilities}
             />
           ) : (

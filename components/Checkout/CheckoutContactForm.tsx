@@ -20,18 +20,7 @@ export function CheckoutContactForm() {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <div className="sm:col-span-2">
-        <CheckoutField
-          id="checkout-email"
-          label="E-mail"
-          required
-          registration={register("contact.email")}
-          error={errors.contact?.email?.message}
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-        />
-      </div>
+      <input type="hidden" {...register("contact.email")} />
       <CheckoutField
         id="checkout-first-name"
         label="Nome"

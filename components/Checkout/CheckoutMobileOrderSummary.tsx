@@ -47,7 +47,7 @@ export function CheckoutMobileOrderSummary({
   const finalTotal = priceTotal - paymentDiscount;
 
   return (
-    <div className="rounded-xl border border-black bg-white lg:hidden">
+    <div className="rounded-xl border border-blue-200 bg-white shadow-[0_8px_24px_rgba(59,130,246,0.10)] lg:hidden">
       <button
         type="button"
         onClick={() => setIsExpanded((value) => !value)}
