@@ -32,6 +32,18 @@ $checks += array(
 	'OTP é uso único' => str_contains( $checkout, '$this->clear_code( $user->ID )' ),
 	'senha usa wp_signon' => str_contains( $checkout, 'wp_signon' ),
 	'sem segredo em log de checkout' => ! str_contains( $checkout, 'error_log' ),
+	'vetor HMAC Next e PHP' => hash_hmac(
+		'sha256',
+		implode( "\n", array(
+			'1724241600',
+			'123e4567-e89b-12d3-a456-426614174000',
+			'POST',
+			'/persi-headless/v1/checkout-auth/identify',
+			str_repeat( 'f', 64 ),
+			'{"email":"novo@example.com"}',
+		) ),
+		str_repeat( 's', 32 )
+	) === '15e5dd9e3725db9a7f6c8de7faf2774527db3dd862eadef4efeb8d64621f2256',
 );
 $failures = 0;
 foreach ( $checks as $name => $passed ) { echo ( $passed ? 'PASS ' : 'FAIL ' ) . $name . "\n"; if ( ! $passed ) ++$failures; }

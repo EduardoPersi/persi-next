@@ -25,6 +25,7 @@ final class Persi_Headless_Checkout_Auth {
 
 	public function register_routes() {
 		$routes = array(
+			'/checkout-auth/health'       => 'health',
 			'/checkout-auth/identify'     => 'identify',
 			'/checkout-auth/password'     => 'password',
 			'/checkout-auth/code/request' => 'request_code',
@@ -37,6 +38,17 @@ final class Persi_Headless_Checkout_Auth {
 				'permission_callback' => array( $this->authenticator, 'authorize' ),
 			) );
 		}
+	}
+
+	public function health( WP_REST_Request $request ) {
+		return $this->response( array(
+			'configured' => true,
+			'hmac_verified' => true,
+			'plugin_version' => defined( 'PERSI_HEADLESS_VERSION' ) ? PERSI_HEADLESS_VERSION : '',
+			'code_ttl_minutes' => $this->code_ttl_minutes(),
+			'code_max_attempts' => self::CODE_MAX_ATTEMPTS,
+			'code_cooldown_seconds' => self::CODE_COOLDOWN_SECONDS,
+		) );
 	}
 
 	public function identify( WP_REST_Request $request ) {

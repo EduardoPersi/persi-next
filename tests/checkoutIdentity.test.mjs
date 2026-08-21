@@ -7,7 +7,11 @@ import {
   normalizeCheckoutEmail,
   parseCheckoutIdentityPayload,
 } from "../lib/checkout-auth/validation.ts";
-import { requestCheckoutIdentity } from "../services/checkout/checkoutIdentity.ts";
+import {
+  CheckoutIdentityServiceError,
+  createCheckoutIdentitySignature,
+  requestCheckoutIdentity,
+} from "../services/checkout/checkoutIdentity.ts";
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -65,6 +69,81 @@ test("proxy assina a rota REST exata sem expor o segredo", async () => {
   }
 });
 
+test("vetor HMAC determinístico coincide com o teste PHP", () => {
+  assert.equal(
+    createCheckoutIdentitySignature({
+      secret: "s".repeat(32),
+      timestamp: "1724241600",
+      nonce: "123e4567-e89b-12d3-a456-426614174000",
+      method: "POST",
+      restRoute: "/persi-headless/v1/checkout-auth/identify",
+      clientFingerprint: "f".repeat(64),
+      rawBody: '{"email":"novo@example.com"}',
+    }),
+    "15e5dd9e3725db9a7f6c8de7faf2774527db3dd862eadef4efeb8d64621f2256",
+  );
+});
+
+test("serviço distingue configuração, timeout e rede", async () => {
+  const previousUrl = process.env.WORDPRESS_URL;
+  const previousSecret = process.env.PERSI_HEADLESS_CHECKOUT_AUTH_SECRET;
+  try {
+    process.env.WORDPRESS_URL = "https://loja.example";
+    delete process.env.PERSI_HEADLESS_CHECKOUT_AUTH_SECRET;
+    await assert.rejects(
+      requestCheckoutIdentity("/checkout-auth/identify", "{}", "f".repeat(64)),
+      (error) => error instanceof CheckoutIdentityServiceError && error.category === "configuration",
+    );
+    process.env.PERSI_HEADLESS_CHECKOUT_AUTH_SECRET = "s".repeat(32);
+    await assert.rejects(
+      requestCheckoutIdentity("/checkout-auth/identify", "{}", "f".repeat(64), async () => {
+        throw new DOMException("timeout", "TimeoutError");
+      }),
+      (error) => error instanceof CheckoutIdentityServiceError && error.category === "timeout",
+    );
+    await assert.rejects(
+      requestCheckoutIdentity("/checkout-auth/identify", "{}", "f".repeat(64), async () => {
+        throw new TypeError("network");
+      }),
+      (error) => error instanceof CheckoutIdentityServiceError && error.category === "network",
+    );
+  } finally {
+    if (previousUrl === undefined) delete process.env.WORDPRESS_URL;
+    else process.env.WORDPRESS_URL = previousUrl;
+    if (previousSecret === undefined) delete process.env.PERSI_HEADLESS_CHECKOUT_AUTH_SECRET;
+    else process.env.PERSI_HEADLESS_CHECKOUT_AUTH_SECRET = previousSecret;
+  }
+});
+
+test("serviço preserva status 200, 301, 401, 403 e 500 sem seguir redirect", async () => {
+  const previousUrl = process.env.WORDPRESS_URL;
+  const previousSecret = process.env.PERSI_HEADLESS_CHECKOUT_AUTH_SECRET;
+  process.env.WORDPRESS_URL = "https://loja.example";
+  process.env.PERSI_HEADLESS_CHECKOUT_AUTH_SECRET = "s".repeat(32);
+  try {
+    const nonces = new Set();
+    for (const status of [200, 301, 401, 403, 500]) {
+      const result = await requestCheckoutIdentity(
+        "/checkout-auth/identify",
+        "{}",
+        "f".repeat(64),
+        async (_url, init) => {
+          assert.equal(init?.redirect, "manual");
+          nonces.add(new Headers(init?.headers).get("x-persi-nonce"));
+          return new Response("{}", { status });
+        },
+      );
+      assert.equal(result.status, status);
+    }
+    assert.equal(nonces.size, 5);
+  } finally {
+    if (previousUrl === undefined) delete process.env.WORDPRESS_URL;
+    else process.env.WORDPRESS_URL = previousUrl;
+    if (previousSecret === undefined) delete process.env.PERSI_HEADLESS_CHECKOUT_AUTH_SECRET;
+    else process.env.PERSI_HEADLESS_CHECKOUT_AUTH_SECRET = previousSecret;
+  }
+});
+
 test("checkout anônimo monta identidade antes do formulário", () => {
   const page = read("app/checkout/page.tsx");
   const gate = read("components/Checkout/CheckoutIdentityGate.tsx");
@@ -74,6 +153,9 @@ test("checkout anônimo monta identidade antes do formulário", () => {
   assert.match(gate, /initialGuestEmail=\{email\}/);
   assert.match(gate, /sessionStorage/);
   assert.doesNotMatch(gate, /localStorage/);
+  assert.match(gate, /finally \{\s*setLoading\(false\)/);
+  assert.match(gate, /email=\{email\}/);
+  assert.match(read("components/Checkout/CheckoutEmailStep.tsx"), /Tentar novamente/);
 });
 
 test("OTP visual aceita colagem, navegação e one-time-code", () => {
@@ -97,6 +179,9 @@ test("plugin protege endpoints e armazena somente hash do OTP", () => {
   assert.match(controller, /wp_set_auth_cookie/);
   assert.match(authenticator, /hash_equals/);
   assert.match(authenticator, /persi_checkout_auth_nonce_/);
+  assert.match(authenticator, /strlen\( \$secret \) < 32/);
+  assert.match(authenticator, /hash_equals\( strtolower\( \$key_id \), \$received_key \)/);
+  assert.match(authenticator, /abs\( time\(\) - \(int\) \$timestamp \) > self::WINDOW_SECONDS/);
   assert.doesNotMatch(controller, /error_log/);
 });
 

@@ -49,6 +49,7 @@ Next same-origin:
 WordPress, somente HMAC:
 
 - `POST /wp-json/persi-headless/v1/checkout-auth/identify`
+- `POST /wp-json/persi-headless/v1/checkout-auth/health` (somente HMAC, sem consultar usuários)
 - `POST /wp-json/persi-headless/v1/checkout-auth/password`
 - `POST /wp-json/persi-headless/v1/checkout-auth/code/request`
 - `POST /wp-json/persi-headless/v1/checkout-auth/code/verify`

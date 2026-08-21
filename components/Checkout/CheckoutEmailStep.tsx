@@ -53,7 +53,7 @@ export function CheckoutEmailStep({
             className="min-h-11 min-w-0 flex-1 rounded-xl px-4 text-slate-900 outline-none focus:ring-2 focus:ring-[#0c2d72]/25"
           />
           <Button type="submit" disabled={loading} className="sm:min-w-28">
-            {loading ? "Verificando..." : "Avançar"}
+            {loading ? "Verificando..." : error ? "Tentar novamente" : "Avançar"}
           </Button>
         </div>
       </form>

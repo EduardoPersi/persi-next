@@ -40,6 +40,7 @@ GET /wp-json/persi/v1/newsletter/confirm/{token}
 GET /wp-json/persi/v1/newsletter/unsubscribe/{token}
 POST /wp-json/persi/v1/contact/submit
 POST /wp-json/persi-headless/v1/checkout-auth/identify
+POST /wp-json/persi-headless/v1/checkout-auth/health
 POST /wp-json/persi-headless/v1/checkout-auth/password
 POST /wp-json/persi-headless/v1/checkout-auth/code/request
 POST /wp-json/persi-headless/v1/checkout-auth/code/verify

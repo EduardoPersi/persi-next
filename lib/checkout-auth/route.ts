@@ -11,6 +11,8 @@ import {
 } from "./validation";
 import { getAccountClientConfig } from "@/services/account/client";
 import {
+  CheckoutIdentityServiceError,
+  getCheckoutIdentityDiagnostics,
   requestCheckoutIdentity,
   type CheckoutIdentityRoute,
 } from "@/services/checkout/checkoutIdentity";
@@ -22,6 +24,41 @@ const ROUTES: Record<CheckoutIdentityAction, CheckoutIdentityRoute> = {
   "code-request": "/checkout-auth/code/request",
   "code-verify": "/checkout-auth/code/verify",
 };
+
+function httpCategory(status: number, code?: unknown): string {
+  if (code === "persi_checkout_auth_expired") return "hmac_timestamp_expired";
+  if (code === "persi_checkout_auth_replay") return "hmac_nonce_reused";
+  if (code === "persi_checkout_auth_signature") return "hmac_signature_invalid";
+  if (code === "persi_checkout_auth_unauthorized") return "hmac_configuration_or_key_invalid";
+  if (code === "wp_die" && status >= 500) return "wordpress_php_or_database_error";
+  if (status >= 300 && status < 400) return "wordpress_redirect";
+  if (status === 401) return "wordpress_unauthorized";
+  if (status === 403) return "wordpress_forbidden";
+  if (status === 404) return "wordpress_route_missing";
+  if (status >= 500) return "wordpress_server_error";
+  return "wordpress_http_error";
+}
+
+function logFailure(input: {
+  action: CheckoutIdentityAction;
+  category: string;
+  durationMs?: number;
+  status?: number;
+}) {
+  const diagnostics = getCheckoutIdentityDiagnostics();
+  console.error("[checkout-identity]", {
+    action: input.action,
+    endpoint: diagnostics.endpointOrigin
+      ? `${diagnostics.endpointOrigin}/wp-json/persi-headless/v1${ROUTES[input.action]}`
+      : "unconfigured",
+    status: input.status,
+    durationMs: input.durationMs,
+    category: input.category,
+    wordpressUrlConfigured: diagnostics.wordpressUrlConfigured,
+    secretConfigured: diagnostics.secretConfigured,
+    keyId: diagnostics.keyId,
+  });
+}
 
 function json(body: unknown, status = 200, retryAfter?: string) {
   const response = NextResponse.json(body, {
@@ -58,17 +95,27 @@ export async function handleCheckoutIdentityRequest(
     const upstreamBody = upstream.body as Record<string, unknown> | null;
 
     if (upstream.status < 200 || upstream.status >= 300) {
+      logFailure({
+        action,
+        category: httpCategory(upstream.status, upstreamBody?.code),
+        durationMs: upstream.durationMs,
+        status: upstream.status,
+      });
+      const isCredentialFailure =
+        action !== "identify" && [400, 401, 409, 429].includes(upstream.status);
       return json(
         {
-          message: typeof upstreamBody?.message === "string"
+          message: isCredentialFailure && typeof upstreamBody?.message === "string"
             ? upstreamBody.message
-            : "Não foi possível continuar agora.",
-          code: typeof upstreamBody?.code === "string" ? upstreamBody.code : undefined,
+            : upstream.status === 429
+              ? "Muitas tentativas. Aguarde e tente novamente."
+              : "Não conseguimos verificar seu e-mail agora. Tente novamente em alguns instantes.",
+          code: isCredentialFailure && typeof upstreamBody?.code === "string"
+            ? upstreamBody.code
+            : undefined,
           retryAfter: Number(upstream.retryAfter ?? upstreamBody?.retry_after ?? 0) || undefined,
         },
-        [400, 401, 404, 409, 429, 503].includes(upstream.status)
-          ? upstream.status
-          : 502,
+        upstream.status === 429 ? 429 : isCredentialFailure ? upstream.status : 503,
         upstream.retryAfter,
       );
     }
@@ -106,6 +153,23 @@ export async function handleCheckoutIdentityRequest(
     if (error instanceof CheckoutIdentityValidationError) {
       return json({ message: error.message }, 400);
     }
-    return json({ message: "Não foi possível acessar o serviço de identificação." }, 503);
+    const category = error instanceof CheckoutIdentityServiceError
+      ? error.category
+      : "next_internal_error";
+    logFailure({
+      action,
+      category,
+      durationMs: error instanceof CheckoutIdentityServiceError
+        ? error.durationMs
+        : undefined,
+    });
+    return json(
+      {
+        message: category === "timeout"
+          ? "A verificação está demorando mais que o esperado. Tente novamente."
+          : "Não conseguimos verificar seu e-mail agora. Tente novamente em alguns instantes.",
+      },
+      category === "timeout" ? 504 : 503,
+    );
   }
 }
