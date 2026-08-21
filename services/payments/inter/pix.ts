@@ -47,6 +47,38 @@ interface InterPixCobResponse {
   pixCopiaECola: string;
 }
 
+export function buildPixChargeRequest(input: CreatePixChargeInput, pixKey: string) {
+  return {
+    path: `/pix/v2/cob/${encodeURIComponent(input.txid)}`,
+    method: "PUT" as const,
+    body: {
+      calendario: { expiracao: PIX_EXPIRATION_SECONDS },
+      devedor: buildPixDevedor(input.payerDocument, input.payerName),
+      valor: { original: input.amount.toFixed(2) },
+      chave: pixKey,
+      solicitacaoPagador: input.description,
+    },
+  };
+}
+
+export function getPixCreationDiagnostics(input: CreatePixChargeInput) {
+  const request = buildPixChargeRequest(input, "[redacted]");
+  const documentDigits = input.payerDocument.replace(/\D/g, "");
+  return {
+    path: request.path,
+    method: request.method,
+    headers: { contentType: "application/json", authorization: "redacted", mtls: true },
+    payload: {
+      expirationSeconds: request.body.calendario.expiracao,
+      debtorType: documentDigits.length === 14 ? "cnpj" : "cpf",
+      debtorNameConfigured: Boolean(input.payerName.trim()),
+      amount: request.body.valor.original,
+      pixKeyConfigured: Boolean(process.env.INTER_PIX_KEY?.trim()),
+      payerRequestConfigured: Boolean(input.description.trim()),
+    },
+  };
+}
+
 function assertPixChargeStatus(value: string): PixChargeStatus {
   const validStatuses: PixChargeStatus[] = [
     "ATIVA",
@@ -99,16 +131,11 @@ export async function createPixCharge(
     );
   }
 
+  const creationRequest = buildPixChargeRequest(input, pixKey);
   const cob = await request<InterPixCobResponse>(
-    `/pix/v2/cob/${encodeURIComponent(input.txid)}`,
-    "PUT",
-    {
-      calendario: { expiracao: PIX_EXPIRATION_SECONDS },
-      devedor: buildPixDevedor(input.payerDocument, input.payerName),
-      valor: { original: input.amount.toFixed(2) },
-      chave: pixKey,
-      solicitacaoPagador: input.description,
-    },
+    creationRequest.path,
+    creationRequest.method,
+    creationRequest.body,
   );
 
   if (!cob.pixCopiaECola) {

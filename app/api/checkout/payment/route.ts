@@ -15,7 +15,9 @@ import { reserveCheckoutAttempt, transitionCheckoutAttempt } from "@/lib/commerc
 import { moneyToNumber } from "@/lib/formatting/money";
 import { paymentInitiationSchema } from "@/lib/validation/payments";
 import { interPaymentGateway } from "@/services/payments/gateway";
+import { getBoletoCreationDiagnostics } from "@/services/payments/inter/boleto";
 import { InterPaymentError } from "@/services/payments/inter/errors";
+import { getPixCreationDiagnostics } from "@/services/payments/inter/pix";
 import { createCardCharge } from "@/services/payments/pagbank/charge";
 import { PagBankPaymentError } from "@/services/payments/pagbank/errors";
 import { getServerAccountSession } from "@/services/account/serverSession";
@@ -349,11 +351,29 @@ export async function POST(request: Request) {
     const payerName = `${billingAddress.firstName} ${billingAddress.lastName}`.trim();
 
     if (isAuthorizedStagingDryRun(request)) {
+      const providerRequest = input.method === "inter_pix"
+        ? getPixCreationDiagnostics({
+            txid: input.idempotencyKey.replace(/-/g, ""),
+            amount,
+            payerDocument: input.document,
+            payerName,
+            description: `Pedido ${order.id}`,
+          })
+        : input.method === "inter_boleto"
+          ? getBoletoCreationDiagnostics({
+              seuNumero: String(order.id),
+              amount,
+              payerDocument: input.document,
+              payerName,
+              billingAddress,
+            })
+          : null;
       return createPrivateResponse(
         {
           code: "STAGING_STOPPED_BEFORE_GATEWAY",
           checkoutAttemptId: input.idempotencyKey,
           orderId: order.id,
+          providerRequest,
         },
         202,
         activeCartToken,

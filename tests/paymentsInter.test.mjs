@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildPixChargeRequest,
   createPixCharge,
+  getPixCreationDiagnostics,
   getPixChargeStatus,
   isPixChargeExpired,
 } from "../services/payments/inter/pix.ts";
 import {
+  buildBoletoChargeRequest,
   createBoletoCharge,
+  getBoletoCreationDiagnostics,
   getBoletoChargeStatus,
   getBoletoDueDate,
   getBoletoPdfBase64,
@@ -28,6 +32,83 @@ const billingAddress = {
   postcode: "13201000",
   country: "BR",
 };
+
+test("builder Pix preserva exatamente o contrato histórico funcional", () => {
+  const request = buildPixChargeRequest({
+    txid: "1234567890abcdef1234567890abcdef",
+    amount: 57.55,
+    payerDocument: "529.982.247-25",
+    payerName: "Maria Silva",
+    description: "Pedido 123",
+  }, "pix-key");
+
+  assert.deepEqual(request, {
+    path: "/pix/v2/cob/1234567890abcdef1234567890abcdef",
+    method: "PUT",
+    body: {
+      calendario: { expiracao: 3600 },
+      devedor: { cpf: "52998224725", nome: "Maria Silva" },
+      valor: { original: "57.55" },
+      chave: "pix-key",
+      solicitacaoPagador: "Pedido 123",
+    },
+  });
+});
+
+test("builder boleto preserva endpoint v3, CEP numérico e payload histórico", () => {
+  const request = buildBoletoChargeRequest({
+    seuNumero: "123",
+    amount: 57.55,
+    payerDocument: "529.982.247-25",
+    payerName: "Maria Silva",
+    billingAddress: { ...billingAddress, postcode: "13201-000" },
+  }, "2026-08-23");
+
+  assert.deepEqual(request, {
+    path: "/cobranca/v3/cobrancas",
+    method: "POST",
+    body: {
+      seuNumero: "123",
+      valorNominal: 57.55,
+      dataVencimento: "2026-08-23",
+      numDiasAgenda: 60,
+      pagador: {
+        cpfCnpj: "52998224725",
+        tipoPessoa: "FISICA",
+        nome: "Maria Silva",
+        endereco: billingAddress.address1,
+        cidade: billingAddress.city,
+        uf: "SP",
+        cep: "13201000",
+      },
+    },
+  });
+});
+
+test("diagnóstico de criação não expõe documento, chave Pix ou endereço", () => {
+  process.env.INTER_PIX_KEY = "pix-key-real-nao-deve-aparecer";
+  const pix = getPixCreationDiagnostics({
+    txid: "1234567890abcdef1234567890abcdef",
+    amount: 57.55,
+    payerDocument: "529.982.247-25",
+    payerName: "Maria Silva",
+    description: "Pedido 123",
+  });
+  const boleto = getBoletoCreationDiagnostics({
+    seuNumero: "123",
+    amount: 57.55,
+    payerDocument: "529.982.247-25",
+    payerName: "Maria Silva",
+    billingAddress,
+  });
+  const serialized = JSON.stringify({ pix, boleto });
+
+  assert.doesNotMatch(serialized, /52998224725|pix-key-real-nao-deve-aparecer|Rua do/);
+  assert.equal(pix.payload.amount, "57.55");
+  assert.equal(boleto.payload.amount, "57.55");
+  assert.equal(pix.headers.authorization, "redacted");
+  assert.equal(boleto.headers.authorization, "redacted");
+});
 
 test("createPixCharge monta cobrança a partir do cob e gera a imagem do QR Code a partir do copia e cola, sempre com expiração de 3600s", async () => {
   process.env.INTER_PIX_KEY = "chave-pix-teste";

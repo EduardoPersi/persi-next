@@ -95,6 +95,51 @@ function buildPagadorDocument(document: string): { cpfCnpj: string; tipoPessoa: 
   };
 }
 
+export function buildBoletoChargeRequest(
+  input: CreateBoletoInput,
+  dueDate: string = getBoletoDueDate(),
+) {
+  return {
+    path: "/cobranca/v3/cobrancas",
+    method: "POST" as const,
+    body: {
+      seuNumero: input.seuNumero,
+      valorNominal: Number(input.amount.toFixed(2)),
+      dataVencimento: dueDate,
+      numDiasAgenda: 60,
+      pagador: {
+        ...buildPagadorDocument(input.payerDocument),
+        nome: input.payerName,
+        endereco: input.billingAddress.address1,
+        cidade: input.billingAddress.city,
+        uf: input.billingAddress.state,
+        cep: input.billingAddress.postcode.replace(/\D/g, ""),
+      },
+    },
+  };
+}
+
+export function getBoletoCreationDiagnostics(input: CreateBoletoInput) {
+  const request = buildBoletoChargeRequest(input);
+  return {
+    path: request.path,
+    method: request.method,
+    headers: { contentType: "application/json", authorization: "redacted", mtls: true },
+    payload: {
+      merchantReferenceConfigured: Boolean(input.seuNumero),
+      amount: request.body.valorNominal.toFixed(2),
+      dueDateConfigured: Boolean(request.body.dataVencimento),
+      scheduleDays: request.body.numDiasAgenda,
+      payerType: request.body.pagador.tipoPessoa,
+      payerNameConfigured: Boolean(request.body.pagador.nome.trim()),
+      addressConfigured: Boolean(request.body.pagador.endereco.trim()),
+      cityConfigured: Boolean(request.body.pagador.cidade.trim()),
+      stateConfigured: /^[A-Za-z]{2}$/.test(request.body.pagador.uf),
+      postcodeConfigured: /^\d{8}$/.test(request.body.pagador.cep),
+    },
+  };
+}
+
 // A emissão é assíncrona no Inter: a cobrança nasce "EM_PROCESSAMENTO" e só
 // alguns segundos depois passa a ter linha digitável/código de barras. Uma
 // única reconsulta logo após o POST (comportamento antigo) frequentemente
@@ -123,23 +168,11 @@ export async function createBoletoCharge(
   const pollAttempts = options.pollAttempts ?? BOLETO_STATUS_POLL_ATTEMPTS;
   const pollIntervalMs = options.pollIntervalMs ?? BOLETO_STATUS_POLL_INTERVAL_MS;
 
+  const creationRequest = buildBoletoChargeRequest(input, dueDate);
   const created = await request<InterBoletoCreateResponse>(
-    "/cobranca/v3/cobrancas",
-    "POST",
-    {
-      seuNumero: input.seuNumero,
-      valorNominal: Number(input.amount.toFixed(2)),
-      dataVencimento: dueDate,
-      numDiasAgenda: 60,
-      pagador: {
-        ...buildPagadorDocument(input.payerDocument),
-        nome: input.payerName,
-        endereco: input.billingAddress.address1,
-        cidade: input.billingAddress.city,
-        uf: input.billingAddress.state,
-        cep: input.billingAddress.postcode.replace(/\D/g, ""),
-      },
-    },
+    creationRequest.path,
+    creationRequest.method,
+    creationRequest.body,
   );
 
   if (!created.codigoSolicitacao) {

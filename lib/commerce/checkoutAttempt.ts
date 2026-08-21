@@ -37,6 +37,14 @@ export interface CheckoutAttemptHealth {
   expectedDatabaseVersion: string;
 }
 
+interface CheckoutAttemptHealthResponse {
+  healthy: boolean;
+  table_exists: boolean;
+  unique_checkout_attempt_id: boolean;
+  database_version: string;
+  expected_database_version: string;
+}
+
 async function callAttemptEndpoint<T>(payload: object, fetcher: typeof fetch = fetch): Promise<T> {
   const config = getCheckoutTransferConfig();
   const endpoint = new URL(config.endpoint);
@@ -71,7 +79,14 @@ export function reserveCheckoutAttempt(checkoutAttemptId: string, paymentMethod:
 }
 
 export function healthCheckoutAttempt() {
-  return callAttemptEndpoint<CheckoutAttemptHealth>({ action: "health" });
+  return callAttemptEndpoint<CheckoutAttemptHealthResponse>({ action: "health" })
+    .then((health) => ({
+      healthy: health.healthy,
+      tableExists: health.table_exists,
+      uniqueCheckoutAttemptId: health.unique_checkout_attempt_id,
+      databaseVersion: health.database_version,
+      expectedDatabaseVersion: health.expected_database_version,
+    }));
 }
 
 export function getCheckoutAttempt(checkoutAttemptId: string) {

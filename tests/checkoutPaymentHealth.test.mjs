@@ -23,3 +23,12 @@ test("health valida tentativa, OAuth, mTLS e leitura Pix e boleto sem criar cobr
   assert.match(source, /getBoletoChargeStatus/);
   assert.doesNotMatch(source, /createPixCharge|createBoletoCharge/);
 });
+
+test("cliente converte o contrato snake_case do health WordPress", () => {
+  const source = read("lib/commerce/checkoutAttempt.ts");
+  assert.match(source, /table_exists/);
+  assert.match(source, /unique_checkout_attempt_id/);
+  assert.match(source, /database_version/);
+  assert.match(source, /expected_database_version/);
+  assert.match(source, /tableExists: health\.table_exists/);
+});
