@@ -29,6 +29,14 @@ export interface AttemptReservation {
   attempt: CheckoutAttempt;
 }
 
+export interface CheckoutAttemptHealth {
+  healthy: boolean;
+  tableExists: boolean;
+  uniqueCheckoutAttemptId: boolean;
+  databaseVersion: string;
+  expectedDatabaseVersion: string;
+}
+
 async function callAttemptEndpoint<T>(payload: object, fetcher: typeof fetch = fetch): Promise<T> {
   const config = getCheckoutTransferConfig();
   const endpoint = new URL(config.endpoint);
@@ -60,6 +68,10 @@ async function callAttemptEndpoint<T>(payload: object, fetcher: typeof fetch = f
 
 export function reserveCheckoutAttempt(checkoutAttemptId: string, paymentMethod: string) {
   return callAttemptEndpoint<AttemptReservation>({ action: "reserve", checkout_attempt_id: checkoutAttemptId, payment_method: paymentMethod });
+}
+
+export function healthCheckoutAttempt() {
+  return callAttemptEndpoint<CheckoutAttemptHealth>({ action: "health" });
 }
 
 export function getCheckoutAttempt(checkoutAttemptId: string) {
