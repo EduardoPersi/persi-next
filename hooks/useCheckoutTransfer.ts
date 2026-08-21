@@ -1,34 +1,33 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import {
-  CheckoutTransferRequestGate,
-  requestCheckoutTransfer,
-} from "@/lib/commerce/checkoutTransferClient";
 import type { CheckoutFormValues } from "@/types/checkout";
 
 export function useCheckoutTransfer() {
   const [isPreparingCheckout, setIsPreparingCheckout] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
-  const requestGate = useRef(new CheckoutTransferRequestGate());
+  const isNavigating = useRef(false);
 
   const prepareCheckout = useCallback(
-    async (formValues?: CheckoutFormValues, onBeforeRedirect?: () => void) => {
-      if (!requestGate.current.tryStart()) return;
+    async (_formValues?: CheckoutFormValues, onBeforeRedirect?: () => void) => {
+      if (isNavigating.current) return;
+
+	  isNavigating.current = true;
 
       setIsPreparingCheckout(true);
       setCheckoutError("");
 
       try {
-        const transferUrl = await requestCheckoutTransfer(formValues);
         onBeforeRedirect?.();
-        window.location.assign(transferUrl);
+		// O checkout principal é Next.js. O fluxo híbrido permanece acessível
+		// apenas por /checkout/hybrid para rollback operacional manual.
+		window.location.assign("/checkout");
       } catch {
         setCheckoutError(
           "Não foi possível preparar o checkout. Tente novamente.",
         );
       } finally {
-        requestGate.current.finish();
+		isNavigating.current = false;
         setIsPreparingCheckout(false);
       }
     },

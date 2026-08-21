@@ -7,6 +7,7 @@ const documentSchema = z
   .trim()
   .refine(isValidBrazilianDocument, "CPF ou CNPJ inválido.");
 const customerNoteSchema = z.string().trim().max(500).optional();
+const expectedAmountSchema = z.number().finite().positive().optional();
 
 export const paymentInitiationSchema = z.discriminatedUnion("method", [
   z
@@ -15,6 +16,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
       idempotencyKey: idempotencyKeySchema,
       document: documentSchema,
       customerNote: customerNoteSchema,
+      expectedAmount: expectedAmountSchema,
     })
     .strict(),
   z
@@ -23,6 +25,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
       idempotencyKey: idempotencyKeySchema,
       document: documentSchema,
       customerNote: customerNoteSchema,
+      expectedAmount: expectedAmountSchema,
     })
     .strict(),
   z
@@ -33,6 +36,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
       installments: z.number().int().min(1).max(12),
       holderDocument: documentSchema,
       customerNote: customerNoteSchema,
+      expectedAmount: expectedAmountSchema,
     })
     .strict(),
   z
@@ -42,6 +46,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
       token: z.string().trim().min(1).max(4096),
       holderDocument: documentSchema,
       customerNote: customerNoteSchema,
+      expectedAmount: expectedAmountSchema,
     })
     .strict(),
   z
@@ -51,6 +56,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
       token: z.string().trim().min(1).max(4096),
       holderDocument: documentSchema,
       customerNote: customerNoteSchema,
+      expectedAmount: expectedAmountSchema,
     })
     .strict(),
 ]);

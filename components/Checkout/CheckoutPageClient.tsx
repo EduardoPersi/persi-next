@@ -15,22 +15,31 @@ import {
   CheckoutError,
   CheckoutLoading,
 } from "./CheckoutStates";
+import type { PublicCheckoutCapabilities } from "@/lib/commerce/checkoutConfig";
 
 interface CheckoutPageClientProps {
   initialProfile: CustomerWorkspaceProfile | null;
   initialAddresses: CustomerWorkspaceAddress[];
+  capabilities: PublicCheckoutCapabilities;
 }
 
 export function CheckoutPageClient({
   initialProfile,
   initialAddresses,
+  capabilities,
 }: CheckoutPageClientProps) {
   const { cart, error, isHydrated, isLoading } = useCart();
   // Compartilhado entre o formulário (seletor de pagamento) e o resumo do
   // pedido (coluna lateral no desktop) para que o desconto por forma de
   // pagamento apareça no Total dos dois lugares ao mesmo tempo.
   const [paymentMethod, setPaymentMethod] =
-    useState<CheckoutPaymentMethod>("inter_pix");
+    useState<CheckoutPaymentMethod>(
+      capabilities.pix
+        ? "inter_pix"
+        : capabilities.boleto
+          ? "inter_boleto"
+          : "pagbank_card",
+    );
   // Assim que o pedido é criado, o carrinho é esvaziado (ver
   // CheckoutForm/refreshCart) — sem essa flag, um carrinho com 0 itens faria
   // esta página achar que "o carrinho está vazio" e trocar a tela pela de
@@ -65,6 +74,7 @@ export function CheckoutPageClient({
           onPaymentMethodChange={setPaymentMethod}
           hasCreatedOrder={hasCreatedOrder}
           onOrderCreated={() => setHasCreatedOrder(true)}
+          capabilities={capabilities}
         />
       </div>
       {!hasCreatedOrder ? (

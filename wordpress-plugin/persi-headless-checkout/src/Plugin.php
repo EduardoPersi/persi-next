@@ -3,6 +3,8 @@
 namespace Persi\HeadlessCheckout;
 
 use Persi\HeadlessCheckout\Api\CheckoutTransferController;
+use Persi\HeadlessCheckout\Api\CheckoutAttemptController;
+use Persi\HeadlessCheckout\Checkout\CheckoutAttemptRepository;
 use Persi\HeadlessCheckout\Checkout\CartRestorer;
 use Persi\HeadlessCheckout\Checkout\CheckoutRedirect;
 use Persi\HeadlessCheckout\Checkout\OrderOwnerToken;
@@ -21,6 +23,7 @@ defined( 'ABSPATH' ) || exit;
 
 final class Plugin {
 	public static function boot(): void {
+		add_action( 'admin_init', array( Activator::class, 'maybe_upgrade' ) );
 		if ( ! class_exists( 'WooCommerce' ) ) {
 			add_action( 'admin_notices', array( self::class, 'render_woocommerce_notice' ) );
 			return;
@@ -52,6 +55,10 @@ final class Plugin {
 			$service,
 			$logger
 		);
+		$attempt_controller = new CheckoutAttemptController(
+			$authenticator,
+			new CheckoutAttemptRepository( $GLOBALS['wpdb'] )
+		);
 		$redirect       = new CheckoutRedirect(
 			$repository,
 			$validator,
@@ -65,6 +72,7 @@ final class Plugin {
 		$diagnostics    = new RequestDiagnostics();
 
 		add_action( 'rest_api_init', array( $controller, 'register_routes' ) );
+		add_action( 'rest_api_init', array( $attempt_controller, 'register_routes' ) );
 		$redirect->register();
 		$owner_token->register();
 		$thank_you->register();

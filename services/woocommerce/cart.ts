@@ -579,6 +579,22 @@ export async function removeCartItem(key: string, cartToken: string) {
   });
 }
 
+export async function applyCartCoupon(code: string, cartToken: string) {
+  return cartRequest("cart/apply-coupon", {
+    method: "POST",
+    cartToken,
+    body: { code },
+  });
+}
+
+export async function removeCartCoupon(code: string, cartToken: string) {
+  return cartRequest("cart/remove-coupon", {
+    method: "POST",
+    cartToken,
+    body: { code },
+  });
+}
+
 export async function updateCartCustomer(
   input: CheckoutCustomerPayload,
   cartToken: string,

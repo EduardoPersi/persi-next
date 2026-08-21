@@ -64,6 +64,7 @@ export function BoletoPaymentResult({ result, onPaid }: BoletoPaymentResultProps
         onPaid();
         return "stop";
       }
+      if (body.category === "failed") return "stop";
     },
   });
 

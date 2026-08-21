@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Lock } from "lucide-react";
 import {
   FormProvider,
@@ -12,8 +12,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/UI/Button";
 import { useBeforeUnloadWarning } from "@/hooks/useBeforeUnloadWarning";
 import { useCart } from "@/hooks/useCart";
-import { useCheckoutTransfer } from "@/hooks/useCheckoutTransfer";
 import { usePostcodeAddressLookup } from "@/hooks/usePostcodeAddressLookup";
+import { useRouteTransition } from "@/hooks/useRouteTransition";
 import { useTabAttentionTitle } from "@/hooks/useTabAttentionTitle";
 import { applyAccountPrefill } from "@/lib/commerce/checkoutAccountPrefill";
 import { getFirstCheckoutErrorPath } from "@/lib/commerce/checkout";
@@ -21,6 +21,7 @@ import {
   formatPostcode,
   readLastShippingPostcode,
 } from "@/lib/commerce/shippingCalculator";
+import { moneyToNumber } from "@/lib/formatting/money";
 import type {
   CustomerWorkspaceAddress,
   CustomerWorkspaceProfile,
@@ -31,15 +32,25 @@ import {
 } from "@/lib/formatting/personalData";
 import { checkoutDefaultValues, checkoutSchema } from "@/lib/validation/checkout";
 import type { CheckoutFormValues } from "@/types/checkout";
+import type {
+  BoletoPaymentResult as BoletoPaymentResultData,
+  PixPaymentResult as PixPaymentResultData,
+} from "@/types/payments";
 import { CheckoutAddresses } from "./CheckoutAddresses";
+import { BoletoPaymentResult } from "./BoletoPaymentResult";
 import { CheckoutContactForm } from "./CheckoutContactForm";
+import { CheckoutCoupon } from "./CheckoutCoupon";
 import { CheckoutMobileOrderSummary } from "./CheckoutMobileOrderSummary";
 import { CheckoutMobileStepper } from "./CheckoutMobileStepper";
 import { CheckoutOrderNote } from "./CheckoutOrderNote";
+import { CheckoutPayment } from "./CheckoutPayment";
 import { CheckoutShippingPlaceholder } from "./CheckoutShippingPlaceholder";
 import { CheckoutStepCard, type CheckoutStepState } from "./CheckoutStepCard";
 import { CheckoutTerms } from "./CheckoutTerms";
-import type { CheckoutPaymentMethod } from "./paymentMethod";
+import { createIdempotencyKey, type CheckoutPaymentMethod } from "./paymentMethod";
+import { PixPaymentResult } from "./PixPaymentResult";
+import type { PaymentCardFieldsHandle } from "./PaymentCardFields";
+import type { PublicCheckoutCapabilities } from "@/lib/commerce/checkoutConfig";
 
 export type CheckoutStep = "profile" | "address" | "payment";
 
@@ -81,20 +92,28 @@ interface CheckoutFormProps {
   onPaymentMethodChange: (method: CheckoutPaymentMethod) => void;
   hasCreatedOrder: boolean;
   onOrderCreated: () => void;
+  capabilities: PublicCheckoutCapabilities;
 }
 
 export function CheckoutForm({
   initialProfile,
   initialAddresses,
   paymentMethod,
+  onPaymentMethodChange: setPaymentMethod,
   hasCreatedOrder,
   onOrderCreated: setHasCreatedOrder,
+  capabilities,
 }: CheckoutFormProps) {
-  const { cart, isCheckoutUpdating } = useCart();
-  const { checkoutError, isPreparingCheckout, prepareCheckout } =
-    useCheckoutTransfer();
+  const { cart, isCheckoutUpdating, refreshCart } = useCart();
+  const { navigate } = useRouteTransition();
   const [statusMessage, setStatusMessage] = useState("");
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+  const [installments, setInstallments] = useState(1);
+  const [pixResult, setPixResult] = useState<PixPaymentResultData | null>(null);
+  const [boletoResult, setBoletoResult] = useState<BoletoPaymentResultData | null>(null);
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("profile");
+  const cardFieldsRef = useRef<PaymentCardFieldsHandle>(null);
+  const checkoutAttemptIdRef = useRef(createIdempotencyKey());
   const lookupPostcodeAddress = usePostcodeAddressLookup();
 
   // Dados salvos no cadastro do cliente logado têm prioridade sobre
@@ -180,13 +199,94 @@ export function CheckoutForm({
   useBeforeUnloadWarning(hasUnsavedProgress && !hasCreatedOrder);
   useTabAttentionTitle(!hasCreatedOrder);
 
-  const goToPayment = async (values: CheckoutFormValues) => {
+  const submitPayment = async (values: CheckoutFormValues) => {
     setStatusMessage("");
-    // Sinaliza a saída como intencional antes do redirect (suprime o aviso
-    // de "sair sem salvar" do useBeforeUnloadWarning) só depois que o link
-    // de transferência é confirmado — se prepareCheckout falhar, o aviso
-    // continua ativo normalmente.
-    await prepareCheckout(values, () => setHasCreatedOrder());
+    setIsSubmittingPayment(true);
+
+    try {
+      const idempotencyKey = checkoutAttemptIdRef.current;
+      const expectedAmount = cart ? moneyToNumber(cart.totals.price) : 0;
+      const document = values.contact.document;
+      const customerNote = values.includeOrderNote ? values.orderNote.trim() : "";
+      let body: Record<string, unknown>;
+
+      if (paymentMethod === "inter_pix" || paymentMethod === "inter_boleto") {
+        body = { method: paymentMethod, idempotencyKey, document, customerNote, expectedAmount };
+      } else if (paymentMethod === "pagbank_card") {
+        const cardToken = cardFieldsRef.current?.tokenize();
+        if (!cardToken) {
+          return;
+        }
+        body = {
+          method: paymentMethod,
+          idempotencyKey,
+          cardToken,
+          installments,
+          holderDocument: document,
+          customerNote,
+          expectedAmount,
+        };
+      } else {
+        setStatusMessage(
+          "O pagamento por carteira digital ainda não está disponível neste checkout.",
+        );
+        return;
+      }
+
+      const response = await fetch("/api/checkout/payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok || !result) {
+        if (result?.code === "CART_CHANGED" || result?.code === "ORDER_TOTAL_MISMATCH") {
+          await refreshCart();
+        }
+        setStatusMessage(
+          result?.message ?? "Não foi possível iniciar o pagamento. Tente novamente.",
+        );
+        return;
+      }
+
+      if (result.alreadyInitiated) {
+        setHasCreatedOrder();
+        navigate(`/checkout/confirmacao?attempt=${encodeURIComponent(result.checkoutAttemptId)}`);
+        return;
+      }
+
+      if (result.method === "inter_pix") {
+        setHasCreatedOrder();
+        window.history.replaceState(
+          null,
+          "",
+          `/checkout/confirmacao?attempt=${encodeURIComponent(result.checkoutAttemptId)}`,
+        );
+        setPixResult(result);
+        return;
+      }
+
+      if (result.method === "inter_boleto") {
+        setHasCreatedOrder();
+        window.history.replaceState(
+          null,
+          "",
+          `/checkout/confirmacao?attempt=${encodeURIComponent(result.checkoutAttemptId)}`,
+        );
+        setBoletoResult(result);
+        return;
+      }
+
+      setHasCreatedOrder();
+      navigate(
+        `/checkout/confirmacao?provider=pagbank_card&reference=${encodeURIComponent(result.chargeId)}`,
+      );
+    } catch {
+      setStatusMessage("Não foi possível iniciar o pagamento. Tente novamente.");
+    } finally {
+      setIsSubmittingPayment(false);
+    }
   };
 
   const addressReady =
@@ -250,6 +350,36 @@ export function CheckoutForm({
     setCurrentStep("payment");
   };
 
+  if (pixResult) {
+    return (
+      <PixPaymentResult
+        result={pixResult}
+        onPaid={() =>
+          navigate(
+            `/checkout/confirmacao?provider=inter_pix&reference=${encodeURIComponent(pixResult.txid)}`,
+          )
+        }
+        onExpired={() => {
+          setPixResult(null);
+          setStatusMessage("O Pix anterior expirou. Gere um novo código para continuar.");
+        }}
+      />
+    );
+  }
+
+  if (boletoResult) {
+    return (
+      <BoletoPaymentResult
+        result={boletoResult}
+        onPaid={() =>
+          navigate(
+            `/checkout/confirmacao?provider=inter_boleto&reference=${encodeURIComponent(boletoResult.requestCode)}`,
+          )
+        }
+      />
+    );
+  }
+
   const profileState: CheckoutStepState =
     currentStep === "profile" ? "active" : "done";
   const addressState: CheckoutStepState =
@@ -270,7 +400,8 @@ export function CheckoutForm({
     <FormProvider {...methods}>
       <form
         noValidate
-        onSubmit={methods.handleSubmit(goToPayment, focusFirstError)}
+        // eslint-disable-next-line react-hooks/refs -- cardFieldsRef só é lido dentro do callback de submit do react-hook-form, disparado por um evento real de submit, nunca durante a renderização.
+        onSubmit={methods.handleSubmit(submitPayment, focusFirstError)}
         className="grid gap-5 lg:grid-cols-2 lg:items-start"
       >
         <CheckoutMobileStepper
@@ -329,6 +460,7 @@ export function CheckoutForm({
           >
             <CheckoutAddresses />
             <CheckoutShippingPlaceholder />
+            <CheckoutCoupon />
             <CheckoutOrderNote />
             <Button
               type="button"
@@ -348,33 +480,34 @@ export function CheckoutForm({
             upcomingText="Finalize seu cadastro e endereço para avançar..."
           >
             <div className="space-y-5">
-              <p className="text-sm leading-6 text-slate-600">
-                Você será direcionado para o ambiente seguro de pagamento da
-                Persi Materiais para finalizar sua compra com Pix, boleto ou
-                cartão.
-              </p>
+              <CheckoutPayment
+                method={paymentMethod}
+                onMethodChange={setPaymentMethod}
+                installments={installments}
+                onInstallmentsChange={setInstallments}
+                cardFieldsRef={cardFieldsRef}
+                onCardError={setStatusMessage}
+                cartTotal={cart ? moneyToNumber(cart.totals.price) : undefined}
+                currencyCode={cart?.currencyCode}
+                capabilities={capabilities}
+              />
               <CheckoutTerms />
               <Button
                 type="submit"
                 size="lg"
-                disabled={isCheckoutUpdating || isPreparingCheckout}
+                disabled={isCheckoutUpdating || isSubmittingPayment}
                 aria-describedby="checkout-submit-status"
                 className="w-full"
               >
-                {isPreparingCheckout ? (
-                  "Preparando checkout..."
+                {isSubmittingPayment ? (
+                  "Processando..."
                 ) : (
                   <>
                     <Lock className="h-4 w-4" aria-hidden="true" />
-                    Ir para pagamento
+                    Comprar
                   </>
                 )}
               </Button>
-              {checkoutError ? (
-                <p role="status" className="text-center text-xs text-red-700">
-                  {checkoutError}
-                </p>
-              ) : null}
             </div>
           </CheckoutStepCard>
         </div>

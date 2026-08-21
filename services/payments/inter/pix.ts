@@ -152,3 +152,21 @@ export async function getPixChargeStatus(
     expiresAt: computeExpiresAt(cob),
   };
 }
+
+export async function getPixCharge(
+  txid: string,
+  request: InterRequestFn = defaultInterRequest,
+): Promise<PixCharge> {
+  const cob = await request<InterPixCobResponse>(`/pix/v2/cob/${encodeURIComponent(txid)}`, "GET");
+  if (!cob.pixCopiaECola) {
+    throw new InterPaymentError(502, "Cobrança Pix sem código copia e cola", "INTER_PIX_MISSING_COPY_PASTE_CODE");
+  }
+  const qrCodeImageBuffer = await QRCode.toBuffer(cob.pixCopiaECola, { type: "png", margin: 1, width: 440 });
+  return {
+    txid: cob.txid,
+    status: assertPixChargeStatus(cob.status),
+    qrCodeCopyPaste: cob.pixCopiaECola,
+    qrCodeImageBase64: qrCodeImageBuffer.toString("base64"),
+    expiresAt: computeExpiresAt(cob),
+  };
+}

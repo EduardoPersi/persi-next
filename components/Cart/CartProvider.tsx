@@ -49,6 +49,8 @@ interface CartContextValue {
     signal?: AbortSignal,
   ) => Promise<CartMutationResult>;
   refreshCart: () => Promise<void>;
+  applyCoupon: (code: string) => Promise<CartMutationResult>;
+  removeCoupon: (code: string) => Promise<CartMutationResult>;
   openCart: () => void;
   closeCart: () => void;
 }
@@ -422,6 +424,44 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const mutateCoupon = useCallback(async (code: string, method: "POST" | "DELETE") => {
+    const requestId = latestRequest.current.start();
+    setIsCheckoutUpdating(true);
+    setError("");
+    try {
+      const response = await fetch("/api/cart/coupons", {
+        method,
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const result = (await response.json()) as Cart & { message?: string };
+      if (!response.ok) {
+        const message = result.message || "Não foi possível atualizar o cupom.";
+        if (latestRequest.current.isLatest(requestId)) setError(message);
+        return { success: false, message };
+      }
+      if (latestRequest.current.isLatest(requestId)) setCart(result);
+      return { success: true, message: "Cupom atualizado.", cart: result };
+    } catch {
+      const message = "Não foi possível atualizar o cupom.";
+      if (latestRequest.current.isLatest(requestId)) setError(message);
+      return { success: false, message };
+    } finally {
+      if (latestRequest.current.isLatest(requestId)) setIsCheckoutUpdating(false);
+    }
+  }, []);
+
+  const applyCoupon = useCallback(
+    (code: string) => mutateCoupon(code, "POST"),
+    [mutateCoupon],
+  );
+  const removeCoupon = useCallback(
+    (code: string) => mutateCoupon(code, "DELETE"),
+    [mutateCoupon],
+  );
+
   const value = useMemo(
     () => ({
       cart,
@@ -438,11 +478,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       selectShippingRate,
       calculateShippingPostcode,
       refreshCart,
+      applyCoupon,
+      removeCoupon,
       openCart: () => setIsOpen(true),
       closeCart: () => setIsOpen(false),
     }),
     [
       addItem,
+      applyCoupon,
       cart,
       error,
       isHydrated,
@@ -451,6 +494,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       isCheckoutUpdating,
       pendingItemKey,
       refreshCart,
+      removeCoupon,
       removeItem,
       selectShippingRate,
       calculateShippingPostcode,

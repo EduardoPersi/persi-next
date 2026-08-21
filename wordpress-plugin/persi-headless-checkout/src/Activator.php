@@ -5,7 +5,16 @@ namespace Persi\HeadlessCheckout;
 defined( 'ABSPATH' ) || exit;
 
 final class Activator {
-	public const DATABASE_VERSION = '1';
+	public const DATABASE_VERSION = '2';
+
+	public static function maybe_upgrade(): void {
+		if ( ! is_admin() || ! current_user_can( 'activate_plugins' ) ) {
+			return;
+		}
+		if ( self::DATABASE_VERSION !== (string) get_option( 'persi_headless_checkout_db_version', '' ) ) {
+			self::activate();
+		}
+	}
 
 	public static function activate(): void {
 		global $wpdb;
@@ -35,6 +44,27 @@ final class Activator {
 		) {$charset_collate};";
 
 		dbDelta( $sql );
+
+		$attempts_table = $wpdb->prefix . 'persi_checkout_attempts';
+		$attempts_sql   = "CREATE TABLE {$attempts_table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			checkout_attempt_id char(36) NOT NULL,
+			order_id bigint(20) unsigned NULL DEFAULT NULL,
+			payment_provider varchar(32) NOT NULL,
+			payment_method varchar(32) NOT NULL,
+			provider_reference varchar(128) NULL DEFAULT NULL,
+			state varchar(32) NOT NULL DEFAULT 'RESERVED',
+			lease_hash char(64) NULL DEFAULT NULL,
+			lease_expires_at datetime NULL DEFAULT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY checkout_attempt_id (checkout_attempt_id),
+			KEY state_updated (state, updated_at),
+			KEY order_id (order_id)
+		) {$charset_collate};";
+
+		dbDelta( $attempts_sql );
 		update_option( 'persi_headless_checkout_db_version', self::DATABASE_VERSION, false );
 	}
 }

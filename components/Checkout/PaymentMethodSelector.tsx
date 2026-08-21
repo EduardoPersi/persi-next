@@ -9,6 +9,7 @@ import {
   isPaymentMethodAvailable,
   type CheckoutPaymentMethod,
 } from "./paymentMethod";
+import type { PublicCheckoutCapabilities } from "@/lib/commerce/checkoutConfig";
 
 interface PaymentMethodOption {
   value: CheckoutPaymentMethod;
@@ -57,6 +58,7 @@ interface PaymentMethodSelectorProps {
   onChange: (method: CheckoutPaymentMethod) => void;
   cartTotal?: number;
   currencyCode?: string;
+  capabilities: PublicCheckoutCapabilities;
 }
 
 export function PaymentMethodSelector({
@@ -64,6 +66,7 @@ export function PaymentMethodSelector({
   onChange,
   cartTotal,
   currencyCode = "BRL",
+  capabilities,
 }: PaymentMethodSelectorProps) {
   const [wallets, setWallets] = useState<WalletAvailability>({
     applePay: false,
@@ -136,9 +139,17 @@ export function PaymentMethodSelector({
   // Novo gateway com valor mínimo próprio: basta declarar o mínimo em
   // MIN_AMOUNT_BY_METHOD (./paymentMethod.ts) — o filtro abaixo já esconde
   // a opção sozinho quando o carrinho não atinge o valor.
-  const options = allOptions.filter((option) =>
+  const availableOptions = allOptions.filter((option) =>
     isPaymentMethodAvailable(option.value, cartTotal),
   );
+  const options = availableOptions.filter((option) => {
+    const enabled = option.value === "inter_pix"
+      ? capabilities.pix
+      : option.value === "inter_boleto"
+        ? capabilities.boleto
+        : capabilities.card;
+    return enabled;
+  });
 
   return (
     <div

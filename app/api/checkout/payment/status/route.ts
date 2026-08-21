@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
-import { getPrivateCartHeaders } from "@/lib/commerce/cartResponsePolicy";
+import { getExpiredCartTokenCookieOptions, getPrivateCartHeaders } from "@/lib/commerce/cartResponsePolicy";
+import { reconcileCheckoutAttempt } from "@/lib/commerce/checkoutAttempt";
 import { paymentStatusQuerySchema } from "@/lib/validation/payments";
 import { getServerAccountSession } from "@/services/account/serverSession";
 import { getBoletoChargeStatus } from "@/services/payments/inter/boleto";
@@ -32,10 +33,17 @@ const GENERIC_ERROR_MESSAGE = "Não foi possível consultar o pagamento agora.";
 // existência do pedido para quem não provou ter relação com ele.
 const UNAUTHORIZED_MESSAGE = "Não autorizado.";
 
-function createPrivateResponse(body: object, status: number) {
+function createPrivateResponse(body: object, status: number, clearCart = false) {
   const response = NextResponse.json(body, { status });
   for (const [name, value] of Object.entries(getPrivateCartHeaders())) {
     response.headers.set(name, value);
+  }
+  if (clearCart) {
+    response.cookies.set(
+      CART_TOKEN_COOKIE,
+      "",
+      getExpiredCartTokenCookieOptions(process.env.NODE_ENV === "production"),
+    );
   }
   return response;
 }
@@ -88,13 +96,19 @@ export async function GET(request: Request) {
       const charge = await getPixChargeStatus(reference);
       const category = categorizePixStatus(charge);
       await reconcilePaymentReference("inter", reference, category);
-      return createPrivateResponse({ status: charge.status, category }, 200);
+      if (category !== "pending") {
+        await reconcileCheckoutAttempt(reference, category === "paid" ? "PAYMENT_CONFIRMED" : "PAYMENT_FAILED").catch(() => undefined);
+      }
+      return createPrivateResponse({ status: charge.status, category }, 200, category !== "pending");
     }
 
     if (provider === "inter_boleto") {
       const charge = await getBoletoChargeStatus(reference);
       const category = categorizeBoletoStatus(charge.status);
       await reconcilePaymentReference("inter", reference, category);
+      if (category !== "pending") {
+        await reconcileCheckoutAttempt(reference, category === "paid" ? "PAYMENT_CONFIRMED" : "PAYMENT_FAILED").catch(() => undefined);
+      }
       // A criação já tenta algumas vezes até a linha digitável ficar pronta
       // (ver createBoletoCharge), mas se ainda estiver "EM_PROCESSAMENTO" na
       // resposta inicial, o cliente reconsulta aqui até ela aparecer.
@@ -107,13 +121,14 @@ export async function GET(request: Request) {
           dueDate: charge.dueDate,
         },
         200,
+        category !== "pending",
       );
     }
 
     const charge = await getCardChargeStatus(reference);
     const category = categorizeCardStatus(charge.status);
     await reconcilePaymentReference("pagbank", reference, category);
-    return createPrivateResponse({ status: charge.status, category }, 200);
+    return createPrivateResponse({ status: charge.status, category }, 200, category !== "pending");
   } catch (error) {
     const status = getErrorStatus(error);
     console.error("[checkout-payment-status]", {

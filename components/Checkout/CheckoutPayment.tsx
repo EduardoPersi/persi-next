@@ -4,6 +4,7 @@ import { useEffect, type RefObject } from "react";
 import { PaymentCardFields, type PaymentCardFieldsHandle } from "./PaymentCardFields";
 import { PaymentMethodSelector } from "./PaymentMethodSelector";
 import { isPaymentMethodAvailable, type CheckoutPaymentMethod } from "./paymentMethod";
+import type { PublicCheckoutCapabilities } from "@/lib/commerce/checkoutConfig";
 
 interface CheckoutPaymentProps {
   method: CheckoutPaymentMethod;
@@ -14,6 +15,7 @@ interface CheckoutPaymentProps {
   onCardError: (message: string) => void;
   cartTotal?: number;
   currencyCode?: string;
+  capabilities: PublicCheckoutCapabilities;
 }
 
 const CARD_METHODS: CheckoutPaymentMethod[] = [
@@ -31,6 +33,7 @@ export function CheckoutPayment({
   onCardError,
   cartTotal,
   currencyCode,
+  capabilities,
 }: CheckoutPaymentProps) {
   const showCardFields = method === "pagbank_card";
   const isWalletMethod = CARD_METHODS.includes(method) && method !== "pagbank_card";
@@ -55,6 +58,7 @@ export function CheckoutPayment({
         onChange={onMethodChange}
         cartTotal={cartTotal}
         currencyCode={currencyCode}
+        capabilities={capabilities}
       />
       {showCardFields ? (
         <PaymentCardFields

@@ -63,6 +63,7 @@ export function PixPaymentResult({ result, onPaid, onExpired }: PixPaymentResult
         onPaid();
         return "stop";
       }
+      if (body?.category === "failed") return "stop";
     },
   });
 

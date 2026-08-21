@@ -49,5 +49,5 @@ test("CheckoutForm liga os dois hooks de UX e os desliga antes da transferência
   // para o checkout WooCommerce, o callback desarma os avisos do Next.js.
   assert.match(source, /onOrderCreated: setHasCreatedOrder/);
   const setHasCreatedOrderCount = source.split("setHasCreatedOrder()").length - 1;
-  assert.equal(setHasCreatedOrderCount, 1);
+  assert.ok(setHasCreatedOrderCount >= 3);
 });

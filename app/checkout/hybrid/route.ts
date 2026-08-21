@@ -16,13 +16,13 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const runtime = "nodejs";
 
-// Sem página própria de propósito: visitar /checkout já dispara a
-// transferência e redireciona (303) direto para o checkout nativo do
+// Sem pÃ¡gina prÃ³pria de propÃ³sito: visitar /checkout jÃ¡ dispara a
+// transferÃªncia e redireciona (303) direto para o checkout nativo do
 // WooCommerce, sem passar por nenhuma tela renderizada pelo Next.js. O
-// botão "Finalizar compra" precisa pular o interceptador global de cliques
-// (RouteTransitionProvider) com data-route-transition-skip — senão o
-// router.push() do Next tentaria fazer uma navegação client-side para uma
-// rota que não tem page.tsx nenhuma.
+// botÃ£o "Finalizar compra" precisa pular o interceptador global de cliques
+// (RouteTransitionProvider) com data-route-transition-skip â€” senÃ£o o
+// router.push() do Next tentaria fazer uma navegaÃ§Ã£o client-side para uma
+// rota que nÃ£o tem page.tsx nenhuma.
 export async function GET(request: NextRequest) {
   const cookieStore = await cookies();
   let activeCartToken = cookieStore.get(CART_TOKEN_COOKIE)?.value;

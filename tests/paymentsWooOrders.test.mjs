@@ -71,6 +71,7 @@ test("createPendingOrder monta line_items sem preço e grava idempotency key/pro
       shippingAddress: billingAddress,
       paymentMethod: "inter_pix",
       ownerToken: "cart-token-1",
+      couponCodes: ["OBRA10"],
     },
     post,
   );
@@ -85,6 +86,7 @@ test("createPendingOrder monta line_items sem preço e grava idempotency key/pro
   assert.equal(calls[0].body.line_items[0].product_id, 10);
   assert.equal("price" in calls[0].body.line_items[0], false);
   assert.equal(calls[0].body.line_items[1].variation_id, 30);
+  assert.deepEqual(calls[0].body.coupon_lines, [{ code: "OBRA10" }]);
   assert.deepEqual(
     calls[0].body.meta_data.find((m) => m.key === "_persi_idempotency_key"),
     { key: "_persi_idempotency_key", value: "key-1" },

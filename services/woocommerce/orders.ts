@@ -123,6 +123,7 @@ export interface CreatePendingOrderInput {
   // registro do pedido no WooCommerce ficava sem shipping_lines, então
   // relatórios e a tela de confirmação não conseguiam mostrar a entrega.
   shippingLine?: { name: string; amount: number; methodId: string };
+  couponCodes?: string[];
 }
 
 function toWooAddress(address: CheckoutStoreAddress) {
@@ -166,6 +167,9 @@ export async function createPendingOrder(
       ...(item.variationId > 0 ? { variation_id: item.variationId } : {}),
       quantity: item.quantity,
     })),
+    ...(input.couponCodes?.length
+      ? { coupon_lines: input.couponCodes.map((code) => ({ code })) }
+      : {}),
     ...(input.discountFee && input.discountFee.amount > 0
       ? {
           fee_lines: [

@@ -15,7 +15,8 @@ final class RequestAuthenticator {
 		string $raw_body,
 		int $current_timestamp,
 		string $secret,
-		array $allowed_origins
+		array $allowed_origins,
+		string $route_path = self::ROUTE_PATH
 	): AuthenticationResult {
 		if ( '' === $secret ) {
 			throw new AuthenticationException( 'service_unavailable' );
@@ -62,7 +63,8 @@ final class RequestAuthenticator {
 			$timestamp,
 			$nonce,
 			$origin,
-			$raw_body
+			$raw_body,
+			$route_path
 		);
 		$expected_signature = hash_hmac( 'sha256', $canonical_request, $secret );
 
@@ -77,13 +79,14 @@ final class RequestAuthenticator {
 		string $timestamp,
 		string $nonce,
 		string $origin,
-		string $raw_body
+		string $raw_body,
+		string $route_path = self::ROUTE_PATH
 	): string {
 		return implode(
 			"\n",
 			array(
 				self::METHOD,
-				self::ROUTE_PATH,
+				$route_path,
 				$timestamp,
 				$nonce,
 				$origin,

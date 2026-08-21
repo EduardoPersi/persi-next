@@ -2,10 +2,15 @@
 Contributors: persimateriais
 Requires at least: 6.4
 Requires PHP: 7.4
-Stable tag: 0.5.8
+Stable tag: 0.6.0
 License: Proprietary
 
 == Changelog ==
+
+= 0.6.0 =
+
+* Adiciona idempotência transacional compartilhada para checkout Next.
+* Inclui máquina de estados e endpoint HMAC de tentativa de checkout.
 
 = 0.5.8 =
 * Amplia o diagnóstico opt-in de frete sem recalcular packages ou registrar dados pessoais.

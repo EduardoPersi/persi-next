@@ -19,6 +19,10 @@ export function CheckoutOrderSummary({
   cart,
   paymentMethod,
 }: CheckoutOrderSummaryProps) {
+  const hasSelectedShippingRate = cart.shippingPackages.length > 0 &&
+    cart.shippingPackages.every((shippingPackage) =>
+      shippingPackage.rates.some((rate) => rate.selected),
+    );
   const formatter = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: cart.currencyCode,
@@ -120,7 +124,7 @@ export function CheckoutOrderSummary({
         <div className="flex justify-between gap-4">
           <dt className="text-slate-600">Entrega</dt>
           <dd className="max-w-52 text-right text-slate-600">
-            {cart.hasCalculatedShipping
+            {cart.hasCalculatedShipping && hasSelectedShippingRate
               ? isZeroMoney(cart.totals.shipping)
                 ? "Grátis"
                 : formatStoreMoney(cart.totals.shipping)

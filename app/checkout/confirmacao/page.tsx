@@ -6,10 +6,11 @@ import { BadgeCheck } from "lucide-react";
 import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
 import { CheckoutHeader } from "@/components/Header/CheckoutHeader";
 import { Container } from "@/components/UI/Container";
+import { getCheckoutAttempt } from "@/lib/commerce/checkoutAttempt";
 import { formatBrazilianDocument, formatBrazilianPhone } from "@/lib/formatting/personalData";
 import { getServerAccountSession } from "@/services/account/serverSession";
 import { getBoletoChargeStatus } from "@/services/payments/inter/boleto";
-import { getPixChargeStatus } from "@/services/payments/inter/pix";
+import { getPixCharge, getPixChargeStatus } from "@/services/payments/inter/pix";
 import { getCardChargeStatus } from "@/services/payments/pagbank/charge";
 import {
   categorizeBoletoStatus,
@@ -44,6 +45,7 @@ interface ConfirmationPageProps {
     provider?: string;
     reference?: string;
     orderId?: string;
+    attempt?: string;
   }>;
 }
 
@@ -70,10 +72,20 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   pagbank_google_pay: "Google Pay - PagBank",
 };
 
+type RecoveryData =
+  | { method: "inter_pix"; reference: string; copyPaste: string; qrCodeImageBase64: string }
+  | { method: "inter_boleto"; reference: string; digitableLine: string };
+
+type ResolvedStatus = {
+  category: PaymentStatusCategory;
+  order: WooCommerceOrder;
+  recovery?: RecoveryData;
+};
+
 async function resolveInterOrPagBankStatus(
   provider: string | undefined,
   reference: string | undefined,
-): Promise<{ category: PaymentStatusCategory; order: WooCommerceOrder } | null> {
+): Promise<ResolvedStatus | null> {
   if (!provider || !reference) return null;
   if (provider !== "inter_pix" && provider !== "inter_boleto" && provider !== "pagbank_card") {
     return null;
@@ -115,7 +127,7 @@ async function resolveInterOrPagBankStatus(
 // mostrar qualquer detalhe.
 async function resolveWooCommerceStatus(
   orderId: string | undefined,
-): Promise<{ category: PaymentStatusCategory; order: WooCommerceOrder } | null> {
+): Promise<ResolvedStatus | null> {
   if (!orderId) return null;
   const numericOrderId = Number(orderId);
   if (!Number.isInteger(numericOrderId) || numericOrderId < 1) return null;
@@ -139,7 +151,47 @@ async function resolveStatus(params: {
   provider?: string;
   reference?: string;
   orderId?: string;
-}): Promise<{ category: PaymentStatusCategory; order: WooCommerceOrder } | null> {
+  attempt?: string;
+}): Promise<ResolvedStatus | null> {
+  if (params.attempt && /^[0-9a-f-]{36}$/i.test(params.attempt)) {
+    try {
+      const attempt = await getCheckoutAttempt(params.attempt);
+      if (!attempt.order_id || !attempt.provider_reference) return null;
+      const order = await getOrderById(Number(attempt.order_id));
+      const requestCartToken = (await cookies()).get(CART_TOKEN_COOKIE)?.value;
+      const session = await getServerAccountSession();
+      if (!isAuthorizedForOrderStatus(order, requestCartToken, session?.customer.email)) return null;
+
+      if (attempt.payment_method === "inter_pix") {
+        const charge = await getPixCharge(attempt.provider_reference);
+        return {
+          category: categorizePixStatus(charge),
+          order,
+          recovery: {
+            method: "inter_pix",
+            reference: charge.txid,
+            copyPaste: charge.qrCodeCopyPaste,
+            qrCodeImageBase64: charge.qrCodeImageBase64,
+          },
+        };
+      }
+      if (attempt.payment_method === "inter_boleto") {
+        const charge = await getBoletoChargeStatus(attempt.provider_reference);
+        return {
+          category: categorizeBoletoStatus(charge.status),
+          order,
+          recovery: {
+            method: "inter_boleto",
+            reference: charge.requestCode,
+            digitableLine: charge.digitableLine,
+          },
+        };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
   if (params.provider === "woocommerce") {
     return resolveWooCommerceStatus(params.orderId);
   }
@@ -300,7 +352,10 @@ export default async function CheckoutConfirmationPage({
         <Container>
           {isPaid && details ? (
             <div className="mx-auto max-w-4xl">
-              <PaidConfirmation provider={params.provider ?? ""} details={details} />
+              <PaidConfirmation
+                provider={params.provider ?? resolved?.order.paymentMethod ?? ""}
+                details={details}
+              />
             </div>
           ) : (
             <div className="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
@@ -311,6 +366,36 @@ export default async function CheckoutConfirmationPage({
                 {copy?.description ??
                   "Assim que o pagamento for confirmado, você receberá um e-mail com os detalhes do pedido."}
               </p>
+              {resolved?.category === "pending" && resolved.recovery?.method === "inter_pix" ? (
+                <div className="mt-6 space-y-4">
+                  <Image
+                    src={`data:image/png;base64,${resolved.recovery.qrCodeImageBase64}`}
+                    alt="QR Code para pagamento via Pix"
+                    width={280}
+                    height={280}
+                    unoptimized
+                    className="mx-auto rounded-xl border border-slate-200"
+                  />
+                  <p className="break-all rounded-xl bg-slate-100 p-3 text-xs text-slate-800">
+                    {resolved.recovery.copyPaste}
+                  </p>
+                </div>
+              ) : null}
+              {resolved?.category === "pending" && resolved.recovery?.method === "inter_boleto" ? (
+                <div className="mt-6 space-y-3">
+                  {resolved.recovery.digitableLine ? (
+                    <p className="break-all rounded-xl bg-slate-100 p-3 text-xs text-slate-800">
+                      {resolved.recovery.digitableLine}
+                    </p>
+                  ) : null}
+                  <Link
+                    href={`/api/checkout/payment/boleto-pdf?reference=${encodeURIComponent(resolved.recovery.reference)}`}
+                    className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-white"
+                  >
+                    Abrir boleto em PDF
+                  </Link>
+                </div>
+              ) : null}
             </div>
           )}
         </Container>

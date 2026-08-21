@@ -1,21 +1,20 @@
 import { cookies } from "next/headers";
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
 import { exceedsRequestLimit } from "@/app/api/checkout/checkout-request";
-import {
-  getPaymentMethodDiscountRate,
-  MIN_BOLETO_AMOUNT,
-} from "@/components/Checkout/paymentMethod";
+import { MIN_BOLETO_AMOUNT } from "@/components/Checkout/paymentMethod";
+import { getPublicCheckoutCapabilities } from "@/lib/commerce/checkoutConfig";
 import {
   getCartTokenCookieOptions,
   getExpiredCartTokenCookieOptions,
   getPrivateCartHeaders,
 } from "@/lib/commerce/cartResponsePolicy";
 import { CheckoutTransferError } from "@/lib/commerce/checkoutTransfer";
+import { reserveCheckoutAttempt, transitionCheckoutAttempt } from "@/lib/commerce/checkoutAttempt";
 import { moneyToNumber } from "@/lib/formatting/money";
 import { paymentInitiationSchema } from "@/lib/validation/payments";
-import { createBoletoCharge } from "@/services/payments/inter/boleto";
-import { createPixCharge } from "@/services/payments/inter/pix";
+import { interPaymentGateway } from "@/services/payments/gateway";
 import { InterPaymentError } from "@/services/payments/inter/errors";
 import { createCardCharge } from "@/services/payments/pagbank/charge";
 import { PagBankPaymentError } from "@/services/payments/pagbank/errors";
@@ -26,6 +25,7 @@ import {
   attachPaymentReference,
   createPendingOrder,
   findOrderByIdempotencyKey,
+  markOrderAsFailed,
   WooCommerceRestError,
   type PersiPaymentMethod,
 } from "@/services/woocommerce/orders";
@@ -38,6 +38,15 @@ export const revalidate = 0;
 export const runtime = "nodejs";
 
 const GENERIC_ERROR_MESSAGE = "Não foi possível iniciar o pagamento. Tente novamente.";
+
+function isAuthorizedStagingDryRun(request: Request): boolean {
+  const configured = process.env.CHECKOUT_STAGING_DRY_RUN_SECRET?.trim();
+  const received = request.headers.get("x-persi-staging-dry-run")?.trim();
+  if (!configured || !received) return false;
+  const expectedBuffer = Buffer.from(configured);
+  const receivedBuffer = Buffer.from(received);
+  return expectedBuffer.length === receivedBuffer.length && timingSafeEqual(expectedBuffer, receivedBuffer);
+}
 
 function createPrivateResponse(
   body: object,
@@ -137,6 +146,18 @@ export async function POST(request: Request) {
       throw new CheckoutTransferError(400, "Dados de pagamento inválidos");
     }
     const input = parsed.data;
+    if (typeof input.expectedAmount !== "number") {
+      throw new CheckoutTransferError(400, "Total esperado ausente.");
+    }
+    const capabilities = getPublicCheckoutCapabilities();
+    const methodEnabled = input.method === "inter_pix"
+      ? capabilities.pix
+      : input.method === "inter_boleto"
+        ? capabilities.boleto
+        : capabilities.card;
+    if (!methodEnabled) {
+      throw new CheckoutTransferError(422, "Forma de pagamento indisponível.");
+    }
 
     const cartResult = await getCart(activeCartToken);
     activeCartToken = cartResult.cartToken ?? activeCartToken;
@@ -151,8 +172,34 @@ export async function POST(request: Request) {
     if (cartAmount <= 0) {
       throw new CheckoutTransferError(422, "Total do pedido inválido");
     }
+    if (Math.abs(cartAmount - input.expectedAmount) >= 0.01) {
+      return createPrivateResponse(
+        { code: "CART_CHANGED", message: "O carrinho foi atualizado. Revise os valores antes de continuar.", cart },
+        409,
+        activeCartToken,
+      );
+    }
 
     const paymentMethod: PersiPaymentMethod = input.method;
+    const reservation = await reserveCheckoutAttempt(input.idempotencyKey, paymentMethod);
+    if (!reservation.acquired) {
+      if (reservation.attempt.provider_reference && reservation.attempt.order_id) {
+        const result: PaymentInitiationResult = {
+          alreadyInitiated: true,
+          method: paymentMethod,
+          orderId: Number(reservation.attempt.order_id),
+          checkoutAttemptId: input.idempotencyKey,
+        };
+        return createPrivateResponse(result, 200, activeCartToken);
+      }
+      return createPrivateResponse(
+        { code: "CHECKOUT_IN_PROGRESS", message: "Este pedido já está sendo processado. Aguarde alguns segundos." },
+        409,
+        activeCartToken,
+      );
+    }
+    const leaseToken = reservation.lease_token;
+    if (!leaseToken) throw new Error("Checkout lease missing");
     const existingOrder = await findOrderByIdempotencyKey(input.idempotencyKey);
 
     if (existingOrder?.metaData._persi_payment_reference) {
@@ -160,8 +207,9 @@ export async function POST(request: Request) {
         alreadyInitiated: true,
         method: paymentMethod,
         orderId: existingOrder.id,
+        checkoutAttemptId: input.idempotencyKey,
       };
-      return createPrivateResponse(result, 200, activeCartToken, { clearCartToken: true });
+      return createPrivateResponse(result, 200, activeCartToken);
     }
 
     // Desconto por forma de pagamento (Pix/Boleto): o valor efetivamente
@@ -170,9 +218,7 @@ export async function POST(request: Request) {
     // total do pedido no WooCommerce, que hoje não recebe shipping_lines e
     // por isso não representa o frete. A mesma fee_line é registrada no
     // pedido só para ficar visível no admin/relatórios.
-    const discountRate = getPaymentMethodDiscountRate(paymentMethod);
-    const discountAmount = Math.round(cartAmount * discountRate * 100) / 100;
-    const amount = Math.round((cartAmount - discountAmount) * 100) / 100;
+    const amount = cartAmount;
     if (amount <= 0) {
       throw new CheckoutTransferError(422, "Total do pedido inválido");
     }
@@ -193,6 +239,13 @@ export async function POST(request: Request) {
           .flatMap((shippingPackage) => shippingPackage.rates)
           .find((rate) => rate.selected)
       : undefined;
+    if (cart.needsShipping && !selectedShippingRate) {
+      return createPrivateResponse(
+        { code: "SHIPPING_CHANGED", message: "Selecione novamente a forma de entrega." },
+        409,
+        activeCartToken,
+      );
+    }
 
     const order =
       existingOrder ??
@@ -212,40 +265,86 @@ export async function POST(request: Request) {
               methodId: selectedShippingRate.methodId,
             }
           : undefined,
-        discountFee:
-          discountAmount > 0
-            ? {
-                name: paymentMethod === "inter_pix" ? "Desconto Pix" : "Desconto Boleto",
-                amount: discountAmount,
-              }
-            : undefined,
+        couponCodes: cart.coupons.map(({ code }) => code),
       }));
+
+    if (reservation.attempt.state === "RESERVED") {
+      await transitionCheckoutAttempt({
+        checkoutAttemptId: input.idempotencyKey,
+        leaseToken,
+        from: "RESERVED",
+        to: "ORDER_CREATED",
+        orderId: order.id,
+      });
+    }
+    let attemptState = reservation.attempt.state;
+    if (attemptState === "RESERVED") attemptState = "ORDER_CREATED";
+
+    const authoritativeOrderAmount = Number(order.total);
+    if (
+      !Number.isFinite(authoritativeOrderAmount) ||
+      Math.abs(authoritativeOrderAmount - amount) >= 0.01
+    ) {
+      await markOrderAsFailed(order, "cancelled").catch(() => undefined);
+      return createPrivateResponse(
+        { code: "ORDER_TOTAL_MISMATCH", message: "Os valores foram atualizados. Revise o pedido antes de tentar novamente." },
+        409,
+        activeCartToken,
+      );
+    }
 
     // Diagnóstico temporário: não existia nenhum log no caminho de sucesso —
     // só assim dá pra confirmar, quando um pagamento é feito de verdade, qual
     // pedido foi realmente criado/reaproveitado no WooCommerce.
-    console.log("[checkout-payment] pedido resolvido", {
+    console.info("[checkout-payment] state", {
       orderId: order.id,
       reused: Boolean(existingOrder),
-      idempotencyKey: input.idempotencyKey,
+      checkoutAttemptHash: input.idempotencyKey.replace(/-/g, "").slice(0, 12),
       method: paymentMethod,
-      customerId: session?.customer.id ?? null,
-      amount,
+      state: "ORDER_CREATED",
     });
 
     const payerName = `${billingAddress.firstName} ${billingAddress.lastName}`.trim();
 
+    if (isAuthorizedStagingDryRun(request)) {
+      return createPrivateResponse(
+        {
+          code: "STAGING_STOPPED_BEFORE_GATEWAY",
+          checkoutAttemptId: input.idempotencyKey,
+          orderId: order.id,
+        },
+        202,
+        activeCartToken,
+      );
+    }
+
     let result: PaymentInitiationResult;
 
+    if (attemptState === "ORDER_CREATED") {
+      await transitionCheckoutAttempt({
+        checkoutAttemptId: input.idempotencyKey,
+        leaseToken,
+        from: "ORDER_CREATED",
+        to: "PAYMENT_CREATING",
+      });
+    }
+
     if (input.method === "inter_pix") {
-      const charge = await createPixCharge({
+      const txid = input.idempotencyKey.replace(/-/g, "");
+      let charge;
+      try {
+        charge = await interPaymentGateway.getPix(txid);
+      } catch {
+        charge = await interPaymentGateway.createPix({
         txid: input.idempotencyKey.replace(/-/g, ""),
         amount,
         payerDocument: input.document,
         payerName,
         description: `Pedido ${order.id}`,
-      });
+        });
+      }
       await attachPaymentReference(order.id, { provider: "inter", externalId: charge.txid });
+      await transitionCheckoutAttempt({ checkoutAttemptId: input.idempotencyKey, leaseToken, from: "PAYMENT_CREATING", to: "PAYMENT_CREATED", providerReference: charge.txid });
       result = {
         method: "inter_pix",
         orderId: order.id,
@@ -254,9 +353,13 @@ export async function POST(request: Request) {
         qrCodeCopyPaste: charge.qrCodeCopyPaste,
         qrCodeImageBase64: charge.qrCodeImageBase64,
         expiresAt: charge.expiresAt,
+        checkoutAttemptId: input.idempotencyKey,
       };
     } else if (input.method === "inter_boleto") {
-      const charge = await createBoletoCharge({
+      if (attemptState === "PAYMENT_CREATING") {
+        throw new CheckoutTransferError(409, "Boleto em reconciliação; uma nova cobrança não será criada.");
+      }
+      const charge = await interPaymentGateway.createBoleto({
         seuNumero: String(order.id),
         amount,
         payerDocument: input.document,
@@ -267,6 +370,7 @@ export async function POST(request: Request) {
         provider: "inter",
         externalId: charge.requestCode,
       });
+      await transitionCheckoutAttempt({ checkoutAttemptId: input.idempotencyKey, leaseToken, from: "PAYMENT_CREATING", to: "PAYMENT_CREATED", providerReference: charge.requestCode });
       result = {
         method: "inter_boleto",
         orderId: order.id,
@@ -275,6 +379,7 @@ export async function POST(request: Request) {
         digitableLine: charge.digitableLine,
         barcode: charge.barcode,
         dueDate: charge.dueDate,
+        checkoutAttemptId: input.idempotencyKey,
       };
     } else {
       const cardPaymentMethod =
@@ -299,15 +404,24 @@ export async function POST(request: Request) {
         provider: "pagbank",
         externalId: charge.chargeId,
       });
+      await transitionCheckoutAttempt({ checkoutAttemptId: input.idempotencyKey, leaseToken, from: "PAYMENT_CREATING", to: "PAYMENT_CREATED", providerReference: charge.chargeId });
       result = {
         method: input.method,
         orderId: order.id,
         chargeId: charge.chargeId,
         status: charge.status,
+        checkoutAttemptId: input.idempotencyKey,
       };
     }
 
-    return createPrivateResponse(result, 201, activeCartToken, { clearCartToken: true });
+    await transitionCheckoutAttempt({
+      checkoutAttemptId: input.idempotencyKey,
+      leaseToken,
+      from: "PAYMENT_CREATED",
+      to: "PAYMENT_PENDING",
+    });
+
+    return createPrivateResponse(result, 201, activeCartToken);
   } catch (error) {
     const status = getErrorStatus(error);
     console.error("[checkout-payment]", {

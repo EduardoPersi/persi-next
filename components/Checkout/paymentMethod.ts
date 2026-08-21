@@ -1,5 +1,3 @@
-import { PIX_DISCOUNT_RATE } from "@/lib/commerce/productPayment";
-
 export type CheckoutPaymentMethod =
   | "inter_pix"
   | "inter_boleto"
@@ -13,7 +11,7 @@ export function createIdempotencyKey(): string {
 
 // Desconto exclusivo do checkout (não se aplica ao preço exibido na página
 // de produto, que mostra o boleto pelo valor cheio).
-export const BOLETO_DISCOUNT_RATE = 0.05;
+export const BOLETO_DISCOUNT_RATE = 0;
 
 // Fonte única da regra de desconto por forma de pagamento: usada tanto para
 // exibir o valor ao cliente (seletor de pagamento, resumo do pedido) quanto
@@ -21,10 +19,9 @@ export const BOLETO_DISCOUNT_RATE = 0.05;
 // (app/api/checkout/payment/route.ts) — o mesmo valor precisa aparecer nos
 // dois lugares.
 export function getPaymentMethodDiscountRate(
-  method: CheckoutPaymentMethod,
+  _method: CheckoutPaymentMethod,
 ): number {
-  if (method === "inter_pix") return PIX_DISCOUNT_RATE;
-  if (method === "inter_boleto") return BOLETO_DISCOUNT_RATE;
+  void _method;
   return 0;
 }
 
