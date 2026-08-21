@@ -9,10 +9,14 @@ import { useEffect, useRef } from "react";
 const FAST_POLL_INTERVAL_MS = 4000;
 const FAST_POLL_DURATION_MS = 3 * 60 * 1000;
 const SLOW_POLL_INTERVAL_MS = 15000;
+const MAX_ACTIVE_POLL_DURATION_MS = 30 * 60 * 1000;
 
 interface UsePaymentStatusPollingOptions {
   enabled: boolean;
-  onTick: () => Promise<"stop" | void>;
+  onTick: (signal: AbortSignal) => Promise<"stop" | void>;
+  fastIntervalMs?: number;
+  slowIntervalMs?: number;
+  maxDurationMs?: number;
 }
 
 // `onTick` guardado em ref (em vez de dependência do efeito) para que trocar
@@ -21,6 +25,9 @@ interface UsePaymentStatusPollingOptions {
 export function usePaymentStatusPolling({
   enabled,
   onTick,
+  fastIntervalMs = FAST_POLL_INTERVAL_MS,
+  slowIntervalMs = SLOW_POLL_INTERVAL_MS,
+  maxDurationMs = MAX_ACTIVE_POLL_DURATION_MS,
 }: UsePaymentStatusPollingOptions): void {
   const onTickRef = useRef(onTick);
   useEffect(() => {
@@ -32,28 +39,44 @@ export function usePaymentStatusPolling({
 
     let cancelled = false;
     let timer: number;
+    let controller: AbortController | null = null;
     const startedAt = Date.now();
 
     const poll = async () => {
-      if (cancelled) return;
+      if (cancelled || Date.now() - startedAt >= maxDurationMs) return;
+      if (document.hidden) {
+        timer = window.setTimeout(poll, slowIntervalMs);
+        return;
+      }
       let result: "stop" | void = undefined;
+      controller = new AbortController();
       try {
-        result = await onTickRef.current();
+        result = await onTickRef.current(controller.signal);
       } catch {
         // Falha de rede não interrompe o polling — tenta de novo no próximo ciclo.
       }
       if (cancelled || result === "stop") return;
       const nextInterval =
         Date.now() - startedAt < FAST_POLL_DURATION_MS
-          ? FAST_POLL_INTERVAL_MS
-          : SLOW_POLL_INTERVAL_MS;
+          ? fastIntervalMs
+          : slowIntervalMs;
       timer = window.setTimeout(poll, nextInterval);
     };
 
-    timer = window.setTimeout(poll, FAST_POLL_INTERVAL_MS);
+    const handleVisibilityChange = () => {
+      if (!document.hidden && !cancelled) {
+        window.clearTimeout(timer);
+        void poll();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    timer = window.setTimeout(poll, fastIntervalMs);
     return () => {
       cancelled = true;
+      controller?.abort();
       window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [enabled]);
+  }, [enabled, fastIntervalMs, slowIntervalMs, maxDurationMs]);
 }

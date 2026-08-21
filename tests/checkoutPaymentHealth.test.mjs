@@ -32,3 +32,41 @@ test("cliente converte o contrato snake_case do health WordPress", () => {
   assert.match(source, /expected_database_version/);
   assert.match(source, /tableExists: health\.table_exists/);
 });
+
+test("falha de configuração identifica somente no log server-side qual variável está ausente", () => {
+  const transferSource = read("lib/commerce/checkoutTransfer.ts");
+  const paymentSource = read("app/api/checkout/payment/route.ts");
+
+  assert.match(transferSource, /readonly configurationName\?: string/);
+  assert.match(transferSource, /String\(name\)/);
+  assert.match(paymentSource, /missingConfiguration:/);
+  assert.match(paymentSource, /error\.configurationName/);
+  assert.doesNotMatch(paymentSource, /createPrivateResponse\([^)]*configurationName/s);
+});
+
+test("pagamento registra marcos sanitizados sem dados pessoais", () => {
+  const source = read("app/api/checkout/payment/route.ts");
+  for (const milestone of [
+    "payment_request_received",
+    "request_validation_ok",
+    "cart_validation_started",
+    "cart_validation_ok",
+    "checkout_attempt_started",
+    "checkout_attempt_ok",
+    "order_creation_started",
+    "order_creation_ok",
+    "provider_started",
+    "provider_finished",
+    "response_started",
+  ]) {
+    assert.match(source, new RegExp(`milestone: \\"${milestone}\\"`));
+  }
+
+  const logger = source.slice(
+    source.indexOf("function logPaymentMilestone"),
+    source.indexOf("function getConfirmationUrl"),
+  );
+  assert.match(logger, /checkoutAttemptId/);
+  assert.match(logger, /durationMs/);
+  assert.doesNotMatch(logger, /document|address|email|phone|token|secret/i);
+});

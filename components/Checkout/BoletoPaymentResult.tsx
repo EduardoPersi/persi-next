@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Check, Copy, Download, Loader2 } from "lucide-react";
 import { usePaymentStatusPolling } from "@/hooks/usePaymentStatusPolling";
 import type { BoletoPaymentResult as BoletoPaymentResultData } from "@/types/payments";
@@ -29,6 +29,7 @@ const amountFormatter = new Intl.NumberFormat("pt-BR", {
 
 export function BoletoPaymentResult({ result, onPaid }: BoletoPaymentResultProps) {
   const [copied, setCopied] = useState(false);
+  const copyFieldRef = useRef<HTMLInputElement>(null);
   const [details, setDetails] = useState<BoletoDetails>({
     digitableLine: result.digitableLine,
     barcode: result.barcode,
@@ -44,10 +45,12 @@ export function BoletoPaymentResult({ result, onPaid }: BoletoPaymentResultProps
   // à confirmação, sem exigir que o cliente volte à página manualmente.
   usePaymentStatusPolling({
     enabled: true,
-    onTick: async () => {
+    fastIntervalMs: 20_000,
+    slowIntervalMs: 30_000,
+    onTick: async (signal) => {
       const response = await fetch(
         `/api/checkout/payment/status?provider=inter_boleto&reference=${encodeURIComponent(result.requestCode)}`,
-        { cache: "no-store" },
+        { cache: "no-store", signal },
       );
       const body = await response.json().catch(() => null);
       if (!body) return;
@@ -74,6 +77,11 @@ export function BoletoPaymentResult({ result, onPaid }: BoletoPaymentResultProps
       setCopied(true);
       window.setTimeout(() => setCopied(false), 3000);
     } catch {
+      copyFieldRef.current?.select();
+      if (document.execCommand("copy")) {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 3000);
+      }
       // Sem permissão de clipboard: a linha digitável continua disponível
       // para seleção manual no campo abaixo.
     }
@@ -114,10 +122,11 @@ export function BoletoPaymentResult({ result, onPaid }: BoletoPaymentResultProps
             </label>
             <div className="flex gap-2">
               <input
+                ref={copyFieldRef}
                 id="boleto-digitable-line"
                 readOnly
                 value={details.digitableLine}
-                className="min-h-11 w-full truncate rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                className="min-h-11 min-w-0 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700"
               />
               <button
                 type="button"
@@ -128,6 +137,9 @@ export function BoletoPaymentResult({ result, onPaid }: BoletoPaymentResultProps
                 {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
               </button>
             </div>
+            <p aria-live="polite" className="mt-2 min-h-4 text-xs text-emerald-700">
+              {copied ? "Linha digitÃ¡vel copiada!" : ""}
+            </p>
           </div>
 
           <a

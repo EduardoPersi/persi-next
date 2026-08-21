@@ -4,9 +4,10 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { BadgeCheck } from "lucide-react";
 import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
+import { PendingPaymentConfirmation } from "@/components/Checkout/PendingPaymentConfirmation";
 import { CheckoutHeader } from "@/components/Header/CheckoutHeader";
 import { Container } from "@/components/UI/Container";
-import { getCheckoutAttempt } from "@/lib/commerce/checkoutAttempt";
+import { getCheckoutAttempt, reconcileCheckoutAttempt } from "@/lib/commerce/checkoutAttempt";
 import { formatBrazilianDocument, formatBrazilianPhone } from "@/lib/formatting/personalData";
 import { getServerAccountSession } from "@/services/account/serverSession";
 import { getBoletoChargeStatus } from "@/services/payments/inter/boleto";
@@ -16,6 +17,7 @@ import {
   categorizeBoletoStatus,
   categorizeCardStatus,
   categorizePixStatus,
+  reconcilePaymentReference,
   type PaymentStatusCategory,
 } from "@/services/payments/reconcile";
 import { isAuthorizedForOrderStatus } from "@/services/payments/statusAuthorization";
@@ -73,8 +75,8 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 };
 
 type RecoveryData =
-  | { method: "inter_pix"; reference: string; copyPaste: string; qrCodeImageBase64: string }
-  | { method: "inter_boleto"; reference: string; digitableLine: string };
+  | { method: "inter_pix"; reference: string; copyPaste: string; qrCodeImageBase64: string; expiresAt: string }
+  | { method: "inter_boleto"; reference: string; digitableLine: string; barcode: string; dueDate: string };
 
 type ResolvedStatus = {
   category: PaymentStatusCategory;
@@ -164,26 +166,45 @@ async function resolveStatus(params: {
 
       if (attempt.payment_method === "inter_pix") {
         const charge = await getPixCharge(attempt.provider_reference);
+        const category = categorizePixStatus(charge);
+        await reconcilePaymentReference("inter", attempt.provider_reference, category);
+        if (category !== "pending") {
+          await reconcileCheckoutAttempt(
+            attempt.provider_reference,
+            category === "paid" ? "PAYMENT_CONFIRMED" : "PAYMENT_FAILED",
+          ).catch(() => undefined);
+        }
         return {
-          category: categorizePixStatus(charge),
+          category,
           order,
           recovery: {
             method: "inter_pix",
             reference: charge.txid,
             copyPaste: charge.qrCodeCopyPaste,
             qrCodeImageBase64: charge.qrCodeImageBase64,
+            expiresAt: charge.expiresAt,
           },
         };
       }
       if (attempt.payment_method === "inter_boleto") {
         const charge = await getBoletoChargeStatus(attempt.provider_reference);
+        const category = categorizeBoletoStatus(charge.status);
+        await reconcilePaymentReference("inter", attempt.provider_reference, category);
+        if (category !== "pending") {
+          await reconcileCheckoutAttempt(
+            attempt.provider_reference,
+            category === "paid" ? "PAYMENT_CONFIRMED" : "PAYMENT_FAILED",
+          ).catch(() => undefined);
+        }
         return {
-          category: categorizeBoletoStatus(charge.status),
+          category,
           order,
           recovery: {
             method: "inter_boleto",
             reference: charge.requestCode,
             digitableLine: charge.digitableLine,
+            barcode: charge.barcode,
+            dueDate: charge.dueDate,
           },
         };
       }
@@ -241,6 +262,12 @@ function PaidConfirmation({
           className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-6 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
           Ver pedido
+        </Link>
+        <Link
+          href="/"
+          className="mt-3 inline-flex min-h-11 items-center justify-center rounded-xl border border-primary px-6 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:ml-3 sm:mt-5"
+        >
+          Continuar comprando
         </Link>
 
         <dl className="mt-6 grid grid-cols-1 gap-4 text-left sm:grid-cols-2">
@@ -348,6 +375,31 @@ export default async function CheckoutConfirmationPage({
     ? await getOrderConfirmationDetails(resolved.order.id).catch(() => null)
     : null;
   const copy = resolved ? STATUS_COPY[resolved.category] : null;
+  const pendingResult = resolved?.category === "pending" && resolved.recovery
+    ? resolved.recovery.method === "inter_pix"
+      ? {
+          method: "inter_pix" as const,
+          orderId: resolved.order.id,
+          amount: Number(resolved.order.total),
+          txid: resolved.recovery.reference,
+          qrCodeCopyPaste: resolved.recovery.copyPaste,
+          qrCodeImageBase64: resolved.recovery.qrCodeImageBase64,
+          expiresAt: resolved.recovery.expiresAt,
+          checkoutAttemptId: params.attempt ?? "",
+          confirmationUrl: `/checkout/confirmacao?attempt=${encodeURIComponent(params.attempt ?? "")}`,
+        }
+      : {
+          method: "inter_boleto" as const,
+          orderId: resolved.order.id,
+          amount: Number(resolved.order.total),
+          requestCode: resolved.recovery.reference,
+          digitableLine: resolved.recovery.digitableLine,
+          barcode: resolved.recovery.barcode,
+          dueDate: resolved.recovery.dueDate,
+          checkoutAttemptId: params.attempt ?? "",
+          confirmationUrl: `/checkout/confirmacao?attempt=${encodeURIComponent(params.attempt ?? "")}`,
+        }
+    : null;
 
   return (
     <>
@@ -360,6 +412,10 @@ export default async function CheckoutConfirmationPage({
                 provider={params.provider ?? resolved?.order.paymentMethod ?? ""}
                 details={details}
               />
+            </div>
+          ) : pendingResult ? (
+            <div className="mx-auto max-w-4xl" aria-live="polite">
+              <PendingPaymentConfirmation result={pendingResult} />
             </div>
           ) : (
             <div className="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">

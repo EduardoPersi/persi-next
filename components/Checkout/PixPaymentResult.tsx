@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Clock, Copy, Smartphone } from "lucide-react";
 import clsx from "clsx";
 import { usePaymentStatusPolling } from "@/hooks/usePaymentStatusPolling";
@@ -30,6 +30,7 @@ const amountFormatter = new Intl.NumberFormat("pt-BR", {
 
 export function PixPaymentResult({ result, onPaid, onExpired }: PixPaymentResultProps) {
   const [copied, setCopied] = useState(false);
+  const copyFieldRef = useRef<HTMLInputElement>(null);
   const [secondsRemaining, setSecondsRemaining] = useState(() =>
     getSecondsRemaining(result.expiresAt),
   );
@@ -41,29 +42,26 @@ export function PixPaymentResult({ result, onPaid, onExpired }: PixPaymentResult
     return () => window.clearInterval(interval);
   }, [result.expiresAt]);
 
-  useEffect(() => {
-    if (secondsRemaining <= 0) onExpired();
-  }, [secondsRemaining, onExpired]);
-
   const expired = secondsRemaining <= 0;
 
   usePaymentStatusPolling({
-    enabled: !expired,
-    onTick: async () => {
+    enabled: true,
+    onTick: async (signal) => {
       // Nunca consulta status de uma cobrança já vencida — evita chamadas
       // desnecessárias ao Inter para um Pix que não pode mais ser pago.
-      if (Date.now() >= new Date(result.expiresAt).getTime()) return "stop";
-
       const response = await fetch(
         `/api/checkout/payment/status?provider=inter_pix&reference=${encodeURIComponent(result.txid)}`,
-        { cache: "no-store" },
+        { cache: "no-store", signal },
       );
       const body = await response.json().catch(() => null);
       if (body?.category === "paid") {
         onPaid();
         return "stop";
       }
-      if (body?.category === "failed") return "stop";
+      if (body?.category === "failed") {
+        onExpired();
+        return "stop";
+      }
     },
   });
 
@@ -73,6 +71,11 @@ export function PixPaymentResult({ result, onPaid, onExpired }: PixPaymentResult
       setCopied(true);
       window.setTimeout(() => setCopied(false), 3000);
     } catch {
+      copyFieldRef.current?.select();
+      if (document.execCommand("copy")) {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 3000);
+      }
       // Sem permissão de clipboard: o código continua disponível para
       // seleção manual no texto oculto abaixo (leitores de tela / Ctrl+F).
     }
@@ -135,6 +138,16 @@ export function PixPaymentResult({ result, onPaid, onExpired }: PixPaymentResult
         abaixo para copiar o código e realizar o pagamento.
       </p>
 
+      <label htmlFor="pix-copy-paste" className="mt-5 block text-sm font-medium text-slate-800">
+        Pix copia e cola
+      </label>
+      <input
+        ref={copyFieldRef}
+        id="pix-copy-paste"
+        readOnly
+        value={result.qrCodeCopyPaste}
+        className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+      />
       <button
         type="button"
         onClick={handleCopy}

@@ -53,15 +53,18 @@ export interface CheckoutTransferSuccess {
 export class CheckoutTransferError extends Error {
   readonly status: number;
   readonly diagnosticCode: CheckoutDiagnosticCode;
+  readonly configurationName?: string;
 
   constructor(
     status: number,
     message: string,
     diagnosticCode: CheckoutDiagnosticCode = "CHECKOUT_RESPONSE_INVALID",
+    configurationName?: string,
   ) {
     super(message);
     this.status = status;
     this.diagnosticCode = diagnosticCode;
+    this.configurationName = configurationName;
     this.name = "CheckoutTransferError";
   }
 }
@@ -85,6 +88,7 @@ function requireEnvironmentValue(
       503,
       `Missing server configuration: ${name}`,
       "CHECKOUT_CONFIG_MISSING",
+      String(name),
     );
   }
   return value;
@@ -99,6 +103,7 @@ function validateEndpoint(value: string): string {
       503,
       "Invalid checkout transfer endpoint",
       "CHECKOUT_CONFIG_MISSING",
+      "PERSI_HEADLESS_CHECKOUT_ENDPOINT",
     );
   }
 
@@ -115,6 +120,7 @@ function validateEndpoint(value: string): string {
       503,
       "Invalid checkout transfer endpoint",
       "CHECKOUT_CONFIG_MISSING",
+      "PERSI_HEADLESS_CHECKOUT_ENDPOINT",
     );
   }
 
@@ -174,6 +180,7 @@ export function getCheckoutTransferConfig(
       503,
       "Invalid checkout transfer key id",
       "CHECKOUT_CONFIG_MISSING",
+      "PERSI_HEADLESS_CHECKOUT_HMAC_KEY_ID",
     );
   }
 

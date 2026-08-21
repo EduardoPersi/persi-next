@@ -51,6 +51,35 @@ type PaymentStage =
   | "persistence"
   | "confirmation";
 
+type PaymentMilestone =
+  | "payment_request_received"
+  | "request_validation_ok"
+  | "cart_validation_started"
+  | "cart_validation_ok"
+  | "checkout_attempt_started"
+  | "checkout_attempt_ok"
+  | "order_creation_started"
+  | "order_creation_ok"
+  | "provider_started"
+  | "provider_finished"
+  | "response_started";
+
+function logPaymentMilestone(input: {
+  milestone: PaymentMilestone;
+  startedAt: number;
+  checkoutAttemptId?: string;
+  method?: PersiPaymentMethod;
+  orderId?: number;
+}) {
+  console.info("[checkout-payment] milestone", {
+    checkoutAttemptId: input.checkoutAttemptId,
+    stage: input.milestone,
+    method: input.method,
+    durationMs: Date.now() - input.startedAt,
+    orderId: input.orderId,
+  });
+}
+
 function getConfirmationUrl(checkoutAttemptId: string): string {
   return `/checkout/confirmacao?attempt=${encodeURIComponent(checkoutAttemptId)}`;
 }
@@ -168,6 +197,8 @@ export async function POST(request: Request) {
   let paymentMethod: PersiPaymentMethod | undefined;
   let orderId: number | undefined;
 
+  logPaymentMilestone({ milestone: "payment_request_received", startedAt });
+
   try {
     if (!activeCartToken) {
       throw new CheckoutTransferError(422, "Cart token is missing");
@@ -184,6 +215,12 @@ export async function POST(request: Request) {
     const input = parsed.data;
     checkoutAttemptId = input.idempotencyKey;
     paymentMethod = input.method;
+    logPaymentMilestone({
+      milestone: "request_validation_ok",
+      startedAt,
+      checkoutAttemptId,
+      method: paymentMethod,
+    });
     if (typeof input.expectedAmount !== "number") {
       throw new CheckoutTransferError(400, "Total esperado ausente.");
     }
@@ -198,6 +235,12 @@ export async function POST(request: Request) {
     }
 
     stage = "cart_validation";
+    logPaymentMilestone({
+      milestone: "cart_validation_started",
+      startedAt,
+      checkoutAttemptId,
+      method: paymentMethod,
+    });
     const cartResult = await getCart(activeCartToken);
     activeCartToken = cartResult.cartToken ?? activeCartToken;
     const cart = cartResult.cart;
@@ -218,9 +261,27 @@ export async function POST(request: Request) {
         activeCartToken,
       );
     }
+    logPaymentMilestone({
+      milestone: "cart_validation_ok",
+      startedAt,
+      checkoutAttemptId,
+      method: paymentMethod,
+    });
 
     stage = "idempotency";
+    logPaymentMilestone({
+      milestone: "checkout_attempt_started",
+      startedAt,
+      checkoutAttemptId,
+      method: paymentMethod,
+    });
     const reservation = await reserveCheckoutAttempt(input.idempotencyKey, paymentMethod);
+    logPaymentMilestone({
+      milestone: "checkout_attempt_ok",
+      startedAt,
+      checkoutAttemptId,
+      method: paymentMethod,
+    });
     if (!reservation.acquired) {
       if (reservation.attempt.provider_reference && reservation.attempt.order_id) {
         const result: PaymentInitiationResult = {
@@ -241,6 +302,12 @@ export async function POST(request: Request) {
     const leaseToken = reservation.lease_token;
     if (!leaseToken) throw new Error("Checkout lease missing");
     stage = "order_creation";
+    logPaymentMilestone({
+      milestone: "order_creation_started",
+      startedAt,
+      checkoutAttemptId,
+      method: paymentMethod,
+    });
     const existingOrder = await findOrderByIdempotencyKey(input.idempotencyKey);
 
     if (existingOrder?.metaData._persi_payment_reference) {
@@ -310,6 +377,13 @@ export async function POST(request: Request) {
         couponCodes: cart.coupons.map(({ code }) => code),
       }));
     orderId = order.id;
+    logPaymentMilestone({
+      milestone: "order_creation_ok",
+      startedAt,
+      checkoutAttemptId,
+      method: paymentMethod,
+      orderId,
+    });
 
     if (reservation.attempt.state === "RESERVED") {
       await transitionCheckoutAttempt({
@@ -392,6 +466,13 @@ export async function POST(request: Request) {
     }
 
     stage = "provider_request";
+    logPaymentMilestone({
+      milestone: "provider_started",
+      startedAt,
+      checkoutAttemptId,
+      method: paymentMethod,
+      orderId,
+    });
     if (input.method === "inter_pix") {
       const txid = input.idempotencyKey.replace(/-/g, "");
       let charge;
@@ -491,6 +572,13 @@ export async function POST(request: Request) {
         confirmationUrl: getConfirmationUrl(input.idempotencyKey),
       };
     }
+    logPaymentMilestone({
+      milestone: "provider_finished",
+      startedAt,
+      checkoutAttemptId,
+      method: paymentMethod,
+      orderId,
+    });
 
     stage = "confirmation";
     await transitionCheckoutAttempt({
@@ -507,6 +595,13 @@ export async function POST(request: Request) {
       stage,
       durationMs: Date.now() - startedAt,
     });
+    logPaymentMilestone({
+      milestone: "response_started",
+      startedAt,
+      checkoutAttemptId,
+      method: paymentMethod,
+      orderId,
+    });
     return createPrivateResponse(result, 201, activeCartToken);
   } catch (error) {
     const status = getErrorStatus(error);
@@ -516,6 +611,11 @@ export async function POST(request: Request) {
       providerStatus: error instanceof InterPaymentError ? error.status : undefined,
       category,
       stage,
+      missingConfiguration:
+        error instanceof CheckoutTransferError &&
+        error.diagnosticCode === "CHECKOUT_CONFIG_MISSING"
+          ? error.configurationName
+          : undefined,
       checkoutAttemptId,
       method: paymentMethod,
       orderId,
