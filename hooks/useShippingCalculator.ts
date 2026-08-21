@@ -17,6 +17,7 @@ import {
   writeLastShippingPostcode,
   writeShippingCache,
 } from "@/lib/commerce/shippingCalculator";
+import { pushToDataLayer } from "@/lib/analytics/gtm";
 import type { CheckoutShippingPackage } from "@/types/cart";
 import type {
   ProductShippingInput,
@@ -33,9 +34,30 @@ interface UseShippingCalculatorOptions {
   onSelectionChange?: (selection?: SelectedShippingRate) => void;
 }
 
-type ShippingStatus = "idle" | "loading" | "success" | "empty" | "error";
+type ShippingStatus =
+  | "idle"
+  | "loading"
+  | "success"
+  | "empty"
+  | "invalid_cep"
+  | "network_error"
+  | "server_error";
 
-const GENERIC_ERROR = "Não foi possível calcular o frete. Tente novamente.";
+const NETWORK_ERROR =
+  "Não foi possível consultar o frete neste momento. Verifique sua conexão e tente novamente.";
+const SERVER_ERROR =
+  "Estamos com uma instabilidade temporária no cálculo de frete. Tente novamente em alguns instantes.";
+const SHIPPING_LOOKUP_TIMEOUT_MS = 20_000;
+
+class ShippingLookupError extends Error {
+  constructor(
+    readonly kind: "network_error" | "server_error",
+    message: string,
+  ) {
+    super(message);
+    this.name = "ShippingLookupError";
+  }
+}
 
 function countRates(packages: CheckoutShippingPackage[]): number {
   return packages.reduce((total, item) => total + item.rates.length, 0);
@@ -142,8 +164,9 @@ export function useShippingCalculator({
       const digits = normalizePostcode(requestedPostcode);
 
       if (!isValidPostcode(digits)) {
-        setStatus("error");
-        setMessage("Informe um CEP válido no formato 99999-999.");
+        setStatus("invalid_cep");
+        setMessage("CEP inválido. Confira os números informados.");
+        pushToDataLayer({ event: "shipping_invalid_cep", shipping_context: mode });
         return;
       }
 
@@ -163,8 +186,14 @@ export function useShippingCalculator({
       activeRequest.current = controller;
       const sequence = ++requestSequence.current;
       activeRequestKey.current = requestKey;
+      let timedOut = false;
+      const requestTimeout = window.setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, SHIPPING_LOOKUP_TIMEOUT_MS);
       setStatus("loading");
-      setMessage("");
+      setMessage("Calculando opções de entrega...");
+      pushToDataLayer({ event: "shipping_lookup", shipping_context: mode });
 
       try {
         let nextQuote: ShippingQuote;
@@ -174,9 +203,21 @@ export function useShippingCalculator({
             digits,
             controller.signal,
           );
-          if (result.aborted) return;
+          if (result.aborted) {
+            if (timedOut) {
+              throw new ShippingLookupError("server_error", SERVER_ERROR);
+            }
+            return;
+          }
           if (!result.success || !result.cart) {
-            throw new Error(result.message || GENERIC_ERROR);
+            throw new ShippingLookupError(
+              typeof navigator !== "undefined" && !navigator.onLine
+                ? "network_error"
+                : "server_error",
+              typeof navigator !== "undefined" && !navigator.onLine
+                ? NETWORK_ERROR
+                : SERVER_ERROR,
+            );
           }
           nextQuote = {
             destination: result.cart.shippingDestination,
@@ -202,7 +243,7 @@ export function useShippingCalculator({
               }
             | null;
           if (!response.ok) {
-            throw new Error(body?.message || GENERIC_ERROR);
+            throw new ShippingLookupError("server_error", SERVER_ERROR);
           }
           nextQuote = {
             destination: body?.destination,
@@ -250,23 +291,41 @@ export function useShippingCalculator({
 
         if (!countRates(nextQuote.packages)) {
           setStatus("empty");
-          setMessage("Não encontramos opções de entrega para este CEP.");
+          setMessage("");
           persist(digits, nextQuote, officiallySelected);
+          pushToDataLayer({ event: "shipping_empty", shipping_context: mode });
           return;
         }
 
         setStatus("success");
         setMessage("Opções de frete atualizadas.");
         persist(digits, nextQuote, officiallySelected);
+        pushToDataLayer({
+          event: "shipping_success",
+          shipping_context: mode,
+          shipping_option_count: countRates(nextQuote.packages),
+        });
       } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") return;
+        if (error instanceof Error && error.name === "AbortError" && !timedOut) {
+          return;
+        }
         if (sequence !== requestSequence.current) return;
         lastCompletedKey.current = requestKey;
-        setStatus("error");
-        setMessage(error instanceof Error && error.message
-          ? error.message
-          : GENERIC_ERROR);
+        const errorStatus =
+          error instanceof ShippingLookupError
+            ? error.kind
+            : error instanceof TypeError
+              ? "network_error"
+              : "server_error";
+        setStatus(errorStatus);
+        setMessage(errorStatus === "network_error" ? NETWORK_ERROR : SERVER_ERROR);
+        pushToDataLayer({
+          event: "shipping_error",
+          shipping_context: mode,
+          shipping_error_type: errorStatus,
+        });
       } finally {
+        window.clearTimeout(requestTimeout);
         if (sequence === requestSequence.current) {
           activeRequestKey.current = "";
         }
@@ -312,7 +371,7 @@ export function useShippingCalculator({
       if (mode === "cart") {
         const result = await selectShippingRate(packageId, rateId);
         if (!result.success || !result.cart) {
-          setStatus("error");
+          setStatus("server_error");
           setMessage(result.message || "Não foi possível selecionar o frete.");
           return;
         }

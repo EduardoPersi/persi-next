@@ -112,14 +112,52 @@ test("resultado empty conclui o disparo automático sem loop", () => {
     new URL("../hooks/useShippingCalculator.ts", import.meta.url),
     "utf8",
   );
+  const component = readFileSync(
+    new URL("../components/Shipping/ShippingCalculator.tsx", import.meta.url),
+    "utf8",
+  );
 
-  assert.match(hook, /type ShippingStatus = "idle" \| "loading" \| "success" \| "empty" \| "error"/);
+  for (const status of [
+    "idle",
+    "loading",
+    "success",
+    "empty",
+    "invalid_cep",
+    "network_error",
+    "server_error",
+  ]) {
+    assert.match(hook, new RegExp(`\\| "${status}"|= "${status}"`));
+  }
   assert.match(hook, /lastCompletedKey\.current = requestKey/);
   assert.match(hook, /calculate\(digits, \{ force: false \}\)/);
   assert.match(hook, /shouldStartAutomaticShippingRequest/);
   assert.doesNotMatch(hook, /quote\.packages,\s*\n\s*setSelection/);
   assert.match(hook, /activeRequest\.current\?\.abort\(\)/);
-  assert.match(hook, /Não encontramos opções de entrega para este CEP\./);
+  assert.match(hook, /SHIPPING_LOOKUP_TIMEOUT_MS = 20_000/);
+  assert.match(hook, /window\.clearTimeout\(requestTimeout\)/);
+  assert.match(component, /Ainda não entregamos nesse CEP\./);
+  assert.match(component, /aria-live="polite"/);
+  assert.match(component, /Alterar CEP/);
+  assert.match(component, /Pesquisar CEP/);
+  assert.match(component, /Falar com um consultor/);
+});
+
+test("consulta de frete publica eventos sem enviar o CEP", () => {
+  const hook = readFileSync(
+    new URL("../hooks/useShippingCalculator.ts", import.meta.url),
+    "utf8",
+  );
+
+  for (const event of [
+    "shipping_lookup",
+    "shipping_success",
+    "shipping_empty",
+    "shipping_error",
+    "shipping_invalid_cep",
+  ]) {
+    assert.match(hook, new RegExp(`event: "${event}"`));
+  }
+  assert.doesNotMatch(hook, /pushToDataLayer\(\{[^}]*postcode/s);
 });
 
 test("gate automático bloqueia requisição ativa e qualquer resultado concluído", () => {
