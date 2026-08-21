@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatStoreMoney, isZeroMoney, moneyToNumber } from "@/lib/formatting/money";
 import type { Cart } from "@/types/cart";
+import { CheckoutQuantityControl } from "./CheckoutQuantityControl";
 import {
   getPaymentMethodDiscountRate,
   type CheckoutPaymentMethod,
@@ -76,11 +77,9 @@ export function CheckoutOrderSummary({
                     .join(" · ")}
                 </p>
               ) : null}
-              <div className="mt-2 flex justify-between gap-3 text-xs">
-                <span className="text-slate-600">
-                  Quantidade: {item.quantity}
-                </span>
-                <strong>{formatter.format(item.total)}</strong>
+              <div className="mt-2 flex flex-wrap items-end justify-between gap-3 text-xs">
+                <CheckoutQuantityControl item={item} />
+                <strong className="pb-1">{formatter.format(item.total)}</strong>
               </div>
             </div>
           </li>
@@ -128,7 +127,7 @@ export function CheckoutOrderSummary({
               ? isZeroMoney(cart.totals.shipping)
                 ? "Grátis"
                 : formatStoreMoney(cart.totals.shipping)
-              : "Informe o endereço para calcular."}
+              : "A calcular"}
           </dd>
         </div>
         {!isZeroMoney(cart.totals.tax) ? (

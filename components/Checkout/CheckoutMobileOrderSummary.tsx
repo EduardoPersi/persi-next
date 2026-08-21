@@ -5,14 +5,13 @@ import Image from "next/image";
 import Link from "next/link";
 import clsx from "clsx";
 import { ChevronDown } from "lucide-react";
-import { ProductQuantity } from "@/components/Product/ProductQuantity";
-import { useCart } from "@/hooks/useCart";
 import { formatStoreMoney, isZeroMoney, moneyToNumber } from "@/lib/formatting/money";
 import type { Cart } from "@/types/cart";
 import {
   getPaymentMethodDiscountRate,
   type CheckoutPaymentMethod,
 } from "./paymentMethod";
+import { CheckoutQuantityControl } from "./CheckoutQuantityControl";
 
 const FALLBACK_IMAGE =
   "/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas.webp";
@@ -34,7 +33,6 @@ export function CheckoutMobileOrderSummary({
     cart.shippingPackages.every((shippingPackage) =>
       shippingPackage.rates.some((rate) => rate.selected),
     );
-  const { updateItem, pendingItemKey } = useCart();
   const [isExpanded, setIsExpanded] = useState(false);
   const formatter = new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -84,7 +82,6 @@ export function CheckoutMobileOrderSummary({
         >
           <ul className="divide-y divide-slate-200">
             {cart.items.map((item) => {
-              const isPending = pendingItemKey === item.key;
               return (
                 <li key={item.key} className="flex gap-3 py-3 first:pt-0">
                   <Image
@@ -106,22 +103,7 @@ export function CheckoutMobileOrderSummary({
                       </p>
                     ) : null}
                     <div className="mt-2 flex items-center justify-between gap-3">
-                      <div className="w-24">
-                        <ProductQuantity
-                          value={item.quantity}
-                          min={item.minQuantity}
-                          max={item.maxQuantity}
-                          step={item.quantityStep}
-                          onChange={(quantity) => {
-                            if (!isPending && quantity !== item.quantity) {
-                              void updateItem(item.key, quantity);
-                            }
-                          }}
-                          compact
-                          dense
-                          showLabel={false}
-                        />
-                      </div>
+                      <CheckoutQuantityControl item={item} />
                       <strong className="text-xs text-slate-900">
                         {formatter.format(item.total)}
                       </strong>

@@ -193,7 +193,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const updateItem = useCallback(async (key: string, quantity: number) => {
     await initializeCart().catch(() => undefined);
     const requestId = latestRequest.current.start();
-    setIsLoading(true);
+    setIsCheckoutUpdating(true);
     setPendingItemKey(key);
     setError("");
 
@@ -204,6 +204,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key, quantity }),
+        signal: AbortSignal.timeout(15_000),
       });
       const result = (await response.json()) as Cart & { message?: string };
 
@@ -220,8 +221,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (latestRequest.current.isLatest(requestId)) setError(message);
       return { success: false, message };
     } finally {
-      if (latestRequest.current.isLatest(requestId)) setIsLoading(false);
-      if (latestRequest.current.isLatest(requestId)) setPendingItemKey(null);
+      if (latestRequest.current.isLatest(requestId)) {
+        setIsCheckoutUpdating(false);
+        setPendingItemKey(null);
+      }
     }
   }, []);
 
