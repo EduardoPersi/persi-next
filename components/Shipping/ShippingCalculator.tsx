@@ -35,7 +35,7 @@ export function ShippingCalculator(props: ShippingCalculatorProps) {
         <h2 className="font-bold text-[#0c2d72]">Calcular frete e prazo</h2>
       </div>
 
-      {calculator.status === "ready" && calculator.postcode ? (
+      {calculator.status === "success" && calculator.postcode ? (
         <div className="mt-4 rounded-xl bg-white p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Entrega para

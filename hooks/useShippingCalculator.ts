@@ -13,6 +13,7 @@ import {
   normalizePostcode,
   readLastShippingPostcode,
   readShippingCache,
+  shouldStartAutomaticShippingRequest,
   writeLastShippingPostcode,
   writeShippingCache,
 } from "@/lib/commerce/shippingCalculator";
@@ -32,7 +33,7 @@ interface UseShippingCalculatorOptions {
   onSelectionChange?: (selection?: SelectedShippingRate) => void;
 }
 
-type ShippingStatus = "idle" | "loading" | "ready" | "error" | "empty";
+type ShippingStatus = "idle" | "loading" | "success" | "empty" | "error";
 
 const GENERIC_ERROR = "Não foi possível calcular o frete. Tente novamente.";
 
@@ -58,7 +59,7 @@ export function useShippingCalculator({
   const { selection, setSelection, clearSelection } = useShippingSelection();
   const activeRequest = useRef<AbortController | null>(null);
   const requestSequence = useRef(0);
-  const lastSuccessfulKey = useRef("");
+  const lastCompletedKey = useRef("");
   const activeRequestKey = useRef("");
 
   const persist = useCallback(
@@ -83,7 +84,7 @@ export function useShippingCalculator({
   useEffect(() => {
     activeRequest.current?.abort();
     requestSequence.current += 1;
-    lastSuccessfulKey.current = "";
+    lastCompletedKey.current = "";
     let active = true;
 
     queueMicrotask(() => {
@@ -117,8 +118,8 @@ export function useShippingCalculator({
           onSelectionChange?.({ ...cached.selected, rate: selectedRate });
         }
       }
-      setStatus(countRates(cached.quote.packages) ? "ready" : "empty");
-      lastSuccessfulKey.current = `${contextKey}:${cached.postcode}`;
+      setStatus(countRates(cached.quote.packages) ? "success" : "empty");
+      lastCompletedKey.current = `${contextKey}:${cached.postcode}`;
     });
 
     return () => {
@@ -134,7 +135,10 @@ export function useShippingCalculator({
   );
 
   const calculate = useCallback(
-    async (requestedPostcode = postcode) => {
+    async (
+      requestedPostcode = postcode,
+      options: { force?: boolean } = { force: true },
+    ) => {
       const digits = normalizePostcode(requestedPostcode);
 
       if (!isValidPostcode(digits)) {
@@ -146,11 +150,13 @@ export function useShippingCalculator({
       const requestKey = `${contextKey}:${digits}`;
       if (activeRequestKey.current === requestKey) return;
       if (
-        requestKey === lastSuccessfulKey.current &&
-        countRates(quote.packages) > 0
-      ) {
-        return;
-      }
+        !options.force &&
+        !shouldStartAutomaticShippingRequest(
+          requestKey,
+          activeRequestKey.current,
+          lastCompletedKey.current,
+        )
+      ) return;
 
       activeRequest.current?.abort();
       const controller = new AbortController();
@@ -240,21 +246,22 @@ export function useShippingCalculator({
           clearSelection();
           onSelectionChange?.(undefined);
         }
-        lastSuccessfulKey.current = requestKey;
+        lastCompletedKey.current = requestKey;
 
         if (!countRates(nextQuote.packages)) {
           setStatus("empty");
-          setMessage("Não encontramos opções de frete para este CEP.");
+          setMessage("Não encontramos opções de entrega para este CEP.");
           persist(digits, nextQuote, officiallySelected);
           return;
         }
 
-        setStatus("ready");
+        setStatus("success");
         setMessage("Opções de frete atualizadas.");
         persist(digits, nextQuote, officiallySelected);
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") return;
         if (sequence !== requestSequence.current) return;
+        lastCompletedKey.current = requestKey;
         setStatus("error");
         setMessage(error instanceof Error && error.message
           ? error.message
@@ -274,7 +281,6 @@ export function useShippingCalculator({
       persist,
       postcode,
       product,
-      quote.packages,
       setSelection,
     ],
   );
@@ -283,7 +289,7 @@ export function useShippingCalculator({
     const digits = normalizePostcode(postcode);
     if (!isValidPostcode(digits)) return;
     const timer = window.setTimeout(() => {
-      void calculate(digits);
+      void calculate(digits, { force: false });
     }, 500);
     return () => window.clearTimeout(timer);
   }, [calculate, postcode]);
@@ -326,7 +332,7 @@ export function useShippingCalculator({
       setSelection(nextSelection);
       onSelectionChange?.({ ...nextSelection, rate });
       persist(normalizePostcode(postcode), quoteToPersist, nextSelection);
-      setStatus("ready");
+      setStatus("success");
       setMessage("Opção de frete selecionada.");
     },
     [
@@ -350,7 +356,17 @@ export function useShippingCalculator({
     message,
     isLoading: status === "loading" || isCheckoutUpdating,
     setPostcode: (value: string) => {
-      setPostcodeState(formatPostcode(value));
+      const nextPostcode = formatPostcode(value);
+      if (normalizePostcode(nextPostcode) !== normalizePostcode(postcode)) {
+        activeRequest.current?.abort();
+        requestSequence.current += 1;
+        activeRequestKey.current = "";
+        setQuote({ packages: [] });
+        clearSelection();
+        onSelectionChange?.(undefined);
+        setStatus("idle");
+      }
+      setPostcodeState(nextPostcode);
       setMessage("");
       if (!isValidPostcode(value)) setStatus("idle");
     },
@@ -360,7 +376,7 @@ export function useShippingCalculator({
       activeRequest.current?.abort();
       requestSequence.current += 1;
       activeRequestKey.current = "";
-      lastSuccessfulKey.current = "";
+      lastCompletedKey.current = "";
       setPostcodeState("");
       setQuote({ packages: [] });
       clearSelection();

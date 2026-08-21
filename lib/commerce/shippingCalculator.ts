@@ -6,6 +6,7 @@ import type {
 } from "@/types/shipping";
 
 export const SHIPPING_CACHE_TTL_MS = 30 * 60 * 1000;
+export const EMPTY_SHIPPING_CACHE_TTL_MS = 5 * 60 * 1000;
 const SHIPPING_CACHE_PREFIX = "persi_shipping_quote:";
 const LAST_POSTCODE_KEY = "persi_shipping_last_postcode";
 
@@ -50,6 +51,20 @@ function cacheKey(contextKey: string): string {
   return `${SHIPPING_CACHE_PREFIX}${contextKey}`;
 }
 
+export function isEmptyShippingQuote(quote: ShippingQuote): boolean {
+  return quote.packages.every(
+    (shippingPackage) => shippingPackage.rates.length === 0,
+  );
+}
+
+export function shouldStartAutomaticShippingRequest(
+  requestKey: string,
+  activeRequestKey: string,
+  lastCompletedKey: string,
+): boolean {
+  return requestKey !== activeRequestKey && requestKey !== lastCompletedKey;
+}
+
 export function readShippingCache(
   storage: Pick<Storage, "getItem">,
   contextKey: string,
@@ -64,12 +79,15 @@ export function readShippingCache(
       typeof value.postcode !== "string" ||
       !isValidPostcode(value.postcode) ||
       typeof value.timestamp !== "number" ||
-      now - value.timestamp > SHIPPING_CACHE_TTL_MS ||
       !value.quote ||
       !Array.isArray(value.quote.packages)
     ) {
       return null;
     }
+    const ttl = isEmptyShippingQuote(value.quote as ShippingQuote)
+      ? EMPTY_SHIPPING_CACHE_TTL_MS
+      : SHIPPING_CACHE_TTL_MS;
+    if (now - value.timestamp > ttl) return null;
     return value as ShippingCacheEntry;
   } catch {
     return null;

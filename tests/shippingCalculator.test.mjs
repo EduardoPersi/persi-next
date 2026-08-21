@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  EMPTY_SHIPPING_CACHE_TTL_MS,
   formatPostcode,
   getCartShippingContextKey,
   getProductShippingContextKey,
   isValidPostcode,
   readShippingCache,
   SHIPPING_CACHE_TTL_MS,
+  shouldStartAutomaticShippingRequest,
   writeShippingCache,
 } from "../lib/commerce/shippingCalculator.ts";
 
@@ -73,6 +75,65 @@ test("cache preserva opções e método por trinta minutos", () => {
       timestamp + SHIPPING_CACHE_TTL_MS + 1,
     ),
     null,
+  );
+});
+
+test("cache preserva resultado sem frete por cinco minutos", () => {
+  const storage = createStorage();
+  const timestamp = 2_000_000;
+  const entry = {
+    contextKey: "product:105955:0:1",
+    postcode: "11703250",
+    quote: { packages: [] },
+    timestamp,
+  };
+  writeShippingCache(storage, entry);
+
+  assert.deepEqual(
+    readShippingCache(
+      storage,
+      entry.contextKey,
+      timestamp + EMPTY_SHIPPING_CACHE_TTL_MS,
+    ),
+    entry,
+  );
+  assert.equal(
+    readShippingCache(
+      storage,
+      entry.contextKey,
+      timestamp + EMPTY_SHIPPING_CACHE_TTL_MS + 1,
+    ),
+    null,
+  );
+});
+
+test("resultado empty conclui o disparo automático sem loop", () => {
+  const hook = readFileSync(
+    new URL("../hooks/useShippingCalculator.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(hook, /type ShippingStatus = "idle" \| "loading" \| "success" \| "empty" \| "error"/);
+  assert.match(hook, /lastCompletedKey\.current = requestKey/);
+  assert.match(hook, /calculate\(digits, \{ force: false \}\)/);
+  assert.match(hook, /shouldStartAutomaticShippingRequest/);
+  assert.doesNotMatch(hook, /quote\.packages,\s*\n\s*setSelection/);
+  assert.match(hook, /activeRequest\.current\?\.abort\(\)/);
+  assert.match(hook, /Não encontramos opções de entrega para este CEP\./);
+});
+
+test("gate automático bloqueia requisição ativa e qualquer resultado concluído", () => {
+  const key = "product:105955:0:1:11703250";
+  assert.equal(shouldStartAutomaticShippingRequest(key, key, ""), false);
+  assert.equal(shouldStartAutomaticShippingRequest(key, "", key), false);
+  assert.equal(shouldStartAutomaticShippingRequest(key, "", ""), true);
+  assert.equal(
+    shouldStartAutomaticShippingRequest(
+      "product:105955:0:1:13214065",
+      "",
+      key,
+    ),
+    true,
   );
 });
 
