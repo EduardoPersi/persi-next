@@ -9,8 +9,8 @@ test("checkout usa um controle de quantidade acessível nos dois resumos", () =>
   const desktop = read("components/Checkout/CheckoutOrderSummary.tsx");
   const mobile = read("components/Checkout/CheckoutMobileOrderSummary.tsx");
 
-  assert.match(desktop, /<CheckoutQuantityControl item=\{item\} \/>/);
-  assert.match(mobile, /<CheckoutQuantityControl item=\{item\} \/>/);
+  assert.match(desktop, /<CheckoutQuantityControl item=\{item\} idSuffix="desktop" \/>/);
+  assert.match(mobile, /<CheckoutQuantityControl item=\{item\} idSuffix="mobile" \/>/);
   assert.match(control, /Diminuir quantidade de \$\{item\.name\}/);
   assert.match(control, /Aumentar quantidade de \$\{item\.name\}/);
   assert.match(control, /h-11 w-11/);
@@ -50,4 +50,17 @@ test("frete só mostra grátis quando há método selecionado com total zero", (
     assert.match(summary, /"Grátis"/);
     assert.match(summary, /"A calcular"/);
   }
+});
+
+test("cupom expansível fica no resumo e não é duplicado na etapa de endereço", () => {
+  const coupon = read("components/Checkout/CheckoutCoupon.tsx");
+  const desktop = read("components/Checkout/CheckoutOrderSummary.tsx");
+  const mobile = read("components/Checkout/CheckoutMobileOrderSummary.tsx");
+  const form = read("components/Checkout/CheckoutForm.tsx");
+
+  assert.match(coupon, /<details/);
+  assert.match(coupon, /Tenho um cupom de desconto/);
+  assert.match(desktop, /<CheckoutCoupon idSuffix="desktop-summary" embedded \/>/);
+  assert.match(mobile, /<CheckoutCoupon idSuffix="mobile-summary" embedded \/>/);
+  assert.doesNotMatch(form, /<CheckoutCoupon/);
 });

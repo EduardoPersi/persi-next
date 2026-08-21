@@ -12,6 +12,7 @@ import {
   type CheckoutPaymentMethod,
 } from "./paymentMethod";
 import { CheckoutQuantityControl } from "./CheckoutQuantityControl";
+import { CheckoutCoupon } from "./CheckoutCoupon";
 
 const FALLBACK_IMAGE =
   "/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas.webp";
@@ -80,6 +81,9 @@ export function CheckoutMobileOrderSummary({
           id="checkout-mobile-summary-panel"
           className="border-t border-slate-200 px-4 py-4"
         >
+          <div className="mb-4">
+            <CheckoutCoupon idSuffix="mobile-summary" embedded />
+          </div>
           <ul className="divide-y divide-slate-200">
             {cart.items.map((item) => {
               return (
@@ -103,7 +107,7 @@ export function CheckoutMobileOrderSummary({
                       </p>
                     ) : null}
                     <div className="mt-2 flex items-center justify-between gap-3">
-                      <CheckoutQuantityControl item={item} />
+                      <CheckoutQuantityControl item={item} idSuffix="mobile" />
                       <strong className="text-xs text-slate-900">
                         {formatter.format(item.total)}
                       </strong>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { formatStoreMoney, isZeroMoney, moneyToNumber } from "@/lib/formatting/money";
 import type { Cart } from "@/types/cart";
 import { CheckoutQuantityControl } from "./CheckoutQuantityControl";
+import { CheckoutCoupon } from "./CheckoutCoupon";
 import {
   getPaymentMethodDiscountRate,
   type CheckoutPaymentMethod,
@@ -38,33 +39,37 @@ export function CheckoutOrderSummary({
   return (
     <aside
       aria-labelledby="checkout-summary-title"
-      className="rounded-xl border border-black bg-white p-4 shadow-sm lg:sticky lg:top-6 sm:p-6"
+      className="rounded-xl border border-emerald-200 bg-white p-5 shadow-sm lg:sticky lg:top-6"
     >
       <Link
         href="/carrinho"
         aria-label="Editar carrinho"
-        className="-m-2 flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+        className="flex items-center gap-2 rounded-lg transition-colors hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0c2d72] text-sm font-bold text-white"
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-black text-xs font-bold text-white"
           aria-hidden="true"
         >
           4
         </span>
-        <h2 id="checkout-summary-title" className="text-base font-bold text-[#0c2d72]">
+        <h2 id="checkout-summary-title" className="text-base font-bold text-slate-950">
           Revise seu pedido
         </h2>
       </Link>
 
-      <ul className="mt-5 divide-y divide-slate-200">
+      <div className="mt-4">
+        <CheckoutCoupon idSuffix="desktop-summary" embedded />
+      </div>
+
+      <ul className="mt-4 divide-y divide-slate-200">
         {cart.items.map((item) => (
-          <li key={item.key} className="flex gap-3 py-4 first:pt-0">
+          <li key={item.key} className="flex gap-3 py-3 first:pt-0">
             <Image
               src={item.image?.src || FALLBACK_IMAGE}
               alt={item.image?.alt || item.name}
-              width={64}
-              height={64}
-              className="h-16 w-16 shrink-0 rounded-lg border border-slate-200 object-contain"
+              width={48}
+              height={48}
+              className="h-12 w-12 shrink-0 border border-slate-200 object-contain"
             />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold leading-5 text-slate-900">
@@ -77,9 +82,9 @@ export function CheckoutOrderSummary({
                     .join(" · ")}
                 </p>
               ) : null}
-              <div className="mt-2 flex flex-wrap items-end justify-between gap-3 text-xs">
-                <CheckoutQuantityControl item={item} />
-                <strong className="pb-1">{formatter.format(item.total)}</strong>
+              <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <CheckoutQuantityControl item={item} idSuffix="desktop" />
+                <strong>{formatter.format(item.total)}</strong>
               </div>
             </div>
           </li>
@@ -87,7 +92,7 @@ export function CheckoutOrderSummary({
       </ul>
 
       <dl
-        className="space-y-3 border-t border-slate-200 pt-4 text-xs"
+        className="space-y-3 border-t border-slate-200 pt-4 text-sm"
         aria-live="polite"
         aria-atomic="true"
       >
@@ -137,8 +142,8 @@ export function CheckoutOrderSummary({
           </div>
         ) : null}
         <div className="flex justify-between gap-4 border-t border-slate-200 pt-4">
-          <dt className="font-bold text-slate-900">Total</dt>
-          <dd className="text-base font-bold text-[#0c2d72]">
+          <dt className="font-bold text-emerald-700">Total</dt>
+          <dd className="text-lg font-bold text-emerald-700">
             {formatter.format(finalTotal)}
           </dd>
         </div>

@@ -39,7 +39,6 @@ import type {
 import { CheckoutAddresses } from "./CheckoutAddresses";
 import { BoletoPaymentResult } from "./BoletoPaymentResult";
 import { CheckoutContactForm } from "./CheckoutContactForm";
-import { CheckoutCoupon } from "./CheckoutCoupon";
 import { CheckoutMobileOrderSummary } from "./CheckoutMobileOrderSummary";
 import { CheckoutMobileStepper } from "./CheckoutMobileStepper";
 import { CheckoutOrderNote } from "./CheckoutOrderNote";
@@ -468,7 +467,6 @@ export function CheckoutForm({
           >
             <CheckoutAddresses />
             <CheckoutShippingPlaceholder />
-            <CheckoutCoupon />
             <CheckoutOrderNote />
             <Button
               type="button"

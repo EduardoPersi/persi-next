@@ -1,10 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/UI/Button";
 
-export function CheckoutCoupon() {
+interface CheckoutCouponProps {
+  idSuffix?: string;
+  embedded?: boolean;
+}
+
+export function CheckoutCoupon({
+  idSuffix = "default",
+  embedded = false,
+}: CheckoutCouponProps) {
   const { cart, applyCoupon, removeCoupon, isCheckoutUpdating } = useCart();
   const [code, setCode] = useState("");
   const [message, setMessage] = useState("");
@@ -17,21 +26,23 @@ export function CheckoutCoupon() {
     if (result.success) setCode("");
   };
 
-  return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4" aria-labelledby="coupon-title">
-      <h3 id="coupon-title" className="text-sm font-semibold text-slate-900">Cupom</h3>
-      <div className="mt-3 flex gap-2">
-        <label className="sr-only" htmlFor="checkout-coupon">Código do cupom</label>
+  const couponId = `checkout-coupon-${idSuffix}`;
+  const titleId = `coupon-title-${idSuffix}`;
+
+  const content = (
+    <>
+      <div className="flex gap-2">
+        <label className="sr-only" htmlFor={couponId}>Código do cupom</label>
         <input
-          id="checkout-coupon"
+          id={couponId}
           value={code}
           onChange={(event) => setCode(event.target.value)}
           maxLength={64}
           autoComplete="off"
-          placeholder="Digite o código"
-          className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-300 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          placeholder="Ex.: DESCONTO10"
+          className="min-h-10 min-w-0 flex-1 rounded-lg border border-slate-300 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         />
-        <Button type="button" variant="outline" disabled={!code.trim() || isCheckoutUpdating} onClick={() => void apply()}>
+        <Button type="button" disabled={!code.trim() || isCheckoutUpdating} onClick={() => void apply()}>
           Aplicar
         </Button>
       </div>
@@ -53,6 +64,34 @@ export function CheckoutCoupon() {
         </ul>
       ) : null}
       {message ? <p className="mt-2 text-xs text-slate-600" role="status">{message}</p> : null}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <details
+        className="group rounded-lg border border-slate-300 bg-white"
+      >
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm text-slate-700 marker:content-none">
+          <span>Tenho um cupom de desconto</span>
+          <ChevronDown
+            size={18}
+            aria-hidden="true"
+            className="text-slate-400 transition-transform group-open:rotate-180"
+          />
+        </summary>
+        <div className="border-t border-slate-200 p-2.5" aria-labelledby={titleId}>
+          <h3 id={titleId} className="sr-only">Cupom de desconto</h3>
+          {content}
+        </div>
+      </details>
+    );
+  }
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-4" aria-labelledby={titleId}>
+      <h3 id={titleId} className="text-sm font-semibold text-slate-900">Cupom</h3>
+      <div className="mt-3">{content}</div>
     </section>
   );
 }
