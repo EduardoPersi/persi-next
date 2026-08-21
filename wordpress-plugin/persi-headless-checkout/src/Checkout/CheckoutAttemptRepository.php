@@ -52,6 +52,34 @@ final class CheckoutAttemptRepository {
 		return is_array( $row ) ? $row : null;
 	}
 
+	public function health(): array {
+		$table_exists = $this->table === $this->wpdb->get_var(
+			$this->wpdb->prepare( 'SHOW TABLES LIKE %s', $this->wpdb->esc_like( $this->table ) )
+		);
+		$unique_exists = false;
+		if ( $table_exists ) {
+			$indexes = $this->wpdb->get_results( "SHOW INDEX FROM {$this->table}", ARRAY_A );
+			foreach ( is_array( $indexes ) ? $indexes : array() as $index ) {
+				if (
+					'checkout_attempt_id' === (string) ( $index['Key_name'] ?? '' )
+					&& 0 === (int) ( $index['Non_unique'] ?? 1 )
+					&& 'checkout_attempt_id' === (string) ( $index['Column_name'] ?? '' )
+				) {
+					$unique_exists = true;
+					break;
+				}
+			}
+		}
+
+		return array(
+			'healthy' => $table_exists && $unique_exists,
+			'table_exists' => $table_exists,
+			'unique_checkout_attempt_id' => $unique_exists,
+			'database_version' => (string) get_option( 'persi_headless_checkout_db_version', '' ),
+			'expected_database_version' => \Persi\HeadlessCheckout\Activator::DATABASE_VERSION,
+		);
+	}
+
 	public function transition( string $attempt_id, string $lease, string $from, string $to, array $fields = array() ): bool {
 		$allowed = array(
 			'RESERVED:ORDER_CREATED',

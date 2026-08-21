@@ -475,8 +475,8 @@ async function cartRequest(
   } = {},
 ): Promise<CartServiceResponse> {
   let response: Response;
+  const startedAt = performance.now();
   try {
-    const startedAt = performance.now();
     response = await fetch(getCartUrl(endpoint), {
       method: options.method ?? "GET",
       headers: {
@@ -499,6 +499,16 @@ async function cartRequest(
       });
     }
   } catch (error) {
+    if (process.env.WOO_REQUEST_DIAGNOSTICS === "1") {
+      console.error("[woocommerce-outbound]", {
+        api: "store-cart",
+        endpoint,
+        status: error instanceof Error && error.name === "TimeoutError" ? "timeout" : "network_error",
+        durationMs: Math.round(performance.now() - startedAt),
+        attempt: 1,
+        cache: "no-store",
+      });
+    }
     if (error instanceof Error && error.name === "TimeoutError") {
       throw new CartServiceError("O WooCommerce demorou para responder.", 504);
     }

@@ -16,6 +16,7 @@
     "test:checkout:shipping": "node tests/checkout-shipping-smoke.mjs",
     "test:checkout:load": "node scripts/checkout-load-smoke.mjs",
     "test:checkout:staging-concurrency": "node scripts/checkout-staging-concurrency.mjs",
+    "test:checkout:staging-health": "node scripts/checkout-attempt-health.mjs",
     "audit:urls": "node --env-file=.env.local scripts/audit-public-slugs.mjs",
     "register:inter-webhooks": "node --env-file=.env.local scripts/register-inter-webhooks.mjs",
     "generate:pagbank-public-key": "node --env-file=.env.local scripts/generate-pagbank-public-key.mjs"

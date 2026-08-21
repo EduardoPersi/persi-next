@@ -121,6 +121,7 @@ async function restApiWrite<T>(
   body: unknown,
 ): Promise<T> {
   const url = getRestApiUrl(endpoint);
+  const startedAt = performance.now();
 
   let response: Response;
   try {
@@ -135,7 +136,28 @@ async function restApiWrite<T>(
       cache: "no-store",
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
+    if (process.env.WOO_REQUEST_DIAGNOSTICS === "1") {
+      console.info("[woocommerce-outbound]", {
+        api: "rest-v3",
+        endpoint,
+        method,
+        status: response.status,
+        durationMs: Math.round(performance.now() - startedAt),
+        attempt: 1,
+        cache: "no-store",
+      });
+    }
   } catch (error) {
+    if (process.env.WOO_REQUEST_DIAGNOSTICS === "1") {
+      console.error("[woocommerce-outbound]", {
+        api: "rest-v3",
+        endpoint,
+        method,
+        status: error instanceof Error && error.name === "TimeoutError" ? "timeout" : "network_error",
+        durationMs: Math.round(performance.now() - startedAt),
+        attempt: 1,
+      });
+    }
     if (error instanceof WooCommerceRestError) throw error;
 
     throw new WooCommerceRestError(

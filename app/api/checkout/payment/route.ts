@@ -382,6 +382,12 @@ export async function POST(request: Request) {
         checkoutAttemptId: input.idempotencyKey,
       };
     } else {
+      if (attemptState === "PAYMENT_CREATING") {
+        throw new CheckoutTransferError(
+          409,
+          "Pagamento com cartão em reconciliação; uma nova cobrança não será criada.",
+        );
+      }
       const cardPaymentMethod =
         input.method === "pagbank_card"
           ? "credit_card"

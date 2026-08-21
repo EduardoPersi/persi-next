@@ -21,11 +21,20 @@ export function getCheckoutMode(): CheckoutMode {
 }
 
 export function getPublicCheckoutCapabilities(): PublicCheckoutCapabilities {
+  const cardEnabled = readBoolean("CHECKOUT_CARD_ENABLED", false);
+  const cardEnvironment = process.env.CHECKOUT_CARD_ENVIRONMENT?.trim().toLowerCase();
+  const pagBankBaseUrl = process.env.PAGBANK_API_BASE_URL?.trim().toLowerCase() ?? "";
+  const sandboxConfigured = cardEnvironment === "sandbox" && /sandbox|connect-sandbox/.test(pagBankBaseUrl);
+  const productionApproved =
+    cardEnvironment === "production" &&
+    readBoolean("CHECKOUT_CARD_PRODUCTION_APPROVED", false);
+
   return {
     pix: readBoolean("CHECKOUT_PIX_ENABLED", true),
     boleto: readBoolean("CHECKOUT_BOLETO_ENABLED", true),
-    // Bloqueio de fase: manter o código PagBank disponível para homologação,
-    // mas nenhuma configuração acidental pode ativá-lo em produção agora.
-    card: false,
+    // O código histórico permanece pronto, mas cartão só aparece e só passa
+    // pelo backend com habilitação explícita e ambiente coerente. Produção
+    // exige uma segunda confirmação independente da flag principal.
+    card: cardEnabled && (sandboxConfigured || productionApproved),
   };
 }

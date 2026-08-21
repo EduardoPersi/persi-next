@@ -187,6 +187,10 @@ async function resolveStatus(params: {
           },
         };
       }
+      if (attempt.payment_method.startsWith("pagbank_")) {
+        const charge = await getCardChargeStatus(attempt.provider_reference);
+        return { category: categorizeCardStatus(charge.status), order };
+      }
       return null;
     } catch {
       return null;

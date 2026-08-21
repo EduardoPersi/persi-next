@@ -10,6 +10,17 @@ test("ambiente de referência ativa Next, Pix e boleto e desativa cartão", () =
   assert.match(env, /^CHECKOUT_PIX_ENABLED=true$/m);
   assert.match(env, /^CHECKOUT_BOLETO_ENABLED=true$/m);
   assert.match(env, /^CHECKOUT_CARD_ENABLED=false$/m);
+  assert.match(env, /^CHECKOUT_CARD_PRODUCTION_APPROVED=false$/m);
+});
+
+test("PagBank permanece restaurado mas exige sandbox coerente ou aprovação dupla de produção", () => {
+  const config = read("lib/commerce/checkoutConfig.ts");
+  const payment = read("app/api/checkout/payment/route.ts");
+  assert.match(config, /CHECKOUT_CARD_ENVIRONMENT/);
+  assert.match(config, /sandboxConfigured/);
+  assert.match(config, /productionApproved/);
+  assert.match(payment, /createCardCharge/);
+  assert.match(payment, /Pagamento com cartão em reconciliação/);
 });
 
 test("CTAs públicos navegam para /checkout sem chamar transferência", () => {

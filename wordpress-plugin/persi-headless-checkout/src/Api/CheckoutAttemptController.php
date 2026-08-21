@@ -56,7 +56,7 @@ final class CheckoutAttemptController {
 		}
 
 		$id = isset( $payload['checkout_attempt_id'] ) ? strtolower( (string) $payload['checkout_attempt_id'] ) : '';
-		if ( 'reconcile' !== $payload['action'] && ! preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $id ) ) {
+		if ( ! in_array( $payload['action'], array( 'reconcile', 'health' ), true ) && ! preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $id ) ) {
 			return $this->response( array( 'code' => 'invalid_request' ), 400 );
 		}
 		if ( 'reserve' === $payload['action'] ) {
@@ -82,6 +82,11 @@ final class CheckoutAttemptController {
 			$reference = substr( trim( (string) $payload['provider_reference'] ), 0, 128 );
 			$updated = '' !== $reference && $this->repository->reconcile_payment( $reference, (string) $payload['to'] );
 			return $this->response( array( 'updated' => $updated ), $updated ? 200 : 409 );
+		}
+
+		if ( 'health' === $payload['action'] ) {
+			$health = $this->repository->health();
+			return $this->response( $health, $health['healthy'] ? 200 : 503 );
 		}
 
 		return $this->response( array( 'code' => 'invalid_request' ), 400 );

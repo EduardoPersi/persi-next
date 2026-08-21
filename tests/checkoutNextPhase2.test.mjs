@@ -8,7 +8,7 @@ test("checkout usa Next como padrão e mantém hybrid somente para rollback manu
   const config = read("lib/commerce/checkoutConfig.ts");
   const page = read("app/checkout/page.tsx");
   assert.match(config, /:\s*"next"/);
-  assert.match(config, /card: false/);
+  assert.match(config, /card: cardEnabled && \(sandboxConfigured \|\| productionApproved\)/);
   assert.match(page, /redirect\("\/checkout\/hybrid"\)/);
   assert.match(page, /<CheckoutPageClient/);
 });
@@ -18,7 +18,7 @@ test("cartão depende de capability e permanece desativado no exemplo", () => {
   const env = read(".env.example");
   assert.match(selector, /capabilities\.card/);
   assert.match(env, /CHECKOUT_CARD_ENABLED=false/);
-  assert.match(read("lib/commerce/checkoutConfig.ts"), /card: false/);
+  assert.match(read("lib/commerce/checkoutConfig.ts"), /CHECKOUT_CARD_PRODUCTION_APPROVED/);
 });
 
 test("cupom é aplicado e removido exclusivamente pela Store API", () => {
