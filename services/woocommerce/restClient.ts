@@ -62,6 +62,7 @@ export async function restApiGetWithMeta<T>(
   const url = getRestApiUrl(endpoint, options.query);
 
   try {
+    const startedAt = performance.now();
     const response = await fetch(url, {
       headers: {
         Accept: "application/json",
@@ -72,6 +73,17 @@ export async function restApiGetWithMeta<T>(
       },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
+
+    if (process.env.WOO_REQUEST_DIAGNOSTICS === "1") {
+      console.info("[woocommerce-outbound]", {
+        api: "rest-v3",
+        endpoint,
+        status: response.status,
+        durationMs: Math.round(performance.now() - startedAt),
+        attempt: 1,
+        revalidate: options.revalidate ?? DEFAULT_REVALIDATE_SECONDS,
+      });
+    }
 
     if (!response.ok) {
       // Diagnóstico temporário: nunca exposto ao cliente — só o

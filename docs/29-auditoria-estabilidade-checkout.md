@@ -84,7 +84,7 @@ Sem acesso ao WordPress/Hostinger/MySQL, permanecem pendentes em staging:
 ## Artefatos
 
 - `persi-headless.zip` 0.5.3 — SHA-256 `3A07A1F64E329EF4F15A640A1AC127330E0BF270C50D5FBEE418C215FB707E12`.
-- `persi-headless-checkout.zip` 0.5.7 — SHA-256 `1CB7540DB2364CF31A8FDC25E304994171B1DA89CEF7265EDA23EBB01C152AF1`.
+- `persi-headless-checkout.zip` 0.5.8 — SHA-256 `A97B8591BF1575365760E15BF8E5F544E200DCB2B5FEA0694566EA8AF584C276`.
 
 Os dois arquivos são gerados com separadores POSIX (`/`). Não usar
 `Compress-Archive` no Windows para estes pacotes, pois ele grava `\` nos nomes

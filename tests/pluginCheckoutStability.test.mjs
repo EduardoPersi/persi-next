@@ -59,7 +59,12 @@ test("diagnóstico é opt-in e não registra segredos nem dados pessoais", () =>
   assert.match(diagnostics, /path/);
   assert.match(diagnostics, /elapsed_ms/);
   assert.match(diagnostics, /queries/);
-  assert.doesNotMatch(diagnostics, /cookie|authorization|cpf|email|token/i);
+  assert.match(diagnostics, /mask_postcode/);
+  assert.match(diagnostics, /woocommerce_package_rates/);
+  assert.match(diagnostics, /get_zone_matching_package/);
+  assert.match(diagnostics, /get_packages\(\)/);
+  assert.doesNotMatch(diagnostics, /authorization|cpf|email|owner_token/i);
+  assert.doesNotMatch(diagnostics, /\$_COOKIE\s*\[/);
 });
 
 test("ações críticas de wc-ajax preservam POST e resposta JSON 200", async () => {

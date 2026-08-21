@@ -77,7 +77,10 @@ export async function storeApiGetWithMeta<T>(
   const url = getStoreApiUrl(endpoint, options.query);
 
   try {
+    let attempt = 0;
     const request = async () => {
+      attempt += 1;
+      const startedAt = performance.now();
       const response = await fetch(url, {
         headers: {
           Accept: "application/json",
@@ -88,6 +91,17 @@ export async function storeApiGetWithMeta<T>(
         },
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
+
+      if (process.env.WOO_REQUEST_DIAGNOSTICS === "1") {
+        console.info("[woocommerce-outbound]", {
+          api: "store",
+          endpoint,
+          status: response.status,
+          durationMs: Math.round(performance.now() - startedAt),
+          attempt,
+          revalidate: options.revalidate ?? DEFAULT_REVALIDATE_SECONDS,
+        });
+      }
 
       if (!response.ok) return { response, data: undefined };
 

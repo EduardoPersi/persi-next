@@ -27,5 +27,8 @@ export async function withSingleRetry<T>(
 }
 
 export function isTransientHttpStatus(status: number): boolean {
-  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+  // Um 500 muito rápido do WordPress costuma indicar falha interna já
+  // consumada (por exemplo, conexão MySQL indisponível). Repeti-lo durante
+  // uma rajada de renderização apenas multiplica a pressão no origin.
+  return status === 429 || status === 502 || status === 503 || status === 504;
 }

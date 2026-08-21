@@ -2,10 +2,15 @@
 Contributors: persimateriais
 Requires at least: 6.4
 Requires PHP: 7.4
-Stable tag: 0.5.7
+Stable tag: 0.5.8
 License: Proprietary
 
 == Changelog ==
+
+= 0.5.8 =
+* Amplia o diagnóstico opt-in de frete sem recalcular packages ou registrar dados pessoais.
+* Registra POST técnico mascarado, WC_Customer, zona, métodos, rates e sessão.
+* Detecta apenas a presença do drop-in object-cache.php e dos cookies WooCommerce.
 
 = 0.5.7 =
 * Mantém o consumo atômico e único do token seguido de redirect 303 sem token.

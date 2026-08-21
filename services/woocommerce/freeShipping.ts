@@ -1,5 +1,6 @@
 import "server-only";
 import { unstable_cache } from "next/cache.js";
+import { cache } from "react";
 import { restApiGetWithMeta } from "./restClient.ts";
 
 const CLASS_SLUG = "frete-gratis";
@@ -34,7 +35,7 @@ const loadProducts = unstable_cache(async () => {
     : [];
 }, ["woocommerce-free-shipping-products-v1"], { revalidate: CACHE_SECONDS });
 
-export async function getFreeShippingProducts(): Promise<FreeShippingProducts> {
+const getFreeShippingProductsForRequest = cache(async (): Promise<FreeShippingProducts> => {
   try {
     const products = await loadProducts();
     return {
@@ -47,4 +48,8 @@ export async function getFreeShippingProducts(): Promise<FreeShippingProducts> {
     });
     return { ids: new Set(), slugs: new Set() };
   }
+});
+
+export async function getFreeShippingProducts(): Promise<FreeShippingProducts> {
+  return getFreeShippingProductsForRequest();
 }

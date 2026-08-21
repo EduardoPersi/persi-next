@@ -45,3 +45,17 @@ test("não repete erros HTTP permanentes", async () => {
   assert.equal(attempts, 1);
   assert.equal(result.status, 404);
 });
+
+test("não amplifica HTTP 500 do WordPress", async () => {
+  let attempts = 0;
+  const result = await withSingleRetry(
+    async () => ({ status: (attempts += 1) && 500 }),
+    {
+      shouldRetryResult: ({ status }) => isTransientHttpStatus(status),
+      sleep: async () => {},
+    },
+  );
+
+  assert.equal(attempts, 1);
+  assert.equal(result.status, 500);
+});
