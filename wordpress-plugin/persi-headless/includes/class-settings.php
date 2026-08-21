@@ -12,6 +12,7 @@ class Persi_Headless_Settings {
 
 	public static function module_enabled( $module ) {
 		$settings = self::all();
+		if ( 'checkout_auth' === $module && ! array_key_exists( $module, (array) ( $settings['modules'] ?? array() ) ) ) return true;
 		return ! empty( $settings['modules'][ $module ] );
 	}
 

@@ -4,12 +4,16 @@ Tags: woocommerce, headless, rest-api
 Requires at least: 6.4
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.5.3
+Stable tag: 0.6.0
 License: GPLv2 or later
 
 Integração oficial e independente do tema entre WooCommerce e o frontend Next.js da Persi.
 
 == Changelog ==
+
+= 0.6.0 =
+* Adiciona identificação protegida do checkout por e-mail, senha ou OTP.
+* Reutiliza o emissor JWT oficial, aplica HMAC, rate limit, cooldown e código de uso único.
 
 = 0.5.3 =
 * Desacopla a versão do banco da versão funcional do plugin.
@@ -35,9 +39,27 @@ POST /wp-json/persi/v1/newsletter/subscribe
 GET /wp-json/persi/v1/newsletter/confirm/{token}
 GET /wp-json/persi/v1/newsletter/unsubscribe/{token}
 POST /wp-json/persi/v1/contact/submit
+POST /wp-json/persi-headless/v1/checkout-auth/identify
+POST /wp-json/persi-headless/v1/checkout-auth/password
+POST /wp-json/persi-headless/v1/checkout-auth/code/request
+POST /wp-json/persi-headless/v1/checkout-auth/code/verify
 
 As rotas GET retornam somente produtos publicados e dados públicos. A inscrição
 retorna mensagem neutra, usa honeypot, rate limit e double opt-in por padrão.
+
+== Identificação do checkout ==
+
+Configure no Next e no wp-config.php um segredo exclusivo com no mínimo 32 caracteres:
+
+define( 'PERSI_HEADLESS_CHECKOUT_AUTH_SECRET', 'substitua-por-segredo-forte' );
+define( 'PERSI_HEADLESS_CHECKOUT_AUTH_KEY_ID', 'primary' );
+define( 'PERSI_CHECKOUT_LOGIN_CODE_TTL_MINUTES', 10 );
+
+As quatro rotas só aceitam chamadas HMAC do servidor Next. O endpoint de
+identificação revela apenas `exists`; senha e OTP devolvem o JWT somente ao
+Next, que o grava no cookie HttpOnly existente. O OTP tem seis dígitos, fica
+armazenado apenas como hash, expira em 10 minutos por padrão, aceita no máximo
+cinco erros, tem cooldown de 60 segundos e é apagado depois do uso.
 
 == Compatibility ==
 

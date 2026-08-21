@@ -20,12 +20,14 @@ import type { PublicCheckoutCapabilities } from "@/lib/commerce/checkoutConfig";
 interface CheckoutPageClientProps {
   initialProfile: CustomerWorkspaceProfile | null;
   initialAddresses: CustomerWorkspaceAddress[];
+  initialGuestEmail?: string;
   capabilities: PublicCheckoutCapabilities;
 }
 
 export function CheckoutPageClient({
   initialProfile,
   initialAddresses,
+  initialGuestEmail,
   capabilities,
 }: CheckoutPageClientProps) {
   const { cart, error, isHydrated, isLoading } = useCart();
@@ -70,6 +72,7 @@ export function CheckoutPageClient({
         <CheckoutForm
           initialProfile={initialProfile}
           initialAddresses={initialAddresses}
+          initialGuestEmail={initialGuestEmail}
           paymentMethod={paymentMethod}
           onPaymentMethodChange={setPaymentMethod}
           hasCreatedOrder={hasCreatedOrder}

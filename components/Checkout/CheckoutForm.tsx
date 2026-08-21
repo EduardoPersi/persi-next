@@ -88,6 +88,7 @@ const SHIPPING_ADDRESS_FIELDS = [
 interface CheckoutFormProps {
   initialProfile: CustomerWorkspaceProfile | null;
   initialAddresses: CustomerWorkspaceAddress[];
+  initialGuestEmail?: string;
   paymentMethod: CheckoutPaymentMethod;
   onPaymentMethodChange: (method: CheckoutPaymentMethod) => void;
   hasCreatedOrder: boolean;
@@ -98,6 +99,7 @@ interface CheckoutFormProps {
 export function CheckoutForm({
   initialProfile,
   initialAddresses,
+  initialGuestEmail,
   paymentMethod,
   onPaymentMethodChange: setPaymentMethod,
   hasCreatedOrder,
@@ -121,11 +123,17 @@ export function CheckoutForm({
   // só é calculado uma vez, a partir dos dados já resolvidos no servidor.
   const initialFormValues = useMemo(
     () =>
-      applyAccountPrefill(checkoutDefaultValues, {
+      applyAccountPrefill({
+        ...checkoutDefaultValues,
+        contact: {
+          ...checkoutDefaultValues.contact,
+          email: initialGuestEmail ?? checkoutDefaultValues.contact.email,
+        },
+      }, {
         profile: initialProfile,
         addresses: initialAddresses,
       }),
-    [initialProfile, initialAddresses],
+    [initialAddresses, initialGuestEmail, initialProfile],
   );
 
   const methods = useForm<CheckoutFormValues>({

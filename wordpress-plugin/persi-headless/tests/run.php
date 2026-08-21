@@ -21,6 +21,18 @@ $checks = array(
 	'anonimização remove e-mail' => str_contains( $files['repository'], "email_encrypted=''" ),
 	'template escapa conteúdo' => str_contains( $files['module'], 'esc_html( $product->get_name() )' ),
 );
+$checkout = file_get_contents( $root . '/includes/checkout-auth/class-checkout-auth.php' );
+$checkout_auth = file_get_contents( $root . '/includes/checkout-auth/class-authenticator.php' );
+$checks += array(
+	'checkout auth usa HMAC' => str_contains( $checkout_auth, 'hash_hmac' ) && str_contains( $checkout_auth, 'hash_equals' ),
+	'checkout auth bloqueia replay' => str_contains( $checkout_auth, 'persi_checkout_auth_nonce_' ),
+	'OTP usa seis dígitos seguros' => str_contains( $checkout, 'random_int( 100000, 999999 )' ),
+	'OTP armazena hash' => str_contains( $checkout, 'wp_hash_password( $code )' ) && str_contains( $checkout, 'wp_check_password( $code, $hash )' ),
+	'OTP limita cinco erros' => str_contains( $checkout, 'CODE_MAX_ATTEMPTS = 5' ),
+	'OTP é uso único' => str_contains( $checkout, '$this->clear_code( $user->ID )' ),
+	'senha usa wp_signon' => str_contains( $checkout, 'wp_signon' ),
+	'sem segredo em log de checkout' => ! str_contains( $checkout, 'error_log' ),
+);
 $failures = 0;
 foreach ( $checks as $name => $passed ) { echo ( $passed ? 'PASS ' : 'FAIL ' ) . $name . "\n"; if ( ! $passed ) ++$failures; }
 exit( $failures ? 1 : 0 );

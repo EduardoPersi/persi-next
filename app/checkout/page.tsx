@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CheckoutPageClient } from "@/components/Checkout/CheckoutPageClient";
+import { CheckoutIdentityGate } from "@/components/Checkout/CheckoutIdentityGate";
 import { CheckoutHeader } from "@/components/Header/CheckoutHeader";
 import { Container } from "@/components/UI/Container";
 import {
@@ -29,16 +30,10 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-async function getAccountPrefillData(): Promise<{
+async function getAccountPrefillData(token: string): Promise<{
   profile: CustomerWorkspaceProfile | null;
   addresses: CustomerWorkspaceAddress[];
 }> {
-  const [session, token] = await Promise.all([
-    getServerAccountSession(),
-    getServerAccountToken(),
-  ]);
-  if (!session?.authenticated || !token) return { profile: null, addresses: [] };
-
   const [profile, addresses] = await Promise.all([
     getCustomerWorkspaceProfile(token).catch(() => null),
     getCustomerWorkspaceAddresses(token).catch(() => []),
@@ -49,10 +44,15 @@ async function getAccountPrefillData(): Promise<{
 export default async function CheckoutPage() {
   if (getCheckoutMode() === "hybrid") redirect("/checkout/hybrid");
 
-  const [{ profile, addresses }, capabilities] = await Promise.all([
-    getAccountPrefillData(),
+  const [session, token, capabilities] = await Promise.all([
+    getServerAccountSession(),
+    getServerAccountToken(),
     Promise.resolve(getPublicCheckoutCapabilities()),
   ]);
+  const authenticated = Boolean(session?.authenticated && token);
+  const { profile, addresses } = authenticated && token
+    ? await getAccountPrefillData(token)
+    : { profile: null, addresses: [] };
 
   return (
     <>
@@ -60,11 +60,15 @@ export default async function CheckoutPage() {
       <main className="bg-slate-50 py-5 sm:py-8 lg:py-10">
         <Container>
           <h1 className="sr-only">Finalizar compra</h1>
-          <CheckoutPageClient
-            initialProfile={profile}
-            initialAddresses={addresses}
-            capabilities={capabilities}
-          />
+          {authenticated ? (
+            <CheckoutPageClient
+              initialProfile={profile}
+              initialAddresses={addresses}
+              capabilities={capabilities}
+            />
+          ) : (
+            <CheckoutIdentityGate capabilities={capabilities} />
+          )}
         </Container>
       </main>
     </>

@@ -23,6 +23,7 @@ class Persi_Headless_Activator {
 				'stock_notifications'=> true,
 				'order_bump'         => false,
 				'newsletter'         => true,
+				'checkout_auth'      => true,
 				'storefront_lockdown' => false,
 			),
 			'double_opt_in' => true,

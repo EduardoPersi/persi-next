@@ -39,7 +39,7 @@ export function CheckoutHeader({ centered = false }: CheckoutHeaderProps) {
         {centered ? null : (
           <span className="flex items-center gap-2 text-sm font-medium text-white/90">
             <Lock size={18} className="shrink-0" aria-hidden="true" />
-            Ambiente seguro
+            Compra segura
           </span>
         )}
       </div>

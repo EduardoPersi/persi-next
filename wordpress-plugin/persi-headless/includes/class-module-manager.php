@@ -11,11 +11,17 @@ class Persi_Headless_Module_Manager {
 			'order_bump'          => 'order-bump/class-order-bump.php',
 			'newsletter'          => 'newsletter/class-newsletter.php',
 			'contact'             => 'contact/class-contact.php',
+			'checkout_auth'       => 'checkout-auth/class-checkout-auth.php',
 			'storefront_lockdown' => 'storefront-lockdown/class-storefront-lockdown.php',
 		);
 
 		foreach ( $modules as $key => $file ) {
 			if ( Persi_Headless_Settings::module_enabled( $key ) ) {
+				if ( 'checkout_auth' === $key ) {
+					require_once PERSI_HEADLESS_PATH . 'includes/checkout-auth/class-authenticator.php';
+					require_once PERSI_HEADLESS_PATH . 'includes/checkout-auth/class-rate-limiter.php';
+					require_once PERSI_HEADLESS_PATH . 'includes/checkout-auth/class-jwt-adapter.php';
+				}
 				require_once PERSI_HEADLESS_PATH . 'includes/' . $file;
 				$class = 'Persi_Headless_' . str_replace( ' ', '_', ucwords( str_replace( '_', ' ', $key ) ) );
 				if ( class_exists( $class ) ) {
