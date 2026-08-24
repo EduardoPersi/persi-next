@@ -1,0 +1,15 @@
+import fs from "node:fs";
+import postgres from "postgres";
+import { readPrivateEnvironment, stagingDirectUrl } from "./config.mjs";
+import { WooReadOnlyExtractor } from "./extract.mjs";
+import { CatalogImporter } from "./import.mjs";
+const percentile=(values,p)=>values[Math.min(values.length-1,Math.ceil(values.length*p)-1)];
+async function workers(items,count,work){let index=0;await Promise.all(Array.from({length:count},async()=>{while(index<items.length){const item=items[index++];await work(item);}}));}
+const gate=JSON.parse(fs.readFileSync("supabase/.temp/catalog-import/gate-100.json","utf8")),ids=new Set(gate.selected.map(Number)),env=readPrivateEnvironment(),extractor=new WooReadOnlyExtractor(env);
+const fetchStart=performance.now(),[all,categories,brands]=await Promise.all([extractor.all("products"),extractor.all("products/categories"),extractor.all("products/brands")]),products=all.filter((x)=>ids.has(x.id)),wooFetchMs=performance.now()-fetchStart,results=[];
+for(const concurrency of [1,2,4]){let queries=0;const sql=postgres(stagingDirectUrl(env.stagingPassword),{max:concurrency,prepare:false,ssl:"require",connect_timeout:15,debug:()=>{queries++;}});const importer=new CatalogImporter(sql,{categories,brands,profiling:true});const [before]=await sql`select array_agg(internal_id::text order by external_id) ids from public.external_mappings where system='woocommerce' and entity_type='product' and external_id in ${sql([...ids].map(String))}`;const start=performance.now();let errors=0;
+  await workers(products,concurrency,async(product)=>{try{await importer.importProduct(product);}catch{errors++;}});const durationMs=performance.now()-start;const [after]=await sql`select array_agg(internal_id::text order by external_id) ids from public.external_mappings where system='woocommerce' and entity_type='product' and external_id in ${sql([...ids].map(String))}`;await sql.end({timeout:5});
+  const times=importer.profiles.map((x)=>x.totalMs).sort((a,b)=>a-b),outliers=[...importer.profiles].sort((a,b)=>b.totalMs-a.totalMs).slice(0,10).map((x)=>{const phase=Object.entries(x.phases).sort((a,b)=>b[1]-a[1])[0];return{wooId:x.wooId,sku:x.sku,totalMs:Math.round(x.totalMs),slowestPhase:phase[0],slowestPhaseMs:Math.round(phase[1])};});
+  results.push({concurrency,durationMs:Math.round(durationMs),throughput:Math.round(products.length/(durationMs/60000)*10)/10,p50Ms:Math.round(percentile(times,.5)),p95Ms:Math.round(percentile(times,.95)),errors,queries,queriesPerProduct:queries/products.length,writes:importer.metrics,mappingsPreserved:JSON.stringify(before.ids)===JSON.stringify(after.ids),outliers});
+}
+const output={products:products.length,woo:{requests:extractor.requests,retries:extractor.retries,fetchMs:Math.round(wooFetchMs)},results};fs.writeFileSync("supabase/.temp/catalog-import/performance-gate.json",JSON.stringify(output,null,2));console.log(JSON.stringify(output,null,2));if(results.some((x)=>x.errors||!x.mappingsPreserved||x.writes.insert||x.writes.update||x.writes.delete))process.exitCode=1;

@@ -1,0 +1,4 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+export const MAX_CATALOG_WEBHOOK_BYTES=65536;
+export function verifyWooWebhookSignature(rawBody:Buffer,signature:string|null,secret:string){if(!signature||!secret)return false;const expected=createHmac("sha256",secret).update(rawBody).digest("base64"),actual=Buffer.from(signature);const wanted=Buffer.from(expected);return actual.length===wanted.length&&timingSafeEqual(actual,wanted);}
+export function parseWooWebhookSignal(value:unknown){if(!value||typeof value!=="object")return null;const row=value as{ id?:unknown;date_modified_gmt?:unknown};if(!Number.isInteger(row.id)||Number(row.id)<=0)return null;return{externalEntityId:String(row.id),sourceChangedAt:typeof row.date_modified_gmt==="string"?`${row.date_modified_gmt.replace(/Z$/i,"")}Z`:null};}

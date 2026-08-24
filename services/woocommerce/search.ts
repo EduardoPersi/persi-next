@@ -1,6 +1,6 @@
 import "server-only";
 
-import { PRODUCT_SEARCH_SYNONYM_GROUPS } from "@/lib/constants/searchSynonyms";
+import { expandCatalogSearchTerms, normalizeCatalogSearch } from "@/lib/catalog/search";
 import type {
   CatalogAttributeFilter,
   CatalogFilterData,
@@ -44,13 +44,7 @@ interface SearchProductsOptions {
 }
 
 function normalizeSearchText(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("pt-BR")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
+  return normalizeCatalogSearch(value);
 }
 
 function slugify(value: string) {
@@ -81,21 +75,7 @@ function isBrandAttribute(attribute: WooCommerceRestProduct["attributes"][number
 }
 
 export function expandProductSearchTerms(query: string) {
-  const normalizedQuery = normalizeSearchText(query);
-  const terms = new Set([query.trim()]);
-
-  PRODUCT_SEARCH_SYNONYM_GROUPS.forEach((group) => {
-    const normalizedGroup = group.map(normalizeSearchText);
-    normalizedGroup.forEach((alias) => {
-      if (!normalizedQuery.includes(alias)) return;
-
-      normalizedGroup.forEach((replacement) => {
-        terms.add(normalizedQuery.replace(alias, replacement));
-      });
-    });
-  });
-
-  return [...terms].filter(Boolean);
+  return expandCatalogSearchTerms(query);
 }
 
 function isRestProduct(value: unknown): value is WooCommerceRestProduct {

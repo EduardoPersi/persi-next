@@ -1,0 +1,16 @@
+[
+  {"query":"PA016045","kind":"exact_sku","topN":1,"mustContainSku":["PA016045"],"mustNotContain":[]},
+  {"query":"7898959829413","kind":"exact_gtin","topN":1,"mustContainSku":["7486"],"mustNotContain":[]},
+  {"query":"tubo pvc","kind":"partial_name","topN":20,"mustContainText":["tubo","pvc"],"mustNotContain":[]},
+  {"query":"disjuntor","kind":"name_category","topN":20,"mustContainText":["disjuntor"],"mustNotContain":[]},
+  {"query":"3/4","kind":"inch","topN":20,"mustContainText":["3/4"],"mustNotContain":[]},
+  {"query":"cano","kind":"synonym","topN":20,"mustContainText":["tubo"],"mustNotContain":[]},
+  {"query":"caixa d agua","kind":"accent_synonym","topN":20,"mustContainText":["caixa","reservatorio"],"mustNotContain":[]},
+  {"query":"bomba sapo","kind":"regional_synonym","topN":20,"mustContainText":["bomba","submersa"],"mustNotContain":[]},
+  {"query":"20 mm","kind":"metric_measure","topN":20,"mustContainText":["20 mm","20mm"],"mustNotContain":[]},
+  {"query":"32mm","kind":"compact_metric","topN":20,"mustContainText":["32mm","32 mm"],"mustNotContain":[]},
+  {"query":"16mm x 1/2\"","kind":"composite_measure","topN":20,"mustContainText":["16mm","1/2"],"mustNotContain":[]},
+  {"query":"tigre","kind":"brand","topN":20,"mustContainText":["tigre"],"mustNotContain":[]},
+  {"query":"azul","kind":"color","topN":20,"mustContainText":["azul"],"mustNotContain":[]},
+  {"query":"disjuntro","kind":"typo","topN":20,"mustContainText":["disjuntor"],"mustNotContain":[]}
+]

@@ -11,6 +11,7 @@ import {
   mapStoreVariation,
 } from "./mappers";
 import { getFreeShippingProducts } from "./freeShipping.ts";
+import { scheduleProductShadow } from "../catalog/productShadow";
 
 export interface GetProductsOptions {
   page?: number;
@@ -268,6 +269,8 @@ export async function getProductBySlug(
   });
 
   const product = products[0];
+
+  if (product) scheduleProductShadow(product);
 
   if (!product || product.type !== "variable") return product;
 
