@@ -116,8 +116,20 @@ async function resolveInterOrPagBankStatus(
       return { category: categorizeBoletoStatus(charge.status), order };
     }
     const charge = await getCardChargeStatus(reference);
-    return { category: categorizeCardStatus(charge.status), order };
-  } catch {
+    const category = categorizeCardStatus(charge.status);
+    // Diferente de Pix/boleto (reconciliados no caminho ?attempt=), este
+    // caminho ainda não persistia uma recusa de cartão no pedido — o pedido
+    // ficava "pending" mesmo com o PagBank já tendo respondido DECLINED.
+    if (category === "failed") {
+      await reconcilePaymentReference("pagbank", reference, category);
+    }
+    return { category, order };
+  } catch (error) {
+    console.error("[checkout-confirmation] falha ao resolver status Inter/PagBank", {
+      provider,
+      reference,
+      message: error instanceof Error ? error.message : "unknown error",
+    });
     return null;
   }
 }

@@ -11,7 +11,11 @@ import {
   getPrivateCartHeaders,
 } from "@/lib/commerce/cartResponsePolicy";
 import { CheckoutTransferError } from "@/lib/commerce/checkoutTransfer";
-import { reserveCheckoutAttempt, transitionCheckoutAttempt } from "@/lib/commerce/checkoutAttempt";
+import {
+  reconcileCheckoutAttempt,
+  reserveCheckoutAttempt,
+  transitionCheckoutAttempt,
+} from "@/lib/commerce/checkoutAttempt";
 import { moneyToNumber } from "@/lib/formatting/money";
 import { paymentInitiationSchema } from "@/lib/validation/payments";
 import { interPaymentGateway } from "@/services/payments/gateway";
@@ -20,6 +24,7 @@ import { InterPaymentError } from "@/services/payments/inter/errors";
 import { getPixCreationDiagnostics } from "@/services/payments/inter/pix";
 import { createCardCharge } from "@/services/payments/pagbank/charge";
 import { PagBankPaymentError } from "@/services/payments/pagbank/errors";
+import { categorizeCardStatus } from "@/services/payments/reconcile";
 import { getServerAccountSession } from "@/services/account/serverSession";
 import { getAuthoritativeCheckoutItems } from "@/services/checkout/headlessCheckout";
 import { CartServiceError, getCart } from "@/services/woocommerce/cart";
@@ -563,6 +568,36 @@ export async function POST(request: Request) {
         externalId: charge.chargeId,
       });
       await transitionCheckoutAttempt({ checkoutAttemptId: input.idempotencyKey, leaseToken, from: "PAYMENT_CREATING", to: "PAYMENT_CREATED", providerReference: charge.chargeId });
+
+      // O cartão é síncrono: o PagBank já devolve o status final (ou
+      // IN_ANALYSIS) na própria resposta de criação da cobrança, ao
+      // contrário de Pix/boleto — não há por que esperar webhook/cron para
+      // informar uma recusa que já é conhecida agora. Sem isto, o pedido
+      // ficava "pending" indefinidamente e o cliente via a mesma tela
+      // genérica de "aguardando confirmação" de um cartão negado.
+      if (categorizeCardStatus(charge.status) === "failed") {
+        await markOrderAsFailed(order, "failed");
+        await reconcileCheckoutAttempt(charge.chargeId, "PAYMENT_FAILED").catch(() => undefined);
+        console.info("[checkout-payment] card declined", {
+          checkoutAttemptId,
+          orderId: order.id,
+          chargeId: charge.chargeId,
+          providerStatus: charge.status,
+        });
+        return createPrivateResponse(
+          {
+            code: "CARD_PAYMENT_DECLINED",
+            message:
+              "Pagamento recusado pelo cartão. Verifique os dados ou tente outro cartão/forma de pagamento.",
+            orderId: order.id,
+            chargeId: charge.chargeId,
+            status: charge.status,
+          },
+          402,
+          activeCartToken,
+        );
+      }
+
       result = {
         method: input.method,
         orderId: order.id,
