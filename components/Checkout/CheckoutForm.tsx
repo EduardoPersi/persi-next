@@ -41,6 +41,7 @@ import { checkoutDefaultValues, checkoutSchema } from "@/lib/validation/checkout
 import type { CheckoutFormValues } from "@/types/checkout";
 import { CheckoutAddresses } from "./CheckoutAddresses";
 import { CheckoutContactForm } from "./CheckoutContactForm";
+import { CheckoutErrorMessage } from "./CheckoutErrorMessage";
 import { CheckoutMobileOrderSummary } from "./CheckoutMobileOrderSummary";
 import { CheckoutMobileStepper } from "./CheckoutMobileStepper";
 import { CheckoutOrderNote } from "./CheckoutOrderNote";
@@ -109,6 +110,7 @@ export function CheckoutForm({
   const { cart, isCheckoutUpdating, refreshCart } = useCart();
   const { navigate } = useRouteTransition();
   const [statusMessage, setStatusMessage] = useState("");
+  const [cardDeclinedMessage, setCardDeclinedMessage] = useState("");
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [installments, setInstallments] = useState(1);
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("profile");
@@ -201,8 +203,28 @@ export function CheckoutForm({
   useBeforeUnloadWarning(hasUnsavedProgress && !hasCreatedOrder);
   useTabAttentionTitle(!hasCreatedOrder);
 
+  // Troca de forma de pagamento invalida qualquer recusa de cartão mostrada
+  // anteriormente — sem isto, a mensagem específica ficava presa na tela
+  // mesmo depois do cliente escolher Pix ou boleto. Limpa no próprio handler
+  // (não num efeito) para não disparar um render em cascata; também cobre a
+  // troca automática que CheckoutPayment faz para Pix quando o método
+  // selecionado deixa de ser válido.
+  const handlePaymentMethodChange = (method: CheckoutPaymentMethod) => {
+    setCardDeclinedMessage("");
+    setPaymentMethod(method);
+  };
+
+  // Erro de tokenização (SDK do PagSeguro rejeitando os dados antes de
+  // qualquer chamada ao servidor) é, na prática, o mesmo tipo de problema
+  // que uma recusa CARD_PAYMENT_DECLINED — mesmo estado, mesmo bloco de
+  // exibição perto dos campos do cartão, para não duplicar local de erro.
+  const handleCardError = (message: string) => {
+    setCardDeclinedMessage(message);
+  };
+
   const submitPayment = async (values: CheckoutFormValues) => {
     setStatusMessage("");
+    setCardDeclinedMessage("");
     setIsSubmittingPayment(true);
 
     try {
@@ -246,9 +268,17 @@ export function CheckoutForm({
         if (result?.code === "CART_CHANGED" || result?.code === "ORDER_TOTAL_MISMATCH") {
           await refreshCart();
         }
-        setStatusMessage(
-          result?.message ?? "Não foi possível iniciar o pagamento. Tente novamente.",
-        );
+        const message =
+          result?.message ?? "Não foi possível iniciar o pagamento. Tente novamente.";
+        // Recusa de cartão tem exibição própria, perto dos campos do cartão
+        // (PaymentCardFields) — não duplica no aviso genérico do rodapé.
+        // Carteiras digitais (Apple/Google Pay) não têm campos de cartão na
+        // tela, então continuam usando o aviso genérico.
+        if (result?.code === "CARD_PAYMENT_DECLINED" && paymentMethod === "pagbank_card") {
+          setCardDeclinedMessage(message);
+        } else {
+          setStatusMessage(message);
+        }
         return;
       }
 
@@ -436,11 +466,12 @@ export function CheckoutForm({
             <div className="space-y-5">
               <CheckoutPayment
                 method={paymentMethod}
-                onMethodChange={setPaymentMethod}
+                onMethodChange={handlePaymentMethodChange}
                 installments={installments}
                 onInstallmentsChange={setInstallments}
                 cardFieldsRef={cardFieldsRef}
-                onCardError={setStatusMessage}
+                onCardError={handleCardError}
+                cardDeclinedMessage={cardDeclinedMessage}
                 cartTotal={cart ? moneyToNumber(cart.totals.price) : undefined}
                 currencyCode={cart?.currencyCode}
                 capabilities={capabilities}
@@ -466,14 +497,12 @@ export function CheckoutForm({
           </CheckoutStepCard>
         </div>
 
-        <p
+        <CheckoutErrorMessage
           id="checkout-submit-status"
-          className="text-center text-xs text-slate-600 lg:col-span-2"
-          role="status"
-          aria-live="polite"
-        >
-          {statusMessage}
-        </p>
+          message={statusMessage}
+          alwaysRender
+          className="lg:col-span-2"
+        />
       </form>
     </FormProvider>
   );

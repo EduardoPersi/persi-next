@@ -13,6 +13,7 @@ interface CheckoutPaymentProps {
   onInstallmentsChange: (installments: number) => void;
   cardFieldsRef: RefObject<PaymentCardFieldsHandle | null>;
   onCardError: (message: string) => void;
+  cardDeclinedMessage?: string;
   cartTotal?: number;
   currencyCode?: string;
   capabilities: PublicCheckoutCapabilities;
@@ -31,6 +32,7 @@ export function CheckoutPayment({
   onInstallmentsChange,
   cardFieldsRef,
   onCardError,
+  cardDeclinedMessage,
   cartTotal,
   currencyCode,
   capabilities,
@@ -66,6 +68,7 @@ export function CheckoutPayment({
           installments={installments}
           onInstallmentsChange={onInstallmentsChange}
           onError={onCardError}
+          declinedMessage={cardDeclinedMessage}
         />
       ) : null}
       {isWalletMethod ? (
