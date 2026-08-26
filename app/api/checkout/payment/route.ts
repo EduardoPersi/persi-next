@@ -104,8 +104,21 @@ async function getDeclinedCardStatus(
   providerReference: string,
 ): Promise<string | null> {
   if (!CARD_PAYMENT_METHODS.has(method)) return null;
-  const charge = await getCardChargeStatus(providerReference);
-  return categorizeCardStatus(charge.status) === "failed" ? charge.status : null;
+  try {
+    const charge = await getCardChargeStatus(providerReference);
+    return categorizeCardStatus(charge.status) === "failed" ? charge.status : null;
+  } catch (error) {
+    // A revalidação é best-effort: se o PagBank recusar a reconsulta (ex.:
+    // 406 numa cobrança antiga), cair no catch geral da rota transformaria
+    // isso num 502 e quebraria o fluxo inteiro — melhor voltar ao
+    // comportamento anterior a esta revalidação (alreadyInitiated: true).
+    console.error("[checkout-payment] falha ao revalidar status PagBank", {
+      providerReference,
+      status: error instanceof PagBankPaymentError ? error.status : undefined,
+      message: error instanceof Error ? error.message : "unknown error",
+    });
+    return null;
+  }
 }
 
 function createCardDeclinedResponse(
