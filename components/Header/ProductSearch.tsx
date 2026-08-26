@@ -211,12 +211,12 @@ export function ProductSearch({
           ? "relative hidden flex-1 md:block"
           : compact
             ? "relative md:hidden"
-            : "relative mt-3 md:hidden"
+            : "relative md:hidden"
       }
     >
       <form
-        className={`flex overflow-hidden rounded-md bg-white ${
-          isDesktop ? "h-[42px]" : ""
+        className={`flex overflow-hidden bg-white ${
+          isDesktop ? "h-[42px] rounded-md" : "h-10 rounded-xl"
         }`}
         role="search"
         onSubmit={submitSearch}
@@ -237,7 +237,7 @@ export function ProductSearch({
               ? "Pesquisar produtos na Persi"
               : compact
                 ? "Pesquisar produtos na Persi"
-                : "O que você está procurando?"
+                : "O que você procura?"
           }
           aria-label="Pesquisar produtos"
           aria-autocomplete="list"

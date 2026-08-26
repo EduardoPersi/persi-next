@@ -46,7 +46,7 @@ function HeaderLogo({ compact = false }: HeaderLogoProps) {
         className={
           compact
             ? "h-auto w-[86px] max-w-full object-contain sm:w-[100px] md:w-[110px]"
-            : "h-auto w-[90px] max-w-full object-contain md:w-[110px]"
+            : "h-9 w-auto max-w-full object-contain md:h-auto md:w-[110px]"
         }
       />
     </Link>
@@ -117,7 +117,10 @@ function HeaderActions({
           }
           className="disabled:cursor-wait"
         >
-          <User size={compact ? 21 : 23} className="shrink-0" />
+          <User
+            size={compact ? 21 : 24}
+            className="h-6 w-6 shrink-0 md:h-auto md:w-auto"
+          />
         </IconButton>
       </div>
 
@@ -149,7 +152,9 @@ function HeaderActions({
         aria-controls={isCartPage ? undefined : "mini-cart-drawer"}
         className="relative"
       >
-        <ShoppingCart className={compact ? "h-6 w-6" : "h-7 w-7"} />
+        <ShoppingCart
+          className={compact ? "h-6 w-6" : "h-6 w-6 md:h-7 md:w-7"}
+        />
         <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff6a00] px-1 text-[10px] font-bold leading-none text-white">
           {itemsCount}
         </span>
@@ -264,46 +269,56 @@ function HeaderContent() {
   return (
     <header ref={fullHeaderRef}>
       <div className="bg-[#071f5c] text-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-4 py-1 text-center text-xs font-semibold sm:text-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-4 pb-1 pt-[max(0.25rem,env(safe-area-inset-top))] text-center text-xs font-semibold sm:text-sm">
           <Truck size={16} className="shrink-0" />
           <span>Frete grátis para Jundiaí e região. Consulte as regras!</span>
         </div>
       </div>
 
       <div className="bg-[#0c2d72] text-white">
-        <div className="mx-auto max-w-7xl px-4 py-3 sm:py-3">
-          <div className="flex items-center justify-between gap-3">
+        <div className="mx-auto max-w-7xl px-4 md:py-3">
+          <div className="grid h-14 grid-cols-[1fr_auto_1fr] items-center gap-2 md:flex md:h-auto md:justify-between md:gap-3">
             <IconButton
               variant="inverse"
               aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((current) => !current)}
-              className="lg:hidden"
+              className="justify-self-start lg:hidden"
             >
-              {menuOpen ? <X size={27} /> : <Menu size={27} />}
+              {menuOpen ? (
+                <X className="h-6 w-6 md:h-[27px] md:w-[27px]" />
+              ) : (
+                <Menu className="h-6 w-6 md:h-[27px] md:w-[27px]" />
+              )}
             </IconButton>
 
-            <HeaderLogo />
+            <div className="justify-self-center md:shrink-0">
+              <HeaderLogo />
+            </div>
             <ProductSearch variant="desktop" />
-            <HeaderActions
-              itemsCount={itemsCount}
-              favoritesCount={favoritesCount}
-              isCartPage={isCartPage}
-              isCartOpen={isCartOpen}
-              onOpenCart={handleCartClick}
-              accountDrawerOpen={accountOpen}
-              canOpenAccountDrawer={canOpenAccountDrawer}
-              onAccountAction={handleAccountAction}
-              accountLabel={accountLabel}
-              accountStatus={accountStatus}
-              customerName={
-                customer?.firstName || customer?.displayName || ""
-              }
-              customerEmail={customer?.email || ""}
-              onLogout={logout}
-            />
+            <div className="justify-self-end md:shrink-0">
+              <HeaderActions
+                itemsCount={itemsCount}
+                favoritesCount={favoritesCount}
+                isCartPage={isCartPage}
+                isCartOpen={isCartOpen}
+                onOpenCart={handleCartClick}
+                accountDrawerOpen={accountOpen}
+                canOpenAccountDrawer={canOpenAccountDrawer}
+                onAccountAction={handleAccountAction}
+                accountLabel={accountLabel}
+                accountStatus={accountStatus}
+                customerName={
+                  customer?.firstName || customer?.displayName || ""
+                }
+                customerEmail={customer?.email || ""}
+                onLogout={logout}
+              />
+            </div>
           </div>
-          <ProductSearch variant="mobile" />
+          <div className="h-11 md:h-auto">
+            <ProductSearch variant="mobile" />
+          </div>
         </div>
       </div>
 
