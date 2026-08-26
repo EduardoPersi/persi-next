@@ -1,11 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { formatStoreMoney, isZeroMoney, moneyToNumber } from "@/lib/formatting/money";
+import { formatStoreMoney, isZeroMoney } from "@/lib/formatting/money";
 import type { Cart } from "@/types/cart";
 import { CheckoutQuantityControl } from "./CheckoutQuantityControl";
 import { CheckoutCoupon } from "./CheckoutCoupon";
 import {
-  getPaymentMethodDiscountRate,
+  getCartPaymentTotals,
   type CheckoutPaymentMethod,
 } from "./paymentMethod";
 
@@ -29,12 +29,10 @@ export function CheckoutOrderSummary({
     style: "currency",
     currency: cart.currencyCode,
   });
-  const priceTotal = moneyToNumber(cart.totals.price);
-  const discountRate = paymentMethod
-    ? getPaymentMethodDiscountRate(paymentMethod)
-    : 0;
-  const paymentDiscount = priceTotal * discountRate;
-  const finalTotal = priceTotal - paymentDiscount;
+  const { paymentDiscount, finalTotal } = getCartPaymentTotals(
+    paymentMethod ?? "pagbank_card",
+    cart,
+  );
 
   return (
     <aside
@@ -113,12 +111,6 @@ export function CheckoutOrderSummary({
             <dd>-{formatStoreMoney(cart.totals.discount)}</dd>
           </div>
         ) : null}
-        {cart.fees.map((fee) => (
-          <div key={fee.key} className="flex justify-between gap-4">
-            <dt className="text-slate-600">{fee.name}</dt>
-            <dd>{formatStoreMoney(fee.total)}</dd>
-          </div>
-        ))}
         {paymentDiscount > 0 ? (
           <div className="flex justify-between gap-4 text-emerald-700">
             <dt>Desconto por forma de pagamento</dt>
@@ -135,6 +127,12 @@ export function CheckoutOrderSummary({
               : "A calcular"}
           </dd>
         </div>
+        {cart.fees.map((fee) => (
+          <div key={fee.key} className="flex justify-between gap-4">
+            <dt className="text-slate-600">{fee.name}</dt>
+            <dd>{formatStoreMoney(fee.total)}</dd>
+          </div>
+        ))}
         {!isZeroMoney(cart.totals.tax) ? (
           <div className="flex justify-between gap-4">
             <dt className="text-slate-600">Impostos</dt>

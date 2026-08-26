@@ -15,6 +15,7 @@ interface CheckoutPaymentProps {
   onCardError: (message: string) => void;
   cardDeclinedMessage?: string;
   cartTotal?: number;
+  discountBase?: number;
   currencyCode?: string;
   capabilities: PublicCheckoutCapabilities;
 }
@@ -34,6 +35,7 @@ export function CheckoutPayment({
   onCardError,
   cardDeclinedMessage,
   cartTotal,
+  discountBase,
   currencyCode,
   capabilities,
 }: CheckoutPaymentProps) {
@@ -44,10 +46,10 @@ export function CheckoutPayment({
   // selecionado deixar de atingir o valor mínimo, troca para o Pix — a
   // única forma sem mínimo — em vez de deixar uma opção escondida marcada.
   useEffect(() => {
-    if (!isPaymentMethodAvailable(method, cartTotal)) {
+    if (!isPaymentMethodAvailable(method, cartTotal, discountBase)) {
       onMethodChange("inter_pix");
     }
-  }, [method, cartTotal, onMethodChange]);
+  }, [method, cartTotal, discountBase, onMethodChange]);
 
   return (
     <div className="space-y-5">
@@ -59,6 +61,7 @@ export function CheckoutPayment({
         value={method}
         onChange={onMethodChange}
         cartTotal={cartTotal}
+        discountBase={discountBase}
         currencyCode={currencyCode}
         capabilities={capabilities}
       />

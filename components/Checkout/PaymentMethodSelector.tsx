@@ -57,6 +57,7 @@ interface PaymentMethodSelectorProps {
   value: CheckoutPaymentMethod;
   onChange: (method: CheckoutPaymentMethod) => void;
   cartTotal?: number;
+  discountBase?: number;
   currencyCode?: string;
   capabilities: PublicCheckoutCapabilities;
 }
@@ -65,6 +66,7 @@ export function PaymentMethodSelector({
   value,
   onChange,
   cartTotal,
+  discountBase,
   currencyCode = "BRL",
   capabilities,
 }: PaymentMethodSelectorProps) {
@@ -84,13 +86,13 @@ export function PaymentMethodSelector({
 
   const formatDiscount = (method: CheckoutPaymentMethod) => {
     const rate = getPaymentMethodDiscountRate(method);
-    if (rate <= 0 || typeof cartTotal !== "number" || cartTotal <= 0) {
+    if (rate <= 0 || typeof discountBase !== "number" || discountBase <= 0) {
       return undefined;
     }
     return `${new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: currencyCode,
-    }).format(cartTotal * rate)} off`;
+    }).format(discountBase * rate)} off`;
   };
   const pixDiscountLabel = formatDiscount("inter_pix");
   const boletoDiscountLabel = formatDiscount("inter_boleto");
@@ -140,7 +142,7 @@ export function PaymentMethodSelector({
   // MIN_AMOUNT_BY_METHOD (./paymentMethod.ts) — o filtro abaixo já esconde
   // a opção sozinho quando o carrinho não atinge o valor.
   const availableOptions = allOptions.filter((option) =>
-    isPaymentMethodAvailable(option.value, cartTotal),
+    isPaymentMethodAvailable(option.value, cartTotal, discountBase),
   );
   const options = availableOptions.filter((option) => {
     const enabled = option.value === "inter_pix"
