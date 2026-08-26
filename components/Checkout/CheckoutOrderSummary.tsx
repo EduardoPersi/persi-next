@@ -2,7 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatStoreMoney, isZeroMoney } from "@/lib/formatting/money";
 import type { Cart } from "@/types/cart";
-import { CheckoutQuantityControl } from "./CheckoutQuantityControl";
+import { QuantitySelect } from "@/components/UI/QuantitySelect";
+import { AnimatedValue } from "@/components/UI/AnimatedValue";
 import { CheckoutCoupon } from "./CheckoutCoupon";
 import {
   getCartPaymentTotals,
@@ -81,8 +82,12 @@ export function CheckoutOrderSummary({
                 </p>
               ) : null}
               <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <CheckoutQuantityControl item={item} idSuffix="desktop" />
-                <strong>{formatter.format(item.total)}</strong>
+                <QuantitySelect item={item} idSuffix="checkout-desktop" />
+                <strong>
+                  <AnimatedValue animationKey={item.total}>
+                    {formatter.format(item.total)}
+                  </AnimatedValue>
+                </strong>
               </div>
             </div>
           </li>
@@ -97,24 +102,34 @@ export function CheckoutOrderSummary({
         <div className="flex justify-between gap-4">
           <dt className="text-slate-600">Subtotal</dt>
           <dd className="font-semibold">
-            {formatStoreMoney(cart.totals.items)}
+            <AnimatedValue animationKey={cart.totals.items.value}>
+              {formatStoreMoney(cart.totals.items)}
+            </AnimatedValue>
           </dd>
         </div>
         {!isZeroMoney(cart.totals.discount) || cart.coupons.length ? (
-          <div className="flex justify-between gap-4 text-emerald-700">
+          <div className="checkout-discount-enter flex justify-between gap-4 text-emerald-700">
             <dt>
               Descontos
               {cart.coupons.length
                 ? ` (${cart.coupons.map(({ code }) => code).join(", ")})`
                 : ""}
             </dt>
-            <dd>-{formatStoreMoney(cart.totals.discount)}</dd>
+            <dd>
+              <AnimatedValue animationKey={cart.totals.discount.value}>
+                -{formatStoreMoney(cart.totals.discount)}
+              </AnimatedValue>
+            </dd>
           </div>
         ) : null}
         {paymentDiscount > 0 ? (
-          <div className="flex justify-between gap-4 text-emerald-700">
+          <div className="checkout-discount-enter flex justify-between gap-4 text-emerald-700">
             <dt>Desconto por forma de pagamento</dt>
-            <dd>-{formatter.format(paymentDiscount)}</dd>
+            <dd>
+              <AnimatedValue animationKey={paymentDiscount}>
+                -{formatter.format(paymentDiscount)}
+              </AnimatedValue>
+            </dd>
           </div>
         ) : null}
         <div className="flex justify-between gap-4">
@@ -142,7 +157,9 @@ export function CheckoutOrderSummary({
         <div className="flex justify-between gap-4 border-t border-slate-200 pt-4">
           <dt className="font-bold text-emerald-700">Total</dt>
           <dd className="text-lg font-bold text-emerald-700">
-            {formatter.format(finalTotal)}
+            <AnimatedValue animationKey={finalTotal}>
+              {formatter.format(finalTotal)}
+            </AnimatedValue>
           </dd>
         </div>
       </dl>

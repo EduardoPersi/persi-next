@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   addItemToCart,
   CartServiceError,
+  getCart,
   removeCartItem,
   updateCartItem,
 } from "@/services/woocommerce/cart";
@@ -153,6 +154,30 @@ export async function PATCH(request: Request) {
     return createCartResponse(result.cart, result.cartToken);
   } catch (error) {
     const status = error instanceof CartServiceError ? error.status : 500;
+
+    if (status === 400 || status === 409) {
+      try {
+        const current = await getCart(cartToken);
+        const item = current.cart.items.find((cartItem) => cartItem.key === key);
+        const availableMaximum = item?.maxQuantity;
+
+        if (
+          item &&
+          availableMaximum !== undefined &&
+          availableMaximum >= item.minQuantity &&
+          availableMaximum < quantity
+        ) {
+          if (item.quantity !== availableMaximum) {
+            const adjusted = await updateCartItem(key, availableMaximum, cartToken);
+            return createCartResponse(adjusted.cart, adjusted.cartToken);
+          }
+          return createCartResponse(current.cart, current.cartToken);
+        }
+      } catch {
+        // Mantém abaixo a resposta segura original quando não for possível
+        // obter ou aplicar o limite autoritativo informado pelo WooCommerce.
+      }
+    }
 
     return createCartErrorResponse(
       status === 400 || status === 409

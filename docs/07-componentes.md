@@ -108,3 +108,38 @@ da Home e da página de produto. O acesso ao WooCommerce fica isolado em
   selecionar um item. `add_to_cart` permanece no fluxo central do carrinho.
 - O catálogo e os cards são Server Components; apenas timer, observação de
   visibilidade e ações de compra hidratam no cliente.
+
+## QuantitySelect
+
+### Objetivo e localização
+
+`components/UI/QuantitySelect.tsx` é o seletor compacto de quantidade usado
+exclusivamente pelos itens do Carrinho e pelos resumos desktop e mobile do
+Checkout. Vitrines, página de produto, mini carrinho, upsell e cross sell
+continuam usando seus controles próprios.
+
+### Comportamento e estados
+
+- Exibe quantidades válidas de acordo com mínimo, máximo e passo informados
+  pelo WooCommerce.
+- Mostra inicialmente até 10 opções. Acima disso, mostra uma janela de sete
+  valores próximos da quantidade atual, sem reduzir quantidades existentes.
+- Usa o fluxo central do carrinho para atualizar preços, descontos, frete e
+  total sem recarregar a página.
+- Mantém o campo focável durante a atualização do próprio item e mostra um
+  indicador de progresso; mutações concorrentes ficam bloqueadas.
+- Erros recuperáveis são anunciados junto ao campo.
+
+### Responsividade, acessibilidade e performance
+
+- Mede 52 px no mobile e 64 px a partir do breakpoint `sm`, sempre sem quebra.
+- Possui nome acessível, `title`, foco visível e operação nativa por teclado.
+- É memorizado com `React.memo`; as opções também são memorizadas e nenhuma
+  dependência adicional é necessária.
+
+### Reutilização futura
+
+Favoritos, Minhas Listas, Workspace e uma futura compra recorrente devem usar
+este mesmo componente quando passarem a possuir itens reais de carrinho e uma
+ação de quantidade. Atualmente essas áreas não armazenam quantidade; por isso,
+o componente não deve ser inserido nelas apenas como controle visual sem efeito.

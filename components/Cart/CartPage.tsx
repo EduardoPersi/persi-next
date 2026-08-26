@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useCheckoutTransfer } from "@/hooks/useCheckoutTransfer";
-import { ProductQuantity } from "@/components/Product/ProductQuantity";
+import { QuantitySelect } from "@/components/UI/QuantitySelect";
+import { AnimatedValue } from "@/components/UI/AnimatedValue";
 import { FreeShippingBadge } from "@/components/Product/FreeShippingBadge";
 import { ShippingCalculator } from "@/components/Shipping/ShippingCalculator";
 import { getCartShippingContextKey } from "@/lib/commerce/shippingCalculator";
@@ -22,7 +23,6 @@ export function CartPage() {
     isLoading,
     pendingItemKey,
     removeItem,
-    updateItem,
   } = useCart();
   const { checkoutError, isPreparingCheckout, prepareCheckout } =
     useCheckoutTransfer();
@@ -127,38 +127,13 @@ export function CartPage() {
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-slate-500">Quantidade</dt>
-                      <dd className="w-28">
-                        <ProductQuantity
-                          value={item.quantity}
-                          min={item.minQuantity}
-                          max={item.maxQuantity}
-                          step={item.quantityStep}
-                          onChange={(quantity) => {
-                            if (!isPending && quantity !== item.quantity) {
-                              void updateItem(item.key, quantity);
-                            }
-                          }}
-                          compact
-                          dense
-                          fullWidthOnMobile={false}
-                          showLabel={false}
-                        />
+                      <dd className="shrink-0">
+                        <QuantitySelect item={item} idSuffix="cart-mobile" />
                       </dd>
                     </div>
                   </dl>
                   <div className="mt-4 hidden md:flex md:items-end">
-                    <ProductQuantity
-                      value={item.quantity}
-                      min={item.minQuantity}
-                      max={item.maxQuantity}
-                      step={item.quantityStep}
-                      onChange={(quantity) => {
-                        if (!isPending && quantity !== item.quantity) {
-                          void updateItem(item.key, quantity);
-                        }
-                      }}
-                      fullWidthOnMobile={false}
-                    />
+                    <QuantitySelect item={item} idSuffix="cart-desktop" />
                   </div>
                 </div>
                 <div className="col-span-2 flex flex-col items-end gap-1 border-t border-slate-100 pt-3 md:col-span-1 md:min-w-32 md:justify-between md:border-0 md:pt-0">
@@ -176,7 +151,9 @@ export function CartPage() {
                     <span className="mr-2 font-normal text-slate-500 md:hidden">
                       Subtotal:
                     </span>
-                    {formatter.format(item.total)}
+                    <AnimatedValue animationKey={item.total}>
+                      {formatter.format(item.total)}
+                    </AnimatedValue>
                   </p>
                 </div>
               </article>
@@ -192,7 +169,11 @@ export function CartPage() {
         <h2 className="text-xl font-bold text-[#0c2d72]">Resumo do pedido</h2>
         <div className="mt-5 flex items-center justify-between border-b border-slate-200 pb-4">
           <span className="text-slate-600">Subtotal dos produtos</span>
-          <strong>{formatter.format(cart.subtotal)}</strong>
+          <strong>
+            <AnimatedValue animationKey={cart.subtotal}>
+              {formatter.format(cart.subtotal)}
+            </AnimatedValue>
+          </strong>
         </div>
         <div className="mt-5">
           <ShippingCalculator
@@ -215,25 +196,31 @@ export function CartPage() {
             <p className="text-sm font-semibold text-emerald-700">✓ Frete Grátis</p>
           ) : null}
           {!isZeroMoney(cart.totals.discount) ? (
-            <div className="flex justify-between gap-4">
+            <div className="checkout-discount-enter flex justify-between gap-4">
               <dt className="text-slate-600">Descontos</dt>
               <dd className="font-semibold text-emerald-700">
-                -{formatStoreMoney(cart.totals.discount)}
+                <AnimatedValue animationKey={cart.totals.discount.value}>
+                  -{formatStoreMoney(cart.totals.discount)}
+                </AnimatedValue>
               </dd>
             </div>
           ) : null}
           {pixAdjustment ? (
-            <div className="flex justify-between gap-4">
+            <div className="checkout-discount-enter flex justify-between gap-4">
               <dt className="text-slate-600">Desconto Pix</dt>
               <dd className="font-semibold text-emerald-700">
-                {formatStoreMoney(pixAdjustment.total)}
+                <AnimatedValue animationKey={pixAdjustment.total.value}>
+                  {formatStoreMoney(pixAdjustment.total)}
+                </AnimatedValue>
               </dd>
             </div>
           ) : null}
           <div className="flex justify-between gap-4 border-t border-slate-200 pt-3 text-base">
             <dt className="font-bold text-[#0c2d72]">Total</dt>
             <dd className="font-bold text-[#0c2d72]">
-              {formatStoreMoney(cart.totals.price)}
+              <AnimatedValue animationKey={cart.totals.price.value}>
+                {formatStoreMoney(cart.totals.price)}
+              </AnimatedValue>
             </dd>
           </div>
         </dl>

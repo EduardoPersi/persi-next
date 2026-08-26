@@ -35,7 +35,7 @@ interface CartContextValue {
   updateItem: (
     key: string,
     quantity: number,
-  ) => Promise<{ success: boolean; message: string }>;
+  ) => Promise<CartMutationResult>;
   updateCustomerAddress: (
     input: CheckoutCustomerPayload,
     signal?: AbortSignal,
@@ -215,7 +215,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
 
       if (latestRequest.current.isLatest(requestId)) setCart(result);
-      return { success: true, message: "Quantidade atualizada." };
+      return { success: true, message: "Quantidade atualizada.", cart: result };
     } catch {
       const message = "Não foi possível atualizar o item.";
       if (latestRequest.current.isLatest(requestId)) setError(message);
