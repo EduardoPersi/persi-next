@@ -90,9 +90,6 @@ export function Drawer({
     };
   }, [open, onClose]);
 
-  const closedPosition =
-    side === "left" ? "-translate-x-full" : "translate-x-full";
-
   return (
     <>
       <button
@@ -107,6 +104,9 @@ export function Drawer({
       <aside
         id={id}
         ref={panelRef}
+        data-drawer-panel
+        data-open={open}
+        data-side={side}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -115,7 +115,7 @@ export function Drawer({
         tabIndex={-1}
         className={`fixed top-0 z-50 h-screen h-[100dvh] w-full bg-white shadow-2xl transition-transform duration-300 ease-out ${
           side === "left" ? "left-0" : "right-0"
-        } ${widthClassName} ${open ? "translate-x-0" : closedPosition}`}
+        } ${widthClassName}`}
       >
         {children}
       </aside>

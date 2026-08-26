@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
@@ -45,8 +46,8 @@ export function WhatsAppFloatingButton() {
   return (
     <div
       ref={containerRef}
-      className={`fixed right-4 z-40 flex flex-col items-end gap-3 transition-[bottom] sm:right-6 ${
-        bannerVisible ? "bottom-44" : "bottom-24"
+      className={`whatsapp-floating fixed z-40 flex flex-col items-end gap-3 transition-[bottom] ${
+        bannerVisible ? "whatsapp-floating--with-cookie" : ""
       }`}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
@@ -55,15 +56,16 @@ export function WhatsAppFloatingButton() {
         <div
           role="dialog"
           aria-label="Conversa com a Persi Materiais pelo WhatsApp"
-          className="w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl bg-white shadow-2xl"
+          className="whatsapp-preview overflow-hidden rounded-2xl bg-white shadow-2xl"
         >
           <div className="flex items-center justify-between bg-[#075E54] px-4 py-3 text-white">
             <div className="flex items-center gap-2.5">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full">
-                {/* eslint-disable-next-line @next/next/no-img-element -- ícone estático de 32px, otimização do next/image é desnecessária */}
-                <img
+                <Image
                   src="/favicon.ico"
                   alt=""
+                  width={36}
+                  height={36}
                   className="h-full w-full object-cover"
                 />
               </span>

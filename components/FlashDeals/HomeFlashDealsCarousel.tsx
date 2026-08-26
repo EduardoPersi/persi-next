@@ -76,7 +76,10 @@ export function HomeFlashDealsCarousel({ children }: { children: ReactNode }) {
       onKeyDown={pauseForInteraction}
     >
       {loopItems.map((item, index) => (
-        <div key={index} className="w-[calc((100vw-3.5rem)/2)] shrink-0 snap-start">
+        <div
+          key={index}
+          className="w-[calc((100%-0.75rem)/2)] shrink-0 snap-start"
+        >
           {item}
         </div>
       ))}

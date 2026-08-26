@@ -77,7 +77,7 @@ function FooterLinks({ items }: FooterLinksProps) {
 
 export function Footer() {
   return (
-    <footer className="overflow-x-hidden bg-white text-slate-800">
+    <footer className="bg-white text-slate-800">
       <section
         aria-labelledby="newsletter-title"
         className="bg-[#1246ab] text-white"

@@ -124,7 +124,7 @@ export function MegaMenuDesktop({ menu }: { menu: MegaMenuData }) {
 
   return (
     <div
-      className="relative"
+      className="static"
       data-route-transition-skip
       onMouseEnter={cancelClose}
       onMouseLeave={scheduleClose}
@@ -141,7 +141,7 @@ export function MegaMenuDesktop({ menu }: { menu: MegaMenuData }) {
         <Link href="/promocoes" data-mega-trigger onKeyDown={(event) => handleTriggerKeyDown(event, "all")} className="tap-feedback-inverse flex min-h-12 items-center border-r border-white/40 px-3 text-base font-semibold text-white transition-colors hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white lg:px-4">Promoções</Link>
       </nav>
 
-      <div id="mega-menu-panel" aria-hidden={openMenuId === null} className={`absolute left-0 top-full z-30 w-[min(1360px,calc(100vw-2rem))] origin-top overflow-visible rounded-b-xl bg-white text-slate-900 shadow-2xl transition duration-200 ${openMenuId === null ? "invisible -translate-y-2 opacity-0" : "visible translate-y-0 opacity-100"}`} onKeyDown={(event) => { if (event.key === "Escape") closeMenu(); }}>
+      <div id="mega-menu-panel" aria-hidden={openMenuId === null} className={`absolute inset-x-4 top-full z-30 origin-top overflow-visible rounded-b-xl bg-white text-slate-900 shadow-2xl transition duration-200 ${openMenuId === null ? "invisible -translate-y-2 opacity-0" : "visible translate-y-0 opacity-100"}`} onKeyDown={(event) => { if (event.key === "Escape") closeMenu(); }}>
         <div className="grid min-h-[520px] grid-cols-[270px_minmax(0,1fr)_390px] overflow-visible rounded-b-xl">
           <aside data-category-rail className="overflow-hidden rounded-bl-xl bg-[#0c2d72] py-2 text-white">
             {menu.categories.map((category) => {

@@ -308,7 +308,7 @@ function HeaderContent() {
       </div>
 
       <div className="hidden bg-[#ff6a00] text-white lg:block">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4">
+        <div className="relative mx-auto flex max-w-7xl items-center justify-between px-4">
           <MegaMenu />
           <a
             href="#"

@@ -182,6 +182,30 @@ svg {
   }
 }
 
+.whatsapp-floating {
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.whatsapp-floating--with-cookie {
+  bottom: calc(15rem + env(safe-area-inset-bottom));
+}
+
+.whatsapp-preview {
+  width: min(18rem, calc(100vw - 2rem - env(safe-area-inset-right)));
+}
+
+@media (min-width: 640px) {
+  .whatsapp-floating {
+    right: max(1.5rem, env(safe-area-inset-right));
+    bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+
+  .whatsapp-floating--with-cookie {
+    bottom: calc(11rem + env(safe-area-inset-bottom));
+  }
+}
+
 .product-card-primary-image,
 .product-card-secondary-image {
   transition:
@@ -326,6 +350,20 @@ svg {
 :focus-visible {
   outline: 2px solid #0b3a8d;
   outline-offset: 2px;
+}
+
+/* O estado fechado precisa existir no CSS final mesmo quando o nome da classe
+   de transformação não pode ser descoberto estaticamente pelo Tailwind. */
+[data-drawer-panel][data-open="false"][data-side="left"] {
+  transform: translateX(-100%);
+}
+
+[data-drawer-panel][data-open="false"][data-side="right"] {
+  transform: translateX(100%);
+}
+
+[data-drawer-panel][data-open="true"] {
+  transform: translateX(0);
 }
 
 /* Campos de formulário já indicam foco pela cor da borda
