@@ -13,6 +13,28 @@ export type PersiPaymentMethod =
   | "pagbank_apple_pay"
   | "pagbank_google_pay";
 
+const PAYMENT_METHOD_TITLES: Record<PersiPaymentMethod, string> = {
+  inter_pix: "Pix",
+  inter_boleto: "Boleto bancário",
+  pagbank_card: "Cartão de crédito - PagBank",
+  pagbank_apple_pay: "Apple Pay - PagBank",
+  pagbank_google_pay: "Google Pay - PagBank",
+};
+
+// Título amigável gravado como payment_method_title no pedido — é o campo
+// que o WooCommerce usa nos e-mails transacionais e na tela de admin (o
+// slug em payment_method não aparece em nenhum dos dois, e nenhum desses
+// métodos tem um gateway nativo registrado que gere esse título sozinho).
+export function getOrderPaymentMethodTitle(
+  method: PersiPaymentMethod,
+  installments?: number,
+): string {
+  const title = PAYMENT_METHOD_TITLES[method];
+  return method === "pagbank_card" && installments && installments > 1
+    ? `${title} (${installments}x)`
+    : title;
+}
+
 export interface WooCommerceOrder {
   id: number;
   status: string;
@@ -106,6 +128,9 @@ export interface CreatePendingOrderInput {
   billingAddress: CheckoutStoreAddress;
   shippingAddress: CheckoutStoreAddress;
   paymentMethod: PersiPaymentMethod;
+  // Só relevante para pagbank_card (Pix/Boleto são sempre 1x) — usado
+  // apenas para compor payment_method_title, ex.: "(3x)".
+  installments?: number;
   customerNote?: string;
   ownerToken: string;
   // ID do usuário WordPress do cliente logado. Sem isso o pedido fica
@@ -161,6 +186,7 @@ export async function createPendingOrder(
     billing: toWooAddress(input.billingAddress),
     shipping: toWooAddress(input.shippingAddress),
     payment_method: input.paymentMethod,
+    payment_method_title: getOrderPaymentMethodTitle(input.paymentMethod, input.installments),
     customer_note: input.customerNote ?? "",
     line_items: input.items.map((item) => ({
       product_id: item.productId,

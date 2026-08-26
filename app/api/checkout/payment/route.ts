@@ -445,6 +445,7 @@ export async function POST(request: Request) {
         billingAddress,
         shippingAddress,
         paymentMethod,
+        installments: input.method === "pagbank_card" ? input.installments : undefined,
         customerNote: input.customerNote,
         ownerToken: activeCartToken,
         customerId: session?.customer.id,
