@@ -33,26 +33,35 @@ test("controle respeita limites e passos de quantidade do WooCommerce", () => {
   assert.match(control, /nextQuantity > maximum/);
 });
 
-test("seletor expande quantidades por faixas sem gerar listas enormes", () => {
-  assert.deepEqual(getQuantityOptions(1, 1, 1000, 1), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-  assert.deepEqual(getQuantityOptions(10, 1, 1000, 1), [5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50, 75, 100]);
-  assert.deepEqual(getQuantityOptions(20, 1, 1000, 1), [10, 15, 20, 25, 30, 40, 50, 75, 100]);
-  assert.deepEqual(getQuantityOptions(50, 1, 1000, 1), [25, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 500]);
-  assert.deepEqual(getQuantityOptions(250, 1, 1000, 1), [100, 150, 200, 225, 250, 275, 300, 350, 400, 500, 1000]);
-  assert.ok(getQuantityOptions(1000, 1, 1000, 1).includes(1000));
-  assert.ok(getQuantityOptions(500, 1, 1000, 1).length < 20);
+test("seletor mantém cinco quantidades antes e depois do valor atual", () => {
+  assert.deepEqual(getQuantityOptions(1, 1, 5000, 1), [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual(getQuantityOptions(2, 1, 5000, 1), [1, 2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(getQuantityOptions(6, 1, 5000, 1), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  assert.deepEqual(getQuantityOptions(10, 1, 5000, 1), [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+  assert.deepEqual(getQuantityOptions(15, 1, 5000, 1), [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+  assert.deepEqual(getQuantityOptions(38, 1, 5000, 1), [33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43]);
+  assert.deepEqual(getQuantityOptions(120, 1, 5000, 1), [115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125]);
+  assert.deepEqual(getQuantityOptions(250, 1, 5000, 1), [245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255]);
 });
 
-test("quantidade atual nunca desaparece e limites do WooCommerce são preservados", () => {
-  for (const value of [1, 5, 10, 15, 17, 20, 30, 50, 100, 250, 500, 1000]) {
-    const options = getQuantityOptions(value, 1, 1000, 1);
+test("quantidade atual, estoque e limites do WooCommerce são preservados", () => {
+  for (const value of [1, 5, 10, 15, 20, 30, 50, 100, 250, 500, 1000]) {
+    const options = getQuantityOptions(value, 1, 5000, 1);
     assert.ok(options.includes(value), `valor atual ${value} ausente`);
-    assert.ok(options.every((quantity) => quantity >= 1 && quantity <= 1000));
+    assert.ok(options.length <= 11);
   }
 
-  const steppedOptions = getQuantityOptions(25, 5, 50, 5);
+  assert.deepEqual(getQuantityOptions(1, 1, 1, 1), [1]);
+  assert.deepEqual(getQuantityOptions(5, 1, 5, 1), [1, 2, 3, 4, 5]);
+  assert.deepEqual(getQuantityOptions(7, 1, 7, 1), [2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(getQuantityOptions(15, 1, 18, 1), [10, 11, 12, 13, 14, 15, 16, 17, 18]);
+  assert.deepEqual(getQuantityOptions(50, 1, 50, 1), [45, 46, 47, 48, 49, 50]);
+  assert.deepEqual(getQuantityOptions(250, 1, 253, 1), [245, 246, 247, 248, 249, 250, 251, 252, 253]);
+
+  const steppedOptions = getQuantityOptions(25, 5, 55, 5);
   assert.ok(steppedOptions.every((quantity) => (quantity - 5) % 5 === 0));
-  assert.ok(steppedOptions.every((quantity) => quantity >= 5 && quantity <= 50));
+  assert.ok(steppedOptions.every((quantity) => quantity >= 5 && quantity <= 55));
+  assert.ok(steppedOptions.length <= 11);
 });
 
 test("ajuste autoritativo de estoque retorna o carrinho e informa o cliente", () => {

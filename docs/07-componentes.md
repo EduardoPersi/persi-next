@@ -122,11 +122,10 @@ continuam usando seus controles próprios.
 
 - Exibe quantidades válidas de acordo com mínimo, máximo e passo informados
   pelo WooCommerce.
-- Mostra inicialmente as quantidades de 1 a 10. A partir de 10, combina marcos
-  comerciais progressivos com uma pequena vizinhança do valor atual, sem criar
-  listas proporcionais ao estoque máximo.
-- O valor atual é sempre reinserido quando não coincide com um marco e todos os
-  demais valores respeitam mínimo, máximo e passo informados pelo WooCommerce.
+- Mostra no máximo cinco quantidades anteriores, o valor atual e cinco
+  quantidades seguintes, sem criar listas proporcionais ao estoque máximo.
+- O valor atual permanece sempre visível e as opções respeitam mínimo, máximo
+  e passo informados pelo WooCommerce.
 - Usa o fluxo central do carrinho para atualizar preços, descontos, frete e
   total sem recarregar a página.
 - Mantém o campo focável durante a atualização do próprio item e mostra um
