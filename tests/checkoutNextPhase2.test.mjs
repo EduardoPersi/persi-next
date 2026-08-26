@@ -30,13 +30,15 @@ test("cupom é aplicado e removido exclusivamente pela Store API", () => {
   assert.match(route, /dynamic = "force-dynamic"/);
 });
 
-test("pedido recebe cupons autoritativos e cobrança não calcula desconto", () => {
+test("pedido recebe cupons e desconto de pagamento calculado no servidor", () => {
   const payment = read("app/api/checkout/payment/route.ts");
   const order = read("services/woocommerce/orders.ts");
   assert.match(payment, /couponCodes: cart\.coupons\.map/);
-  assert.match(payment, /const amount = cartAmount/);
+  assert.match(payment, /const amount = paymentTotals\.finalTotal/);
+  assert.match(payment, /productsSubtotal: moneyToNumber\(cart\.totals\.items\)/);
+  assert.match(payment, /existingDiscounts: moneyToNumber\(cart\.totals\.discount\)/);
+  assert.match(payment, /discountFee: paymentTotals\.paymentDiscount/);
   assert.match(payment, /ORDER_TOTAL_MISMATCH/);
-  assert.doesNotMatch(payment, /cartAmount - discountAmount/);
   assert.match(order, /coupon_lines/);
 });
 

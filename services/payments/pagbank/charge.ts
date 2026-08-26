@@ -31,12 +31,22 @@ export interface CardChargeResult {
   chargeId: string;
   status: CardChargeStatus;
   amount: number;
+  brand?: string;
+  lastDigits?: string;
+  installments?: number;
 }
 
 interface PagBankChargeResponse {
   id: string;
   status: string;
   amount: { value: number };
+  payment_method?: {
+    installments?: number;
+    card?: {
+      brand?: string;
+      last_digits?: string;
+    };
+  };
 }
 
 interface PagBankOrderResponse {
@@ -83,6 +93,9 @@ function toChargeResult(charge: PagBankChargeResponse): CardChargeResult {
     chargeId: charge.id,
     status: assertChargeStatus(charge.status),
     amount: charge.amount.value / 100,
+    brand: charge.payment_method?.card?.brand,
+    lastDigits: charge.payment_method?.card?.last_digits,
+    installments: charge.payment_method?.installments,
   };
 }
 

@@ -238,7 +238,7 @@ test("estrutura usa resumo oficial e breakpoints esperados", () => {
   assert.match(client, /lg:grid-cols/);
   assert.match(summary, /item\.total/);
   assert.match(summary, /cart\.totals\.items/);
-  assert.match(summary, /cart\.totals\.price/);
+  assert.match(summary, /getCartPaymentTotals/);
 });
 
 test("checkout headless só fala com a rota própria de orquestração de pagamento, nunca com WooCommerce ou provedor direto", () => {

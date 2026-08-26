@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-// paymentMethod.ts importa PIX_DISCOUNT_RATE de "@/lib/commerce/productPayment"
+// paymentMethod.ts importa a regra monetária de "@/lib/commerce/paymentDiscount"
 // (alias só resolvido pelo bundler do Next.js) — como outros módulos do
 // projeto com import de valor via "@/" (ex.: services/menu/menu.ts,
 // services/account/serverSession.ts), não é importado diretamente por
@@ -36,13 +36,13 @@ test("PaymentMethodSelector filtra as opções pela disponibilidade antes de ren
   const source = read("components/Checkout/PaymentMethodSelector.tsx");
   assert.match(
     source,
-    /allOptions\.filter\(\(option\) =>\s*isPaymentMethodAvailable\(option\.value, cartTotal\),?\s*\)/,
+    /allOptions\.filter\(\(option\) =>\s*isPaymentMethodAvailable\(option\.value, cartTotal, discountBase\),?\s*\)/,
   );
 });
 
 test("CheckoutPayment troca para Pix automaticamente quando o método selecionado deixa de ser válido", () => {
   const source = read("components/Checkout/CheckoutPayment.tsx");
-  assert.match(source, /if \(!isPaymentMethodAvailable\(method, cartTotal\)\)/);
+  assert.match(source, /if \(!isPaymentMethodAvailable\(method, cartTotal, discountBase\)\)/);
   assert.match(source, /onMethodChange\("inter_pix"\)/);
 });
 

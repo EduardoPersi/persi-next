@@ -69,6 +69,20 @@ Prioridades:
 - Erros claros.
 - Confirmação imediata.
 
+### Ordem oficial dos valores
+
+1. Subtotal dos produtos.
+2. Cupom e outros descontos comerciais.
+3. Desconto por forma de pagamento: 10% no Pix ou 5% no boleto.
+4. Frete.
+5. Taxas e serviços adicionais.
+6. Impostos.
+7. Total final.
+
+O desconto por forma de pagamento incide exclusivamente sobre o subtotal
+líquido dos produtos depois dos descontos existentes. Frete, seguro, taxas,
+serviços, benefícios e impostos nunca integram essa base.
+
 ## Responsividade
 
 Testar:

@@ -49,7 +49,11 @@ import { CheckoutPayment } from "./CheckoutPayment";
 import { CheckoutShippingPlaceholder } from "./CheckoutShippingPlaceholder";
 import { CheckoutStepCard, type CheckoutStepState } from "./CheckoutStepCard";
 import { CheckoutTerms } from "./CheckoutTerms";
-import { createIdempotencyKey, type CheckoutPaymentMethod } from "./paymentMethod";
+import {
+  createIdempotencyKey,
+  getCartPaymentTotals,
+  type CheckoutPaymentMethod,
+} from "./paymentMethod";
 import type { PaymentCardFieldsHandle } from "./PaymentCardFields";
 import type { PublicCheckoutCapabilities } from "@/lib/commerce/checkoutConfig";
 
@@ -229,7 +233,9 @@ export function CheckoutForm({
 
     try {
       const idempotencyKey = checkoutAttemptIdRef.current;
-      const expectedAmount = cart ? moneyToNumber(cart.totals.price) : 0;
+      const expectedAmount = cart
+        ? getCartPaymentTotals(paymentMethod, cart).finalTotal
+        : 0;
       const document = values.contact.document;
       const customerNote = values.includeOrderNote ? values.orderNote.trim() : "";
       let body: Record<string, unknown>;
@@ -473,6 +479,15 @@ export function CheckoutForm({
                 onCardError={handleCardError}
                 cardDeclinedMessage={cardDeclinedMessage}
                 cartTotal={cart ? moneyToNumber(cart.totals.price) : undefined}
+                discountBase={
+                  cart
+                    ? Math.max(
+                        0,
+                        moneyToNumber(cart.totals.items) -
+                          moneyToNumber(cart.totals.discount),
+                      )
+                    : undefined
+                }
                 currencyCode={cart?.currencyCode}
                 capabilities={capabilities}
               />

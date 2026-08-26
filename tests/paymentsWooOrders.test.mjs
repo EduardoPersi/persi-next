@@ -42,7 +42,7 @@ test("createPendingOrder rejeita carrinho vazio antes de chamar a API", async ()
   );
 });
 
-test("createPendingOrder monta line_items sem preço e grava idempotency key/provider/owner token", async () => {
+test("createPendingOrder monta itens, cupom, frete e desconto de pagamento separadamente", async () => {
   const calls = [];
   const post = async (endpoint, body) => {
     calls.push({ endpoint, body });
@@ -72,6 +72,12 @@ test("createPendingOrder monta line_items sem preço e grava idempotency key/pro
       paymentMethod: "inter_pix",
       ownerToken: "cart-token-1",
       couponCodes: ["OBRA10"],
+      discountFee: { name: "Desconto Pix", amount: 18.99 },
+      shippingLine: {
+        name: "Entrega expressa",
+        amount: 32.5,
+        methodId: "melhor_envio",
+      },
     },
     post,
   );
@@ -87,6 +93,16 @@ test("createPendingOrder monta line_items sem preço e grava idempotency key/pro
   assert.equal("price" in calls[0].body.line_items[0], false);
   assert.equal(calls[0].body.line_items[1].variation_id, 30);
   assert.deepEqual(calls[0].body.coupon_lines, [{ code: "OBRA10" }]);
+  assert.deepEqual(calls[0].body.fee_lines, [
+    { name: "Desconto Pix", total: "-18.99" },
+  ]);
+  assert.deepEqual(calls[0].body.shipping_lines, [
+    {
+      method_id: "melhor_envio",
+      method_title: "Entrega expressa",
+      total: "32.50",
+    },
+  ]);
   assert.deepEqual(
     calls[0].body.meta_data.find((m) => m.key === "_persi_idempotency_key"),
     { key: "_persi_idempotency_key", value: "key-1" },

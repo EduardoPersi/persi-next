@@ -1,3 +1,11 @@
+import {
+  BOLETO_DISCOUNT_RATE,
+  calculatePaymentTotals,
+  getPaymentDiscountRate,
+} from "@/lib/commerce/paymentDiscount";
+import { moneyToNumber } from "@/lib/formatting/money";
+import type { Cart } from "@/types/cart";
+
 export type CheckoutPaymentMethod =
   | "inter_pix"
   | "inter_boleto"
@@ -5,24 +13,36 @@ export type CheckoutPaymentMethod =
   | "pagbank_apple_pay"
   | "pagbank_google_pay";
 
+export { BOLETO_DISCOUNT_RATE };
+
 export function createIdempotencyKey(): string {
   return crypto.randomUUID();
 }
 
 // Desconto exclusivo do checkout (não se aplica ao preço exibido na página
 // de produto, que mostra o boleto pelo valor cheio).
-export const BOLETO_DISCOUNT_RATE = 0;
-
 // Fonte única da regra de desconto por forma de pagamento: usada tanto para
 // exibir o valor ao cliente (seletor de pagamento, resumo do pedido) quanto
 // para calcular o valor efetivamente cobrado no back-end
 // (app/api/checkout/payment/route.ts) — o mesmo valor precisa aparecer nos
 // dois lugares.
 export function getPaymentMethodDiscountRate(
-  _method: CheckoutPaymentMethod,
+  method: CheckoutPaymentMethod,
 ): number {
-  void _method;
-  return 0;
+  return getPaymentDiscountRate(method);
+}
+
+export function getCartPaymentTotals(
+  method: CheckoutPaymentMethod,
+  cart: Cart,
+) {
+  return calculatePaymentTotals({
+    method,
+    productsSubtotal: moneyToNumber(cart.totals.items),
+    existingDiscounts: moneyToNumber(cart.totals.discount),
+    orderTotal: moneyToNumber(cart.totals.price),
+    minorUnit: cart.currencyMinorUnit,
+  });
 }
 
 // Exigência do Banco Inter para emissão de boleto — abaixo disso a API
@@ -42,8 +62,14 @@ const MIN_AMOUNT_BY_METHOD: Partial<Record<CheckoutPaymentMethod, number>> = {
 export function getDiscountedAmount(
   method: CheckoutPaymentMethod,
   cartTotal: number,
+  discountBase = cartTotal,
 ): number {
-  return cartTotal * (1 - getPaymentMethodDiscountRate(method));
+  return calculatePaymentTotals({
+    method,
+    productsSubtotal: discountBase,
+    existingDiscounts: 0,
+    orderTotal: cartTotal,
+  }).finalTotal;
 }
 
 // Sem `cartTotal` conhecido ainda (carrinho carregando), nunca esconde a
@@ -51,8 +77,9 @@ export function getDiscountedAmount(
 export function isPaymentMethodAvailable(
   method: CheckoutPaymentMethod,
   cartTotal: number | undefined,
+  discountBase?: number,
 ): boolean {
   const minAmount = MIN_AMOUNT_BY_METHOD[method];
   if (!minAmount || typeof cartTotal !== "number") return true;
-  return getDiscountedAmount(method, cartTotal) >= minAmount;
+  return getDiscountedAmount(method, cartTotal, discountBase) >= minAmount;
 }
