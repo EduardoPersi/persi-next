@@ -7,6 +7,7 @@ import {
   type ChangeEvent,
 } from "react";
 import Script from "next/script";
+import { CheckoutErrorMessage } from "./CheckoutErrorMessage";
 
 declare global {
   interface Window {
@@ -47,6 +48,7 @@ interface PaymentCardFieldsProps {
   installments: number;
   onInstallmentsChange: (installments: number) => void;
   onError: (message: string) => void;
+  declinedMessage?: string;
 }
 
 // Componente isolado de propósito: é o único lugar do checkout que toca em
@@ -54,7 +56,7 @@ interface PaymentCardFieldsProps {
 // resto do app — só o token gerado por `window.PagSeguro.encryptCard`
 // (`tokenize()`) é exposto ao componente pai via ref.
 export const PaymentCardFields = forwardRef<PaymentCardFieldsHandle, PaymentCardFieldsProps>(
-  function PaymentCardFields({ installments, onInstallmentsChange, onError }, ref) {
+  function PaymentCardFields({ installments, onInstallmentsChange, onError, declinedMessage }, ref) {
     const [card, setCard] = useState<CardFieldsValue>(EMPTY_CARD);
 
     useImperativeHandle(ref, () => ({
@@ -184,6 +186,11 @@ export const PaymentCardFields = forwardRef<PaymentCardFieldsHandle, PaymentCard
             ))}
           </select>
         </div>
+        {declinedMessage ? (
+          <div className="sm:col-span-2">
+            <CheckoutErrorMessage message={declinedMessage} live="assertive" />
+          </div>
+        ) : null}
       </div>
     );
   },
