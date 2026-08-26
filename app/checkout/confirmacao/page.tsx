@@ -168,10 +168,11 @@ async function resolveStatus(params: {
   attempt?: string;
 }): Promise<ResolvedStatus | null> {
   if (params.attempt && /^[0-9a-f-]{36}$/i.test(params.attempt)) {
+    let order: WooCommerceOrder | undefined;
     try {
       const attempt = await getCheckoutAttempt(params.attempt);
       if (!attempt.order_id || !attempt.provider_reference) return null;
-      const order = await getOrderById(Number(attempt.order_id));
+      order = await getOrderById(Number(attempt.order_id));
       const requestCartToken = (await cookies()).get(CART_TOKEN_COOKIE)?.value;
       const session = await getServerAccountSession();
       if (!isAuthorizedForOrderStatus(order, requestCartToken, session?.customer.email)) return null;
@@ -225,7 +226,18 @@ async function resolveStatus(params: {
         return { category: categorizeCardStatus(charge.status), order };
       }
       return null;
-    } catch {
+    } catch (error) {
+      console.error("[checkout-confirmation] falha ao resolver status via ?attempt=", {
+        attempt: params.attempt,
+        message: error instanceof Error ? error.message : "unknown error",
+      });
+      // A consulta ao provedor pode falhar (rede, timeout etc.) mesmo com o
+      // pedido já tendo um status final conhecido no WooCommerce — sem isto,
+      // um pedido já "failed"/"cancelled" caía na mensagem genérica de
+      // "recebemos seu pedido" só porque a re-consulta ao provedor falhou.
+      if (order && categorizeOrderStatus(order.status) === "failed") {
+        return { category: "failed", order };
+      }
       return null;
     }
   }

@@ -22,7 +22,7 @@ import { interPaymentGateway } from "@/services/payments/gateway";
 import { getBoletoCreationDiagnostics } from "@/services/payments/inter/boleto";
 import { InterPaymentError } from "@/services/payments/inter/errors";
 import { getPixCreationDiagnostics } from "@/services/payments/inter/pix";
-import { createCardCharge } from "@/services/payments/pagbank/charge";
+import { createCardCharge, getCardChargeStatus } from "@/services/payments/pagbank/charge";
 import { PagBankPaymentError } from "@/services/payments/pagbank/errors";
 import { categorizeCardStatus } from "@/services/payments/reconcile";
 import { getServerAccountSession } from "@/services/account/serverSession";
@@ -87,6 +87,45 @@ function logPaymentMilestone(input: {
 
 function getConfirmationUrl(checkoutAttemptId: string): string {
   return `/checkout/confirmacao?attempt=${encodeURIComponent(checkoutAttemptId)}`;
+}
+
+const CARD_PAYMENT_METHODS = new Set<PersiPaymentMethod>([
+  "pagbank_card",
+  "pagbank_apple_pay",
+  "pagbank_google_pay",
+]);
+
+// Reenvio do mesmo idempotencyKey (ex.: cliente tenta pagar de novo sem
+// recarregar a página) cai no branch "já iniciado" mesmo quando a tentativa
+// anterior foi uma recusa de cartão — sem isto, o cliente era redirecionado
+// para a confirmação como se fosse sucesso, em vez de ver o erro de novo.
+async function getDeclinedCardStatus(
+  method: PersiPaymentMethod,
+  providerReference: string,
+): Promise<string | null> {
+  if (!CARD_PAYMENT_METHODS.has(method)) return null;
+  const charge = await getCardChargeStatus(providerReference);
+  return categorizeCardStatus(charge.status) === "failed" ? charge.status : null;
+}
+
+function createCardDeclinedResponse(
+  orderId: number,
+  chargeId: string,
+  status: string,
+  cartToken: string | undefined,
+) {
+  return createPrivateResponse(
+    {
+      code: "CARD_PAYMENT_DECLINED",
+      message:
+        "Pagamento recusado pelo cartão. Verifique os dados ou tente outro cartão/forma de pagamento.",
+      orderId,
+      chargeId,
+      status,
+    },
+    402,
+    cartToken,
+  );
 }
 
 function getDiagnosticCategory(error: unknown, stage: PaymentStage): string {
@@ -289,6 +328,18 @@ export async function POST(request: Request) {
     });
     if (!reservation.acquired) {
       if (reservation.attempt.provider_reference && reservation.attempt.order_id) {
+        const declinedStatus = await getDeclinedCardStatus(
+          input.method,
+          reservation.attempt.provider_reference,
+        );
+        if (declinedStatus) {
+          return createCardDeclinedResponse(
+            Number(reservation.attempt.order_id),
+            reservation.attempt.provider_reference,
+            declinedStatus,
+            activeCartToken,
+          );
+        }
         const result: PaymentInitiationResult = {
           alreadyInitiated: true,
           method: paymentMethod,
@@ -316,6 +367,18 @@ export async function POST(request: Request) {
     const existingOrder = await findOrderByIdempotencyKey(input.idempotencyKey);
 
     if (existingOrder?.metaData._persi_payment_reference) {
+      const declinedStatus = await getDeclinedCardStatus(
+        input.method,
+        existingOrder.metaData._persi_payment_reference,
+      );
+      if (declinedStatus) {
+        return createCardDeclinedResponse(
+          existingOrder.id,
+          existingOrder.metaData._persi_payment_reference,
+          declinedStatus,
+          activeCartToken,
+        );
+      }
       const result: PaymentInitiationResult = {
         alreadyInitiated: true,
         method: paymentMethod,
@@ -584,18 +647,7 @@ export async function POST(request: Request) {
           chargeId: charge.chargeId,
           providerStatus: charge.status,
         });
-        return createPrivateResponse(
-          {
-            code: "CARD_PAYMENT_DECLINED",
-            message:
-              "Pagamento recusado pelo cartão. Verifique os dados ou tente outro cartão/forma de pagamento.",
-            orderId: order.id,
-            chargeId: charge.chargeId,
-            status: charge.status,
-          },
-          402,
-          activeCartToken,
-        );
+        return createCardDeclinedResponse(order.id, charge.chargeId, charge.status, activeCartToken);
       }
 
       result = {
