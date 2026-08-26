@@ -4,41 +4,11 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import type { CartItem } from "@/types/cart";
+import { getQuantityOptions } from "./quantityOptions";
 
 interface QuantitySelectProps {
   item: CartItem;
   idSuffix: string;
-}
-
-const DEFAULT_VISIBLE_MAXIMUM = 10;
-const SURROUNDING_OPTION_COUNT = 7;
-
-function getQuantityOptions(value: number, minimum: number, maximum: number, step: number) {
-  if (value > DEFAULT_VISIBLE_MAXIMUM) {
-    const radius = Math.floor(SURROUNDING_OPTION_COUNT / 2);
-    const totalOptionCount = Math.floor((maximum - minimum) / step) + 1;
-    const currentIndex = Math.round((value - minimum) / step);
-    const startIndex = Math.min(
-      Math.max(0, totalOptionCount - SURROUNDING_OPTION_COUNT),
-      Math.max(0, currentIndex - radius),
-    );
-    const options = Array.from(
-      { length: Math.min(SURROUNDING_OPTION_COUNT, totalOptionCount) },
-      (_, index) => minimum + (startIndex + index) * step,
-    ).filter((quantity) => quantity <= maximum);
-
-    if (!options.includes(value)) options.push(value);
-    return options.sort((first, second) => first - second);
-  }
-
-  const visibleMaximum = Math.min(maximum, DEFAULT_VISIBLE_MAXIMUM);
-  const options = Array.from(
-    { length: Math.floor((visibleMaximum - minimum) / step) + 1 },
-    (_, index) => minimum + index * step,
-  );
-
-  if (!options.includes(value)) options.push(value);
-  return options.sort((first, second) => first - second);
 }
 
 export const QuantitySelect = memo(function QuantitySelect({
@@ -105,7 +75,7 @@ export const QuantitySelect = memo(function QuantitySelect({
           aria-label={label}
           title={label}
           onChange={(event) => void changeQuantity(Number(event.currentTarget.value))}
-          className="h-9 w-[52px] shrink-0 cursor-pointer rounded-lg border border-slate-300 bg-white py-0 pl-2 pr-5 text-sm font-medium tabular-nums text-slate-900 transition-colors hover:border-slate-400 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 sm:w-16 sm:pl-2.5 sm:pr-6"
+          className="h-9 min-w-16 shrink-0 cursor-pointer rounded-lg border border-slate-300 bg-white py-0 pl-2.5 pr-7 text-sm font-medium tabular-nums text-slate-900 transition-colors hover:border-slate-400 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 sm:min-w-[72px] sm:pl-3 sm:pr-8"
         >
           {quantities.map((quantity) => (
             <option key={quantity} value={quantity}>{quantity}</option>

@@ -122,8 +122,11 @@ continuam usando seus controles próprios.
 
 - Exibe quantidades válidas de acordo com mínimo, máximo e passo informados
   pelo WooCommerce.
-- Mostra inicialmente até 10 opções. Acima disso, mostra uma janela de sete
-  valores próximos da quantidade atual, sem reduzir quantidades existentes.
+- Mostra inicialmente as quantidades de 1 a 10. A partir de 10, combina marcos
+  comerciais progressivos com uma pequena vizinhança do valor atual, sem criar
+  listas proporcionais ao estoque máximo.
+- O valor atual é sempre reinserido quando não coincide com um marco e todos os
+  demais valores respeitam mínimo, máximo e passo informados pelo WooCommerce.
 - Usa o fluxo central do carrinho para atualizar preços, descontos, frete e
   total sem recarregar a página.
 - Mantém o campo focável durante a atualização do próprio item e mostra um
@@ -132,7 +135,8 @@ continuam usando seus controles próprios.
 
 ### Responsividade, acessibilidade e performance
 
-- Mede 52 px no mobile e 64 px a partir do breakpoint `sm`, sempre sem quebra.
+- Mantém 36 px de altura, largura mínima de 64 px no mobile e 72 px a partir do
+  breakpoint `sm`, com espaço reservado para a seta nativa sem cortar números.
 - Possui nome acessível, `title`, foco visível e operação nativa por teclado.
 - É memorizado com `React.memo`; as opções também são memorizadas e nenhuma
   dependência adicional é necessária.

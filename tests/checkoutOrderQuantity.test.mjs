@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { getQuantityOptions } from "../components/UI/quantityOptions.ts";
 
 const read = (path) => readFileSync(path, "utf8");
 
@@ -17,7 +18,8 @@ test("carrinho e checkout reutilizam o seletor compacto de quantidade", () => {
   assert.match(control, /memo\(function QuantitySelect/);
   assert.match(control, /aria-label=\{label\}/);
   assert.match(control, /title=\{label\}/);
-  assert.match(control, /h-9 w-\[52px\]/);
+  assert.match(control, /h-9 min-w-16/);
+  assert.match(control, /sm:min-w-\[72px\]/);
   assert.match(control, /role="alert"/);
 });
 
@@ -31,14 +33,26 @@ test("controle respeita limites e passos de quantidade do WooCommerce", () => {
   assert.match(control, /nextQuantity > maximum/);
 });
 
-test("seletor oferece até 10 e expande para preservar quantidade existente", () => {
-  const control = read("components/UI/QuantitySelect.tsx");
+test("seletor expande quantidades por faixas sem gerar listas enormes", () => {
+  assert.deepEqual(getQuantityOptions(1, 1, 1000, 1), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.deepEqual(getQuantityOptions(10, 1, 1000, 1), [5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50, 75, 100]);
+  assert.deepEqual(getQuantityOptions(20, 1, 1000, 1), [10, 15, 20, 25, 30, 40, 50, 75, 100]);
+  assert.deepEqual(getQuantityOptions(50, 1, 1000, 1), [25, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 500]);
+  assert.deepEqual(getQuantityOptions(250, 1, 1000, 1), [100, 150, 200, 225, 250, 275, 300, 350, 400, 500, 1000]);
+  assert.ok(getQuantityOptions(1000, 1, 1000, 1).includes(1000));
+  assert.ok(getQuantityOptions(500, 1, 1000, 1).length < 20);
+});
 
-  assert.match(control, /DEFAULT_VISIBLE_MAXIMUM = 10/);
-  assert.match(control, /SURROUNDING_OPTION_COUNT = 7/);
-  assert.match(control, /value > DEFAULT_VISIBLE_MAXIMUM/);
-  assert.match(control, /currentIndex - radius/);
-  assert.match(control, /if \(!options\.includes\(value\)\) options\.push\(value\)/);
+test("quantidade atual nunca desaparece e limites do WooCommerce são preservados", () => {
+  for (const value of [1, 5, 10, 15, 17, 20, 30, 50, 100, 250, 500, 1000]) {
+    const options = getQuantityOptions(value, 1, 1000, 1);
+    assert.ok(options.includes(value), `valor atual ${value} ausente`);
+    assert.ok(options.every((quantity) => quantity >= 1 && quantity <= 1000));
+  }
+
+  const steppedOptions = getQuantityOptions(25, 5, 50, 5);
+  assert.ok(steppedOptions.every((quantity) => (quantity - 5) % 5 === 0));
+  assert.ok(steppedOptions.every((quantity) => quantity >= 5 && quantity <= 50));
 });
 
 test("ajuste autoritativo de estoque retorna o carrinho e informa o cliente", () => {
