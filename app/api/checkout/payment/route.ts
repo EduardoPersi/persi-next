@@ -642,6 +642,9 @@ export async function POST(request: Request) {
       await attachPaymentReference(order.id, {
         provider: "pagbank",
         externalId: charge.chargeId,
+        cardBrand: charge.brand,
+        cardLastDigits: charge.lastDigits,
+        installments: charge.installments,
       });
       await transitionCheckoutAttempt({ checkoutAttemptId: input.idempotencyKey, leaseToken, from: "PAYMENT_CREATING", to: "PAYMENT_CREATED", providerReference: charge.chargeId });
 

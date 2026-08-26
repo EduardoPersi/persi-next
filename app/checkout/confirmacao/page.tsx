@@ -4,6 +4,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { BadgeCheck } from "lucide-react";
 import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
+import { CardPaymentResult } from "@/components/Checkout/CardPaymentResult";
 import { PendingPaymentConfirmation } from "@/components/Checkout/PendingPaymentConfirmation";
 import { CheckoutHeader } from "@/components/Header/CheckoutHeader";
 import { Container } from "@/components/UI/Container";
@@ -25,6 +26,7 @@ import {
   categorizeOrderStatus,
   findOrderByPaymentReference,
   getOrderById,
+  getOrderCardPaymentDetails,
   getOrderConfirmationDetails,
   type OrderConfirmationDetails,
   type PaymentProvider,
@@ -395,7 +397,21 @@ export default async function CheckoutConfirmationPage({
   const params = await searchParams;
   const resolved = await resolveStatus(params);
   const isPaid = resolved?.category === "paid";
-  const details = isPaid
+  const isFailed = resolved?.category === "failed";
+  const isCardMethod = resolved ? resolved.order.paymentMethod.startsWith("pagbank_") : false;
+  // Cartão/carteira PagBank é síncrono (não existe "aguardando" — só
+  // aprovado ou recusado): ganha uma tela própria (bandeira, final,
+  // parcelas) em vez do PaidConfirmation genérico ou do fallback textual.
+  const cardResult =
+    resolved && isCardMethod && (isPaid || isFailed)
+      ? {
+          orderId: resolved.order.id,
+          amount: Number(resolved.order.total),
+          status: (isPaid ? "paid" : "failed") as "paid" | "failed",
+          ...getOrderCardPaymentDetails(resolved.order),
+        }
+      : null;
+  const details = isPaid && !cardResult
     ? await getOrderConfirmationDetails(resolved.order.id).catch(() => null)
     : null;
   const copy = resolved ? STATUS_COPY[resolved.category] : null;
@@ -430,7 +446,11 @@ export default async function CheckoutConfirmationPage({
       <CheckoutHeader centered={isPaid && Boolean(details)} />
       <main className="bg-slate-50 py-5 sm:py-8 lg:py-10">
         <Container>
-          {isPaid && details ? (
+          {cardResult ? (
+            <div className="mx-auto max-w-4xl">
+              <CardPaymentResult {...cardResult} />
+            </div>
+          ) : isPaid && details ? (
             <div className="mx-auto max-w-4xl">
               <PaidConfirmation
                 provider={params.provider ?? resolved?.order.paymentMethod ?? ""}

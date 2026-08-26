@@ -36,6 +36,12 @@ interface WooCommerceOrderApiResponse {
 const IDEMPOTENCY_KEY_META = "_persi_idempotency_key";
 const PAYMENT_PROVIDER_META = "_persi_payment_provider";
 const PAYMENT_REFERENCE_META = "_persi_payment_reference";
+// Só preenchidos para cobranças de cartão (PagBank) — a resposta de
+// criação da cobrança já traz bandeira/final/parcelas, então gravamos aqui
+// para a tela de confirmação não precisar reconsultar o provedor de novo.
+const PAYMENT_CARD_BRAND_META = "_persi_payment_card_brand";
+const PAYMENT_CARD_LAST_DIGITS_META = "_persi_payment_card_last_digits";
+const PAYMENT_INSTALLMENTS_META = "_persi_payment_installments";
 // Guarda o Cart-Token (JWT do WooCommerce Store API, httpOnly) ativo no
 // momento em que o pedido foi criado — é o "segredo de posse" usado pela
 // rota de status para confirmar que quem está consultando é quem fez o
@@ -69,6 +75,24 @@ function toOrder(response: WooCommerceOrderApiResponse): WooCommerceOrder {
 // meta_data como detalhe interno deste módulo.
 export function getCheckoutOwnerToken(order: WooCommerceOrder): string {
   return order.metaData[CHECKOUT_OWNER_TOKEN_META] ?? "";
+}
+
+export interface OrderCardPaymentDetails {
+  brand?: string;
+  lastDigits?: string;
+  installments?: number;
+}
+
+// Único ponto de leitura dos metas de cartão — mesmo padrão de
+// getCheckoutOwnerToken acima. Pedidos Pix/Boleto simplesmente não têm
+// esses metas gravados, então tudo volta undefined.
+export function getOrderCardPaymentDetails(order: WooCommerceOrder): OrderCardPaymentDetails {
+  const installmentsRaw = order.metaData[PAYMENT_INSTALLMENTS_META];
+  return {
+    brand: order.metaData[PAYMENT_CARD_BRAND_META] || undefined,
+    lastDigits: order.metaData[PAYMENT_CARD_LAST_DIGITS_META] || undefined,
+    installments: installmentsRaw ? Number(installmentsRaw) : undefined,
+  };
 }
 
 type WooPostFn = <T>(endpoint: string, body: unknown) => Promise<T>;
@@ -215,13 +239,26 @@ export async function findOrderByIdempotencyKey(
 
 export async function attachPaymentReference(
   orderId: number,
-  reference: { provider: PaymentProvider; externalId: string },
+  reference: {
+    provider: PaymentProvider;
+    externalId: string;
+    cardBrand?: string;
+    cardLastDigits?: string;
+    installments?: number;
+  },
   put: WooPutFn = defaultPut,
 ): Promise<WooCommerceOrder> {
   const response = await put<WooCommerceOrderApiResponse>(`orders/${orderId}`, {
     meta_data: [
       { key: PAYMENT_PROVIDER_META, value: reference.provider },
       { key: PAYMENT_REFERENCE_META, value: reference.externalId },
+      ...(reference.cardBrand ? [{ key: PAYMENT_CARD_BRAND_META, value: reference.cardBrand }] : []),
+      ...(reference.cardLastDigits
+        ? [{ key: PAYMENT_CARD_LAST_DIGITS_META, value: reference.cardLastDigits }]
+        : []),
+      ...(reference.installments
+        ? [{ key: PAYMENT_INSTALLMENTS_META, value: String(reference.installments) }]
+        : []),
     ],
   });
 
