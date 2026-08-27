@@ -28,10 +28,10 @@ export function CheckoutHeader({ centered = false }: CheckoutHeaderProps) {
           className="shrink-0"
         >
           <Image
-            src="/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas.webp"
+            src="/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas cabeçalho.webp"
             alt="Persi Materiais Elétricos, Hidráulicos e Ferramentas"
             width={110}
-            height={45}
+            height={42}
             priority
             className="h-auto w-[90px] max-w-full object-contain md:w-[110px]"
           />
