@@ -1,5 +1,7 @@
 # F.3 — Canary readiness
 
+> Atualização F.4.2 (2026-08-26): Gate A interrompido após auditoria read-only de 3.080/3.080 produtos. Foram encontradas 13 divergências comerciais (`woo_stock_status`: 12; `popularity`: 1). Filtros 7/7, ordenações 6/6, paginação, RLS 27/27, zero policies e inbox zerado passaram. Stage 0 e deploy não foram executados. Consulte `24-runtime-integration-stage0.md`.
+
 > Atualização F.4: a prontidão de dados da F.3 permanece válida, mas o gate de runtime real da Hostinger não pôde ser fechado no ambiente disponível. Consulte `21-hostinger-runtime.md` e `22-catalog-canary.md`. Canary permanece em 0%.
 
 ## Resultado

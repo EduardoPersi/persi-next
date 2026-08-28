@@ -1,5 +1,7 @@
 # F.4 — Controlled catalog read canary
 
+> F.4.2 parcial (2026-08-26): adapter local expandido, mas o Gate A remoto detectou 13 divergências comerciais. `ADAPTER_STAGE0_READY=NO`, cache permanece bloqueado para uso operacional e canary continua 0%.
+
 ## Estado
 
 Execução interrompida com segurança no primeiro gate. Nenhum tráfego, deploy, webhook, cron ou variável de produção foi alterado.

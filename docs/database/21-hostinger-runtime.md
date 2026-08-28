@@ -1,5 +1,7 @@
 # F.4 — Hostinger runtime audit
 
+> F.4.2 parcial (2026-08-26): nenhuma configuração ou mutação foi feita no runtime. `DATABASE_URL` e `DIRECT_URL` permanecem ausentes. A fase parou no Gate A por divergências comerciais do catálogo.
+
 Data da auditoria: 2026-08-24. Estado: **gate incompleto; tráfego PostgreSQL proibido**.
 
 ## Evidência confirmada

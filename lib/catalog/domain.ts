@@ -1,4 +1,4 @@
-export type CatalogStockStatus = "in-stock" | "out-of-stock";
+export type CatalogStockStatus = "in-stock" | "out-of-stock" | "on-backorder";
 
 export interface CatalogImage {
   externalId: number | null;
@@ -19,6 +19,22 @@ export interface CatalogTaxonomy {
   externalId: number;
   name: string;
   slug: string;
+  description?: string;
+  parentExternalId?: number | null;
+  image?: { url: string; alt: string } | null;
+  productCount?: number;
+}
+
+export interface CatalogVariant {
+  externalId: number | null;
+  internalId: string | null;
+  sku: string;
+  gtin: string | null;
+  status: string;
+  price: CatalogProduct["price"];
+  inventory: CatalogProduct["inventory"];
+  attributes: CatalogTerm[];
+  isDefault: boolean;
 }
 
 export interface CatalogProduct {
@@ -30,6 +46,7 @@ export interface CatalogProduct {
   sku: string;
   gtin: string | null;
   status: string;
+  type: string;
   shortDescription: string;
   description: string;
   publishedAt: string | null;
@@ -43,11 +60,24 @@ export interface CatalogProduct {
   inventory: {
     quantityAvailable: bigint;
     status: CatalogStockStatus;
+    manageStock: boolean;
+    purchasable: boolean;
+    allowsBackorder: boolean;
+    available: boolean;
   };
   brand: CatalogTaxonomy | null;
   categories: CatalogTaxonomy[];
   images: CatalogImage[];
   attributes: CatalogTerm[];
+  variants: CatalogVariant[];
+  defaultVariantSku: string;
+  tags: CatalogTaxonomy[];
+  visibility: string;
+  featured: boolean;
+  popularity: bigint;
+  averageRating: number;
+  reviewCount: number;
+  freeShipping: boolean;
 }
 
 export interface CatalogPage<T> {
@@ -57,7 +87,7 @@ export interface CatalogPage<T> {
   perPage: number;
 }
 
-export type CatalogOrderBy = "date" | "price" | "title" | "id";
+export type CatalogOrderBy = "date" | "price" | "title" | "id" | "popularity" | "rating" | "availability";
 
 export interface CatalogListOptions {
   page?: number;
@@ -65,4 +95,9 @@ export interface CatalogListOptions {
   order?: "asc" | "desc";
   orderBy?: CatalogOrderBy;
   availabilityFirst?: boolean;
+  minPriceMinor?: bigint;
+  maxPriceMinor?: bigint;
+  inStockOnly?: boolean;
+  onSaleOnly?: boolean;
+  featured?: boolean;
 }

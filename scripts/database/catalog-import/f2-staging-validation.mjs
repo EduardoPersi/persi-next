@@ -11,4 +11,4 @@ try{const [row]=await sql`select
   (select count(*) from integration_inbox where status in ('pending','retry','processing'))::int pending,
   (select count(*) from catalog_search_documents)::int search_documents,
   (select count(*) from products)::int products`;
-console.log(JSON.stringify(row,null,2));if(row.migrations!==12||row.rls!==row.tables||row.policies!==0||row.dead_letter!==0||row.pending!==0||row.search_documents!==row.products)process.exitCode=1;}finally{await sql.end({timeout:5});}
+console.log(JSON.stringify(row,null,2));if(row.migrations!==13||row.rls!==row.tables||row.policies!==0||row.dead_letter!==0||row.pending!==0||row.search_documents!==row.products)process.exitCode=1;}finally{await sql.end({timeout:5});}

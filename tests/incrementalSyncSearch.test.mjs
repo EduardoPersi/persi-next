@@ -43,6 +43,10 @@ test("golden set é versionado e cobre gates obrigatórios",async()=>{
 });
 test("importer mantém preço, estoque reservado e aggregate na mesma transação",async()=>{
   const source=await readFile(new URL('../scripts/database/catalog-import/import.mjs',import.meta.url),'utf8');
-  assert.match(source,/price_history/);assert.match(source,/INVENTORY_RESERVED_CONFLICT/);assert.match(source,/this\.sql\.begin/);
+  const pricingMigration=await readFile(new URL('../supabase/migrations/20260823110300_pricing.sql',import.meta.url),'utf8');
+  assert.doesNotMatch(source,/insert\s+into\s+public\.price_history/i);
+  assert.match(pricingMigration,/create\s+trigger\s+prices_capture_history/i);
+  assert.match(pricingMigration,/execute\s+function\s+public\.capture_price_history\(\)/i);
+  assert.match(source,/INVENTORY_RESERVED_CONFLICT/);assert.match(source,/this\.sql\.begin/);
   for(const area of ['syncCategories','syncMedia','syncPim','pricing','inventory'])assert.match(source,new RegExp(area));
 });

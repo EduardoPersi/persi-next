@@ -1,0 +1,9 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { catalogCacheKey, catalogCacheTag } from "../lib/catalog/cacheKeys.ts";
+import { catalogBucket, decideCatalogSource, isValidCohort, withCatalogFallback } from "../lib/catalog/routerCore.ts";
+const flags=(overrides={})=>({dataSource:"postgres",shadowEnabled:false,shadowSampleRate:0,shadowTimeoutMs:500,canaryPercent:0,postgresTimeoutMs:100,...overrides});
+test("bucket e stickiness são determinísticos",()=>{const cohort="Abcdefghijklmnopqrstuv";assert.equal(isValidCohort(cohort),true);assert.equal(catalogBucket(cohort),catalogBucket(cohort));assert.ok(catalogBucket(cohort)<10000);});
+test("0%, kill switch e cookie inválido sempre selecionam Woo",()=>{const cohort="Abcdefghijklmnopqrstuv";assert.equal(decideCatalogSource(flags(),cohort),"woocommerce");assert.equal(decideCatalogSource(flags({dataSource:"woocommerce",canaryPercent:100}),cohort),"woocommerce");assert.equal(decideCatalogSource(flags({canaryPercent:100}),"inválido"),"woocommerce");});
+test("cache isola source",()=>{assert.notDeepEqual(catalogCacheKey("woocommerce","product","x"),catalogCacheKey("postgres","product","x"));assert.notEqual(catalogCacheTag("woocommerce","products"),catalogCacheTag("postgres","products"));});
+test("erro e timeout PostgreSQL fazem fallback Woo",async()=>{let reason="";const failed=await withCatalogFallback({source:"postgres",postgres:async()=>{throw new Error("down")},woo:async()=>"woo",timeoutMs:100,onFallback:value=>{reason=value}});assert.equal(failed.value,"woo");assert.equal(reason,"postgres_error");const timed=await withCatalogFallback({source:"postgres",postgres:()=>new Promise(()=>{}),woo:async()=>"woo",timeoutMs:10,onFallback:value=>{reason=value}});assert.equal(timed.value,"woo");assert.equal(reason,"timeout");});

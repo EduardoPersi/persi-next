@@ -10,6 +10,8 @@ export interface CatalogFeatureFlags {
   shadowEnabled: boolean;
   shadowSampleRate: number;
   shadowTimeoutMs: number;
+  canaryPercent: number;
+  postgresTimeoutMs: number;
 }
 
 export function getCatalogFeatureFlags(environment: NodeJS.ProcessEnv=process.env): CatalogFeatureFlags {
@@ -18,6 +20,8 @@ export function getCatalogFeatureFlags(environment: NodeJS.ProcessEnv=process.en
     shadowEnabled: environment.CATALOG_SHADOW_READ_ENABLED==="true",
     shadowSampleRate: rate(environment.CATALOG_SHADOW_SAMPLE_RATE),
     shadowTimeoutMs: Math.min(2_000,Math.max(50,Number(environment.CATALOG_SHADOW_TIMEOUT_MS)||500)),
+    canaryPercent: Math.min(100,Math.max(0,Number(environment.CATALOG_CANARY_PERCENT)||0)),
+    postgresTimeoutMs: Math.min(5_000,Math.max(100,Number(environment.CATALOG_POSTGRES_TIMEOUT_MS)||750)),
   };
 }
 

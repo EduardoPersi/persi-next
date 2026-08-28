@@ -1,0 +1,19 @@
+import postgres from "postgres";
+import { readPrivateEnvironment, stagingDirectUrl } from "./config.mjs";
+import { WooReadOnlyExtractor } from "./extract.mjs";
+
+if (!process.argv.includes("--staging") || !process.argv.includes("--read-only")) throw new Error("Exige --staging --read-only.");
+const startedAt=new Date().toISOString(),env=readPrivateEnvironment(),woo=new WooReadOnlyExtractor(env),sql=postgres(stagingDirectUrl(env.stagingPassword),{ssl:"require",prepare:false,max:1});
+const iso=value=>value?new Date(value).toISOString():null;
+try{
+  const products=await woo.all("products");
+  const rows=await sql`select m.external_id::int id,m.source_changed_at::text,p.woo_stock_status,p.popularity::text,v.sku,il.quantity_on_hand::text,il.quantity_reserved::text,il.quantity_available::text,p.manage_stock,p.is_purchasable,p.allows_backorder,p.catalog_visibility,
+    coalesce((select jsonb_agg(jsonb_build_object('status',i.status,'eventType',i.event_type,'receivedAt',i.received_at,'processedAt',i.processed_at) order by i.received_at desc) from integration_inbox i where i.external_entity_id=m.external_id limit 5),'[]') inbox
+    from products p join external_mappings m on m.internal_id=p.id and m.system='woocommerce' and m.entity_type='product'
+    join lateral(select sku,id from product_variants where product_id=p.id order by id limit 1)v on true join inventory_levels il on il.product_variant_id=v.id`;
+  const target=new Map(rows.map(row=>[row.id,row])),cases=[];
+  for(const product of products){const row=target.get(product.id);if(!row)continue;const expectedStock=String(product.stock_status),expectedPopularity=String(Math.max(0,Number(product.total_sales)||0)),fields=[];if(String(row.woo_stock_status)!==expectedStock)fields.push({field:"woo_stock_status",woo:expectedStock,postgres:String(row.woo_stock_status)});if(String(row.popularity)!==expectedPopularity)fields.push({field:"popularity",woo:expectedPopularity,postgres:String(row.popularity)});if(!fields.length)continue;const wooChanged=iso(product.date_modified_gmt?`${product.date_modified_gmt}Z`:null),mappedChanged=iso(row.source_changed_at),newer=Boolean(wooChanged&&(!mappedChanged||new Date(wooChanged)>new Date(mappedChanged)));cases.push({wooExternalId:product.id,sku:row.sku,fields,woo:{dateModifiedGmt:wooChanged,stockStatus:product.stock_status,manageStock:product.manage_stock===true,stockQuantity:product.stock_quantity??null,backorders:product.backorders??null,purchasable:product.purchasable===true,status:product.status,catalogVisibility:product.catalog_visibility??null,totalSales:Number(product.total_sales)||0},postgres:{sourceChangedAt:mappedChanged,stockStatus:row.woo_stock_status,manageStock:row.manage_stock,quantityOnHand:row.quantity_on_hand,quantityReserved:row.quantity_reserved,quantityAvailable:row.quantity_available,purchasable:row.is_purchasable,allowsBackorder:row.allows_backorder,catalogVisibility:row.catalog_visibility,popularity:row.popularity},inbox:row.inbox,classification:newer?"UNSYNCED_SOURCE_CHANGE":"UNKNOWN",reconciliationStale:newer});}
+  const parityIds=cases.map(item=>item.wooExternalId).sort((a,b)=>a-b),reconciliationIds=cases.filter(item=>item.reconciliationStale).map(item=>item.wooExternalId).sort((a,b)=>a-b),counts=Object.fromEntries(["UNSYNCED_SOURCE_CHANGE","ADAPTER_MAPPING_BUG","SOURCE_SEMANTIC_MISMATCH","UNKNOWN"].map(kind=>[kind,cases.filter(item=>item.classification===kind).length]));
+  console.log(JSON.stringify({startedAt,finishedAt:new Date().toISOString(),productsCompared:products.length,cases,counts,parityIds,reconciliationIds,reconciliationMatchedParity:JSON.stringify(parityIds)===JSON.stringify(reconciliationIds),woo:{requests:woo.requests,retries:woo.retries}},null,2));
+  if(cases.some(item=>item.classification!=="UNSYNCED_SOURCE_CHANGE")||JSON.stringify(parityIds)!==JSON.stringify(reconciliationIds))process.exitCode=1;
+}finally{await sql.end({timeout:5});}

@@ -13,7 +13,7 @@
     "db:stop": "supabase stop",
     "db:status": "supabase status",
     "db:reset:local": "supabase db reset --local",
-    "db:test": "supabase test db && npm run db:validate:local && node scripts/database/inventory-concurrency.mjs --local",
+    "db:test": "supabase test db && npm run db:validate:local && node scripts/database/price-history-validation.mjs --local && node scripts/database/inventory-concurrency.mjs --local",
     "db:validate:local": "node --experimental-loader ./scripts/database/typescript-loader.mjs scripts/database/phase-c-validation.mjs --local",
     "test:jwt": "npx --yes tsx scripts/test-jwt.ts",
     "test:cart:hostinger": "node tests/cart-hostinger-smoke.mjs",
