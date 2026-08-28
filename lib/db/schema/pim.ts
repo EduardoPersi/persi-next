@@ -1,4 +1,4 @@
-import { type AnyPgColumn, index, bigint, boolean, integer, numeric, pgTable, primaryKey, smallint, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, index, bigint, boolean, integer, jsonb, numeric, pgTable, primaryKey, smallint, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { products, productVariants } from "./catalog";
 import { attributeCardinality, attributeDataType, pimDecisionStatus, pimSource, pimWorkflowStatus, recordStatus } from "./core";
 
@@ -69,6 +69,10 @@ export const pimProductProfiles = pgTable("pim_product_profiles", {
   bulletPoints: text("bullet_points").array().notNull().default([]), application: text(), specifications: text(),
   seoTitle: text("seo_title"), metaDescription: text("meta_description"), searchTerms: text("search_terms").array().notNull().default([]),
   synonyms: text().array().notNull().default([]), reviewNotes: text("review_notes"),
+  imageAltText: text("image_alt_text"),
+  version: bigint({ mode: "bigint" }).notNull().default(BigInt(0)), approvedContent: jsonb("approved_content"),
+  draftStartedAt: timestamp("draft_started_at", { withTimezone: true }), submittedAt: timestamp("submitted_at", { withTimezone: true }),
+  rejectedAt: timestamp("rejected_at", { withTimezone: true }),
   approvedAt: timestamp("approved_at", { withTimezone: true }), publishedAt: timestamp("published_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

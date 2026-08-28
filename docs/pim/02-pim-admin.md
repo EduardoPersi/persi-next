@@ -21,3 +21,11 @@ O painel prioriza densidade desktop, mantém container amplo e usa overflow hori
 - adicionar edição de conteúdo PIM e promoção aprovada para published projection;
 - definir política detalhada para shared ownership;
 - criar integração real de IA e mídia R2 apenas em fases futuras.
+
+## P.2 — endurecimento operacional
+
+A P.2 corrige o contrato entre as queries PostgreSQL e os componentes do painel. Campos SQL compostos agora usam aliases `camelCase` explícitos, evitando que imagem, preço, promoção, status, contadores e timestamps cheguem como `undefined` apesar da tipagem TypeScript.
+
+A rota `/admin/pim` consulta contagens reais no banco para as filas de revisão, sugestões de IA, conflitos, itens sem mapping, dados ausentes, itens prontos e aprovados. O filtro `issue=missing` considera ausência de GTIN ou imagem principal. Essa etapa permanece somente leitura, exceto pela decisão individual de sugestões já existente; não cria backfill, não publica dados e não escreve no WooCommerce.
+
+O detalhe do produto passa a mostrar ORIGINAL, DRAFT e APPROVED. Apenas DRAFT possui campos editáveis. As ações visíveis dependem do estado: salvar/enviar, aprovar/rejeitar, reabrir ou descartar. Conflitos de versão exibem “Este produto foi alterado desde que você abriu a página.”. O histórico mostra ação, data, actor server-side e motivo, sem expor credenciais.

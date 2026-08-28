@@ -29,3 +29,11 @@ Banco é importado por módulos `server-only`; páginas são Server Components. 
 ## Mídia futura
 
 Somente URL e metadata são exibidas. Uma futura topologia Olist → PIM → R2 → CDN → Next exige fase própria; nenhum binário foi migrado.
+
+## P.2 — ownership editorial
+
+As colunas editoriais de `pim_product_profiles` representam o draft atual. `approved_content` guarda um snapshot JSONB do último conteúdo aprovado, com arrays reais para bullet points e search terms. O snapshot aprovado não alimenta o catálogo público e permanece imutável durante novas edições.
+
+`version` é o token de optimistic concurrency. Toda escrita trava o profile, compara a versão aberta pelo administrador e rejeita versão antiga. Alteração e auditoria usam a mesma transação. O actor é derivado exclusivamente da sessão administrativa validada no servidor.
+
+Preço, estoque, reservas, SKU, GTIN e mappings externos continuam pertencendo à camada operacional. A P.2 não oferece writes para esses domínios. Atributos permanecem somente leitura até uma fase posterior com provenance e workflow específicos.
