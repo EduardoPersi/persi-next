@@ -18,10 +18,11 @@ interface CheckoutPaymentProps {
   discountBase?: number;
   currencyCode?: string;
   capabilities: PublicCheckoutCapabilities;
+  holderDocument: string;
 }
 
 const CARD_METHODS: CheckoutPaymentMethod[] = [
-  "pagbank_card",
+  "mercadopago_card",
   "pagbank_apple_pay",
   "pagbank_google_pay",
 ];
@@ -38,9 +39,10 @@ export function CheckoutPayment({
   discountBase,
   currencyCode,
   capabilities,
+  holderDocument,
 }: CheckoutPaymentProps) {
-  const showCardFields = method === "pagbank_card";
-  const isWalletMethod = CARD_METHODS.includes(method) && method !== "pagbank_card";
+  const showCardFields = method === "mercadopago_card";
+  const isWalletMethod = CARD_METHODS.includes(method) && method !== "mercadopago_card";
 
   // Se o carrinho mudar (ex.: cupom removido, item excluído) e o método já
   // selecionado deixar de atingir o valor mínimo, troca para o Pix — a
@@ -55,7 +57,7 @@ export function CheckoutPayment({
     <div className="space-y-5">
       <p className="text-xs leading-6 text-slate-600">
         Escolha como prefere pagar. O valor final é sempre confirmado com o Banco
-        Inter ou o PagBank antes da confirmação do pedido.
+        Inter, o Mercado Pago ou o PagBank antes da confirmação do pedido.
       </p>
       <PaymentMethodSelector
         value={method}
@@ -72,6 +74,7 @@ export function CheckoutPayment({
           onInstallmentsChange={onInstallmentsChange}
           onError={onCardError}
           declinedMessage={cardDeclinedMessage}
+          holderDocument={holderDocument}
         />
       ) : null}
       {isWalletMethod ? (

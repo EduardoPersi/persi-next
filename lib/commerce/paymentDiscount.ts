@@ -4,7 +4,7 @@ export const BOLETO_DISCOUNT_RATE = 0.05;
 export type DiscountablePaymentMethod =
   | "inter_pix"
   | "inter_boleto"
-  | "pagbank_card"
+  | "mercadopago_card"
   | "pagbank_apple_pay"
   | "pagbank_google_pay";
 

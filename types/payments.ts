@@ -25,10 +25,23 @@ export interface BoletoPaymentResult {
 }
 
 export interface CardPaymentResult {
-  method: "pagbank_card" | "pagbank_apple_pay" | "pagbank_google_pay";
+  method: "mercadopago_card" | "pagbank_apple_pay" | "pagbank_google_pay";
   orderId: number;
   chargeId: string;
-  status: "AUTHORIZED" | "PAID" | "DECLINED" | "IN_ANALYSIS" | "CANCELED";
+  status:
+    | "AUTHORIZED"
+    | "PAID"
+    | "DECLINED"
+    | "IN_ANALYSIS"
+    | "CANCELED"
+    | "approved"
+    | "authorized"
+    | "in_process"
+    | "pending"
+    | "rejected"
+    | "cancelled"
+    | "refunded"
+    | "charged_back";
   checkoutAttemptId: string;
   confirmationUrl: string;
 }

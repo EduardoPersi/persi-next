@@ -23,9 +23,17 @@ import { interPaymentGateway } from "@/services/payments/gateway";
 import { getBoletoCreationDiagnostics } from "@/services/payments/inter/boleto";
 import { InterPaymentError } from "@/services/payments/inter/errors";
 import { getPixCreationDiagnostics } from "@/services/payments/inter/pix";
-import { createCardCharge, getCardChargeStatus } from "@/services/payments/pagbank/charge";
+import {
+  createCardCharge as createMercadoPagoCardCharge,
+  getCardChargeStatus as getMercadoPagoCardChargeStatus,
+} from "@/services/payments/mercadopago/charge";
+import { MercadoPagoPaymentError } from "@/services/payments/mercadopago/errors";
+import {
+  createCardCharge as createPagBankCardCharge,
+  getCardChargeStatus as getPagBankCardChargeStatus,
+} from "@/services/payments/pagbank/charge";
 import { PagBankPaymentError } from "@/services/payments/pagbank/errors";
-import { categorizeCardStatus } from "@/services/payments/reconcile";
+import { categorizeCardStatus, categorizeMercadoPagoCardStatus } from "@/services/payments/reconcile";
 import { getServerAccountSession } from "@/services/account/serverSession";
 import { getAuthoritativeCheckoutItems } from "@/services/checkout/headlessCheckout";
 import { CartServiceError, getCart } from "@/services/woocommerce/cart";
@@ -91,7 +99,7 @@ function getConfirmationUrl(checkoutAttemptId: string): string {
 }
 
 const CARD_PAYMENT_METHODS = new Set<PersiPaymentMethod>([
-  "pagbank_card",
+  "mercadopago_card",
   "pagbank_apple_pay",
   "pagbank_google_pay",
 ]);
@@ -106,16 +114,23 @@ async function getDeclinedCardStatus(
 ): Promise<string | null> {
   if (!CARD_PAYMENT_METHODS.has(method)) return null;
   try {
-    const charge = await getCardChargeStatus(providerReference);
+    if (method === "mercadopago_card") {
+      const charge = await getMercadoPagoCardChargeStatus(providerReference);
+      return categorizeMercadoPagoCardStatus(charge.status) === "failed" ? charge.status : null;
+    }
+    const charge = await getPagBankCardChargeStatus(providerReference);
     return categorizeCardStatus(charge.status) === "failed" ? charge.status : null;
   } catch (error) {
-    // A revalidação é best-effort: se o PagBank recusar a reconsulta (ex.:
+    // A revalidação é best-effort: se o provedor recusar a reconsulta (ex.:
     // 406 numa cobrança antiga), cair no catch geral da rota transformaria
     // isso num 502 e quebraria o fluxo inteiro — melhor voltar ao
     // comportamento anterior a esta revalidação (alreadyInitiated: true).
-    console.error("[checkout-payment] falha ao revalidar status PagBank", {
+    console.error("[checkout-payment] falha ao revalidar status do cartão", {
       providerReference,
-      status: error instanceof PagBankPaymentError ? error.status : undefined,
+      status:
+        error instanceof PagBankPaymentError || error instanceof MercadoPagoPaymentError
+          ? error.status
+          : undefined,
       message: error instanceof Error ? error.message : "unknown error",
     });
     return null;
@@ -153,6 +168,7 @@ function getDiagnosticCategory(error: unknown, stage: PaymentStage): string {
   if (error instanceof WooCommerceRestError) return "woocommerce_request_failed";
   if (error instanceof CartServiceError) return "cart_request_failed";
   if (error instanceof PagBankPaymentError) return "provider_request_failed";
+  if (error instanceof MercadoPagoPaymentError) return "provider_request_failed";
   if (error instanceof CheckoutTransferError) return error.diagnosticCode;
   return `${stage}_failed`;
 }
@@ -236,7 +252,8 @@ function getErrorStatus(error: unknown): number {
     error instanceof CartServiceError ||
     error instanceof WooCommerceRestError ||
     error instanceof InterPaymentError ||
-    error instanceof PagBankPaymentError
+    error instanceof PagBankPaymentError ||
+    error instanceof MercadoPagoPaymentError
   ) {
     return error.status === 401 || error.status === 409 || error.status === 422
       ? error.status
@@ -625,26 +642,78 @@ export async function POST(request: Request) {
         checkoutAttemptId: input.idempotencyKey,
         confirmationUrl: getConfirmationUrl(input.idempotencyKey),
       };
-    } else {
+    } else if (input.method === "mercadopago_card") {
       if (attemptState === "PAYMENT_CREATING") {
         throw new CheckoutTransferError(
           409,
           "Pagamento com cartão em reconciliação; uma nova cobrança não será criada.",
         );
       }
-      const cardPaymentMethod =
-        input.method === "pagbank_card"
-          ? "credit_card"
-          : input.method === "pagbank_apple_pay"
-            ? "apple_pay"
-            : "google_pay";
-      const cardToken = input.method === "pagbank_card" ? input.cardToken : input.token;
 
-      const charge = await createCardCharge({
+      const charge = await createMercadoPagoCardCharge(
+        {
+          referenceId: String(order.id),
+          amount,
+          cardToken: input.cardToken,
+          installments: input.installments,
+          paymentMethodId: input.paymentMethodId,
+          issuerId: input.issuerId,
+          holderDocument: input.holderDocument,
+          holderName: payerName,
+          holderEmail: billingAddress.email ?? "",
+        },
+        input.idempotencyKey,
+      );
+      stage = "persistence";
+      await attachPaymentReference(order.id, {
+        provider: "mercadopago",
+        externalId: charge.chargeId,
+        cardBrand: charge.brand,
+        cardLastDigits: charge.lastDigits,
+        installments: charge.installments,
+      });
+      await transitionCheckoutAttempt({ checkoutAttemptId: input.idempotencyKey, leaseToken, from: "PAYMENT_CREATING", to: "PAYMENT_CREATED", providerReference: charge.chargeId });
+
+      // O cartão é síncrono: o Mercado Pago já devolve o status final (ou
+      // in_process) na própria resposta de criação do pagamento, ao
+      // contrário de Pix/boleto — não há por que esperar webhook/cron para
+      // informar uma recusa que já é conhecida agora. Sem isto, o pedido
+      // ficava "pending" indefinidamente e o cliente via a mesma tela
+      // genérica de "aguardando confirmação" de um cartão negado.
+      if (categorizeMercadoPagoCardStatus(charge.status) === "failed") {
+        await markOrderAsFailed(order, "failed");
+        await reconcileCheckoutAttempt(charge.chargeId, "PAYMENT_FAILED").catch(() => undefined);
+        console.info("[checkout-payment] card declined", {
+          checkoutAttemptId,
+          orderId: order.id,
+          chargeId: charge.chargeId,
+          providerStatus: charge.status,
+        });
+        return createCardDeclinedResponse(order.id, charge.chargeId, charge.status, activeCartToken);
+      }
+
+      result = {
+        method: input.method,
+        orderId: order.id,
+        chargeId: charge.chargeId,
+        status: charge.status,
+        checkoutAttemptId: input.idempotencyKey,
+        confirmationUrl: getConfirmationUrl(input.idempotencyKey),
+      };
+    } else {
+      if (attemptState === "PAYMENT_CREATING") {
+        throw new CheckoutTransferError(
+          409,
+          "Pagamento com carteira digital em reconciliação; uma nova cobrança não será criada.",
+        );
+      }
+      const cardPaymentMethod = input.method === "pagbank_apple_pay" ? "apple_pay" : "google_pay";
+
+      const charge = await createPagBankCardCharge({
         referenceId: String(order.id),
         amount,
-        cardToken,
-        installments: input.method === "pagbank_card" ? input.installments : 1,
+        cardToken: input.token,
+        installments: 1,
         paymentMethod: cardPaymentMethod,
         holderDocument: input.holderDocument,
         holderName: payerName,

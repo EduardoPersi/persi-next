@@ -27,10 +27,11 @@ function formatCardLabel(brand?: string, lastDigits?: string): string | null {
   return lastDigits ? `${brandLabel} final ${lastDigits}` : brandLabel;
 }
 
-// Resultado final de cartão/carteira PagBank (pagamento síncrono: não existe
-// estado "aguardando" como em Pix/boleto, só aprovado ou recusado) — usa o
-// mesmo casco PaymentResultLayout de PixPaymentResult/BoletoPaymentResult,
-// mas o painel de ação mostra o status em vez de uma instrução de pagamento.
+// Resultado final de cartão (Mercado Pago) ou carteira (PagBank) —
+// pagamento síncrono: não existe estado "aguardando" como em Pix/boleto, só
+// aprovado ou recusado. Usa o mesmo casco PaymentResultLayout de
+// PixPaymentResult/BoletoPaymentResult, mas o painel de ação mostra o
+// status em vez de uma instrução de pagamento.
 export function CardPaymentResult({
   orderId,
   amount,

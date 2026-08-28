@@ -8,11 +8,12 @@ import { getServerAccountSession } from "@/services/account/serverSession";
 import { getBoletoChargeStatus } from "@/services/payments/inter/boleto";
 import { InterPaymentError } from "@/services/payments/inter/errors";
 import { getPixChargeStatus } from "@/services/payments/inter/pix";
-import { getCardChargeStatus } from "@/services/payments/pagbank/charge";
+import { getCardChargeStatus } from "@/services/payments/mercadopago/charge";
+import { MercadoPagoPaymentError } from "@/services/payments/mercadopago/errors";
 import { PagBankPaymentError } from "@/services/payments/pagbank/errors";
 import {
   categorizeBoletoStatus,
-  categorizeCardStatus,
+  categorizeMercadoPagoCardStatus,
   categorizePixStatus,
   reconcilePaymentReference,
 } from "@/services/payments/reconcile";
@@ -52,6 +53,7 @@ function getErrorStatus(error: unknown): number {
   if (
     error instanceof InterPaymentError ||
     error instanceof PagBankPaymentError ||
+    error instanceof MercadoPagoPaymentError ||
     error instanceof WooCommerceRestError
   ) {
     const status = (error as { status?: number }).status ?? 502;
@@ -76,7 +78,7 @@ export async function GET(request: Request) {
     }
     const { provider, reference } = parsed.data;
     const paymentProvider: PaymentProvider =
-      provider === "pagbank_card" ? "pagbank" : "inter";
+      provider === "mercadopago_card" ? "mercadopago" : "inter";
 
     // Resolve o pedido localmente (sem tocar Inter/PagBank) antes de mais
     // nada — só consulta o provedor depois de confirmar que quem está
@@ -126,8 +128,8 @@ export async function GET(request: Request) {
     }
 
     const charge = await getCardChargeStatus(reference);
-    const category = categorizeCardStatus(charge.status);
-    await reconcilePaymentReference("pagbank", reference, category);
+    const category = categorizeMercadoPagoCardStatus(charge.status);
+    await reconcilePaymentReference("mercadopago", reference, category);
     return createPrivateResponse({ status: charge.status, category }, 200, category !== "pending");
   } catch (error) {
     const status = getErrorStatus(error);

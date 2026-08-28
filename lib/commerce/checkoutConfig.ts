@@ -23,8 +23,11 @@ export function getCheckoutMode(): CheckoutMode {
 export function getPublicCheckoutCapabilities(): PublicCheckoutCapabilities {
   const cardEnabled = readBoolean("CHECKOUT_CARD_ENABLED", false);
   const cardEnvironment = process.env.CHECKOUT_CARD_ENVIRONMENT?.trim().toLowerCase();
-  const pagBankBaseUrl = process.env.PAGBANK_API_BASE_URL?.trim().toLowerCase() ?? "";
-  const sandboxConfigured = cardEnvironment === "sandbox" && /sandbox|connect-sandbox/.test(pagBankBaseUrl);
+  // O Mercado Pago não separa sandbox por URL base (mesmo endpoint para os
+  // dois ambientes) — o ambiente é determinado pelo prefixo do access token
+  // (`TEST-...` em sandbox, `APP_USR-...` em produção).
+  const mercadoPagoAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN?.trim() ?? "";
+  const sandboxConfigured = cardEnvironment === "sandbox" && mercadoPagoAccessToken.startsWith("TEST-");
   const productionApproved =
     cardEnvironment === "production" &&
     readBoolean("CHECKOUT_CARD_PRODUCTION_APPROVED", false);

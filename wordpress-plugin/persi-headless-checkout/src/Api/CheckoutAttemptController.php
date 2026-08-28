@@ -61,10 +61,11 @@ final class CheckoutAttemptController {
 		}
 		if ( 'reserve' === $payload['action'] ) {
 			$method = isset( $payload['payment_method'] ) ? (string) $payload['payment_method'] : '';
-			if ( ! in_array( $method, array( 'inter_pix', 'inter_boleto', 'pagbank_card', 'pagbank_apple_pay', 'pagbank_google_pay' ), true ) ) {
+			if ( ! in_array( $method, array( 'inter_pix', 'inter_boleto', 'mercadopago_card', 'pagbank_apple_pay', 'pagbank_google_pay' ), true ) ) {
 				return $this->response( array( 'code' => 'invalid_request' ), 400 );
 			}
-			$result = $this->repository->reserve( $id, 0 === strpos( $method, 'inter_' ) ? 'inter' : 'pagbank', $method );
+			$provider = 0 === strpos( $method, 'inter_' ) ? 'inter' : ( 'mercadopago_card' === $method ? 'mercadopago' : 'pagbank' );
+			$result = $this->repository->reserve( $id, $provider, $method );
 			return $this->response( $result, $result['acquired'] ? 201 : 200 );
 		}
 

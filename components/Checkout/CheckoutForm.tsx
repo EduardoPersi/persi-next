@@ -218,7 +218,7 @@ export function CheckoutForm({
     setPaymentMethod(method);
   };
 
-  // Erro de tokenização (SDK do PagSeguro rejeitando os dados antes de
+  // Erro de tokenização (SDK do Mercado Pago rejeitando os dados antes de
   // qualquer chamada ao servidor) é, na prática, o mesmo tipo de problema
   // que uma recusa CARD_PAYMENT_DECLINED — mesmo estado, mesmo bloco de
   // exibição perto dos campos do cartão, para não duplicar local de erro.
@@ -242,16 +242,18 @@ export function CheckoutForm({
 
       if (paymentMethod === "inter_pix" || paymentMethod === "inter_boleto") {
         body = { method: paymentMethod, idempotencyKey, document, customerNote, expectedAmount };
-      } else if (paymentMethod === "pagbank_card") {
-        const cardToken = cardFieldsRef.current?.tokenize();
-        if (!cardToken) {
+      } else if (paymentMethod === "mercadopago_card") {
+        const tokenization = await cardFieldsRef.current?.tokenize();
+        if (!tokenization) {
           return;
         }
         body = {
           method: paymentMethod,
           idempotencyKey,
-          cardToken,
+          cardToken: tokenization.token,
           installments,
+          paymentMethodId: tokenization.paymentMethodId,
+          issuerId: tokenization.issuerId,
           holderDocument: document,
           customerNote,
           expectedAmount,
@@ -280,7 +282,7 @@ export function CheckoutForm({
         // (PaymentCardFields) — não duplica no aviso genérico do rodapé.
         // Carteiras digitais (Apple/Google Pay) não têm campos de cartão na
         // tela, então continuam usando o aviso genérico.
-        if (result?.code === "CARD_PAYMENT_DECLINED" && paymentMethod === "pagbank_card") {
+        if (result?.code === "CARD_PAYMENT_DECLINED" && paymentMethod === "mercadopago_card") {
           setCardDeclinedMessage(message);
         } else {
           setStatusMessage(message);
@@ -302,7 +304,7 @@ export function CheckoutForm({
 
       setHasCreatedOrder();
       navigate(
-        `/checkout/confirmacao?provider=pagbank_card&reference=${encodeURIComponent(result.chargeId)}`,
+        `/checkout/confirmacao?provider=mercadopago_card&reference=${encodeURIComponent(result.chargeId)}`,
       );
     } catch {
       setStatusMessage("Não foi possível iniciar o pagamento. Tente novamente.");
@@ -490,6 +492,7 @@ export function CheckoutForm({
                 }
                 currencyCode={cart?.currencyCode}
                 capabilities={capabilities}
+                holderDocument={contact?.document ?? ""}
               />
               <CheckoutTerms />
               <Button

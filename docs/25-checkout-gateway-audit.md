@@ -98,6 +98,34 @@ provedor, credenciais de sandbox, domínio de callback a cadastrar, e
 confirmação de que `wc/v3/orders` recalcula corretamente preço/imposto/frete
 a partir de `product_id` neste WooCommerce específico.
 
+## Atualização — cartão de crédito migrado para o Mercado Pago (2026-08-27)
+
+O método `pagbank_card` (cartão de crédito) foi substituído por
+`mercadopago_card`, processado por `services/payments/mercadopago/` com o
+mesmo padrão arquitetural do restante do checkout: tokenização client-side
+(`mp.createCardToken` via SDK `https://sdk.mercadopago.com/js/v2`,
+`components/Checkout/PaymentCardFields.tsx`), cobrança no servidor
+(`POST /v1/payments` com `X-Idempotency-Key`), webhook em
+`app/api/webhooks/mercadopago` que nunca confia no corpo — sempre reconsulta
+`GET /v1/payments/{id}` antes de reconciliar o pedido
+(`services/payments/reconcile.ts`).
+
+**Apple Pay e Google Pay continuam no PagBank** (`pagbank_apple_pay`,
+`pagbank_google_pay`, `services/payments/pagbank/`) — não fizeram parte
+desta migração. O PagBank permanece integrado só para essas duas carteiras;
+`scripts/generate-pagbank-public-key.mjs` e as variáveis `PAGBANK_*`
+continuam necessárias para elas.
+
+Como no restante do checkout, nenhuma credencial real do Mercado Pago foi
+configurada nesta etapa — só `.env.example` (`MERCADOPAGO_API_BASE_URL`,
+`MERCADOPAGO_ACCESS_TOKEN`, `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY`). Sandbox
+vs. produção não é distinguido por URL (mesmo endpoint dos dois ambientes,
+diferente do PagBank) — é o prefixo do access token (`TEST-...` vs.
+`APP_USR-...`) que decide, em `lib/commerce/checkoutConfig.ts`. Assinatura de
+webhook (`x-signature`) do Mercado Pago não foi implementada, pelo mesmo
+motivo dos webhooks do Inter/PagBank não terem: o corpo nunca é fonte de
+verdade, a reconsulta à API já é a proteção real.
+
 ## Scripts operacionais
 
 Scripts administrativos relacionados a pagamento, todos rodados com

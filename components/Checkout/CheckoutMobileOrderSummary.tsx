@@ -41,7 +41,7 @@ export function CheckoutMobileOrderSummary({
     currency: cart.currencyCode,
   });
   const { paymentDiscount, finalTotal } = getCartPaymentTotals(
-    paymentMethod ?? "pagbank_card",
+    paymentMethod ?? "mercadopago_card",
     cart,
   );
 

@@ -113,7 +113,7 @@ export function PaymentMethodSelector({
       discountLabel: boletoDiscountLabel,
     },
     {
-      value: "pagbank_card",
+      value: "mercadopago_card",
       label: "Cartão de crédito",
       description: "Em até 12x",
       icon: <CreditCard className="h-5 w-5" />,

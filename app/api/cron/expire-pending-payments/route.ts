@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { getBoletoChargeStatus } from "@/services/payments/inter/boleto";
 import { getPixChargeStatus } from "@/services/payments/inter/pix";
-import { getCardChargeStatus } from "@/services/payments/pagbank/charge";
+import { getCardChargeStatus as getMercadoPagoCardChargeStatus } from "@/services/payments/mercadopago/charge";
+import { getCardChargeStatus as getPagBankCardChargeStatus } from "@/services/payments/pagbank/charge";
 import {
   categorizeBoletoStatus,
   categorizeCardStatus,
+  categorizeMercadoPagoCardStatus,
   categorizePixStatus,
   reconcilePaymentReference,
 } from "@/services/payments/reconcile";
@@ -50,7 +52,14 @@ async function reconcileOrder(order: WooCommerceOrder): Promise<ReconciliationCa
     return category;
   }
 
-  const charge = await getCardChargeStatus(reference);
+  if (order.paymentMethod === "mercadopago_card") {
+    const charge = await getMercadoPagoCardChargeStatus(reference);
+    const category = categorizeMercadoPagoCardStatus(charge.status);
+    await reconcilePaymentReference("mercadopago", reference, category);
+    return category;
+  }
+
+  const charge = await getPagBankCardChargeStatus(reference);
   const category = categorizeCardStatus(charge.status);
   await reconcilePaymentReference("pagbank", reference, category);
   return category;

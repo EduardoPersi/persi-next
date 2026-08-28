@@ -40,7 +40,7 @@ export function CheckoutPageClient({
         ? "inter_pix"
         : capabilities.boleto
           ? "inter_boleto"
-          : "pagbank_card",
+          : "mercadopago_card",
     );
   // Assim que o pedido é criado, o carrinho é esvaziado (ver
   // CheckoutForm/refreshCart) — sem essa flag, um carrinho com 0 itens faria

@@ -45,11 +45,12 @@ test("rejeita payload com campos extras (contrato fechado)", () => {
   assert.equal(result.success, false);
 });
 
-test("pagbank_card exige installments inteiro entre 1 e 12", () => {
+test("mercadopago_card exige installments inteiro entre 1 e 12", () => {
   const base = {
-    method: "pagbank_card",
+    method: "mercadopago_card",
     idempotencyKey,
     cardToken: "tok_abc",
+    paymentMethodId: "visa",
     holderDocument: "111.444.777-35",
   };
   assert.equal(
@@ -66,14 +67,38 @@ test("pagbank_card exige installments inteiro entre 1 e 12", () => {
   );
 });
 
-test("pagbank_card também aceita CNPJ como holderDocument", () => {
+test("mercadopago_card também aceita CNPJ como holderDocument", () => {
   assert.equal(
     paymentInitiationSchema.safeParse({
-      method: "pagbank_card",
+      method: "mercadopago_card",
       idempotencyKey,
       cardToken: "tok_abc",
       installments: 1,
+      paymentMethodId: "visa",
       holderDocument: "11.222.333/0001-81",
+    }).success,
+    true,
+  );
+});
+
+test("mercadopago_card exige paymentMethodId, mas issuerId é opcional", () => {
+  const base = {
+    method: "mercadopago_card",
+    idempotencyKey,
+    cardToken: "tok_abc",
+    installments: 1,
+    holderDocument: "111.444.777-35",
+  };
+  assert.equal(paymentInitiationSchema.safeParse(base).success, false);
+  assert.equal(
+    paymentInitiationSchema.safeParse({ ...base, paymentMethodId: "visa" }).success,
+    true,
+  );
+  assert.equal(
+    paymentInitiationSchema.safeParse({
+      ...base,
+      paymentMethodId: "visa",
+      issuerId: "123",
     }).success,
     true,
   );

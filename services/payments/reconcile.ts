@@ -1,6 +1,7 @@
 import { isPixChargeExpired, type PixChargeStatus } from "./inter/pix.ts";
 import type { BoletoChargeStatus } from "./inter/boleto.ts";
 import type { CardChargeStatus } from "./pagbank/charge.ts";
+import type { MercadoPagoChargeStatus } from "./mercadopago/charge.ts";
 import {
   findOrderByPaymentReference,
   markOrderAsFailed,
@@ -39,6 +40,21 @@ export function categorizeBoletoStatus(status: BoletoChargeStatus): PaymentStatu
 export function categorizeCardStatus(status: CardChargeStatus): PaymentStatusCategory {
   if (status === "PAID" || status === "AUTHORIZED") return "paid";
   if (status === "DECLINED" || status === "CANCELED") return "failed";
+  return "pending";
+}
+
+export function categorizeMercadoPagoCardStatus(
+  status: MercadoPagoChargeStatus,
+): PaymentStatusCategory {
+  if (status === "approved" || status === "authorized") return "paid";
+  if (
+    status === "rejected" ||
+    status === "cancelled" ||
+    status === "refunded" ||
+    status === "charged_back"
+  ) {
+    return "failed";
+  }
   return "pending";
 }
 

@@ -28,6 +28,15 @@ test("webhook do PagBank sempre reconsulta o provedor antes de reconciliar o ped
   assert.ok(getStatusIndex > -1 && reconcileIndex > -1 && getStatusIndex < reconcileIndex);
 });
 
+test("webhook do Mercado Pago sempre reconsulta o provedor antes de reconciliar o pedido", () => {
+  const source = read("app/api/webhooks/mercadopago/route.ts");
+  assert.match(source, /getCardChargeStatus/);
+  assert.match(source, /reconcilePaymentReference/);
+  const getStatusIndex = source.indexOf("getCardChargeStatus(paymentId)");
+  const reconcileIndex = source.indexOf("reconcilePaymentReference(");
+  assert.ok(getStatusIndex > -1 && reconcileIndex > -1 && getStatusIndex < reconcileIndex);
+});
+
 test("rota de status de pagamento resolve e autoriza o pedido antes de consultar qualquer provedor", () => {
   const source = read("app/api/checkout/payment/status/route.ts");
   assert.match(source, /findOrderByPaymentReference/);
@@ -107,6 +116,7 @@ test("reconcilePaymentReference só marca pago/falho a partir de uma categoria j
 const SERVER_ONLY_CREDENTIAL_FILES = [
   "services/payments/inter/client.ts",
   "services/payments/pagbank/client.ts",
+  "services/payments/mercadopago/client.ts",
   "services/woocommerce/restClient.ts",
 ];
 
@@ -141,7 +151,7 @@ test("nenhum componente client-side importa os clientes de pagamento com credenc
     if (!source.includes('"use client"')) continue;
     assert.doesNotMatch(
       source,
-      /services\/payments\/(inter|pagbank)\/client/,
+      /services\/payments\/(inter|pagbank|mercadopago)\/client/,
       `${path} não deveria importar o cliente de pagamento com credenciais`,
     );
   }

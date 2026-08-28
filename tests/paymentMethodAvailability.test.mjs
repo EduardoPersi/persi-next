@@ -21,7 +21,7 @@ test("MIN_BOLETO_AMOUNT é o único mínimo configurado hoje (Pix e cartão cont
   assert.ok(rulesBlock, "MIN_AMOUNT_BY_METHOD não encontrado");
   assert.match(rulesBlock[1], /inter_boleto:\s*MIN_BOLETO_AMOUNT/);
   assert.doesNotMatch(rulesBlock[1], /inter_pix:/);
-  assert.doesNotMatch(rulesBlock[1], /pagbank_card:/);
+  assert.doesNotMatch(rulesBlock[1], /mercadopago_card:/);
 });
 
 test("isPaymentMethodAvailable nunca esconde uma opção antes do total do carrinho ser conhecido", () => {

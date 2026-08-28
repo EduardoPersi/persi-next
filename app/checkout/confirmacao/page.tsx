@@ -13,10 +13,12 @@ import { formatBrazilianDocument, formatBrazilianPhone } from "@/lib/formatting/
 import { getServerAccountSession } from "@/services/account/serverSession";
 import { getBoletoChargeStatus } from "@/services/payments/inter/boleto";
 import { getPixCharge, getPixChargeStatus } from "@/services/payments/inter/pix";
-import { getCardChargeStatus } from "@/services/payments/pagbank/charge";
+import { getCardChargeStatus as getMercadoPagoCardChargeStatus } from "@/services/payments/mercadopago/charge";
+import { getCardChargeStatus as getPagBankCardChargeStatus } from "@/services/payments/pagbank/charge";
 import {
   categorizeBoletoStatus,
   categorizeCardStatus,
+  categorizeMercadoPagoCardStatus,
   categorizePixStatus,
   reconcilePaymentReference,
   type PaymentStatusCategory,
@@ -71,7 +73,7 @@ const STATUS_COPY: Record<PaymentStatusCategory, { title: string; description: s
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   inter_pix: "Pix - Banco Inter",
   inter_boleto: "Boleto - Banco Inter",
-  pagbank_card: "Cartão de crédito - PagBank",
+  mercadopago_card: "Cartão de crédito - Mercado Pago",
   pagbank_apple_pay: "Apple Pay - PagBank",
   pagbank_google_pay: "Google Pay - PagBank",
 };
@@ -86,12 +88,12 @@ type ResolvedStatus = {
   recovery?: RecoveryData;
 };
 
-async function resolveInterOrPagBankStatus(
+async function resolveInterOrCardStatus(
   provider: string | undefined,
   reference: string | undefined,
 ): Promise<ResolvedStatus | null> {
   if (!provider || !reference) return null;
-  if (provider !== "inter_pix" && provider !== "inter_boleto" && provider !== "pagbank_card") {
+  if (provider !== "inter_pix" && provider !== "inter_boleto" && provider !== "mercadopago_card") {
     return null;
   }
 
@@ -99,7 +101,7 @@ async function resolveInterOrPagBankStatus(
     // Mesma regra da rota de status (services/payments/statusAuthorization):
     // só resolve/consulta o provedor depois de confirmar que quem pediu
     // esta página tem relação com o pedido dessa reference.
-    const paymentProvider: PaymentProvider = provider === "pagbank_card" ? "pagbank" : "inter";
+    const paymentProvider: PaymentProvider = provider === "mercadopago_card" ? "mercadopago" : "inter";
     const order = await findOrderByPaymentReference(paymentProvider, reference);
     if (!order) return null;
 
@@ -117,17 +119,17 @@ async function resolveInterOrPagBankStatus(
       const charge = await getBoletoChargeStatus(reference);
       return { category: categorizeBoletoStatus(charge.status), order };
     }
-    const charge = await getCardChargeStatus(reference);
-    const category = categorizeCardStatus(charge.status);
+    const charge = await getMercadoPagoCardChargeStatus(reference);
+    const category = categorizeMercadoPagoCardStatus(charge.status);
     // Diferente de Pix/boleto (reconciliados no caminho ?attempt=), este
     // caminho ainda não persistia uma recusa de cartão no pedido — o pedido
-    // ficava "pending" mesmo com o PagBank já tendo respondido DECLINED.
+    // ficava "pending" mesmo com o Mercado Pago já tendo respondido rejected.
     if (category === "failed") {
-      await reconcilePaymentReference("pagbank", reference, category);
+      await reconcilePaymentReference("mercadopago", reference, category);
     }
     return { category, order };
   } catch (error) {
-    console.error("[checkout-confirmation] falha ao resolver status Inter/PagBank", {
+    console.error("[checkout-confirmation] falha ao resolver status Inter/Mercado Pago", {
       provider,
       reference,
       message: error instanceof Error ? error.message : "unknown error",
@@ -223,8 +225,12 @@ async function resolveStatus(params: {
           },
         };
       }
+      if (attempt.payment_method === "mercadopago_card") {
+        const charge = await getMercadoPagoCardChargeStatus(attempt.provider_reference);
+        return { category: categorizeMercadoPagoCardStatus(charge.status), order };
+      }
       if (attempt.payment_method.startsWith("pagbank_")) {
-        const charge = await getCardChargeStatus(attempt.provider_reference);
+        const charge = await getPagBankCardChargeStatus(attempt.provider_reference);
         return { category: categorizeCardStatus(charge.status), order };
       }
       return null;
@@ -246,7 +252,7 @@ async function resolveStatus(params: {
   if (params.provider === "woocommerce") {
     return resolveWooCommerceStatus(params.orderId);
   }
-  return resolveInterOrPagBankStatus(params.provider, params.reference);
+  return resolveInterOrCardStatus(params.provider, params.reference);
 }
 
 function formatMoney(value: string, currency: string): string {
@@ -398,10 +404,14 @@ export default async function CheckoutConfirmationPage({
   const resolved = await resolveStatus(params);
   const isPaid = resolved?.category === "paid";
   const isFailed = resolved?.category === "failed";
-  const isCardMethod = resolved ? resolved.order.paymentMethod.startsWith("pagbank_") : false;
-  // Cartão/carteira PagBank é síncrono (não existe "aguardando" — só
-  // aprovado ou recusado): ganha uma tela própria (bandeira, final,
-  // parcelas) em vez do PaidConfirmation genérico ou do fallback textual.
+  const isCardMethod = resolved
+    ? resolved.order.paymentMethod === "mercadopago_card" ||
+      resolved.order.paymentMethod.startsWith("pagbank_")
+    : false;
+  // Cartão (Mercado Pago) e carteira (PagBank) são síncronos (não existe
+  // "aguardando" — só aprovado ou recusado): ganham uma tela própria
+  // (bandeira, final, parcelas) em vez do PaidConfirmation genérico ou do
+  // fallback textual.
   const cardResult =
     resolved && isCardMethod && (isPaid || isFailed)
       ? {

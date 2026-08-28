@@ -2,30 +2,57 @@
 
 import {
   forwardRef,
+  useEffect,
   useImperativeHandle,
+  useRef,
   useState,
   type ChangeEvent,
 } from "react";
 import Script from "next/script";
+import { detectBrazilianDocumentType } from "@/lib/validation/document";
 import { CheckoutErrorMessage } from "./CheckoutErrorMessage";
+
+interface MercadoPagoCardTokenResult {
+  id: string;
+}
+
+interface MercadoPagoPaymentMethodResult {
+  id: string;
+}
+
+interface MercadoPagoIssuerResult {
+  id: string;
+}
 
 declare global {
   interface Window {
-    PagSeguro?: {
-      encryptCard: (input: {
-        publicKey: string;
-        holder: string;
-        number: string;
-        expMonth: string;
-        expYear: string;
+    MercadoPago?: new (
+      publicKey: string,
+      options?: { locale?: string },
+    ) => {
+      createCardToken: (input: {
+        cardNumber: string;
+        cardholderName: string;
+        cardExpirationMonth: string;
+        cardExpirationYear: string;
         securityCode: string;
-      }) => { hasErrors: boolean; encryptedCard: string; errors?: { message: string }[] };
+        identificationType?: string;
+        identificationNumber?: string;
+      }) => Promise<MercadoPagoCardTokenResult>;
+      getPaymentMethods: (input: { bin: string }) => Promise<{ results: MercadoPagoPaymentMethodResult[] }>;
+      getIssuers: (input: { paymentMethodId: string; bin: string }) => Promise<MercadoPagoIssuerResult[]>;
     };
   }
 }
 
+export interface CardTokenizationResult {
+  token: string;
+  paymentMethodId: string;
+  issuerId?: string;
+}
+
 export interface PaymentCardFieldsHandle {
-  tokenize: () => string;
+  tokenize: () => Promise<CardTokenizationResult | null>;
 }
 
 export interface CardFieldsValue {
@@ -49,42 +76,78 @@ interface PaymentCardFieldsProps {
   onInstallmentsChange: (installments: number) => void;
   onError: (message: string) => void;
   declinedMessage?: string;
+  holderDocument: string;
 }
 
 // Componente isolado de propósito: é o único lugar do checkout que toca em
 // número de cartão, validade e CVV. Esses dados nunca saem daqui para o
-// resto do app — só o token gerado por `window.PagSeguro.encryptCard`
-// (`tokenize()`) é exposto ao componente pai via ref.
+// resto do app — só o token gerado por `mp.createCardToken` (`tokenize()`)
+// é exposto ao componente pai via ref, junto do payment_method_id/issuer_id
+// que a API de pagamentos do Mercado Pago exige.
 export const PaymentCardFields = forwardRef<PaymentCardFieldsHandle, PaymentCardFieldsProps>(
-  function PaymentCardFields({ installments, onInstallmentsChange, onError, declinedMessage }, ref) {
+  function PaymentCardFields(
+    { installments, onInstallmentsChange, onError, declinedMessage, holderDocument },
+    ref,
+  ) {
     const [card, setCard] = useState<CardFieldsValue>(EMPTY_CARD);
+    const mpRef = useRef<InstanceType<NonNullable<Window["MercadoPago"]>> | null>(null);
+
+    useEffect(() => {
+      if (mpRef.current || typeof window === "undefined" || !window.MercadoPago) return;
+      const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY;
+      if (!publicKey) return;
+      mpRef.current = new window.MercadoPago(publicKey, { locale: "pt-BR" });
+    });
 
     useImperativeHandle(ref, () => ({
-      tokenize: () => {
-        const publicKey = process.env.NEXT_PUBLIC_PAGBANK_PUBLIC_KEY;
-        if (!publicKey || !window.PagSeguro) {
+      tokenize: async () => {
+        const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY;
+        if (!publicKey || typeof window === "undefined" || !window.MercadoPago) {
           onError("Não foi possível carregar o pagamento por cartão. Tente novamente.");
-          return "";
+          return null;
         }
-
-        const result = window.PagSeguro.encryptCard({
-          publicKey,
-          holder: card.holder,
-          number: card.number.replace(/\D/g, ""),
-          expMonth: card.expMonth,
-          expYear: card.expYear,
-          securityCode: card.securityCode,
-        });
-
-        if (result.hasErrors || !result.encryptedCard) {
-          onError(
-            result.errors?.[0]?.message ??
-              "Confira os dados do cartão e tente novamente.",
-          );
-          return "";
+        if (!mpRef.current) {
+          mpRef.current = new window.MercadoPago(publicKey, { locale: "pt-BR" });
         }
+        const mp = mpRef.current;
+        const cardNumber = card.number.replace(/\D/g, "");
+        const bin = cardNumber.slice(0, 6);
+        const documentType = detectBrazilianDocumentType(holderDocument);
 
-        return result.encryptedCard;
+        try {
+          const [{ results: paymentMethods }, tokenResult] = await Promise.all([
+            mp.getPaymentMethods({ bin }),
+            mp.createCardToken({
+              cardNumber,
+              cardholderName: card.holder,
+              cardExpirationMonth: card.expMonth,
+              cardExpirationYear: card.expYear,
+              securityCode: card.securityCode,
+              identificationType: documentType ? documentType.toUpperCase() : undefined,
+              identificationNumber: holderDocument.replace(/\D/g, ""),
+            }),
+          ]);
+
+          const paymentMethodId = paymentMethods[0]?.id;
+          if (!paymentMethodId || !tokenResult.id) {
+            onError("Confira os dados do cartão e tente novamente.");
+            return null;
+          }
+
+          let issuerId: string | undefined;
+          try {
+            const issuers = await mp.getIssuers({ paymentMethodId, bin });
+            issuerId = issuers[0]?.id;
+          } catch {
+            // Emissor é opcional para a maioria das bandeiras — segue sem ele
+            // se a consulta falhar, em vez de bloquear o pagamento por isso.
+          }
+
+          return { token: tokenResult.id, paymentMethodId, issuerId };
+        } catch {
+          onError("Confira os dados do cartão e tente novamente.");
+          return null;
+        }
       },
     }));
 
@@ -95,10 +158,7 @@ export const PaymentCardFields = forwardRef<PaymentCardFieldsHandle, PaymentCard
 
     return (
       <div className="grid gap-4 sm:grid-cols-2">
-        <Script
-          src="https://assets.pagseguro.com.br/checkout-sdk-js/rc/dist/browser/pagseguro.min.js"
-          strategy="lazyOnload"
-        />
+        <Script src="https://sdk.mercadopago.com/js/v2" strategy="lazyOnload" />
         <div className="sm:col-span-2">
           <label htmlFor="card-holder" className="mb-1.5 block text-xs font-medium text-black">
             Nome impresso no cartão

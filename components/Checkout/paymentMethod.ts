@@ -9,7 +9,7 @@ import type { Cart } from "@/types/cart";
 export type CheckoutPaymentMethod =
   | "inter_pix"
   | "inter_boleto"
-  | "pagbank_card"
+  | "mercadopago_card"
   | "pagbank_apple_pay"
   | "pagbank_google_pay";
 

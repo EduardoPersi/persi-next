@@ -57,7 +57,7 @@ test("cupom reduz a base antes do desconto e frete, taxas e impostos ficam integ
 test("cartão não recebe desconto e valores são arredondados em centavos", () => {
   assert.deepEqual(
     calculatePaymentTotals({
-      method: "pagbank_card",
+      method: "mercadopago_card",
       productsSubtotal: 100.05,
       existingDiscounts: 0,
       orderTotal: 117.78,

@@ -30,10 +30,12 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
     .strict(),
   z
     .object({
-      method: z.literal("pagbank_card"),
+      method: z.literal("mercadopago_card"),
       idempotencyKey: idempotencyKeySchema,
       cardToken: z.string().trim().min(1).max(4096),
       installments: z.number().int().min(1).max(12),
+      paymentMethodId: z.string().trim().min(1).max(60),
+      issuerId: z.string().trim().min(1).max(60).optional(),
       holderDocument: documentSchema,
       customerNote: customerNoteSchema,
       expectedAmount: expectedAmountSchema,
@@ -64,7 +66,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
 export type PaymentInitiationInput = z.infer<typeof paymentInitiationSchema>;
 
 export const paymentStatusQuerySchema = z.object({
-  provider: z.enum(["inter_pix", "inter_boleto", "pagbank_card"]),
+  provider: z.enum(["inter_pix", "inter_boleto", "mercadopago_card"]),
   reference: z.string().trim().min(1).max(200),
 });
 

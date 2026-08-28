@@ -4,12 +4,12 @@ import { WooCommerceRestError } from "./restError.ts";
 
 export { WooCommerceRestError };
 
-export type PaymentProvider = "inter" | "pagbank";
+export type PaymentProvider = "inter" | "pagbank" | "mercadopago";
 
 export type PersiPaymentMethod =
   | "inter_pix"
   | "inter_boleto"
-  | "pagbank_card"
+  | "mercadopago_card"
   | "pagbank_apple_pay"
   | "pagbank_google_pay";
 
@@ -176,7 +176,9 @@ export async function createPendingOrder(
 
   const provider: PaymentProvider = input.paymentMethod.startsWith("inter_")
     ? "inter"
-    : "pagbank";
+    : input.paymentMethod === "mercadopago_card"
+      ? "mercadopago"
+      : "pagbank";
 
   const response = await post<WooCommerceOrderApiResponse>("orders", {
     status: "pending",
