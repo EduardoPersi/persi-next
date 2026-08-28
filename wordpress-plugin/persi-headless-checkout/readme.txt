@@ -2,10 +2,15 @@
 Contributors: persimateriais
 Requires at least: 6.4
 Requires PHP: 7.4
-Stable tag: 0.6.0
+Stable tag: 0.6.1
 License: Proprietary
 
 == Changelog ==
+
+= 0.6.1 =
+
+* Corrige allow-list de payment_method para reconhecer mercadopago_card
+  (substitui o antigo pagbank_card, removido do checkout headless).
 
 = 0.6.0 =
 
