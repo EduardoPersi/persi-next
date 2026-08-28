@@ -116,15 +116,36 @@ desta migração. O PagBank permanece integrado só para essas duas carteiras;
 `scripts/generate-pagbank-public-key.mjs` e as variáveis `PAGBANK_*`
 continuam necessárias para elas.
 
-Como no restante do checkout, nenhuma credencial real do Mercado Pago foi
-configurada nesta etapa — só `.env.example` (`MERCADOPAGO_API_BASE_URL`,
-`MERCADOPAGO_ACCESS_TOKEN`, `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY`). Sandbox
-vs. produção não é distinguido por URL (mesmo endpoint dos dois ambientes,
-diferente do PagBank) — é o prefixo do access token (`TEST-...` vs.
-`APP_USR-...`) que decide, em `lib/commerce/checkoutConfig.ts`. Assinatura de
-webhook (`x-signature`) do Mercado Pago não foi implementada, pelo mesmo
-motivo dos webhooks do Inter/PagBank não terem: o corpo nunca é fonte de
-verdade, a reconsulta à API já é a proteção real.
+Assinatura de webhook (`x-signature`) do Mercado Pago não foi implementada,
+pelo mesmo motivo dos webhooks do Inter/PagBank não terem: o corpo nunca é
+fonte de verdade, a reconsulta à API já é a proteção real.
+
+## Atualização — credenciais de teste configuradas, correção sobre prefixo (2026-08-27)
+
+Credenciais de teste (`.env.local`, não versionado) foram configuradas:
+`MERCADOPAGO_ACCESS_TOKEN` e `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY`, obtidas do
+painel Mercado Pago em Suas integrações → [aplicação] → Credenciais de teste.
+`CHECKOUT_CARD_ENABLED=true` e `CHECKOUT_CARD_ENVIRONMENT=sandbox` já
+estavam configurados.
+
+A premissa registrada na atualização anterior — que sandbox vs. produção se
+distingue pelo prefixo do access token (`TEST-...` vs. `APP_USR-...`) —
+estava **errada** para este projeto. A aplicação Mercado Pago usada aqui é do
+tipo "Pagamentos online", cujas credenciais de teste também vêm no formato
+`APP_USR-...` (vinculadas a um usuário de teste, não a uma conta real — foi
+confirmado direto na tela "Credenciais de teste" do painel do Mercado Pago).
+Não existe forma de distinguir sandbox de produção pela forma do token para
+esse tipo de aplicação.
+
+`lib/commerce/checkoutConfig.ts` foi corrigido: `sandboxConfigured` agora
+depende só de `CHECKOUT_CARD_ENVIRONMENT=sandbox` mais a presença de um
+token, sem checar prefixo. Isso remove uma camada de defesa que nunca
+funcionou de verdade para este tipo de aplicação — na prática, o gate real
+contra subir produção sem querer continua sendo `CHECKOUT_CARD_ENVIRONMENT`
++ `CHECKOUT_CARD_PRODUCTION_APPROVED`, ambos definidos manualmente pelo
+operador. Ao migrar para produção, é preciso conferir manualmente que o
+`MERCADOPAGO_ACCESS_TOKEN` colado é o de produção (mesma aba do painel,
+"Credenciais de produção") — não há mais checagem automática de formato.
 
 ## Scripts operacionais
 

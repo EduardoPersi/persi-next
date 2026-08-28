@@ -24,10 +24,15 @@ export function getPublicCheckoutCapabilities(): PublicCheckoutCapabilities {
   const cardEnabled = readBoolean("CHECKOUT_CARD_ENABLED", false);
   const cardEnvironment = process.env.CHECKOUT_CARD_ENVIRONMENT?.trim().toLowerCase();
   // O Mercado Pago não separa sandbox por URL base (mesmo endpoint para os
-  // dois ambientes) — o ambiente é determinado pelo prefixo do access token
-  // (`TEST-...` em sandbox, `APP_USR-...` em produção).
+  // dois ambientes). Aplicações mais antigas distinguiam o ambiente pelo
+  // prefixo do access token (`TEST-...` vs `APP_USR-...`), mas aplicações do
+  // tipo "Pagamentos online" (a usada neste projeto) emitem credenciais de
+  // teste também no formato `APP_USR-...`, vinculadas a um usuário de teste —
+  // não há como distinguir sandbox de produção pela forma do token. Por isso
+  // confiamos na declaração explícita do operador (`CHECKOUT_CARD_ENVIRONMENT`),
+  // sem checagem adicional de prefixo.
   const mercadoPagoAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN?.trim() ?? "";
-  const sandboxConfigured = cardEnvironment === "sandbox" && mercadoPagoAccessToken.startsWith("TEST-");
+  const sandboxConfigured = cardEnvironment === "sandbox" && mercadoPagoAccessToken.length > 0;
   const productionApproved =
     cardEnvironment === "production" &&
     readBoolean("CHECKOUT_CARD_PRODUCTION_APPROVED", false);
