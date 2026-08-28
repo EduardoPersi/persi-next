@@ -1,6 +1,6 @@
 import { type AnyPgColumn, index, bigint, boolean, integer, numeric, pgTable, primaryKey, smallint, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { products, productVariants } from "./catalog";
-import { attributeCardinality, attributeDataType, recordStatus } from "./core";
+import { attributeCardinality, attributeDataType, pimDecisionStatus, pimSource, pimWorkflowStatus, recordStatus } from "./core";
 
 export const units = pgTable("units", {
   id: uuid().primaryKey().defaultRandom(), code: text().notNull(), symbol: text().notNull(), name: text().notNull(),
@@ -61,6 +61,43 @@ export const variantAttributeValues = pgTable("variant_attribute_values", {
   attributeValueId: uuid("attribute_value_id").notNull().references(() => attributeValues.id, { onDelete: "restrict" }),
   sortOrder: integer("sort_order").notNull().default(0), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [primaryKey({ columns: [table.variantId, table.attributeId, table.attributeValueId] })]);
+
+export const pimProductProfiles = pgTable("pim_product_profiles", {
+  productId: uuid("product_id").primaryKey().references(() => products.id, { onDelete: "cascade" }),
+  workflowStatus: pimWorkflowStatus("workflow_status").notNull().default("raw"),
+  commercialName: text("commercial_name"), shortDescription: text("short_description"), description: text(),
+  bulletPoints: text("bullet_points").array().notNull().default([]), application: text(), specifications: text(),
+  seoTitle: text("seo_title"), metaDescription: text("meta_description"), searchTerms: text("search_terms").array().notNull().default([]),
+  synonyms: text().array().notNull().default([]), reviewNotes: text("review_notes"),
+  approvedAt: timestamp("approved_at", { withTimezone: true }), publishedAt: timestamp("published_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("pim_product_profiles_workflow_idx").on(table.workflowStatus, table.updatedAt, table.productId)]);
+
+export const pimAttributeReviews = pgTable("pim_attribute_reviews", {
+  id: uuid().primaryKey().defaultRandom(), productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  variantId: uuid("variant_id").references(() => productVariants.id, { onDelete: "cascade" }),
+  attributeId: uuid("attribute_id").notNull().references(() => attributes.id, { onDelete: "restrict" }),
+  attributeValueId: uuid("attribute_value_id").notNull().references(() => attributeValues.id, { onDelete: "restrict" }),
+  source: pimSource().notNull(), status: pimDecisionStatus().notNull().default("needs_review"), confidence: numeric({ precision: 5, scale: 4 }),
+  sourceReference: text("source_reference"), evidence: text(), reviewedBy: text("reviewed_by"), reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [uniqueIndex("pim_attribute_reviews_assignment_unique").on(table.productId, table.attributeId, table.attributeValueId), index("pim_attribute_reviews_queue_idx").on(table.status, table.createdAt)]);
+
+export const pimSuggestions = pgTable("pim_suggestions", {
+  id: uuid().primaryKey().defaultRandom(), productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  fieldName: text("field_name").notNull(), suggestedValue: text("suggested_value").notNull(), source: pimSource().notNull(),
+  confidence: numeric({ precision: 5, scale: 4 }), status: pimDecisionStatus().notNull().default("needs_review"),
+  evidence: text(), providerReference: text("provider_reference"), reviewedBy: text("reviewed_by"), reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("pim_suggestions_queue_idx").on(table.status, table.createdAt, table.productId)]);
+
+export const pimAuditLog = pgTable("pim_audit_log", {
+  id: uuid().primaryKey().defaultRandom(), productId: uuid("product_id").references(() => products.id, { onDelete: "restrict" }),
+  entityType: text("entity_type").notNull(), entityId: uuid("entity_id").notNull(), fieldName: text("field_name"),
+  previousValue: text("previous_value"), newValue: text("new_value"), source: pimSource().notNull(), actorReference: text("actor_reference").notNull(),
+  operation: text().notNull(), reason: text(), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("pim_audit_log_entity_idx").on(table.entityType, table.entityId, table.createdAt), index("pim_audit_log_product_idx").on(table.productId, table.createdAt)]);
 
 export type AttributeValueRow = typeof attributeValues.$inferSelect;
 export type MeasurementComponentRow = typeof measurementComponents.$inferSelect;

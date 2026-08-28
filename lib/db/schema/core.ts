@@ -14,3 +14,10 @@ export const inventoryReservationStatus = pgEnum("inventory_reservation_status",
 ]);
 export const externalSystem = pgEnum("external_system", ["woocommerce", "olist", "banco_inter", "pagbank"]);
 export const externalMappingStatus = pgEnum("external_mapping_status", ["active", "conflict", "inactive"]);
+export const pimWorkflowStatus = pgEnum("pim_workflow_status", [
+  "raw", "normalized", "needs_enrichment", "ai_suggested", "needs_review", "approved", "rejected", "published",
+]);
+export const pimSource = pgEnum("pim_source", [
+  "olist", "woocommerce", "manufacturer", "manual", "ai", "migration", "external_reference",
+]);
+export const pimDecisionStatus = pgEnum("pim_decision_status", ["needs_review", "approved", "rejected"]);

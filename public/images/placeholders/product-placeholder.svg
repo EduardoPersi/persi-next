@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-labelledby="title">
+  <title id="title">Produto sem imagem</title>
+  <rect width="400" height="400" rx="24" fill="#f1f5f9"/>
+  <path d="M104 139 200 88l96 51v122l-96 51-96-51V139Z" fill="#fff" stroke="#94a3b8" stroke-width="10"/>
+  <path d="m104 139 96 53 96-53M200 192v120" fill="none" stroke="#94a3b8" stroke-width="10"/>
+</svg>

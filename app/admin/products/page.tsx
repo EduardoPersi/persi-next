@@ -1,0 +1,29 @@
+import Link from "next/link";
+import Image from "next/image";
+import { listPimFilterOptions, listPimProducts, PIM_STATUSES, type PimProductFilters } from "@/lib/pim/repository";
+
+type SearchParams=Promise<Record<string,string|string[]|undefined>>;
+function value(params:Record<string,string|string[]|undefined>,key:string){const item=params[key];return Array.isArray(item)?item[0]??"":item??"";}
+function money(amount:string|null,currency:string|null){if(!amount)return "—";return new Intl.NumberFormat("pt-BR",{style:"currency",currency:currency??"BRL"}).format(Number(amount)/100);}
+function statusLabel(status:string){return status.replaceAll("_"," ");}
+
+export default async function AdminProductsPage({searchParams}:{searchParams:SearchParams}){
+  const params=await searchParams;
+  const filters:PimProductFilters={query:value(params,"q"),brand:value(params,"brand"),category:value(params,"category"),status:value(params,"status"),image:value(params,"image"),gtin:value(params,"gtin"),issue:value(params,"issue"),page:Number(value(params,"page")),pageSize:Number(value(params,"pageSize"))};
+  const [{items,total,page,pageSize},options]=await Promise.all([listPimProducts(filters),listPimFilterOptions()]);
+  const pages=Math.max(1,Math.ceil(total/pageSize)); const query=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(typeof v==="string"&&k!=="page")query.set(k,v)});
+  return <>
+    <div className="mb-5 flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-semibold uppercase tracking-wide text-[#ff6a00]">Catálogo enriquecido</p><h1 className="text-2xl font-bold text-[#071f5c]">Produtos</h1><p className="text-sm text-slate-600">{total.toLocaleString("pt-BR")} produtos encontrados</p></div><Link href="/admin/pim" className="rounded-xl bg-[#0c2d72] px-4 py-2 text-sm font-semibold text-white">Abrir fila de revisão</Link></div>
+    <form className="mb-5 grid gap-3 rounded-xl border bg-white p-4 md:grid-cols-4 xl:grid-cols-8">
+      <label className="md:col-span-2">Busca<input name="q" defaultValue={filters.query} placeholder="Nome, SKU ou GTIN" className="mt-1 w-full rounded-xl border px-3 py-2"/></label>
+      <label>Marca<select name="brand" defaultValue={filters.brand} className="mt-1 w-full rounded-xl border px-3 py-2"><option value="">Todas</option>{options.brands.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+      <label>Categoria<select name="category" defaultValue={filters.category} className="mt-1 w-full rounded-xl border px-3 py-2"><option value="">Todas</option>{options.categories.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+      <label>Status<select name="status" defaultValue={filters.status} className="mt-1 w-full rounded-xl border px-3 py-2"><option value="">Todos</option>{PIM_STATUSES.map(x=><option key={x} value={x}>{statusLabel(x)}</option>)}</select></label>
+      <label>Imagem<select name="image" defaultValue={filters.image} className="mt-1 w-full rounded-xl border px-3 py-2"><option value="">Todas</option><option value="with">Com imagem</option><option value="without">Sem imagem</option></select></label>
+      <label>GTIN<select name="gtin" defaultValue={filters.gtin} className="mt-1 w-full rounded-xl border px-3 py-2"><option value="">Todos</option><option value="with">Com GTIN</option><option value="without">Sem GTIN</option></select></label>
+      <div className="flex items-end gap-2"><button className="rounded-xl bg-[#ff6a00] px-4 py-2 font-semibold text-white">Filtrar</button><Link href="/admin/products" className="rounded-xl border px-3 py-2">Limpar</Link></div>
+    </form>
+    <div className="overflow-x-auto rounded-xl border bg-white"><table className="min-w-[1100px] w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-600"><tr>{["Produto","SKU / GTIN","Marca / categoria","Preço","Estoque","PIM","Pendências","Atualização"].map(x=><th key={x} className="px-4 py-3">{x}</th>)}</tr></thead><tbody className="divide-y">{items.map(item=><tr key={item.id} className="hover:bg-blue-50/40"><td className="px-4 py-3"><div className="flex items-center gap-3"><Image src={item.imageUrl??"/images/placeholders/product-placeholder.svg"} alt="" width={48} height={48} unoptimized className="h-12 w-12 rounded-lg object-contain"/><Link href={`/admin/products/${item.id}`} className="max-w-sm font-semibold text-[#0c2d72] hover:underline">{item.name}</Link></div></td><td className="px-4 py-3"><strong>{item.sku}</strong><br/><span className="text-slate-500">{item.gtin??"Sem GTIN"}</span></td><td className="px-4 py-3">{item.brand??"—"}<br/><span className="text-slate-500">{item.category??"—"}</span></td><td className="px-4 py-3">{money(item.priceMinor,item.currency)}<span className="block text-xs text-slate-500">somente leitura</span></td><td className="px-4 py-3">{item.stock??"—"}<span className="block text-xs text-slate-500">somente leitura</span></td><td className="px-4 py-3"><span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">{statusLabel(item.status)}</span></td><td className="px-4 py-3">{item.pendingCount}</td><td className="px-4 py-3">{new Date(item.updatedAt).toLocaleDateString("pt-BR")}</td></tr>)}</tbody></table>{items.length===0&&<p className="p-10 text-center text-slate-500">Nenhum produto corresponde aos filtros.</p>}</div>
+    <nav aria-label="Paginação" className="mt-5 flex justify-between"><span className="text-sm text-slate-600">Página {page} de {pages}</span><div className="flex gap-2">{page>1&&<Link className="rounded-xl border bg-white px-4 py-2" href={`?${new URLSearchParams([...query,["page",String(page-1)]])}`}>Anterior</Link>}{page<pages&&<Link className="rounded-xl border bg-white px-4 py-2" href={`?${new URLSearchParams([...query,["page",String(page+1)]])}`}>Próxima</Link>}</div></nav>
+  </>;
+}
