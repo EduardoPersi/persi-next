@@ -137,6 +137,28 @@ export function CheckoutShippingPlaceholder() {
       setMessage("Não encontramos uma opção de entrega para este endereço.");
       return;
     }
+    // O WooCommerce nem sempre mantém uma tarifa selecionada ao recalcular o
+    // pacote para o novo endereço (ex.: cliente logado cuja sessão já tinha
+    // um endereço anterior associado) — sem isto, "Avançar" ficava travado
+    // indefinidamente até o cliente reeditar o CEP na esperança de que o
+    // próximo cálculo viesse com uma tarifa selecionada. Seleciona a
+    // primeira tarifa do primeiro pacote como padrão para nunca deixar o
+    // cliente sem opção nenhuma marcada.
+    if (!hasSelectedShippingRate(packages)) {
+      const [firstPackage] = packages;
+      const [firstRate] = firstPackage?.rates ?? [];
+      if (firstPackage && firstRate) {
+        const selectResult = await selectShippingRate(
+          firstPackage.packageId,
+          firstRate.rateId,
+        );
+        if (!selectResult.success) {
+          setStatus("error");
+          setMessage(selectResult.message);
+          return;
+        }
+      }
+    }
     reset(getValues(), {
       keepErrors: true,
       keepIsSubmitted: true,
