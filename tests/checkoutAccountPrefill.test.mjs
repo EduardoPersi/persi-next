@@ -22,7 +22,8 @@ function makeAddress(overrides = {}) {
     lastName: "Pereira",
     company: "",
     address1: "Rua Coronel Leme da Fonseca, 426",
-    address2: "Centro",
+    neighborhood: "Centro",
+    address2: "Apto 12",
     city: "Jundiaí",
     state: "sp",
     postcode: "13201031",
@@ -66,7 +67,7 @@ test("endereço de cobrança da conta preenche billingAddress; número e complem
 
   assert.equal(result.billingAddress.addressLine1, "Rua Coronel Leme da Fonseca, 426");
   assert.equal(result.billingAddress.number, "");
-  assert.equal(result.billingAddress.addressLine2, "");
+  assert.equal(result.billingAddress.addressLine2, "Apto 12");
   assert.equal(result.billingAddress.neighborhood, "Centro");
   assert.equal(result.billingAddress.city, "Jundiaí");
   assert.equal(result.billingAddress.state, "SP");

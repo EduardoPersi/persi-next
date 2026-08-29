@@ -73,25 +73,39 @@ final class CustomerWorkspaceService {
 		return array(
 			'id' => $type, 'type' => $type, 'label' => 'billing' === $type ? 'Cobrança' : 'Entrega',
 			'firstName' => $get( 'first_name' ), 'lastName' => $get( 'last_name' ), 'company' => $get( 'company' ),
-			'address1' => $get( 'address_1' ), 'address2' => $get( 'address_2' ), 'city' => $get( 'city' ),
+			'address1' => $get( 'address_1' ),
+			'neighborhood' => (string) get_user_meta( $customer->get_id(), "{$type}_neighborhood", true ),
+			'address2' => $get( 'address_2' ), 'city' => $get( 'city' ),
 			'state' => $get( 'state' ), 'postcode' => $get( 'postcode' ), 'country' => $get( 'country' ),
 			'phone' => 'billing' === $type ? $get( 'phone' ) : '', 'isPrimary' => $primary === $type,
 		);
 	}
 
-	public function update_address( \WP_User $user, string $type, array $input ): array {
-		$customer = new \WC_Customer( $user->ID );
+	private function apply_address_fields( \WC_Customer $customer, string $type, array $input ): void {
 		foreach ( array( 'first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'state', 'postcode', 'country' ) as $field ) {
 			$key = lcfirst( str_replace( '_', '', ucwords( $field, '_' ) ) );
 			$customer->{"set_{$type}_{$field}"}( $input[ $key ] );
 		}
 		if ( 'billing' === $type ) $customer->set_billing_phone( $input['phone'] );
+	}
+
+	// A loja usa um único endereço (cobrança = entrega): grava sempre nos
+	// dois tipos nativos do WooCommerce, mesmo a conta expondo um único
+	// formulário — evita que algo que ainda leia shipping_* separadamente
+	// (histórico de pedidos, transferência de carrinho) fique dessincronizado.
+	public function update_address( \WP_User $user, string $type, array $input ): array {
+		unset( $type );
+		$customer = new \WC_Customer( $user->ID );
+		foreach ( array( 'billing', 'shipping' ) as $addressType ) {
+			$this->apply_address_fields( $customer, $addressType, $input );
+			update_user_meta( $user->ID, "{$addressType}_neighborhood", $input['neighborhood'] );
+		}
 		$customer->save();
 		return $this->addresses( $user );
 	}
 
 	public function clear_address( \WP_User $user, string $type ): array {
-		$empty = array_fill_keys( array( 'firstName','lastName','company','address1','address2','city','state','postcode','country','phone' ), '' );
+		$empty = array_fill_keys( array( 'firstName','lastName','company','address1','neighborhood','address2','city','state','postcode','country','phone' ), '' );
 		return $this->update_address( $user, $type, $empty );
 	}
 

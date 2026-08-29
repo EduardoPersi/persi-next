@@ -6,16 +6,12 @@ import type { CheckoutAddress, CheckoutFormValues } from "@/types/checkout";
 import { formatBrazilianCpf, formatBrazilianPhone } from "../formatting/personalData.ts";
 import { formatPostcode } from "./shippingCalculator.ts";
 
-// O cadastro da conta (WooCommerce) guarda o endereço em só dois campos de
-// texto — `address1` (rua) e `address2` (bairro + complemento, já
-// combinados por mapCheckoutFormToWooAddress) — sem separar número nem
-// bairro/complemento como o formulário do checkout faz. Não existe forma
-// confiável de "desfazer" essa combinação sem arriscar interpretar errado
-// um endereço real, então o valor inteiro de `address1` vai para
-// `addressLine1` e o de `address2` vai para `neighborhood` (é o campo que
-// a validação de endereço completo exige) — "Número" e "Complemento"
-// continuam em branco para o cliente confirmar, exatamente como já
-// acontece quando o endereço vem do preenchimento automático por CEP.
+// O cadastro da conta (WooCommerce) guarda bairro num campo próprio
+// (`{tipo}_neighborhood`, meta separada — a Woo não tem esse campo nativo)
+// e `address2` continua sendo só o complemento, mesma semântica do
+// formulário do checkout. "Número" continua em branco para o cliente
+// confirmar, exatamente como já acontece quando o endereço vem do
+// preenchimento automático por CEP.
 function toCheckoutAddress(
   address: CustomerWorkspaceAddress | undefined,
 ): CheckoutAddress | null {
@@ -25,8 +21,8 @@ function toCheckoutAddress(
     postalCode: formatPostcode(address.postcode ?? ""),
     addressLine1: address.address1.trim(),
     number: "",
-    addressLine2: "",
-    neighborhood: address.address2?.trim() ?? "",
+    addressLine2: address.address2?.trim() ?? "",
+    neighborhood: address.neighborhood?.trim() ?? "",
     city: address.city?.trim() ?? "",
     state: address.state?.trim().toUpperCase() ?? "",
     country: "BR",

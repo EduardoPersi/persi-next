@@ -24,6 +24,7 @@ export interface CustomerWorkspaceAddress {
   lastName: string;
   company: string;
   address1: string;
+  neighborhood: string;
   address2: string;
   city: string;
   state: string;

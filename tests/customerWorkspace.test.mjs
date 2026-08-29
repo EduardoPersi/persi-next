@@ -23,8 +23,8 @@ test("todas as páginas privadas usam noindex e Customer Workspace",()=>{
 test("perfil, endereços e lista de espera possuem operações reais",()=>{
   assert.match(read("components/Account/CustomerProfileForm.tsx"),/method: "PUT"/);
   const addresses=read("components/Account/CustomerAddresses.tsx");
-  assert.match(addresses,/method:"PUT"/);
-  assert.match(addresses,/method:"DELETE"/);
-  assert.match(addresses,/Definir principal/);
+  assert.match(addresses,/method: "PUT"/);
+  assert.match(addresses,/method: "DELETE"/);
+  assert.match(addresses,/Bairro/);
   assert.match(read("components/Account/StockNotificationList.tsx"),/method:"DELETE"/);
 });

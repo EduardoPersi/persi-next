@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { usePostcodeAddressLookup } from "@/hooks/usePostcodeAddressLookup";
 import { formatPostcode, normalizePostcode } from "@/lib/commerce/shippingCalculator";
@@ -35,6 +35,7 @@ export function CheckoutAddressFields({
   const autocompletePrefix = isBilling ? "billing" : "shipping";
   const postalCodeRegistration = register(`${prefix}.postalCode`);
 
+  const postalCode = useWatch({ control, name: `${prefix}.postalCode` });
   const addressLine1 = useWatch({ control, name: `${prefix}.addressLine1` });
   const neighborhood = useWatch({ control, name: `${prefix}.neighborhood` });
   const city = useWatch({ control, name: `${prefix}.city` });
@@ -42,6 +43,47 @@ export function CheckoutAddressFields({
   const hasResolvedAddress =
     !addressLookupFailed && Boolean(addressLine1 && city && state);
   const showAddressStep = hasResolvedAddress || addressLookupFailed;
+
+  // Endereço vindo pronto do carrinho/conta pode não ter bairro salvo (ex.:
+  // cadastro antigo cujo address_2 na Woo ficou vazio) — sem isto,
+  // "Avançar" ficava travado indefinidamente já que isAddressComplete exige
+  // bairro, e o campo nunca aparecia editável (só aparece quando a busca de
+  // CEP falha). Busca o bairro de novo pelo CEP já resolvido, do mesmo jeito
+  // que a digitação manual do CEP faz — sem exigir que o cliente reedite
+  // nada. Só cai para o campo manual (abaixo) se essa busca também não
+  // encontrar bairro para o CEP.
+  const neighborhoodBackfillAttempted = useRef(false);
+  const [neighborhoodBackfillFailed, setNeighborhoodBackfillFailed] =
+    useState(false);
+
+  useEffect(() => {
+    if (neighborhoodBackfillAttempted.current) return;
+    if (!hasResolvedAddress || neighborhood?.trim()) return;
+    if (normalizePostcode(postalCode ?? "").length !== 8) return;
+    neighborhoodBackfillAttempted.current = true;
+    void lookupPostcodeAddress(postalCode)
+      .then((address) => {
+        if (address?.address2) {
+          setValue(`${prefix}.neighborhood`, address.address2, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+        } else {
+          setNeighborhoodBackfillFailed(true);
+        }
+      })
+      .catch(() => setNeighborhoodBackfillFailed(true));
+  }, [
+    hasResolvedAddress,
+    neighborhood,
+    postalCode,
+    lookupPostcodeAddress,
+    setValue,
+    prefix,
+  ]);
+
+  const missingNeighborhood =
+    hasResolvedAddress && !neighborhood?.trim() && neighborhoodBackfillFailed;
 
   const handlePostalCodeChange = (value: string) => {
     const formatted = formatPostcode(value);
@@ -120,6 +162,19 @@ export function CheckoutAddressFields({
           <p className="text-sm text-black">
             {city} / {state}
           </p>
+        </div>
+      ) : null}
+
+      {missingNeighborhood ? (
+        <div className="sm:col-span-6">
+          <CheckoutField
+            id={`${kind}-neighborhood`}
+            label="Bairro"
+            required
+            registration={register(`${prefix}.neighborhood`)}
+            error={addressErrors?.neighborhood?.message}
+            autoComplete="address-level3"
+          />
         </div>
       ) : null}
 
