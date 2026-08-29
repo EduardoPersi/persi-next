@@ -46,7 +46,7 @@ export function CheckoutMobileOrderSummary({
   );
 
   return (
-    <div className="rounded-xl border border-blue-200 bg-white shadow-[0_8px_24px_rgba(59,130,246,0.10)] lg:hidden">
+    <div className="rounded-xl border border-secondary/25 bg-white shadow-[0_8px_24px_rgba(255,106,0,0.10)] lg:hidden">
       <button
         type="button"
         onClick={() => setIsExpanded((value) => !value)}

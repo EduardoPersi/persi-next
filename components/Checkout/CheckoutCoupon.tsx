@@ -70,7 +70,7 @@ export function CheckoutCoupon({
   if (embedded) {
     return (
       <details
-        className="group rounded-lg border border-blue-200 bg-white"
+        className="group rounded-lg border border-secondary/25 bg-white"
       >
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm text-slate-700 marker:content-none">
           <span>Tenho um cupom de desconto</span>

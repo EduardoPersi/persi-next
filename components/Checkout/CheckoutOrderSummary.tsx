@@ -38,7 +38,7 @@ export function CheckoutOrderSummary({
   return (
     <aside
       aria-labelledby="checkout-summary-title"
-      className="rounded-xl border border-blue-200 bg-white p-5 shadow-[0_8px_24px_rgba(59,130,246,0.10)] lg:sticky lg:top-6"
+      className="rounded-xl border border-secondary/25 bg-white p-5 shadow-[0_8px_24px_rgba(255,106,0,0.10)] lg:sticky lg:top-6"
     >
       <Link
         href="/carrinho"

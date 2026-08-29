@@ -30,7 +30,7 @@ export function CheckoutStepCard({
   onEdit,
   children,
 }: CheckoutStepCardProps) {
-  const borderClass = "border-blue-200";
+  const borderClass = "border-secondary/25";
   // No mobile só a etapa ativa fica visível — voltar para uma etapa
   // concluída é feito pelo CheckoutMobileStepper no topo, então o resumo
   // "done" aqui seria redundante; etapas futuras também ficam escondidas
@@ -42,7 +42,7 @@ export function CheckoutStepCard({
     return (
       <section
         className={clsx(
-          "overflow-hidden rounded-xl border bg-white shadow-[0_8px_24px_rgba(59,130,246,0.10)]",
+          "overflow-hidden rounded-xl border bg-white shadow-[0_8px_24px_rgba(255,106,0,0.10)]",
           borderClass,
           visibilityClass,
         )}
@@ -51,7 +51,7 @@ export function CheckoutStepCard({
           type="button"
           onClick={onEdit}
           aria-label={`Editar ${title}`}
-          className="flex w-full flex-col items-start gap-3 p-5 text-left transition-colors hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+          className="flex w-full flex-col items-start gap-3 p-5 text-left transition-colors hover:bg-secondary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
         >
           <span className="flex items-center gap-3">
             <span
@@ -75,7 +75,7 @@ export function CheckoutStepCard({
   return (
     <section
       className={clsx(
-        "rounded-xl border bg-white p-5 shadow-[0_8px_24px_rgba(59,130,246,0.10)]",
+        "rounded-xl border bg-white p-5 shadow-[0_8px_24px_rgba(255,106,0,0.10)]",
         borderClass,
         visibilityClass,
       )}
