@@ -23,16 +23,16 @@ export default async function CustomerListsPage() {
       <section aria-labelledby="customer-list-favorites">
         <Link
           href="/favoritos"
-          className="flex max-w-xl items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+          className="flex max-w-xl items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-50 text-[#ff6a00]">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-50 text-secondary">
             <Heart aria-hidden="true" />
           </span>
           <span>
-            <span id="customer-list-favorites" className="block font-bold text-[#071f5c]">
+            <span id="customer-list-favorites" className="block font-bold text-primary-hover">
               Favoritos
             </span>
-            <span className="mt-1 block text-sm text-slate-600">
+            <span className="mt-1 block text-sm text-muted">
               Consulte os produtos que você salvou.
             </span>
           </span>

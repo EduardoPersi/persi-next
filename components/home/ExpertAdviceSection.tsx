@@ -26,7 +26,7 @@ function BlogPostCard({ post }: { post: BlogPost }) {
   return (
     <Link
       href={getPostHref(post.slug)}
-      className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition duration-200 hover:-translate-y-1 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+      className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition duration-200 hover:-translate-y-1 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
     >
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
         <Image
@@ -54,15 +54,15 @@ function BlogPostCard({ post }: { post: BlogPost }) {
 
       <div className="flex flex-1 flex-col p-4">
         {metaLine ? (
-          <p className="text-xs font-medium text-slate-500">{metaLine}</p>
+          <p className="text-xs font-medium text-muted">{metaLine}</p>
         ) : null}
-        <h3 className="mt-1.5 line-clamp-2 text-base font-bold leading-5 text-slate-900">
+        <h3 className="mt-1.5 line-clamp-2 text-base font-bold leading-5 text-foreground">
           {post.title}
         </h3>
-        <p className="mt-2 line-clamp-3 flex-1 text-sm leading-5 text-slate-600">
+        <p className="mt-2 line-clamp-3 flex-1 text-sm leading-5 text-muted">
           {post.excerpt}
         </p>
-        <span className="mt-3 text-sm font-semibold text-[#ff6a00] group-hover:underline">
+        <span className="mt-3 text-sm font-semibold text-secondary group-hover:underline">
           Continuar lendo
         </span>
       </div>
@@ -78,7 +78,7 @@ export async function ExpertAdviceSection() {
     <section aria-labelledby="expert-advice-title" className="mt-12">
       <h2
         id="expert-advice-title"
-        className="text-xl font-bold text-[#0c2d72] sm:text-2xl"
+        className="text-xl font-bold text-primary sm:text-2xl"
       >
         Conselhos de especialistas
       </h2>

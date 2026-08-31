@@ -77,7 +77,7 @@ export function CheckoutMobileStepper({
             <span
               className={clsx(
                 "text-center text-[11px] font-medium leading-tight",
-                isActive ? "text-primary" : "text-slate-500",
+                isActive ? "text-primary" : "text-muted",
               )}
             >
               {step.label}

@@ -1,0 +1,21 @@
+import {extractMeasurements,normalizeMeasurement} from "./normalization.ts";
+
+export type CompatibilityClassification="GENERIC_APPLICATION_LANGUAGE"|"SOURCE_SUPPORTED_COMPATIBILITY"|"TECHNICAL_COMPATIBILITY_CLAIM"|"UNSUPPORTED_COMPATIBILITY_CLAIM"|"AMBIGUOUS_COMPATIBILITY"|"NOT_COMPATIBILITY_LANGUAGE";
+export type CompatibilityAudit={classification:CompatibilityClassification;decision:"PASS"|"REVIEW"|"BLOCK";reason:string;statement:string;sourceSupport:string[]};
+const fold=(value:string)=>value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("pt-BR");
+const domains=["hidraulic","eletric","jardim","drenagem","esgo","irrig","agua fria","conexao rosc","encaixe"];
+const compatibility=/\b(?:compativel|compatibilidade|serve|pode\s+ser\s+usad[oa]\s+com)\b/u,generic=/\b(?:indicad[oa]\s+para|para\s+uso\s+em|aplicacao\s+em|uso\s+em)\b/u,universal=/\b(?:qualquer|todos?\s+os|universal)\b/u,specific=/\b(?:sistema|linha|modelo|equipamento|marca|conexao|bitola|medida|dimensao)\b/u;
+const stopWords=new Set(["para","com","sem","uma","uns","das","dos","que","uso","geral","indicada","indicado","aplicacao","aplicacoes","produto","pontos","areas"]),tokens=(value:string)=>new Set(fold(value).match(/[a-z0-9]+/gu)?.map(token=>token.length>4&&token.endsWith("s")?token.slice(0,-1):token).filter(token=>token.length>=4&&!stopWords.has(token))??[]);
+
+export function classifyCompatibilityStatement(statement:string,sources:readonly string[]):CompatibilityAudit{
+ const text=fold(statement),source=fold(sources.join(" ")),sourceMeasurements=extractMeasurements(source).map(value=>normalizeMeasurement(value.normalized).toLocaleLowerCase("pt-BR")),statementMeasurements=extractMeasurements(text).map(value=>normalizeMeasurement(value.normalized).toLocaleLowerCase("pt-BR")),supportedMeasurements=statementMeasurements.filter(value=>sourceMeasurements.some(candidate=>candidate===value||new RegExp(`(?:^|\\s)${value.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}(?:$|\\s)`,"u").test(candidate))),supportedDomains=domains.filter(value=>text.includes(value)&&source.includes(value));
+ const result=(classification:CompatibilityClassification,decision:CompatibilityAudit["decision"],reason:string,sourceSupport:string[]=[]):CompatibilityAudit=>({classification,decision,reason,statement,sourceSupport});
+ if(!compatibility.test(text)&&!generic.test(text))return result("NOT_COMPATIBILITY_LANGUAGE","PASS","NO_COMPATIBILITY_PROPOSITION");
+ if(generic.test(text)&&!compatibility.test(text)){const sourceTokens=tokens(source),shared=[...tokens(text)].filter(token=>sourceTokens.has(token));if(/\buso\s+geral\b/u.test(text)||supportedDomains.length||supportedMeasurements.length||shared.length)return result("GENERIC_APPLICATION_LANGUAGE","PASS","GENERIC_APPLICATION_SUPPORTED_BY_SOURCE",[...supportedDomains,...supportedMeasurements,...shared]);return result("AMBIGUOUS_COMPATIBILITY","REVIEW","GENERIC_APPLICATION_WITHOUT_CLEAR_SOURCE_DOMAIN");}
+ if(universal.test(text))return result("UNSUPPORTED_COMPATIBILITY_CLAIM","BLOCK","UNIVERSAL_COMPATIBILITY_REQUIRES_EXPLICIT_EVIDENCE");
+ if(statementMeasurements.length){if(supportedMeasurements.length===statementMeasurements.length)return result("SOURCE_SUPPORTED_COMPATIBILITY","PASS","ALL_COMPATIBILITY_MEASUREMENTS_SUPPORTED",supportedMeasurements);return result("UNSUPPORTED_COMPATIBILITY_CLAIM","BLOCK","COMPATIBILITY_MEASUREMENT_NOT_SUPPORTED",supportedMeasurements);}
+ if(specific.test(text)){const significant=(text.match(/[a-z0-9]+/gu)??[]).filter(value=>value.length>=3&&!/^(?:com|para|sistema|linha|modelo|equipamento|marca|conexao|bitola|medida|dimensao|compativel|compatibilidade)$/.test(value)),support=significant.filter(value=>source.includes(value));if(support.length>=1)return result("SOURCE_SUPPORTED_COMPATIBILITY","PASS","SPECIFIC_TARGET_SUPPORTED_BY_SOURCE",support);return result("TECHNICAL_COMPATIBILITY_CLAIM","BLOCK","SPECIFIC_TARGET_REQUIRES_MATCHING_EVIDENCE",support);}
+ return result("AMBIGUOUS_COMPATIBILITY","REVIEW","COMPATIBILITY_TARGET_AMBIGUOUS");
+}
+
+export function auditCompatibilityText(text:string,sources:readonly string[]){return text.split(/(?<=[.!?;])\s+|\n+/u).map(value=>value.trim()).filter(Boolean).map(value=>classifyCompatibilityStatement(value,sources)).filter(value=>value.classification!=="NOT_COMPATIBILITY_LANGUAGE");}

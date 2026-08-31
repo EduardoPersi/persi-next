@@ -63,7 +63,7 @@ export function CheckoutCoupon({
           ))}
         </ul>
       ) : null}
-      {message ? <p className="mt-2 text-xs text-slate-600" role="status">{message}</p> : null}
+      {message ? <p className="mt-2 text-xs text-muted" role="status">{message}</p> : null}
     </>
   );
 
@@ -72,7 +72,7 @@ export function CheckoutCoupon({
       <details
         className="group rounded-lg border border-secondary/25 bg-white"
       >
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm text-slate-700 marker:content-none">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm text-foreground marker:content-none">
           <span>Tenho um cupom de desconto</span>
           <ChevronDown
             size={18}
@@ -90,7 +90,7 @@ export function CheckoutCoupon({
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4" aria-labelledby={titleId}>
-      <h3 id={titleId} className="text-sm font-semibold text-slate-900">Cupom</h3>
+      <h3 id={titleId} className="text-sm font-semibold text-foreground">Cupom</h3>
       <div className="mt-3">{content}</div>
     </section>
   );

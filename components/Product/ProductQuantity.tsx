@@ -43,7 +43,7 @@ export function ProductQuantity({
         id={labelId}
         className={
           showLabel
-            ? "mb-2 block text-sm font-semibold text-slate-800"
+            ? "mb-2 block text-sm font-semibold text-foreground"
             : "sr-only"
         }
       >
@@ -73,7 +73,7 @@ export function ProductQuantity({
           disabled={value <= effectiveMin}
           aria-label="Diminuir quantidade"
           className={clsx(
-            "flex h-10 items-center justify-center text-xl font-medium text-[#0c2d72] transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0c2d72] disabled:cursor-not-allowed disabled:opacity-40",
+            "flex h-10 items-center justify-center text-xl font-medium text-primary transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40",
             compact ? "h-full min-w-0 w-full rounded-none" : "w-10 rounded-md",
           )}
         >
@@ -94,7 +94,7 @@ export function ProductQuantity({
           }}
           aria-label="Quantidade"
           className={clsx(
-            "h-10 appearance-none border-x border-slate-200 bg-white text-center text-base font-semibold text-slate-900 outline-none focus:border-[#0c2d72] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+            "h-10 appearance-none border-x border-slate-200 bg-white text-center text-base font-semibold text-foreground outline-none focus:border-primary [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
             compact ? "h-full min-w-0 w-full" : "w-14",
           )}
         />
@@ -106,7 +106,7 @@ export function ProductQuantity({
           disabled={!canIncrease}
           aria-label="Aumentar quantidade"
           className={clsx(
-            "flex h-10 items-center justify-center text-xl font-medium text-[#0c2d72] transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0c2d72] disabled:cursor-not-allowed disabled:opacity-40",
+            "flex h-10 items-center justify-center text-xl font-medium text-primary transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40",
             compact ? "h-full min-w-0 w-full rounded-none" : "w-10 rounded-md",
           )}
         >

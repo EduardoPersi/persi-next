@@ -79,7 +79,7 @@ export function HomeCategoryCarousel({
     >
       <h2
         id="home-categories-title"
-        className="text-2xl font-bold text-[#0c2d72]"
+        className="text-2xl font-bold text-primary"
       >
         Todas as categorias
       </h2>
@@ -127,7 +127,7 @@ export function HomeCategoryCarousel({
           <SwiperSlide key={category.id} className="h-auto!">
             <Link
               href={getCategoryHref(category, categories)}
-              className="tap-feedback group/item flex h-full w-full flex-col items-center rounded-[6px] py-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+              className="tap-feedback group/item flex h-full w-full flex-col items-center rounded-xl py-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               aria-label={`Ver categoria ${category.name}`}
             >
               <span className="flex aspect-square w-14 items-center justify-center overflow-hidden rounded-full bg-white p-1 ring-1 ring-slate-200 sm:w-16 lg:w-20">
@@ -140,7 +140,7 @@ export function HomeCategoryCarousel({
                   className="h-full w-full rounded-full object-contain transition-transform group-hover/item:scale-105"
                 />
               </span>
-              <span className="mt-2 line-clamp-3 text-xs font-medium leading-4 text-slate-700 sm:text-sm">
+              <span className="mt-2 line-clamp-3 text-xs font-medium leading-4 text-foreground sm:text-sm">
                 {category.name}
               </span>
             </Link>
@@ -150,7 +150,7 @@ export function HomeCategoryCarousel({
 
       <button
         type="button"
-        className={`${previousClass} absolute top-[4.75rem] left-0 z-10 h-10 w-10 -translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-slate-700 opacity-0 shadow-sm transition-opacity hover:text-[#ff6a00] focus-visible:opacity-100 ${
+        className={`${previousClass} absolute top-[4.75rem] left-0 z-10 h-10 w-10 -translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-foreground opacity-0 shadow-sm transition-opacity hover:text-secondary focus-visible:opacity-100 ${
           hasOverflow
             ? "hidden lg:flex lg:group-hover/categories:opacity-100"
             : "hidden"
@@ -163,7 +163,7 @@ export function HomeCategoryCarousel({
       </button>
       <button
         type="button"
-        className={`${nextClass} absolute top-[4.75rem] right-0 z-10 h-10 w-10 translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-slate-700 opacity-0 shadow-sm transition-opacity hover:text-[#ff6a00] focus-visible:opacity-100 ${
+        className={`${nextClass} absolute top-[4.75rem] right-0 z-10 h-10 w-10 translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-foreground opacity-0 shadow-sm transition-opacity hover:text-secondary focus-visible:opacity-100 ${
           hasOverflow
             ? "hidden lg:flex lg:group-hover/categories:opacity-100"
             : "hidden"

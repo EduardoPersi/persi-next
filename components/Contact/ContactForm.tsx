@@ -13,7 +13,7 @@ import {
 } from "@/lib/validation/contact";
 
 const inputClassName =
-  "min-h-11 w-full rounded-[6px] border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20";
+  "min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/20";
 
 type SubmissionState = "idle" | "submitting" | "success" | "error";
 
@@ -88,7 +88,7 @@ export function ContactForm() {
       </div>
 
       <div>
-        <label htmlFor="contact-name" className="mb-1.5 block text-sm font-medium text-slate-700">
+        <label htmlFor="contact-name" className="mb-1.5 block text-sm font-medium text-foreground">
           Nome
         </label>
         <input
@@ -109,7 +109,7 @@ export function ContactForm() {
       </div>
 
       <div>
-        <label htmlFor="contact-email" className="mb-1.5 block text-sm font-medium text-slate-700">
+        <label htmlFor="contact-email" className="mb-1.5 block text-sm font-medium text-foreground">
           E-mail
         </label>
         <EmailAutocompleteInput
@@ -129,7 +129,7 @@ export function ContactForm() {
       </div>
 
       <div>
-        <label htmlFor="contact-subject" className="mb-1.5 block text-sm font-medium text-slate-700">
+        <label htmlFor="contact-subject" className="mb-1.5 block text-sm font-medium text-foreground">
           Assunto
         </label>
         <select
@@ -147,7 +147,7 @@ export function ContactForm() {
       </div>
 
       <div>
-        <label htmlFor="contact-message" className="mb-1.5 block text-sm font-medium text-slate-700">
+        <label htmlFor="contact-message" className="mb-1.5 block text-sm font-medium text-foreground">
           Mensagem
         </label>
         <textarea
@@ -169,13 +169,13 @@ export function ContactForm() {
       <button
         type="submit"
         disabled={state === "submitting"}
-        className="inline-flex h-12 w-full items-center justify-center rounded-[6px] bg-[#ff6a00] px-4 text-base font-bold uppercase text-white transition-colors hover:bg-[#e85f00] active:bg-[#cc5200] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+        className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-secondary px-4 text-base font-bold uppercase text-white transition-colors hover:bg-secondary-hover active:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
       >
         {state === "submitting" ? "Enviando..." : "Enviar"}
       </button>
 
       <p
-        className={`text-sm ${state === "success" ? "text-emerald-700" : "text-slate-600"}`}
+        className={`text-sm ${state === "success" ? "text-emerald-700" : "text-muted"}`}
         role="status"
         aria-live="polite"
       >

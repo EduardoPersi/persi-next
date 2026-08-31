@@ -14,7 +14,7 @@ export function CheckoutOrderNote() {
 
   return (
     <div className="border-t border-slate-200 pt-5">
-      <label className="flex min-h-11 items-start gap-3 text-xs text-black">
+      <label className="flex min-h-11 items-start gap-3 text-xs text-foreground">
         <input
           type="checkbox"
           {...register("includeOrderNote")}
@@ -27,7 +27,7 @@ export function CheckoutOrderNote() {
         <div className="mt-3">
           <label
             htmlFor="checkout-order-note"
-            className="mb-1.5 block text-xs font-medium text-black"
+            className="mb-1.5 block text-xs font-medium text-foreground"
           >
             Observações do pedido
           </label>
@@ -39,7 +39,7 @@ export function CheckoutOrderNote() {
             aria-invalid={Boolean(errors.orderNote)}
             aria-describedby={errors.orderNote ? errorId : undefined}
             {...register("orderNote")}
-            className="w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-black outline-none transition focus:border-primary aria-[invalid=true]:border-danger"
+            className="w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary aria-[invalid=true]:border-danger"
           />
           {errors.orderNote ? (
             <p id={errorId} className="mt-1.5 text-xs text-danger">

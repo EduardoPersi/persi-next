@@ -36,7 +36,7 @@ export function CartPage() {
   if (isLoading && !cart) {
     return (
       <div
-        className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600"
+        className="rounded-xl border border-slate-200 bg-white p-8 text-center text-muted"
         role="status"
         aria-live="polite"
       >
@@ -48,12 +48,12 @@ export function CartPage() {
   if (!cart?.items.length) {
     return (
       <section className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-        <h2 className="text-xl font-bold text-[#0c2d72]">
+        <h2 className="text-xl font-bold text-primary">
           Seu carrinho está vazio
         </h2>
         <Link
           href="/"
-          className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-[#0c2d72] px-5 font-medium text-white transition hover:bg-[#17439f]"
+          className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 font-medium text-white transition hover:bg-primary-hover"
         >
           Continuar comprando
         </Link>
@@ -90,12 +90,12 @@ export function CartPage() {
                   {productHref ? (
                     <Link
                       href={productHref}
-                      className="line-clamp-2 text-sm font-semibold leading-5 text-slate-900 hover:text-[#ff6a00] md:text-base"
+                      className="line-clamp-2 text-sm font-semibold leading-5 text-foreground hover:text-secondary md:text-base"
                     >
                       {item.name}
                     </Link>
                   ) : (
-                    <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-slate-900 md:text-base">
+                    <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground md:text-base">
                       {item.name}
                     </h3>
                   )}
@@ -103,7 +103,7 @@ export function CartPage() {
                   {item.freeShipping ? <div className="mt-2"><FreeShippingBadge compact /></div> : null}
 
                   {item.variation.length > 0 ? (
-                    <dl className="mt-1 text-xs text-slate-600 md:mt-2 md:text-sm">
+                    <dl className="mt-1 text-xs text-muted md:mt-2 md:text-sm">
                       {item.variation.map((attribute) => (
                         <div key={`${attribute.attribute}-${attribute.value}`}>
                           <dt className="inline font-medium">
@@ -115,18 +115,18 @@ export function CartPage() {
                     </dl>
                   ) : null}
 
-                  <p className="mt-3 hidden text-sm text-slate-600 md:block">
+                  <p className="mt-3 hidden text-sm text-muted md:block">
                     Preço unitário: {formatter.format(item.price)}
                   </p>
                   <dl className="mt-3 space-y-2 text-sm md:hidden">
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="text-slate-500">Preço</dt>
-                      <dd className="text-slate-600">
+                      <dt className="text-muted">Preço</dt>
+                      <dd className="text-muted">
                         {formatter.format(item.price)}
                       </dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="text-slate-500">Quantidade</dt>
+                      <dt className="text-muted">Quantidade</dt>
                       <dd className="shrink-0">
                         <QuantitySelect item={item} idSuffix="cart-mobile" />
                       </dd>
@@ -147,8 +147,8 @@ export function CartPage() {
                     <Trash2 className="h-4 w-4 shrink-0" aria-hidden="true" />
                     <span>{isPending ? "Removendo..." : "Remover"}</span>
                   </button>
-                  <p className="whitespace-nowrap font-bold text-[#0c2d72] md:text-slate-900">
-                    <span className="mr-2 font-normal text-slate-500 md:hidden">
+                  <p className="whitespace-nowrap font-bold text-primary md:text-foreground">
+                    <span className="mr-2 font-normal text-muted md:hidden">
                       Subtotal:
                     </span>
                     <AnimatedValue animationKey={item.total}>
@@ -166,9 +166,9 @@ export function CartPage() {
       </section>
 
       <aside className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-[#0c2d72]">Resumo do pedido</h2>
+        <h2 className="text-xl font-bold text-primary">Resumo do pedido</h2>
         <div className="mt-5 flex items-center justify-between border-b border-slate-200 pb-4">
-          <span className="text-slate-600">Subtotal dos produtos</span>
+          <span className="text-muted">Subtotal dos produtos</span>
           <strong>
             <AnimatedValue animationKey={cart.subtotal}>
               {formatter.format(cart.subtotal)}
@@ -183,8 +183,8 @@ export function CartPage() {
         </div>
         <dl className="mt-5 space-y-3 border-t border-slate-200 pt-4 text-sm">
           <div className="flex justify-between gap-4">
-            <dt className="text-slate-600">Frete</dt>
-            <dd className="font-semibold text-slate-900">
+            <dt className="text-muted">Frete</dt>
+            <dd className="font-semibold text-foreground">
               {cart.hasCalculatedShipping
                 ? isZeroMoney(cart.totals.shipping)
                   ? "Grátis"
@@ -197,7 +197,7 @@ export function CartPage() {
           ) : null}
           {!isZeroMoney(cart.totals.discount) ? (
             <div className="checkout-discount-enter flex justify-between gap-4">
-              <dt className="text-slate-600">Descontos</dt>
+              <dt className="text-muted">Descontos</dt>
               <dd className="font-semibold text-emerald-700">
                 <AnimatedValue animationKey={cart.totals.discount.value}>
                   -{formatStoreMoney(cart.totals.discount)}
@@ -207,7 +207,7 @@ export function CartPage() {
           ) : null}
           {pixAdjustment ? (
             <div className="checkout-discount-enter flex justify-between gap-4">
-              <dt className="text-slate-600">Desconto Pix</dt>
+              <dt className="text-muted">Desconto Pix</dt>
               <dd className="font-semibold text-emerald-700">
                 <AnimatedValue animationKey={pixAdjustment.total.value}>
                   {formatStoreMoney(pixAdjustment.total)}
@@ -216,8 +216,8 @@ export function CartPage() {
             </div>
           ) : null}
           <div className="flex justify-between gap-4 border-t border-slate-200 pt-3 text-base">
-            <dt className="font-bold text-[#0c2d72]">Total</dt>
-            <dd className="font-bold text-[#0c2d72]">
+            <dt className="font-bold text-primary">Total</dt>
+            <dd className="font-bold text-primary">
               <AnimatedValue animationKey={cart.totals.price.value}>
                 {formatStoreMoney(cart.totals.price)}
               </AnimatedValue>
@@ -228,12 +228,12 @@ export function CartPage() {
           type="button"
           disabled={isLoading || Boolean(pendingItemKey) || isPreparingCheckout}
           onClick={() => void prepareCheckout()}
-          className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-[#ff6a00] px-4 font-semibold text-white transition hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-200 disabled:text-slate-500"
+          className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-secondary px-4 font-semibold text-white transition hover:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-200 disabled:text-muted"
         >
           {isPreparingCheckout ? "Preparando checkout..." : "Finalizar compra"}
         </button>
         <p
-          className={`mt-2 text-center text-sm ${checkoutError ? "text-red-700" : "text-slate-500"}`}
+          className={`mt-2 text-center text-sm ${checkoutError ? "text-red-700" : "text-muted"}`}
           role="status"
         >
           {checkoutError || "Você será direcionado ao checkout seguro."}

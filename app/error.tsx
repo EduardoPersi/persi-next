@@ -20,17 +20,17 @@ export default function ErrorPage({
   return (
     <main className="flex min-h-[60vh] items-center justify-center bg-slate-50 px-4 py-12">
       <section className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm sm:p-8">
-        <h1 className="text-2xl font-bold text-[#071f5c]">
+        <h1 className="text-2xl font-bold text-primary-hover">
           Não foi possível carregar esta página
         </h1>
-        <p className="mt-3 text-slate-600">
+        <p className="mt-3 text-muted">
           Houve uma falha temporária ao consultar a loja. Você pode tentar novamente sem perder sua navegação.
         </p>
         <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
           <button
             type="button"
             onClick={reset}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#ff6a00] px-5 font-semibold text-white hover:bg-[#e65f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-secondary px-5 font-semibold text-white hover:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <RotateCcw className="h-5 w-5" aria-hidden="true" />
             Tentar novamente
@@ -38,14 +38,14 @@ export default function ErrorPage({
           <button
             type="button"
             onClick={() => window.history.back()}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#0c2d72] px-5 font-semibold text-[#0c2d72] hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-primary px-5 font-semibold text-primary hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             Voltar
           </button>
         </div>
         {error.digest ? (
-          <p className="mt-5 text-xs text-slate-500">Código: {error.digest}</p>
+          <p className="mt-5 text-xs text-muted">Código: {error.digest}</p>
         ) : null}
       </section>
     </main>

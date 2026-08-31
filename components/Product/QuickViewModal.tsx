@@ -165,14 +165,14 @@ export function QuickViewModal({
         aria-describedby={
           status === "error" ? "quick-view-error" : undefined
         }
-        className="relative grid max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[6px] bg-white shadow-xl lg:grid-cols-[45%_55%]"
+        className="relative grid max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-xl bg-white shadow-xl lg:grid-cols-[45%_55%]"
       >
         <button
           ref={closeButtonRef}
           type="button"
           onClick={onClose}
           aria-label="Fechar visualização rápida"
-          className="sticky right-3 top-3 z-20 ml-auto mr-3 mt-3 flex h-10 w-10 items-center justify-center rounded-[6px] bg-white text-slate-700 shadow-sm hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] lg:absolute"
+          className="sticky right-3 top-3 z-20 ml-auto mr-3 mt-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white text-foreground shadow-sm hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:absolute"
         >
           <X className="h-5 w-5" aria-hidden="true" />
         </button>
@@ -186,22 +186,22 @@ export function QuickViewModal({
               Visualização rápida
             </h2>
             <span className="sr-only">Carregando visualização rápida...</span>
-            <div className="aspect-square rounded-[6px] bg-slate-100" />
+            <div className="aspect-square rounded-xl bg-slate-100" />
             <div className="space-y-4 pt-8">
-              <div className="h-8 w-4/5 rounded-[6px] bg-slate-100" />
-              <div className="h-6 w-2/5 rounded-[6px] bg-slate-100" />
-              <div className="h-12 w-full rounded-[6px] bg-slate-100" />
+              <div className="h-8 w-4/5 rounded-xl bg-slate-100" />
+              <div className="h-6 w-2/5 rounded-xl bg-slate-100" />
+              <div className="h-12 w-full rounded-xl bg-slate-100" />
             </div>
           </div>
         ) : status === "error" || !product ? (
           <div className="col-span-full flex min-h-80 flex-col items-center justify-center p-8 text-center">
             <h2
               id="quick-view-title"
-              className="text-xl font-bold text-[#0c2d72]"
+              className="text-xl font-bold text-primary"
             >
               Visualização rápida
             </h2>
-            <p id="quick-view-error" className="mt-3 text-slate-600">
+            <p id="quick-view-error" className="mt-3 text-muted">
               Não foi possível carregar os detalhes deste produto.
             </p>
             <Button className="mt-5" onClick={retry}>
@@ -225,24 +225,24 @@ export function QuickViewModal({
 
             <div className="min-w-0 p-5 pt-2 sm:p-8 lg:pt-14">
               {product.brands[0]?.name ? (
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                   {product.brands[0].name}
                 </p>
               ) : null}
               <h2
                 id="quick-view-title"
-                className="mt-2 text-2xl font-bold leading-tight text-[#0c2d72]"
+                className="mt-2 text-2xl font-bold leading-tight text-primary"
               >
                 {product.name}
               </h2>
 
               <div className="mt-5 border-y border-slate-200 py-4">
                 {hasDiscount ? (
-                  <p className="text-sm text-slate-500 line-through">
+                  <p className="text-sm text-muted line-through">
                     {currencyFormatter.format(product.regularPrice!)}
                   </p>
                 ) : null}
-                <p className="text-2xl font-bold text-[#0c2d72]">
+                <p className="text-2xl font-bold text-primary">
                   {currencyFormatter.format(product.price)}
                 </p>
                 {product.pixPrice !== undefined ? (
@@ -251,11 +251,11 @@ export function QuickViewModal({
                   </p>
                 ) : null}
                 {product.installmentText ? (
-                  <p className="mt-1 text-sm font-medium text-slate-600">
+                  <p className="mt-1 text-sm font-medium text-muted">
                     {product.installmentText}
                   </p>
                 ) : product.commercialText ? (
-                  <p className="mt-1 text-sm font-medium text-slate-600">
+                  <p className="mt-1 text-sm font-medium text-muted">
                     {product.commercialText}
                   </p>
                 ) : null}
@@ -281,7 +281,7 @@ export function QuickViewModal({
                     size="lg"
                     onClick={handleAddToCart}
                     disabled={isAdding}
-                    className="h-[50px] min-h-[50px] w-full rounded-[6px] text-base sm:flex-1"
+                    className="h-[50px] min-h-[50px] w-full rounded-xl text-base sm:flex-1"
                   >
                     {isAdding ? "Adicionando..." : "Adicionar ao carrinho"}
                   </Button>
@@ -289,7 +289,7 @@ export function QuickViewModal({
               ) : (
                 <Link
                   href={getProductHref(product.slug)}
-                  className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-[6px] bg-[#0c2d72] px-5 text-center font-semibold text-white transition-colors hover:bg-[#17439f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+                  className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-5 text-center font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
                   {product.available &&
                   (product.type === "variable" || product.hasOptions)
@@ -299,7 +299,7 @@ export function QuickViewModal({
               )}
 
               <p
-                className="mt-2 min-h-5 text-sm text-slate-600"
+                className="mt-2 min-h-5 text-sm text-muted"
                 role="status"
                 aria-live="polite"
               >
@@ -308,7 +308,7 @@ export function QuickViewModal({
 
               <Link
                 href={getProductHref(product.slug)}
-                className="mt-3 inline-flex text-sm font-semibold text-[#0c2d72] underline underline-offset-4 hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                className="mt-3 inline-flex text-sm font-semibold text-primary underline underline-offset-4 hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 Ver detalhes do produto
               </Link>

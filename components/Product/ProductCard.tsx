@@ -134,10 +134,10 @@ export function ProductCard({
     <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition duration-200 hover:-translate-y-1 hover:shadow-md active:translate-y-0 active:shadow-sm">
       <Link
         href={href}
-        className="product-card-image-link relative block aspect-square overflow-hidden bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-inset"
+        className="product-card-image-link relative block aspect-square overflow-hidden bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
       >
         {badge ? (
-          <span className="absolute left-2 top-2 z-10 rounded-md bg-[#ff6a00] px-2 py-1 text-xs font-semibold text-white">
+          <span className="absolute left-2 top-2 z-10 rounded-md bg-secondary px-2 py-1 text-xs font-semibold text-white">
             {badge}
           </span>
         ) : null}
@@ -189,16 +189,16 @@ export function ProductCard({
       <div className="flex flex-1 flex-col p-4">
         <Link
           href={href}
-          className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+          className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
-          <h3 className="line-clamp-2 min-h-9 text-[13px] font-semibold leading-[18px] text-slate-800 transition-colors group-hover:text-[#ff6a00] md:min-h-10 md:text-sm md:leading-5">
+          <h3 className="line-clamp-2 min-h-9 text-[13px] font-semibold leading-[18px] text-slate-800 transition-colors group-hover:text-secondary md:min-h-10 md:text-sm md:leading-5">
             {name}
           </h3>
         </Link>
 
         <div className="mt-auto min-h-32 pt-3">
           {hasDiscount ? (
-            <p className="text-xs text-slate-500 line-through">
+            <p className="text-xs text-muted line-through">
               {formatCurrency(regularPrice, currencyCode)}
             </p>
           ) : (
@@ -212,7 +212,7 @@ export function ProductCard({
             </span>
           </p>
 
-          <div className="mt-1.5 text-[11px] font-medium leading-[15px] text-slate-600 md:text-xs md:leading-4">
+          <div className="mt-1.5 text-[11px] font-medium leading-[15px] text-muted md:text-xs md:leading-4">
             {payment.installments === 1 ? (
               <p>
                 ou {formatCurrency(payment.currentPrice, currencyCode)} sem

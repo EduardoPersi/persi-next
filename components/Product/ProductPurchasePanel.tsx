@@ -203,13 +203,13 @@ export function ProductPurchasePanel({
   return (
     <div className="min-w-0 max-w-full">
       <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
-        <h1 className="min-w-0 flex-1 text-2xl font-bold leading-tight text-[#0c2d72] sm:text-3xl">
+        <h1 className="min-w-0 flex-1 text-2xl font-bold leading-tight text-primary sm:text-3xl">
           {product.name}
         </h1>
         {brand?.image && brand.permalink ? (
           <a
             href={brand.permalink}
-            className="flex h-12 w-20 shrink-0 items-center justify-center rounded-[6px] border border-slate-200 bg-white p-2 transition-colors hover:border-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2 sm:h-16 sm:w-28"
+            className="flex h-12 w-20 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white p-2 transition-colors hover:border-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-16 sm:w-28"
             aria-label={`Conhecer a marca ${brand.name}`}
             title={`Conhecer a marca ${brand.name}`}
           >
@@ -224,11 +224,11 @@ export function ProductPurchasePanel({
           </a>
         ) : null}
       </div>
-      <p className="mt-3 text-sm text-slate-500">SKU: {product.sku}</p>
+      <p className="mt-3 text-sm text-muted">SKU: {product.sku}</p>
 
       <div className="mt-6 border-y border-slate-200 py-5">
         {hasDiscount ? (
-          <p className="text-sm text-slate-500 line-through">
+          <p className="text-sm text-muted line-through">
             {currencyFormatter.format(regularPrice)}
           </p>
         ) : null}
@@ -237,12 +237,12 @@ export function ProductPurchasePanel({
           <span className="ml-2 text-sm font-semibold">no Pix</span>
         </p>
         {payment.installments === 1 ? (
-          <p className="mt-2 text-sm font-medium leading-5 text-slate-600">
+          <p className="mt-2 text-sm font-medium leading-5 text-muted">
             ou {currencyFormatter.format(payment.currentPrice)} sem juros no
             cartão
           </p>
         ) : (
-          <p className="mt-2 text-sm font-medium leading-5 text-slate-600">
+          <p className="mt-2 text-sm font-medium leading-5 text-muted">
             ou {currencyFormatter.format(payment.currentPrice)} em até{" "}
             {payment.installments}x de{" "}
             {currencyFormatter.format(payment.installmentValue)} sem juros no
@@ -268,7 +268,7 @@ export function ProductPurchasePanel({
               : "Disponível"
             : "Em falta — consulte a disponibilidade"}
         </p>
-        <p className="mt-3 leading-7 text-slate-700">
+        <p className="mt-3 leading-7 text-foreground">
           {product.shortDescription}
         </p>
       </div>
@@ -281,7 +281,7 @@ export function ProductPurchasePanel({
               <div key={attributeName} className="mt-5">
                 <label
                   htmlFor={`variation-${attribute.id}`}
-                  className="mb-2 block text-sm font-medium text-slate-800"
+                  className="mb-2 block text-sm font-medium text-foreground"
                 >
                   {attribute.name} <span aria-hidden="true">*</span>
                 </label>
@@ -296,7 +296,7 @@ export function ProductPurchasePanel({
                     }));
                     setPurchaseMessage("");
                   }}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="">
                     Selecionar {attribute.name.toLocaleLowerCase("pt-BR")}
@@ -342,9 +342,9 @@ export function ProductPurchasePanel({
               />
               <Button
                 ref={mainPurchaseButtonRef}
-                variant="secondary"
+                variant="primary"
                 size="lg"
-                className="h-[50px] min-w-0 flex-1 rounded-[6px] text-xl font-medium"
+                className="h-[50px] min-w-0 flex-1 rounded-xl text-xl font-medium"
                 onClick={() => void handlePurchase()}
                 disabled={
                   isAdding ||
@@ -358,7 +358,7 @@ export function ProductPurchasePanel({
               </Button>
             </div>
             <p
-              className="mt-2 text-sm text-slate-600"
+              className="mt-2 text-sm text-muted"
               role="status"
               aria-live="polite"
             >
@@ -398,24 +398,24 @@ export function ProductPurchasePanel({
         </div>
       ) : null}
 
-      <ul className="mt-5 grid gap-3 text-sm text-slate-700 sm:grid-cols-3">
+      <ul className="mt-5 grid gap-3 text-sm text-foreground sm:grid-cols-3">
         <li className="flex items-center gap-2">
           <ShieldCheck
-            className="h-5 w-5 shrink-0 text-[#ff6a00]"
+            className="h-5 w-5 shrink-0 text-secondary"
             aria-hidden="true"
           />
           Compra segura
         </li>
         <li className="flex items-center gap-2">
           <Store
-            className="h-5 w-5 shrink-0 text-[#ff6a00]"
+            className="h-5 w-5 shrink-0 text-secondary"
             aria-hidden="true"
           />
           Retirada na loja
         </li>
         <li className="flex items-center gap-2">
           <Truck
-            className="h-5 w-5 shrink-0 text-[#ff6a00]"
+            className="h-5 w-5 shrink-0 text-secondary"
             aria-hidden="true"
           />
           Entrega para Jundiaí e região
@@ -434,7 +434,7 @@ export function ProductPurchasePanel({
         >
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:gap-4">
             <div className="hidden min-w-0 flex-1 md:block">
-              <p className="line-clamp-1 text-sm font-semibold text-slate-800">
+              <p className="line-clamp-1 text-sm font-semibold text-foreground">
                 {product.name}
               </p>
               <p className="mt-0.5 text-sm font-bold text-emerald-700">
@@ -451,9 +451,9 @@ export function ProductPurchasePanel({
                 showLabel={false}
               />
               <Button
-                variant="secondary"
+                variant="primary"
                 size="lg"
-                className="h-[50px] min-w-0 rounded-[6px] px-4 text-base font-medium sm:text-lg"
+                className="h-[50px] min-w-0 rounded-xl px-4 text-base font-medium sm:text-lg"
                 onClick={() => void handlePurchase()}
                 disabled={
                   isAdding ||

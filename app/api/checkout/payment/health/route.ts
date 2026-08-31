@@ -93,6 +93,7 @@ export async function GET(request: Request) {
       pixEnabled: capabilities.pix,
       boletoEnabled: capabilities.boleto,
       cardEnabled: capabilities.card,
+      walletEnabled: capabilities.wallet,
       ...configuration,
       oauthAuthenticated,
       pixReadAuthorized,

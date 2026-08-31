@@ -58,14 +58,14 @@ export function CheckoutContactForm() {
       <div className="sm:col-span-2">
         <label
           htmlFor="checkout-person-type"
-          className="mb-1.5 block text-xs font-medium text-black"
+          className="mb-1.5 block text-xs font-medium text-foreground"
         >
           Tipo de Pessoa
         </label>
         <select
           id="checkout-person-type"
           {...register("contact.personType")}
-          className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-black outline-none transition focus:border-primary"
+          className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
         >
           <option value="fisica">Pessoa Física</option>
           <option value="juridica">Pessoa Jurídica</option>

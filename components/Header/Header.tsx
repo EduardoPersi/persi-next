@@ -45,8 +45,8 @@ function HeaderLogo({ compact = false }: HeaderLogoProps) {
         priority
         className={
           compact
-            ? "h-auto w-[86px] max-w-full object-contain sm:w-[100px] md:w-[110px]"
-            : "h-9 w-auto max-w-full object-contain md:h-auto md:w-[110px]"
+            ? "h-auto w-[86px] max-w-full object-contain sm:w-[100px] md:w-[130px]"
+            : "h-10 w-auto max-w-full object-contain md:h-auto md:w-[130px]"
         }
       />
     </Link>
@@ -136,10 +136,10 @@ function HeaderActions({
       <Link
         href="/favoritos"
         aria-label={`Favoritos: ${favoritesCount} ${favoritesCount === 1 ? "produto" : "produtos"}`}
-        className="relative hidden min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-white transition-colors duration-150 hover:bg-white/10 hover:text-[#ff6a00] active:bg-white/20 active:text-[#ff6a00] md:flex"
+        className="relative hidden min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-white transition-colors duration-150 hover:bg-white/10 hover:text-secondary active:bg-white/20 active:text-secondary md:flex"
       >
         <Heart size={compact ? 21 : 24} />
-        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff6a00] px-1 text-[10px] font-bold leading-none text-white">{favoritesCount}</span>
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-white">{favoritesCount}</span>
       </Link>
 
       <IconButton
@@ -155,7 +155,7 @@ function HeaderActions({
         <ShoppingCart
           className={compact ? "h-6 w-6" : "h-6 w-6 md:h-7 md:w-7"}
         />
-        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff6a00] px-1 text-[10px] font-bold leading-none text-white">
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-white">
           {itemsCount}
         </span>
       </IconButton>
@@ -268,14 +268,17 @@ function HeaderContent() {
 
   return (
     <header ref={fullHeaderRef}>
-      <div className="bg-[#071f5c] text-white">
+      <div className="bg-primary-hover text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-4 pb-1 pt-[max(0.25rem,env(safe-area-inset-top))] text-center text-xs font-semibold sm:text-sm">
           <Truck size={16} className="shrink-0" />
-          <span>Frete grátis para Jundiaí e região. Consulte as regras!</span>
+          <span>
+            <span className="text-secondary">Frete grátis</span>{" "}
+            para Jundiaí e região. Consulte as regras!
+          </span>
         </div>
       </div>
 
-      <div className="bg-[#0c2d72] text-white">
+      <div className="bg-primary text-white md:bg-gradient-to-br md:from-primary md:to-primary-hover">
         <div className="mx-auto max-w-7xl px-4 md:py-3">
           <div className="grid h-14 grid-cols-[1fr_auto_1fr] items-center gap-2 md:flex md:h-auto md:justify-between md:gap-3">
             <IconButton
@@ -286,9 +289,9 @@ function HeaderContent() {
               className="justify-self-start lg:hidden"
             >
               {menuOpen ? (
-                <X className="h-6 w-6 md:h-[27px] md:w-[27px]" />
+                <X className="h-8 w-8" />
               ) : (
-                <Menu className="h-6 w-6 md:h-[27px] md:w-[27px]" />
+                <Menu className="h-8 w-8" />
               )}
             </IconButton>
 
@@ -322,7 +325,7 @@ function HeaderContent() {
         </div>
       </div>
 
-      <div className="hidden bg-[#ff6a00] text-white lg:block">
+      <div className="hidden bg-secondary text-white lg:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4">
           <MegaMenu />
           <a
@@ -339,7 +342,7 @@ function HeaderContent() {
         data-search-header
         aria-hidden={!showCompactHeader}
         inert={!showCompactHeader}
-        className={`fixed inset-x-0 top-0 z-40 bg-[#0c2d72] text-white shadow-lg transition-[transform,visibility] duration-300 ease-out ${
+        className={`fixed inset-x-0 top-0 z-40 bg-gradient-to-br from-primary to-primary-hover text-white shadow-lg transition-[transform,visibility] duration-300 ease-out ${
           showCompactHeader
             ? "visible translate-y-0"
             : "invisible -translate-y-full"
@@ -354,7 +357,7 @@ function HeaderContent() {
               onClick={() => setMenuOpen((current) => !current)}
               className="shrink-0 lg:hidden"
             >
-              {menuOpen ? <X size={24} /> : <Menu size={24} />}
+              {menuOpen ? <X size={32} /> : <Menu size={32} />}
             </IconButton>
             <HeaderLogo compact />
             <ProductSearch variant="desktop" />

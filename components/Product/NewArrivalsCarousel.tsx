@@ -75,11 +75,11 @@ export function NewArrivalsCarousel({ products }: NewArrivalsCarouselProps) {
       <div>
         <h2
           id="new-arrivals-title"
-          className="text-2xl font-bold text-[#0c2d72]"
+          className="text-2xl font-bold text-primary"
         >
           Novidades na loja
         </h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-muted">
           Os produtos mais recentes do nosso catálogo.
         </p>
       </div>
@@ -145,7 +145,7 @@ export function NewArrivalsCarousel({ products }: NewArrivalsCarouselProps) {
 
       <button
         type="button"
-        className={`${previousClass} absolute top-[calc(50%-0.5rem)] left-0 z-10 h-10 w-10 -translate-x-1/3 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 opacity-0 shadow-sm transition-opacity hover:text-[#ff6a00] focus-visible:opacity-100 ${
+        className={`${previousClass} absolute top-[calc(50%-0.5rem)] left-0 z-10 h-10 w-10 -translate-x-1/3 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground opacity-0 shadow-sm transition-opacity hover:text-secondary focus-visible:opacity-100 ${
           hasOverflow
             ? "hidden lg:flex lg:group-hover/new-arrivals:opacity-100"
             : "hidden"
@@ -158,7 +158,7 @@ export function NewArrivalsCarousel({ products }: NewArrivalsCarouselProps) {
       </button>
       <button
         type="button"
-        className={`${nextClass} absolute top-[calc(50%-0.5rem)] right-0 z-10 h-10 w-10 translate-x-1/3 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 opacity-0 shadow-sm transition-opacity hover:text-[#ff6a00] focus-visible:opacity-100 ${
+        className={`${nextClass} absolute top-[calc(50%-0.5rem)] right-0 z-10 h-10 w-10 translate-x-1/3 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground opacity-0 shadow-sm transition-opacity hover:text-secondary focus-visible:opacity-100 ${
           hasOverflow
             ? "hidden lg:flex lg:group-hover/new-arrivals:opacity-100"
             : "hidden"

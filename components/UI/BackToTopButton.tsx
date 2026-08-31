@@ -39,7 +39,7 @@ export function BackToTopButton() {
       aria-label="Voltar ao topo"
       aria-hidden={!isVisible}
       tabIndex={isVisible ? 0 : -1}
-      className={`fixed left-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#0c2d72] text-white shadow-lg transition-all hover:bg-[#17439f] hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2 md:left-8 ${
+      className={`fixed left-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-all hover:bg-primary-hover hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 md:left-8 ${
         bannerVisible ? "bottom-40" : "bottom-20"
       } ${
         isVisible

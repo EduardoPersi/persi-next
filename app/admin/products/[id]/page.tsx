@@ -3,8 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PimEditorialEditor } from "@/components/admin/PimEditorialEditor";
+import { PimEnrichmentPanel } from "@/components/admin/PimEnrichmentPanel";
+import { publicPimAiStatus, readPimAiConfig } from "@/lib/pim/ai-config";
 import { getPimProduct } from "@/lib/pim/repository";
-import { reviewSuggestion } from "./actions";
+import { extractDeterministicSuggestions, reviewSuggestion } from "./actions";
 
 function money(amount:string|null,currency:string|null){if(!amount)return "—";return new Intl.NumberFormat("pt-BR",{style:"currency",currency:currency??"BRL"}).format(Number(amount)/100);}
 function label(value:string){return value.replaceAll("_"," ");}
@@ -27,5 +29,6 @@ export default async function PimProductPage({params}:{params:Promise<{id:string
     <section id="section-4" className="mt-6 rounded-xl border bg-white p-5"><h2 className="text-lg font-bold text-[#071f5c]">Mídia</h2><p className="mt-2 text-sm text-slate-600">URLs permanecem no catálogo; nenhum binário é copiado. Apenas o alt editorial possui draft.</p>{product.imageUrl&&<code className="mt-3 block overflow-x-auto rounded bg-slate-100 p-3 text-xs">{product.imageUrl}</code>}</section>
     <section id="section-5" className="mt-6 rounded-xl border bg-white p-5"><h2 className="text-lg font-bold text-[#071f5c]">Origem e segurança</h2><p className="mt-2 text-sm text-slate-600">SKU, GTIN, preço, estoque, reservas e mappings permanecem operacionais e somente leitura.</p></section>
     <section id="section-6" className="mt-6 rounded-xl border bg-white p-5"><h2 className="text-lg font-bold text-[#071f5c]">Histórico</h2>{product.history.length===0?<p className="mt-2 text-sm text-slate-600">Nenhum evento editorial registrado.</p>:<ol className="mt-4 divide-y">{product.history.map(event=><li key={event.id} className="py-3"><p className="font-semibold">{label(event.operation)}</p><p className="text-sm text-slate-600">{new Date(event.createdAt).toLocaleString("pt-BR")} · {event.actorReference}</p>{event.reason&&<p className="mt-1 text-sm">{event.reason}</p>}</li>)}</ol>}</section>
+    <PimEnrichmentPanel productId={product.id} sourceName={product.name} draft={product.draft} suggestions={product.suggestions} providerStatus={publicPimAiStatus(readPimAiConfig())} extractAction={extractDeterministicSuggestions}/>
   </div>;
 }

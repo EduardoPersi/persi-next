@@ -56,7 +56,7 @@ export function InstagramFeed({ posts }: InstagramFeedProps) {
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2
           id="instagram-feed-title"
-          className="text-xl font-bold text-slate-900 sm:text-2xl"
+          className="text-xl font-bold text-foreground sm:text-2xl"
         >
           Siga a gente no Instagram
         </h2>
@@ -65,7 +65,7 @@ export function InstagramFeed({ posts }: InstagramFeedProps) {
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Acessar o Instagram da Persi Materiais"
-          className="text-sm font-semibold text-[#0c2d72] transition-colors hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+          className="text-sm font-semibold text-primary transition-colors hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           @persimateriais
         </a>
@@ -111,7 +111,7 @@ export function InstagramFeed({ posts }: InstagramFeedProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`${description}. Abrir publicação no Instagram`}
-                className="group/post relative block aspect-square overflow-hidden rounded-[6px] bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+                className="group/post relative block aspect-square overflow-hidden rounded-xl bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
                 <Image
                   src={`/api/instagram/media/${encodeURIComponent(post.id)}`}
@@ -122,7 +122,7 @@ export function InstagramFeed({ posts }: InstagramFeedProps) {
                 />
 
                 {isVideo ? (
-                  <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-[6px] bg-slate-950/70 text-white">
+                  <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-950/70 text-white">
                     <Play
                       className="h-5 w-5 fill-current"
                       aria-hidden="true"
@@ -132,14 +132,14 @@ export function InstagramFeed({ posts }: InstagramFeedProps) {
                 ) : null}
 
                 {isCarousel ? (
-                  <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-[6px] bg-slate-950/70 text-white">
+                  <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-950/70 text-white">
                     <Images className="h-5 w-5" aria-hidden="true" />
                     <span className="sr-only">Publicação com várias imagens</span>
                   </span>
                 ) : null}
 
                 <span className="absolute inset-0 flex items-center justify-center bg-slate-950/40 text-white opacity-0 transition-opacity group-hover/post:opacity-100 group-focus-visible/post:opacity-100">
-                  <span className="inline-flex items-center gap-2 rounded-[6px] bg-slate-950/70 px-3 py-2 text-sm font-semibold">
+                  <span className="inline-flex items-center gap-2 rounded-xl bg-slate-950/70 px-3 py-2 text-sm font-semibold">
                     <svg
                       viewBox="0 0 24 24"
                       className="h-5 w-5 fill-none stroke-current"
@@ -167,7 +167,7 @@ export function InstagramFeed({ posts }: InstagramFeedProps) {
 
       <button
         type="button"
-        className={`${previousClass} absolute left-0 top-1/2 z-10 h-10 w-10 -translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-slate-700 opacity-0 shadow-sm transition-opacity hover:text-[#ff6a00] focus-visible:opacity-100 ${
+        className={`${previousClass} absolute left-0 top-1/2 z-10 h-10 w-10 -translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-foreground opacity-0 shadow-sm transition-opacity hover:text-secondary focus-visible:opacity-100 ${
           hasOverflow
             ? "hidden lg:flex lg:group-hover/instagram:opacity-100"
             : "hidden"
@@ -180,7 +180,7 @@ export function InstagramFeed({ posts }: InstagramFeedProps) {
       </button>
       <button
         type="button"
-        className={`${nextClass} absolute right-0 top-1/2 z-10 h-10 w-10 translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-slate-700 opacity-0 shadow-sm transition-opacity hover:text-[#ff6a00] focus-visible:opacity-100 ${
+        className={`${nextClass} absolute right-0 top-1/2 z-10 h-10 w-10 translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-foreground opacity-0 shadow-sm transition-opacity hover:text-secondary focus-visible:opacity-100 ${
           hasOverflow
             ? "hidden lg:flex lg:group-hover/instagram:opacity-100"
             : "hidden"

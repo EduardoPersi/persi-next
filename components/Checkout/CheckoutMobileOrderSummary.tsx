@@ -46,7 +46,7 @@ export function CheckoutMobileOrderSummary({
   );
 
   return (
-    <div className="rounded-xl border border-secondary/25 bg-white shadow-[0_8px_24px_rgba(255,106,0,0.10)] lg:hidden">
+    <div className="rounded-xl border border-border bg-white shadow-sm lg:hidden">
       <button
         type="button"
         onClick={() => setIsExpanded((value) => !value)}
@@ -58,19 +58,19 @@ export function CheckoutMobileOrderSummary({
           <ChevronDown
             size={16}
             className={clsx(
-              "shrink-0 text-slate-500 transition-transform",
+              "shrink-0 text-muted transition-transform",
               isExpanded && "rotate-180",
             )}
             aria-hidden="true"
           />
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-700">
+          <span className="text-xs font-semibold uppercase tracking-wide text-foreground">
             Seu pedido
-            <span className="ml-1 font-normal normal-case text-slate-500">
+            <span className="ml-1 font-normal normal-case text-muted">
               · {cart.itemsCount} {cart.itemsCount === 1 ? "item" : "itens"}
             </span>
           </span>
         </span>
-        <strong className="text-sm text-[#0c2d72]">
+        <strong className="text-sm text-primary">
           <AnimatedValue animationKey={finalTotal}>
             {formatter.format(finalTotal)}
           </AnimatedValue>
@@ -97,11 +97,11 @@ export function CheckoutMobileOrderSummary({
                     className="h-14 w-14 shrink-0 rounded-lg border border-slate-200 object-contain"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold leading-5 text-slate-900">
+                    <p className="text-xs font-semibold leading-5 text-foreground">
                       {item.name}
                     </p>
                     {item.variation.length ? (
-                      <p className="mt-0.5 text-xs text-slate-500">
+                      <p className="mt-0.5 text-xs text-muted">
                         {item.variation
                           .map(({ label, value }) => `${label}: ${value}`)
                           .join(" · ")}
@@ -109,7 +109,7 @@ export function CheckoutMobileOrderSummary({
                     ) : null}
                     <div className="mt-2 flex items-center justify-between gap-3">
                       <QuantitySelect item={item} idSuffix="checkout-mobile" />
-                      <strong className="text-xs text-slate-900">
+                      <strong className="text-xs text-foreground">
                         <AnimatedValue animationKey={item.total}>
                           {formatter.format(item.total)}
                         </AnimatedValue>
@@ -123,7 +123,7 @@ export function CheckoutMobileOrderSummary({
 
           <dl className="mt-4 space-y-2 border-t border-slate-200 pt-4 text-xs">
             <div className="flex justify-between gap-4">
-              <dt className="text-slate-600">Subtotal</dt>
+              <dt className="text-muted">Subtotal</dt>
               <dd className="font-semibold">
                 <AnimatedValue animationKey={cart.totals.items.value}>
                   {formatStoreMoney(cart.totals.items)}
@@ -156,8 +156,8 @@ export function CheckoutMobileOrderSummary({
               </div>
             ) : null}
             <div className="flex justify-between gap-4">
-              <dt className="text-slate-600">Entrega</dt>
-              <dd className="max-w-40 text-right text-slate-600">
+              <dt className="text-muted">Entrega</dt>
+              <dd className="max-w-40 text-right text-muted">
                 {cart.hasCalculatedShipping && hasSelectedShippingRate
                   ? isZeroMoney(cart.totals.shipping)
                     ? "Grátis"
@@ -167,19 +167,19 @@ export function CheckoutMobileOrderSummary({
             </div>
             {cart.fees.map((fee) => (
               <div key={fee.key} className="flex justify-between gap-4">
-                <dt className="text-slate-600">{fee.name}</dt>
+                <dt className="text-muted">{fee.name}</dt>
                 <dd>{formatStoreMoney(fee.total)}</dd>
               </div>
             ))}
             {!isZeroMoney(cart.totals.tax) ? (
               <div className="flex justify-between gap-4">
-                <dt className="text-slate-600">Impostos</dt>
+                <dt className="text-muted">Impostos</dt>
                 <dd>{formatStoreMoney(cart.totals.tax)}</dd>
               </div>
             ) : null}
             <div className="flex justify-between gap-4 border-t border-slate-200 pt-3">
-              <dt className="font-bold text-slate-900">Total</dt>
-              <dd className="text-sm font-bold text-[#0c2d72]">
+              <dt className="font-bold text-foreground">Total</dt>
+              <dd className="text-sm font-bold text-primary">
                 <AnimatedValue animationKey={finalTotal}>
                   {formatter.format(finalTotal)}
                 </AnimatedValue>

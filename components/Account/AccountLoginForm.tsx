@@ -12,7 +12,7 @@ import { useRecaptcha } from "@/hooks/useRecaptcha";
 import { useRouteTransition } from "@/hooks/useRouteTransition";
 
 const inputClassName =
-  "min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20";
+  "min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-base text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/20";
 
 export function AccountLoginForm({
   callbackPath = "/minha-conta",
@@ -98,7 +98,7 @@ export function AccountLoginForm({
             type="button"
             onClick={() => setShowPassword((current) => !current)}
             aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             disabled={loading}
           >
             {showPassword ? (
@@ -111,11 +111,11 @@ export function AccountLoginForm({
       </div>
 
       {variant === "page" ? (
-        <label className="flex items-center gap-2 text-sm text-slate-700">
+        <label className="flex items-center gap-2 text-sm text-foreground">
           <input
             name="remember"
             type="checkbox"
-            className="h-4 w-4 accent-[#0c2d72]"
+            className="h-4 w-4 accent-primary"
             disabled={loading}
           />
           Lembrar de mim
@@ -140,26 +140,26 @@ export function AccountLoginForm({
 
       {variant === "drawer" ? (
         <div className="flex items-center justify-between gap-3 text-sm">
-          <label className="flex items-center gap-2 text-slate-700">
+          <label className="flex items-center gap-2 text-foreground">
             <input
               name="remember"
               type="checkbox"
-              className="h-4 w-4 accent-[#0c2d72]"
+              className="h-4 w-4 accent-primary"
               disabled={loading}
             />
             Lembrar sua senha
           </label>
           <Link
             href="/esqueci-minha-senha"
-            className="shrink-0 font-medium text-[#0c2d72] hover:underline"
+            className="shrink-0 font-medium text-primary hover:underline"
           >
             Perdeu a sua senha?
           </Link>
         </div>
       ) : (
-        <div className="space-y-2 border-t border-slate-200 pt-5 text-center text-sm text-slate-600">
-          <p><Link href="/criar-conta" className="font-semibold text-[#0c2d72] hover:underline">Criar conta</Link></p>
-          <p><Link href="/esqueci-minha-senha" className="font-semibold text-[#0c2d72] hover:underline">Esqueci minha senha</Link></p>
+        <div className="space-y-2 border-t border-slate-200 pt-5 text-center text-sm text-muted">
+          <p><Link href="/criar-conta" className="font-semibold text-primary hover:underline">Criar conta</Link></p>
+          <p><Link href="/esqueci-minha-senha" className="font-semibold text-primary hover:underline">Esqueci minha senha</Link></p>
         </div>
       )}
     </form>

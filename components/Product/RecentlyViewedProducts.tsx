@@ -112,7 +112,7 @@ export function RecentlyViewedProducts({
 
   if (slugs.length === 0 || (products && products.length === 0)) {
     return showEmptyState ? (
-      <div className="mt-6 rounded-xl bg-slate-50 p-8 text-center text-slate-600">
+      <div className="mt-6 rounded-xl bg-slate-50 p-8 text-center text-muted">
         Você ainda não visualizou produtos neste dispositivo.
       </div>
     ) : null;
@@ -127,7 +127,7 @@ export function RecentlyViewedProducts({
     >
       <h2
         id={sectionId}
-        className="text-xl font-bold text-slate-900 sm:text-2xl"
+        className="text-xl font-bold text-foreground sm:text-2xl"
       >
         {title}
       </h2>
@@ -137,7 +137,7 @@ export function RecentlyViewedProducts({
           {Array.from({ length: 4 }, (_, index) => (
             <div
               key={index}
-              className="h-32 min-w-[80%] animate-pulse rounded-[6px] bg-slate-200 sm:min-w-[40%] lg:min-w-[24%]"
+              className="h-32 min-w-[80%] animate-pulse rounded-xl bg-slate-200 sm:min-w-[40%] lg:min-w-[24%]"
             />
           ))}
         </div>

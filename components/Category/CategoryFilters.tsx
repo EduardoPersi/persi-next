@@ -152,11 +152,11 @@ function FilterForm({
       ) : null}
 
       <fieldset className="border-b border-slate-200 pb-7">
-        <legend className="text-[13px] font-medium text-slate-900">
+        <legend className="text-[13px] font-medium text-foreground">
           Preço
         </legend>
         <div className="relative mt-4 h-5">
-          <div className="absolute left-0 right-0 top-2 h-0.5 bg-[#0c2d72]" />
+          <div className="absolute left-0 right-0 top-2 h-0.5 bg-primary" />
           <input
             name="preco_min"
             type="range"
@@ -168,7 +168,7 @@ function FilterForm({
                 Math.min(Number(event.target.value), maxPrice - 1),
               )
             }
-            className="pointer-events-none absolute inset-x-0 top-0 h-4 w-full appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-1 [&::-moz-range-thumb]:rounded-none [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-[#0c2d72] [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-1 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:bg-[#0c2d72]"
+            className="pointer-events-none absolute inset-x-0 top-0 h-4 w-full appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-1 [&::-moz-range-thumb]:rounded-none [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-primary [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-1 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:bg-primary"
             aria-label="Preço mínimo"
           />
           <input
@@ -182,25 +182,25 @@ function FilterForm({
                 Math.max(Number(event.target.value), minPrice + 1),
               )
             }
-            className="pointer-events-none absolute inset-x-0 top-0 h-4 w-full appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-1 [&::-moz-range-thumb]:rounded-none [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-[#0c2d72] [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-1 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:bg-[#0c2d72]"
+            className="pointer-events-none absolute inset-x-0 top-0 h-4 w-full appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-1 [&::-moz-range-thumb]:rounded-none [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-primary [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-1 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:bg-primary"
             aria-label="Preço máximo"
           />
         </div>
-        <div className="mt-2 flex items-center justify-between gap-2 text-xs text-slate-500">
+        <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted">
           <span>
             Preço:{" "}
-            <strong className="text-slate-800">
+            <strong className="text-foreground">
               {priceFormatter.format(minPrice)}
             </strong>{" "}
             —{" "}
-            <strong className="text-slate-800">
+            <strong className="text-foreground">
               {priceFormatter.format(maxPrice)}
             </strong>
           </span>
           <button
             type="submit"
             disabled={isPending}
-            className="h-8 rounded-[6px] bg-slate-50 px-3 text-[10px] font-medium uppercase text-slate-800 hover:bg-slate-100"
+            className="h-8 rounded-xl bg-slate-50 px-3 text-[10px] font-medium uppercase text-foreground hover:bg-slate-100"
           >
             Filtrar
           </button>
@@ -209,14 +209,14 @@ function FilterForm({
 
       {(filterData.categories?.length ?? 0) > 0 ? (
         <fieldset className="border-b border-slate-200 py-7">
-          <legend className="text-[13px] font-medium text-slate-900">
+          <legend className="text-[13px] font-medium text-foreground">
             Categoria
           </legend>
           <div className="mt-3 max-h-44 space-y-1 overflow-y-auto pr-1">
             {filterData.categories?.map((category) => (
               <label
                 key={category.id}
-                className="flex min-h-8 cursor-pointer items-center gap-2 rounded-[6px] px-1 text-sm text-slate-600 transition-colors hover:bg-slate-50 focus-within:ring-2 focus-within:ring-[#0c2d72]/20"
+                className="flex min-h-8 cursor-pointer items-center gap-2 rounded-xl px-1 text-sm text-muted transition-colors hover:bg-slate-50 focus-within:ring-2 focus-within:ring-primary/20"
               >
                 <input
                   type="checkbox"
@@ -229,7 +229,7 @@ function FilterForm({
                   onChange={(event) =>
                     event.currentTarget.form?.requestSubmit()
                   }
-                  className="h-3.5 w-3.5 shrink-0 accent-[#0c2d72]"
+                  className="h-3.5 w-3.5 shrink-0 accent-primary"
                 />
                 <span className="min-w-0 flex-1 truncate">
                   {category.name}
@@ -242,7 +242,7 @@ function FilterForm({
 
       {filterData.brands.length > 0 ? (
         <fieldset className="border-b border-slate-200 py-7">
-          <legend className="text-[13px] font-medium text-slate-900">
+          <legend className="text-[13px] font-medium text-foreground">
             Marca
           </legend>
           <label className="relative mt-3 block">
@@ -257,10 +257,10 @@ function FilterForm({
                 }))
               }
               placeholder="Encontre a Marca"
-              className="h-10 w-full rounded-[6px] border border-slate-300 bg-white pl-3 pr-9 text-xs outline-none focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20"
+              className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-3 pr-9 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
             <Search
-              className="pointer-events-none absolute right-3 top-2.5 h-5 w-5 text-slate-900"
+              className="pointer-events-none absolute right-3 top-2.5 h-5 w-5 text-foreground"
               aria-hidden="true"
             />
           </label>
@@ -268,7 +268,7 @@ function FilterForm({
             {getVisibleOptions("brand", filterData.brands).map((brand) => (
               <label
                 key={brand.id}
-                className="flex min-h-9 cursor-pointer items-center gap-3 rounded-[6px] px-1 text-sm text-slate-600 transition-colors hover:bg-slate-50 focus-within:ring-2 focus-within:ring-[#0c2d72]/20"
+                className="flex min-h-9 cursor-pointer items-center gap-3 rounded-xl px-1 text-sm text-muted transition-colors hover:bg-slate-50 focus-within:ring-2 focus-within:ring-primary/20"
               >
                 <input
                   type="checkbox"
@@ -292,7 +292,7 @@ function FilterForm({
                     className="h-5 w-11 shrink-0 object-contain"
                   />
                 ) : null}
-                <span className="min-w-0 flex-1 truncate peer-checked:font-semibold peer-checked:text-[#0c2d72]">
+                <span className="min-w-0 flex-1 truncate peer-checked:font-semibold peer-checked:text-primary">
                   {brand.name}
                 </span>
               </label>
@@ -311,7 +311,7 @@ function FilterForm({
             key={attribute.id}
             className="border-b border-slate-200 py-7"
           >
-            <legend className="text-[13px] font-medium text-slate-900">
+            <legend className="text-[13px] font-medium text-foreground">
               {attribute.name}
             </legend>
             {attribute.taxonomy === "pa_cor" ||
@@ -328,10 +328,10 @@ function FilterForm({
                     }))
                   }
                   placeholder={`Encontre ${attribute.name}`}
-                  className="h-10 w-full rounded-[6px] border border-slate-300 bg-white pl-3 pr-9 text-xs outline-none focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20"
+                  className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-3 pr-9 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
                 <Search
-                  className="pointer-events-none absolute right-3 top-2.5 h-5 w-5 text-slate-900"
+                  className="pointer-events-none absolute right-3 top-2.5 h-5 w-5 text-foreground"
                   aria-hidden="true"
                 />
               </label>
@@ -343,7 +343,7 @@ function FilterForm({
               ).map((option) => (
                 <label
                   key={option.id}
-                  className="flex min-h-8 cursor-pointer items-center gap-2 rounded-[6px] px-1 text-sm text-slate-600 transition-colors hover:bg-slate-50 focus-within:ring-2 focus-within:ring-[#0c2d72]/20"
+                  className="flex min-h-8 cursor-pointer items-center gap-2 rounded-xl px-1 text-sm text-muted transition-colors hover:bg-slate-50 focus-within:ring-2 focus-within:ring-primary/20"
                 >
                   <input
                     type="checkbox"
@@ -356,7 +356,7 @@ function FilterForm({
                     className={
                       attribute.taxonomy === "pa_cor"
                         ? "peer sr-only"
-                        : "h-3.5 w-3.5 shrink-0 accent-[#0c2d72]"
+                        : "h-3.5 w-3.5 shrink-0 accent-primary"
                     }
                   />
                   {attribute.taxonomy === "pa_cor" ? (
@@ -367,7 +367,7 @@ function FilterForm({
                       aria-hidden="true"
                     />
                   ) : null}
-                  <span className="min-w-0 flex-1 truncate peer-checked:font-semibold peer-checked:text-[#0c2d72]">
+                  <span className="min-w-0 flex-1 truncate peer-checked:font-semibold peer-checked:text-primary">
                     {option.name}
                   </span>
                 </label>
@@ -378,12 +378,12 @@ function FilterForm({
       })}
 
       <fieldset className="py-7">
-        <legend className="text-[13px] font-medium text-slate-900">
+        <legend className="text-[13px] font-medium text-foreground">
           Status do estoque
         </legend>
         <div className="mt-3 space-y-2">
           {filterData.onSaleAvailable ? (
-            <label className="flex min-h-7 cursor-pointer items-center gap-2 text-sm text-slate-700">
+            <label className="flex min-h-7 cursor-pointer items-center gap-2 text-sm text-foreground">
               <input
                 type="checkbox"
                 name="promocao"
@@ -392,13 +392,13 @@ function FilterForm({
                 onChange={(event) =>
                   event.currentTarget.form?.requestSubmit()
                 }
-                className="h-4 w-4 accent-[#0c2d72]"
+                className="h-4 w-4 accent-primary"
               />
               Promoção
             </label>
           ) : null}
           {filterData.inStockCount > 0 ? (
-            <label className="flex min-h-7 cursor-pointer items-center gap-2 text-sm text-slate-700">
+            <label className="flex min-h-7 cursor-pointer items-center gap-2 text-sm text-foreground">
               <input
                 type="checkbox"
                 name="estoque"
@@ -407,7 +407,7 @@ function FilterForm({
                 onChange={(event) =>
                   event.currentTarget.form?.requestSubmit()
                 }
-                className="h-4 w-4 accent-[#0c2d72]"
+                className="h-4 w-4 accent-primary"
               />
               <span className="flex-1">Em estoque</span>
             </label>
@@ -420,7 +420,7 @@ function FilterForm({
           type="button"
           onClick={handleClear}
           disabled={isPending}
-          className="text-xs font-medium text-[#0c2d72] underline underline-offset-2 hover:text-[#ff6a00]"
+          className="text-xs font-medium text-primary underline underline-offset-2 hover:text-secondary"
         >
           Limpar filtros
         </button>
@@ -493,7 +493,7 @@ export function CategoryFilters(props: CategoryFiltersProps) {
           onClick={(event) => openDrawer(event.currentTarget)}
           aria-expanded={isOpen}
           aria-controls="category-filter-drawer"
-          className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-[6px] border border-slate-200 bg-white px-4 text-sm font-medium text-[#0c2d72] lg:hidden"
+          className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-primary lg:hidden"
         >
           <SlidersHorizontal className="h-5 w-5" aria-hidden="true" />
           Filtros
@@ -507,7 +507,7 @@ export function CategoryFilters(props: CategoryFiltersProps) {
           onClick={(event) => openDrawer(event.currentTarget)}
           aria-label="Abrir filtros"
           aria-controls="category-filter-drawer"
-          className="fixed left-0 top-1/2 z-30 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-r-xl border border-l-0 border-slate-200 bg-white/70 text-[#0c2d72] shadow-md transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] lg:hidden"
+          className="fixed left-0 top-1/2 z-30 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-r-xl border border-l-0 border-slate-200 bg-white/70 text-primary shadow-md transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
         >
           <SlidersHorizontal className="h-5 w-5" aria-hidden="true" />
         </button>
@@ -542,7 +542,7 @@ export function CategoryFilters(props: CategoryFiltersProps) {
             <div className="flex items-center justify-between gap-3">
               <h2
                 id="category-filter-title"
-                className="text-lg font-bold text-[#0c2d72]"
+                className="text-lg font-bold text-primary"
               >
                 Filtrar produtos
               </h2>
@@ -551,7 +551,7 @@ export function CategoryFilters(props: CategoryFiltersProps) {
                 type="button"
                 onClick={closeDrawer}
                 aria-label="Fechar filtros"
-                className="flex h-10 w-10 items-center justify-center rounded-[6px] text-slate-700 hover:bg-slate-100"
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-foreground hover:bg-slate-100"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>

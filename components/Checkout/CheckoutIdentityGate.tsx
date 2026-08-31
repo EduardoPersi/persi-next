@@ -165,7 +165,7 @@ export function CheckoutIdentityGate({ capabilities }: CheckoutIdentityGateProps
 
       <aside className="mt-7 w-full max-w-lg rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm sm:p-7">
         <h2 className="font-semibold text-green-800">Usamos seu e-mail de forma segura para:</h2>
-        <ul className="mt-4 space-y-3 text-sm text-slate-600">
+        <ul className="mt-4 space-y-3 text-sm text-muted">
           {["Identificar seu perfil", "Enviar atualizações do pedido", "Recuperar seu carrinho", "Agilizar o preenchimento dos dados"].map((item) => (
             <li key={item} className="flex items-start gap-2">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-700" aria-hidden="true" />

@@ -1,0 +1,8 @@
+import "server-only";
+import {PIM_PROMPT_VERSION} from "./enrichment-types";
+import {getPimAiPricing,type PimAiPricing} from "./ai-pricing";
+export type PimAiConfig={enabled:boolean;provider:"openai";model:string|null;promptVersion:string;apiKey:string|null;maxOutputTokens:number;timeoutMs:number;rateLimitPerMinute:number;maxEstimatedCostUsdMicros:bigint|null;pricing:PimAiPricing|null;includeGtin:boolean};
+const integer=(value:string|undefined,fallback:number,min:number,max:number)=>{const parsed=Number(value);return Number.isInteger(parsed)&&parsed>=min&&parsed<=max?parsed:fallback};
+const money=(value:string|undefined)=>value&&/^\d+$/.test(value)?BigInt(value):null;
+export function readPimAiConfig(env:NodeJS.ProcessEnv=process.env):PimAiConfig{const provider="openai",model=env.PIM_AI_MODEL?.trim()||null;return{enabled:env.PIM_AI_ENABLED==="true",provider,model,promptVersion:PIM_PROMPT_VERSION,apiKey:env.OPENAI_API_KEY?.trim()||null,maxOutputTokens:integer(env.PIM_AI_MAX_OUTPUT_TOKENS,1200,100,4000),timeoutMs:integer(env.PIM_AI_TIMEOUT_MS,20000,1000,60000),rateLimitPerMinute:integer(env.PIM_AI_RATE_LIMIT_PER_MINUTE,2,1,10),maxEstimatedCostUsdMicros:money(env.PIM_AI_MAX_ESTIMATED_COST_PER_REQUEST_USD_MICROS),pricing:model?getPimAiPricing(provider,model):null,includeGtin:env.PIM_AI_INCLUDE_GTIN==="true"};}
+export function publicPimAiStatus(config:PimAiConfig):{enabled:boolean;provider:"openai";model:string|null;configured:boolean;state:"disabled"|"not_configured"|"ready"}{return{enabled:config.enabled,provider:config.provider,model:config.model,configured:Boolean(config.apiKey&&config.model),state:!config.enabled?"disabled":!config.apiKey||!config.model?"not_configured":"ready"};}

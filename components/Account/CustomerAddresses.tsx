@@ -115,16 +115,16 @@ export function CustomerAddresses({
     <div>
       {message ? <p role="status" className="mb-4 text-sm">{message}</p> : null}
       <article className="max-w-xl rounded-xl border border-slate-200 p-5">
-        <h2 className="font-bold text-[#071f5c]">Endereço</h2>
+        <h2 className="font-bold text-primary-hover">Endereço</h2>
         {address.address1 ? (
-          <address className="mt-3 not-italic leading-6 text-slate-600">
+          <address className="mt-3 not-italic leading-6 text-muted">
             {address.firstName} {address.lastName}<br />
             {address.address1}
             {address.neighborhood ? `, ${address.neighborhood}` : ""}
             {address.address2 ? ` - ${address.address2}` : ""}<br />
             {address.city} - {address.state}, {address.postcode}
           </address>
-        ) : <p className="mt-3 text-slate-500">Nenhum endereço cadastrado.</p>}
+        ) : <p className="mt-3 text-muted">Nenhum endereço cadastrado.</p>}
         <div className="mt-4 flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setIsEditing(true)}>
             {address.address1 ? "Editar" : "Adicionar"}
@@ -134,7 +134,7 @@ export function CustomerAddresses({
       </article>
       {current ? (
         <form onSubmit={save} className="mt-6 max-w-xl rounded-xl border border-slate-200 p-5">
-          <h2 className="text-lg font-bold text-[#071f5c]">
+          <h2 className="text-lg font-bold text-primary-hover">
             {current.address1 ? "Editar" : "Adicionar"} endereço
           </h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -160,7 +160,7 @@ export function CustomerAddresses({
                     className="mt-2 h-11 w-full rounded-xl border border-slate-300 px-3 font-normal"
                   />
                   {isPostcode && isLookingUpAddress ? (
-                    <span className="mt-1.5 block text-xs font-normal text-slate-500" role="status">
+                    <span className="mt-1.5 block text-xs font-normal text-muted" role="status">
                       Buscando endereço...
                     </span>
                   ) : null}

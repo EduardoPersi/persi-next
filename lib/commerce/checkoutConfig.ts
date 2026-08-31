@@ -6,6 +6,7 @@ export interface PublicCheckoutCapabilities {
   pix: boolean;
   boleto: boolean;
   card: boolean;
+  wallet: boolean;
 }
 
 function readBoolean(name: string, fallback: boolean): boolean {
@@ -37,6 +38,18 @@ export function getPublicCheckoutCapabilities(): PublicCheckoutCapabilities {
     cardEnvironment === "production" &&
     readBoolean("CHECKOUT_CARD_PRODUCTION_APPROVED", false);
 
+  // Apple Pay/Google Pay (PagBank) usavam a mesma flag do cartão do Mercado
+  // Pago — ligar produção do cartão ligava as carteiras digitais junto, com
+  // as credenciais PagBank já configuradas (que apontam para produção, ao
+  // contrário do Mercado Pago o PagBank distingue sandbox/produção pela URL,
+  // não só por uma flag). Gate próprio e independente, desligado por padrão.
+  const walletEnabled = readBoolean("CHECKOUT_WALLET_ENABLED", false);
+  const walletEnvironment = process.env.CHECKOUT_WALLET_ENVIRONMENT?.trim().toLowerCase();
+  const walletSandboxConfigured = walletEnvironment === "sandbox";
+  const walletProductionApproved =
+    walletEnvironment === "production" &&
+    readBoolean("CHECKOUT_WALLET_PRODUCTION_APPROVED", false);
+
   return {
     pix: readBoolean("CHECKOUT_PIX_ENABLED", true),
     boleto: readBoolean("CHECKOUT_BOLETO_ENABLED", true),
@@ -44,5 +57,6 @@ export function getPublicCheckoutCapabilities(): PublicCheckoutCapabilities {
     // pelo backend com habilitação explícita e ambiente coerente. Produção
     // exige uma segunda confirmação independente da flag principal.
     card: cardEnabled && (sandboxConfigured || productionApproved),
+    wallet: walletEnabled && (walletSandboxConfigured || walletProductionApproved),
   };
 }

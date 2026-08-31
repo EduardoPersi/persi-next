@@ -11,7 +11,8 @@ export type PimProductListItem = { id:string; name:string; sku:string; gtin:stri
 export type PimAttributeItem = { id:string; name:string; value:string; source:string; status:string; confidence:string|null };
 export type PimEditorialContent = { commercialName:string|null; shortDescription:string|null; description:string|null; bulletPoints:string[]; application:string|null; specifications:string|null; seoTitle:string|null; metaDescription:string|null; searchTerms:string[]; imageAltText:string|null };
 export type PimAuditItem = { id:string; operation:string; actorReference:string; reason:string|null; createdAt:Date };
-export type PimProductDetail = PimProductListItem & { slug:string; sourceShortDescription:string|null; sourceDescription:string|null; salePriceMinor:string|null; source:string; lastSyncedAt:Date|null; version:string; draft:PimEditorialContent; approved:PimEditorialContent|null; attributes:PimAttributeItem[]; suggestions:Array<{id:string;fieldName:string;value:string;source:string;status:string;confidence:string|null}>; history:PimAuditItem[] };
+export type PimSuggestionItem={id:string;fieldName:string;value:string;source:string;status:string;confidence:string|null;suggestionType:string;provider:string;modelVersion:string;promptVersion:string;sourceFingerprint:string;evidence:string|null;evidenceReferences:Array<{id?:string;attribute?:string;value?:string;sourceType?:string;sourceReference?:string;rawValue?:string;normalizedValue?:string}>;payload:Record<string,unknown>;inputTokens:number|null;outputTokens:number|null;estimatedCostMinor:string|null;createdAt:Date;supersededAt:Date|null};
+export type PimProductDetail = PimProductListItem & { slug:string; sourceShortDescription:string|null; sourceDescription:string|null; salePriceMinor:string|null; source:string; lastSyncedAt:Date|null; version:string; draft:PimEditorialContent; approved:PimEditorialContent|null; attributes:PimAttributeItem[]; suggestions:PimSuggestionItem[]; history:PimAuditItem[] };
 export type PimQueueCounts = { needsEnrichment:number; draft:number; needsReview:number; rejected:number; aiSuggested:number; ambiguous:number; unmapped:number; missingData:number; readyForApproval:number; approved:number };
 
 function safePage(value: number | undefined): number { return Number.isInteger(value) && Number(value) > 0 ? Number(value) : 1; }
@@ -74,9 +75,9 @@ export async function getPimProduct(id:string):Promise<PimProductDetail|null>{
     from product_attribute_values pav join attributes a on a.id=pav.attribute_id join attribute_values av on av.id=pav.attribute_value_id
     left join pim_attribute_reviews r on r.product_id=pav.product_id and r.attribute_id=pav.attribute_id and r.attribute_value_id=pav.attribute_value_id
     where pav.product_id=${id}::uuid order by a.sort_order,a.name,av.display_value`);
-  const suggestions=await db.execute(sql`select id,field_name,suggested_value value_placeholder,source::text,status::text,confidence::text from pim_suggestions where product_id=${id}::uuid order by created_at desc`);
+  const suggestions=await db.execute(sql`select id,field_name "fieldName",suggested_value value,source::text,status::text,confidence::text,suggestion_type "suggestionType",provider,model_version "modelVersion",prompt_version "promptVersion",source_fingerprint "sourceFingerprint",evidence,evidence_references "evidenceReferences",payload,input_tokens "inputTokens",output_tokens "outputTokens",estimated_cost_minor::text "estimatedCostMinor",created_at "createdAt",superseded_at "supersededAt" from pim_suggestions where product_id=${id}::uuid order by created_at desc`);
   product.attributes=attributes as unknown as PimAttributeItem[];
-  product.suggestions=(suggestions as unknown as Array<{id:string;field_name:string;value_placeholder:string;source:string;status:string;confidence:string|null}>).map(s=>({id:s.id,fieldName:s.field_name,value:s.value_placeholder,source:s.source,status:s.status,confidence:s.confidence}));
+  product.suggestions=suggestions as unknown as PimSuggestionItem[];
   const history=await db.execute(sql`select id,operation,actor_reference "actorReference",reason,created_at "createdAt" from pim_audit_log
     where product_id=${id}::uuid and entity_type='editorial_profile' order by created_at desc,id desc limit 100`);
   product.history=history as unknown as PimAuditItem[];

@@ -13,7 +13,7 @@ export function CheckoutTerms() {
 
   return (
     <div>
-      <label className="flex items-start gap-3 text-xs leading-6 text-slate-700">
+      <label className="flex items-start gap-3 text-xs leading-6 text-foreground">
         <input
           type="checkbox"
           {...register("acceptsTerms")}

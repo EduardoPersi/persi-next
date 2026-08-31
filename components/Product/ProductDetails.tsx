@@ -18,7 +18,7 @@ export function ProductDetails({ product }: ProductDetailsProps) {
   return (
     <section className="mt-12 space-y-10">
       <div>
-        <h2 className="text-2xl font-bold text-[#0c2d72]">
+        <h2 className="text-2xl font-bold text-primary">
           Descrição do produto
         </h2>
         <WordPressContent
@@ -30,7 +30,7 @@ export function ProductDetails({ product }: ProductDetailsProps) {
 
       {specifications.length > 0 ? (
         <div>
-          <h2 className="text-2xl font-bold text-[#0c2d72]">
+          <h2 className="text-2xl font-bold text-primary">
             Especificações técnicas
           </h2>
           <dl className="mt-4 overflow-hidden rounded-xl border border-slate-200">
@@ -41,10 +41,10 @@ export function ProductDetails({ product }: ProductDetailsProps) {
                   index % 2 === 0 ? "bg-slate-50" : "bg-white"
                 }`}
               >
-                <dt className="font-semibold text-slate-800">
+                <dt className="font-semibold text-foreground">
                   {specification.label}
                 </dt>
-                <dd className="text-slate-700">{specification.value}</dd>
+                <dd className="text-foreground">{specification.value}</dd>
               </div>
             ))}
           </dl>

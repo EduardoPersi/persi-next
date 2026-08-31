@@ -52,13 +52,13 @@ export function CardPaymentResult({
         isPaid ? (
           <>
             Pagamento de{" "}
-            <strong className="text-slate-900">{amountFormatter.format(amount)}</strong>{" "}
+            <strong className="text-foreground">{amountFormatter.format(amount)}</strong>{" "}
             aprovado com sucesso.
           </>
         ) : (
           <>
             Não foi possível aprovar o pagamento de{" "}
-            <strong className="text-slate-900">{amountFormatter.format(amount)}</strong>.
+            <strong className="text-foreground">{amountFormatter.format(amount)}</strong>.
           </>
         )
       }
@@ -79,8 +79,8 @@ export function CardPaymentResult({
         </h2>
 
         {cardLabel ? (
-          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
-            <CreditCard className="h-4 w-4 text-slate-500" aria-hidden="true" />
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-foreground">
+            <CreditCard className="h-4 w-4 text-muted" aria-hidden="true" />
             <span>{cardLabel}</span>
             {installments ? (
               <>

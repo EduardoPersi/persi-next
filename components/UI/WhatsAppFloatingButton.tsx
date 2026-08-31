@@ -80,7 +80,7 @@ export function WhatsAppFloatingButton() {
           </div>
           <div className="bg-[#ECE5DD] px-4 py-4">
             <div className="max-w-[85%] rounded-lg rounded-tl-none bg-white px-3 py-2 shadow">
-              <p className="text-sm text-slate-800">
+              <p className="text-sm text-foreground">
                 Olá, precisa de ajuda? Mande um zap para nossa equipe de
                 vendas!
               </p>

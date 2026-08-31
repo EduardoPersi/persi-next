@@ -105,11 +105,11 @@ export function BackInStockForm({
   }
 
   return (
-    <div className="w-full min-w-0 max-w-full rounded-[12px] border border-slate-200 bg-white p-4 sm:p-5">
-      <h2 className="font-bold text-[#0c2d72]">
+    <div className="w-full min-w-0 max-w-full rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+      <h2 className="font-bold text-primary">
         Atualmente, este produto está fora de estoque.
       </h2>
-      <p className="mt-1 text-sm leading-6 text-slate-600">
+      <p className="mt-1 text-sm leading-6 text-muted">
         Cadastre seu e-mail e avisaremos quando ele estiver disponível
         novamente.
       </p>
@@ -128,7 +128,7 @@ export function BackInStockForm({
         <div>
           <label
             htmlFor={`back-in-stock-email-${productId}`}
-            className="mb-1.5 block text-sm font-medium text-slate-700"
+            className="mb-1.5 block text-sm font-medium text-foreground"
           >
             E-mail
           </label>
@@ -136,23 +136,23 @@ export function BackInStockForm({
             id={`back-in-stock-email-${productId}`}
             name="email"
             autoComplete="email"
-            className="h-11 w-full min-w-0 max-w-full rounded-[6px] border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20"
+            className="h-11 w-full min-w-0 max-w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-foreground outline-none placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/20"
             placeholder="seuemail@exemplo.com"
             aria-describedby={`back-in-stock-status-${productId}`}
           />
         </div>
 
-        <label className="flex cursor-pointer items-start gap-2 text-sm leading-5 text-slate-600">
+        <label className="flex cursor-pointer items-start gap-2 text-sm leading-5 text-muted">
           <input
             name="consent"
             type="checkbox"
-            className="mt-0.5 h-4 w-4 shrink-0 accent-[#0c2d72]"
+            className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
           />
           <span>
             Li e aceito a{" "}
             <Link
               href="/politica-de-privacidade-e-seguranca"
-              className="font-medium text-[#0c2d72] underline hover:text-[#ff6a00]"
+              className="font-medium text-primary underline hover:text-secondary"
             >
               Política de Privacidade
             </Link>
@@ -167,7 +167,7 @@ export function BackInStockForm({
             !integrationEnabled ||
             variationPending
           }
-          className="inline-flex h-11 w-full items-center justify-center rounded-[6px] bg-[#ff6a00] px-4 text-sm font-medium text-white transition-colors hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-secondary px-4 text-sm font-medium text-white transition-colors hover:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {state === "submitting"
             ? "Enviando..."
@@ -178,7 +178,7 @@ export function BackInStockForm({
       <p
         id={`back-in-stock-status-${productId}`}
         className={`mt-3 text-sm ${
-          state === "success" ? "text-emerald-700" : "text-slate-600"
+          state === "success" ? "text-emerald-700" : "text-muted"
         }`}
         role="status"
         aria-live="polite"
@@ -195,7 +195,7 @@ export function BackInStockForm({
         href={whatsappUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-[6px] border border-emerald-600 px-4 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+        className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl border border-emerald-600 px-4 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
         aria-label={`Consultar disponibilidade de ${productName} pelo WhatsApp`}
       >
         Consultar pelo WhatsApp

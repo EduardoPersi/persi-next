@@ -284,7 +284,7 @@ function PaidConfirmation({
         <h1 className="mt-3 text-xl font-bold text-emerald-700 sm:text-2xl">
           Pagamento confirmado!
         </h1>
-        <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-600">
+        <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted">
           O pagamento do pedido <strong>#{details.id}</strong> foi aprovado! A
           partir de agora vamos prosseguir com as etapas do seu pedido.
           Enviaremos notificações em cada etapa, não se preocupe.
@@ -304,27 +304,27 @@ function PaidConfirmation({
 
         <dl className="mt-6 grid grid-cols-1 gap-4 text-left sm:grid-cols-2">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
               E-mail
             </dt>
-            <dd className="mt-1 text-sm text-slate-800">{details.email}</dd>
+            <dd className="mt-1 text-sm text-foreground">{details.email}</dd>
           </div>
           {details.phone ? (
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
                 Telefone
               </dt>
-              <dd className="mt-1 text-sm text-slate-800">
+              <dd className="mt-1 text-sm text-foreground">
                 {formatBrazilianPhone(details.phone)}
               </dd>
             </div>
           ) : null}
           {details.document ? (
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
                 Documento
               </dt>
-              <dd className="mt-1 text-sm text-slate-800">
+              <dd className="mt-1 text-sm text-foreground">
                 {formatBrazilianDocument(details.document)}
               </dd>
             </div>
@@ -333,7 +333,7 @@ function PaidConfirmation({
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <h2 className="text-base font-bold text-[#0c2d72]">Detalhes do pedido</h2>
+        <h2 className="text-base font-bold text-primary">Detalhes do pedido</h2>
         <ul className="mt-4 divide-y divide-slate-200">
           {details.items.map((item) => (
             <li key={item.id} className="flex gap-3 py-3 first:pt-0">
@@ -345,11 +345,11 @@ function PaidConfirmation({
                 className="h-14 w-14 shrink-0 rounded-lg border border-slate-200 object-contain"
               />
               <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
-                <p className="text-sm text-slate-800">
+                <p className="text-sm text-foreground">
                   {item.name}
-                  <span className="text-slate-500"> × {item.quantity}</span>
+                  <span className="text-muted"> × {item.quantity}</span>
                 </p>
-                <strong className="shrink-0 text-sm text-slate-900">
+                <strong className="shrink-0 text-sm text-foreground">
                   {formatMoney(item.total, details.currency)}
                 </strong>
               </div>
@@ -359,15 +359,15 @@ function PaidConfirmation({
 
         <dl className="mt-4 space-y-2 border-t border-slate-200 pt-4 text-sm">
           <div className="flex justify-between gap-4">
-            <dt className="text-slate-600">Subtotal:</dt>
-            <dd className="font-semibold text-slate-900">
+            <dt className="text-muted">Subtotal:</dt>
+            <dd className="font-semibold text-foreground">
               {formatMoney(details.itemsSubtotal, details.currency)}
             </dd>
           </div>
           {details.shippingLabel ? (
             <div className="flex justify-between gap-4">
-              <dt className="text-slate-600">Entrega:</dt>
-              <dd className="text-right text-slate-900">
+              <dt className="text-muted">Entrega:</dt>
+              <dd className="text-right text-foreground">
                 {details.shippingLabel}
                 {Number(details.shippingTotal) > 0
                   ? ` (${formatMoney(details.shippingTotal, details.currency)})`
@@ -382,8 +382,8 @@ function PaidConfirmation({
             </div>
           ) : null}
           <div className="flex justify-between gap-4 border-t border-slate-200 pt-3">
-            <dt className="font-bold text-slate-900">Total:</dt>
-            <dd className="text-base font-bold text-[#0c2d72]">
+            <dt className="font-bold text-foreground">Total:</dt>
+            <dd className="text-base font-bold text-primary">
               {formatMoney(details.total, details.currency)}
             </dd>
           </div>
@@ -473,10 +473,10 @@ export default async function CheckoutConfirmationPage({
             </div>
           ) : (
             <div className="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-              <h1 className="text-2xl text-[#0c2d72] sm:text-3xl">
+              <h1 className="text-2xl text-primary sm:text-3xl">
                 {copy?.title ?? "Recebemos o seu pedido"}
               </h1>
-              <p className="mt-3 text-sm leading-6 text-slate-600">
+              <p className="mt-3 text-sm leading-6 text-muted">
                 {copy?.description ??
                   "Assim que o pagamento for confirmado, você receberá um e-mail com os detalhes do pedido."}
               </p>
@@ -490,7 +490,7 @@ export default async function CheckoutConfirmationPage({
                     unoptimized
                     className="mx-auto rounded-xl border border-slate-200"
                   />
-                  <p className="break-all rounded-xl bg-slate-100 p-3 text-xs text-slate-800">
+                  <p className="break-all rounded-xl bg-slate-100 p-3 text-xs text-foreground">
                     {resolved.recovery.copyPaste}
                   </p>
                 </div>
@@ -498,7 +498,7 @@ export default async function CheckoutConfirmationPage({
               {resolved?.category === "pending" && resolved.recovery?.method === "inter_boleto" ? (
                 <div className="mt-6 space-y-3">
                   {resolved.recovery.digitableLine ? (
-                    <p className="break-all rounded-xl bg-slate-100 p-3 text-xs text-slate-800">
+                    <p className="break-all rounded-xl bg-slate-100 p-3 text-xs text-foreground">
                       {resolved.recovery.digitableLine}
                     </p>
                   ) : null}

@@ -189,12 +189,12 @@ export function SubcategoryCarousel({
                 disabled={isPending}
                 aria-pressed={isSelected}
                 aria-current={isSelected ? "page" : undefined}
-                className="tap-feedback group/item flex h-full w-full flex-col items-center rounded-[6px] py-1 text-center disabled:cursor-wait disabled:opacity-60"
+                className="tap-feedback group/item flex h-full w-full flex-col items-center rounded-xl py-1 text-center disabled:cursor-wait disabled:opacity-60"
               >
                 <span
                   className={`flex aspect-square w-14 items-center justify-center overflow-hidden rounded-full bg-white p-1 transition-[box-shadow] sm:w-16 lg:w-20 ${
                     isSelected
-                      ? "ring-2 ring-[#ff6a00] ring-offset-2"
+                      ? "ring-2 ring-secondary ring-offset-2"
                       : "ring-1 ring-slate-200"
                   }`}
                 >
@@ -209,7 +209,7 @@ export function SubcategoryCarousel({
                 </span>
                 <span
                   className={`mt-2 line-clamp-3 text-xs font-medium leading-4 sm:text-sm ${
-                    isSelected ? "text-[#ff6a00]" : "text-slate-700"
+                    isSelected ? "text-secondary" : "text-foreground"
                   }`}
                 >
                   {item.name}
@@ -222,7 +222,7 @@ export function SubcategoryCarousel({
 
       <button
         type="button"
-        className={`${previousClass} absolute top-10 left-0 z-10 h-10 w-10 -translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-slate-700 opacity-0 shadow-sm transition-opacity hover:text-[#ff6a00] focus-visible:opacity-100 ${
+        className={`${previousClass} absolute top-10 left-0 z-10 h-10 w-10 -translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-foreground opacity-0 shadow-sm transition-opacity hover:text-secondary focus-visible:opacity-100 ${
           hasOverflow
             ? "hidden lg:flex lg:group-hover/subcategories:opacity-100"
             : "hidden"
@@ -235,7 +235,7 @@ export function SubcategoryCarousel({
       </button>
       <button
         type="button"
-        className={`${nextClass} absolute top-10 right-0 z-10 h-10 w-10 translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-slate-700 opacity-0 shadow-sm transition-opacity hover:text-[#ff6a00] focus-visible:opacity-100 ${
+        className={`${nextClass} absolute top-10 right-0 z-10 h-10 w-10 translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-foreground opacity-0 shadow-sm transition-opacity hover:text-secondary focus-visible:opacity-100 ${
           hasOverflow
             ? "hidden lg:flex lg:group-hover/subcategories:opacity-100"
             : "hidden"

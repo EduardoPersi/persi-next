@@ -1,0 +1,4 @@
+export type PimAiPricing={provider:"openai";model:"gpt-5.4-mini";version:"openai-2026-08-28";effectiveDate:"2026-08-28";currency:"USD";inputUsdMicrosPerMillion:bigint;cachedInputUsdMicrosPerMillion:bigint;outputUsdMicrosPerMillion:bigint};
+export const GPT_5_4_MINI_PRICING:PimAiPricing={provider:"openai",model:"gpt-5.4-mini",version:"openai-2026-08-28",effectiveDate:"2026-08-28",currency:"USD",inputUsdMicrosPerMillion:BigInt(750000),cachedInputUsdMicrosPerMillion:BigInt(75000),outputUsdMicrosPerMillion:BigInt(4500000)};
+export function getPimAiPricing(provider:string,model:string){return provider===GPT_5_4_MINI_PRICING.provider&&model===GPT_5_4_MINI_PRICING.model?GPT_5_4_MINI_PRICING:null;}
+export function formatUsdMicros(value:bigint){const cents=(value+BigInt(5000))/BigInt(10000);return `US$ ${Number(cents)/100}`;}

@@ -44,7 +44,7 @@ export function InstagramCard({ post }: InstagramCardProps) {
         target="_blank"
         rel="noopener noreferrer"
         aria-label={`${description}. Abrir publicação no Instagram`}
-        className="group block h-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+        className="group block h-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
       >
         <div className="relative aspect-square overflow-hidden bg-slate-100">
           <Image
@@ -58,7 +58,7 @@ export function InstagramCard({ post }: InstagramCardProps) {
             className="object-cover transition duration-300 group-hover:scale-[1.03] group-hover:brightness-75 group-focus-visible:brightness-75"
           />
 
-          <span className="absolute left-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-[#0c2d72] shadow-sm">
+          <span className="absolute left-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-primary shadow-sm">
             <InstagramIcon className="h-5 w-5" />
           </span>
 
@@ -83,12 +83,12 @@ export function InstagramCard({ post }: InstagramCardProps) {
         </div>
 
         <div className="p-3 sm:p-4">
-          <p className="line-clamp-2 text-sm leading-5 text-slate-700">
+          <p className="line-clamp-2 text-sm leading-5 text-foreground">
             {description}
           </p>
           <time
             dateTime={post.timestamp}
-            className="mt-2 block text-xs font-medium text-slate-500"
+            className="mt-2 block text-xs font-medium text-muted"
           >
             {formatInstagramDate(post.timestamp)}
           </time>

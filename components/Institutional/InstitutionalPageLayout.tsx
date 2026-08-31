@@ -24,7 +24,7 @@ export function InstitutionalPageLayout({
       <main className="py-5 sm:py-8 lg:py-10">
         <Container size={containerSize}>
           <article className="rounded-md border border-slate-200 bg-white px-5 py-6 shadow-sm sm:px-8 sm:py-8">
-            <h1 className="text-2xl font-bold text-[#071f5c] sm:text-3xl">
+            <h1 className="text-2xl font-bold text-primary-hover sm:text-3xl">
               {title}
             </h1>
             <div

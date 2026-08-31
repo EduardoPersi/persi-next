@@ -413,8 +413,8 @@ export function CheckoutForm({
             state={profileState}
             onEdit={() => setCurrentStep("profile")}
             doneSummary={
-              <div className="space-y-1 text-xs text-slate-700">
-                <p className="font-semibold text-slate-900">
+              <div className="space-y-1 text-xs text-foreground">
+                <p className="font-semibold text-foreground">
                   {contact?.firstName} {contact?.lastName}
                 </p>
                 <p>{contact?.email}</p>
@@ -444,7 +444,7 @@ export function CheckoutForm({
             upcomingText="Finalize seu perfil para avançar..."
             onEdit={() => setCurrentStep("address")}
             doneSummary={
-              <p className="text-xs text-slate-700">
+              <p className="text-xs text-foreground">
                 {billingAddress?.addressLine1}, {billingAddress?.number} —{" "}
                 {billingAddress?.neighborhood}, {billingAddress?.city}/
                 {billingAddress?.state}

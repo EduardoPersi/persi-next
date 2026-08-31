@@ -1,0 +1,5 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {existsSync,readFileSync} from "node:fs";
+
+test("preflight planeja exatamente uma suggestion sem escrita",()=>{const path="supabase/.temp/pim-ai/p4b-persistence/preflight-manifest.json";assert.equal(existsSync(path),true);const value=JSON.parse(readFileSync(path,"utf8"));assert.equal(value.mode,"STAGING_READ_ONLY");assert.equal(value.exactlyOneProduct,true);assert.equal(value.exactlyOneSuggestion,true);assert.equal(value.rowPlan.rows,1);assert.equal(value.rowPlan.fieldName,"commercial_name");assert.equal(value.rowPlan.status,"needs_review");assert.equal(value.rowPlan.confidence,null);assert.equal(value.idempotency.activeDuplicate,0);assert.equal(value.idempotency.uniquePartialIndex,true);assert.equal(value.security.rlsEnabled,true);assert.equal(value.security.publicPolicies,0);assert.equal(value.stagingWrites,0);assert.equal(value.pimSuggestionsCreated,0);assert.equal(value.draftsCreated,0);assert.equal(value.approvals,0);assert.equal(value.publication,0);assert.equal(value.safeToRequestPersistenceWriteAuthorization,true);assert.equal(value.safeToWriteNow,false);});

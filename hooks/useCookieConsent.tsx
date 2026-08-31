@@ -6,7 +6,8 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
+  useRef,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import {
@@ -24,33 +25,56 @@ interface CookieConsentContextValue {
 }
 
 const CookieConsentContext = createContext<CookieConsentContextValue | null>(null);
+const consentListeners = new Set<() => void>();
+
+function subscribeToConsent(listener: () => void) {
+  consentListeners.add(listener);
+  return () => {
+    consentListeners.delete(listener);
+  };
+}
+
+function notifyConsentChanged() {
+  consentListeners.forEach((listener) => listener());
+}
+
+function subscribeToHydration() {
+  return () => {};
+}
 
 export function CookieConsentProvider({ children }: { children: ReactNode }) {
-  const [consent, setConsent] = useState<CookieConsentValue | null>(null);
-  const [bannerVisible, setBannerVisible] = useState(false);
+  const lastAppliedConsent = useRef<CookieConsentValue | null>(null);
+  const consent = useSyncExternalStore(
+    subscribeToConsent,
+    readCookieConsent,
+    () => null,
+  );
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
+  const bannerVisible = hydrated && consent === null;
 
   useEffect(() => {
-    const stored = readCookieConsent();
-    if (stored) {
-      setConsent(stored);
-      updateGoogleConsent(stored);
-      return;
+    if (consent && lastAppliedConsent.current !== consent) {
+      updateGoogleConsent(consent);
+      lastAppliedConsent.current = consent;
     }
-    setBannerVisible(true);
-  }, []);
+  }, [consent]);
 
   const accept = useCallback(() => {
     writeCookieConsent("accepted");
-    setConsent("accepted");
-    setBannerVisible(false);
+    notifyConsentChanged();
     updateGoogleConsent("accepted");
+    lastAppliedConsent.current = "accepted";
   }, []);
 
   const decline = useCallback(() => {
     writeCookieConsent("declined");
-    setConsent("declined");
-    setBannerVisible(false);
+    notifyConsentChanged();
     updateGoogleConsent("declined");
+    lastAppliedConsent.current = "declined";
   }, []);
 
   const value = useMemo(

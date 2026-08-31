@@ -171,8 +171,8 @@ export const EmailAutocompleteInput = forwardRef<
               aria-selected={index === activeIndex}
               className={`rounded-lg ${
                 index === activeIndex
-                  ? "bg-blue-50 text-[#0c2d72] ring-1 ring-inset ring-[#0c2d72]/20"
-                  : "text-slate-700"
+                  ? "bg-blue-50 text-primary ring-1 ring-inset ring-primary/20"
+                  : "text-foreground"
               }`}
             >
               <button

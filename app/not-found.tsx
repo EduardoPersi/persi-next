@@ -76,12 +76,12 @@ export default async function NotFound() {
       <main className="bg-slate-50 pb-12 sm:pb-16">
         <Container>
           <nav
-            className="flex items-center gap-2 py-4 text-sm text-slate-600"
+            className="flex items-center gap-2 py-4 text-sm text-muted"
             aria-label="Breadcrumb"
           >
             <Link
               href="/"
-              className="rounded-sm font-medium text-[#0c2d72] hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+              className="rounded-sm font-medium text-primary hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               Home
             </Link>
@@ -94,18 +94,18 @@ export default async function NotFound() {
             aria-labelledby="not-found-title"
           >
             <div
-              className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#0c2d72]/10 text-[#0c2d72] sm:h-28 sm:w-28"
+              className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-primary sm:h-28 sm:w-28"
               aria-hidden="true"
             >
               <SearchX className="h-14 w-14 sm:h-16 sm:w-16" />
             </div>
             <h1
               id="not-found-title"
-              className="mt-5 text-3xl font-bold text-[#0c2d72] sm:text-4xl"
+              className="mt-5 text-3xl font-bold text-primary sm:text-4xl"
             >
               Página não encontrada
             </h1>
-            <div className="mx-auto mt-4 max-w-2xl space-y-2 text-sm leading-6 text-slate-600 sm:text-base">
+            <div className="mx-auto mt-4 max-w-2xl space-y-2 text-sm leading-6 text-muted sm:text-base">
               <p>Não encontramos a página que você está procurando.</p>
               <p>
                 Ela pode ter sido removida, renomeada ou o endereço informado
@@ -122,10 +122,10 @@ export default async function NotFound() {
             </div>
 
             <div className="mx-auto mt-8 max-w-2xl">
-              <p className="mb-3 text-sm font-semibold text-[#0c2d72]">
+              <p className="mb-3 text-sm font-semibold text-primary">
                 O que você está procurando?
               </p>
-              <div className="rounded-xl bg-[#0c2d72] p-3 sm:p-4">
+              <div className="rounded-xl bg-primary p-3 sm:p-4">
                 <ProductSearch variant="desktop" />
                 <ProductSearch variant="mobile" />
               </div>
@@ -138,11 +138,11 @@ export default async function NotFound() {
           >
             <h2
               id="best-sellers-title"
-              className="text-2xl font-bold text-[#0c2d72]"
+              className="text-2xl font-bold text-primary"
             >
               Produtos mais vendidos
             </h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-muted">
               Produtos em destaque para você continuar comprando.
             </p>
             <Suspense fallback={<ProductGridSkeleton />}>
@@ -157,11 +157,11 @@ export default async function NotFound() {
             >
               <h2
                 id="featured-categories-title"
-                className="text-2xl font-bold text-[#0c2d72]"
+                className="text-2xl font-bold text-primary"
               >
                 Navegue pelas principais categorias
               </h2>
-              <div className="[&_#home-categories-title]:sr-only [&_a]:after:mt-1 [&_a]:after:text-sm [&_a]:after:text-[#ff6a00] [&_a]:after:content-['→']">
+              <div className="[&_#home-categories-title]:sr-only [&_a]:after:mt-1 [&_a]:after:text-sm [&_a]:after:text-secondary [&_a]:after:content-['→']">
                 <HomeCategoryCarousel categories={featuredCategories} />
               </div>
             </section>
@@ -183,11 +183,11 @@ export default async function NotFound() {
               />
               <h2
                 id="help-title"
-                className="mt-2 text-xl font-bold text-[#0c2d72]"
+                className="mt-2 text-xl font-bold text-primary"
               >
                 Precisa de ajuda?
               </h2>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-muted">
                 Nossa equipe pode ajudar você a encontrar exatamente o produto
                 que procura.
               </p>
@@ -205,7 +205,7 @@ export default async function NotFound() {
               <Link
                 key={link.label}
                 href={link.href}
-                className="font-semibold text-[#0c2d72] underline-offset-4 hover:text-[#ff6a00] hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                className="font-semibold text-primary underline-offset-4 hover:text-secondary hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 {link.label}
               </Link>

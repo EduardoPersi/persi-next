@@ -189,7 +189,7 @@ export function ProductGallery({
             setSelectedIndex(swiper.activeIndex);
             handleZoomLeave();
           }}
-          className="h-full w-full [&_.swiper-pagination-bullet-active]:bg-[#0c2d72]"
+          className="h-full w-full [&_.swiper-pagination-bullet-active]:bg-primary"
         >
           {galleryImages.map((image, index) => (
             <SwiperSlide key={`${image.src}-${index}`}>
@@ -222,6 +222,19 @@ export function ProductGallery({
         </Swiper>
 
         <div className="absolute right-3 top-3 z-20 flex flex-col items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void toggleFavorite(productId)}
+            aria-pressed={favorited}
+            aria-label={`${favorited ? "Remover" : "Adicionar"} ${productName} ${favorited ? "dos" : "aos"} favoritos`}
+            title={favorited ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+            className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 bg-white text-primary transition-colors hover:border-secondary hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <Heart
+              aria-hidden="true"
+              className={`h-6 w-6 transition-transform ${favorited ? "scale-110 fill-secondary text-secondary" : ""}`}
+            />
+          </button>
           <div ref={shareMenuRef} className="relative">
           <button
             ref={shareTriggerRef}
@@ -230,20 +243,20 @@ export function ProductGallery({
             aria-label={`Compartilhar ${productName}`}
             aria-expanded={isShareMenuOpen}
             aria-controls="product-share-menu"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-[#0c2d72] shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+            className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 bg-white text-primary transition-colors hover:border-secondary hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <Share2 className="h-5 w-5" aria-hidden="true" />
+            <Share2 className="h-6 w-6" aria-hidden="true" />
           </button>
           {isShareMenuOpen ? (
             <div
               id="product-share-menu"
-              className="absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-2 text-sm text-slate-700 shadow-lg"
+              className="absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-2 text-sm text-foreground shadow-lg"
             >
               {canShareNatively ? (
                 <button
                   type="button"
                   onClick={() => void shareNatively()}
-                  className="flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                  className="flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <Share2 className="h-4 w-4" aria-hidden="true" />
                   Compartilhar pelo celular
@@ -277,19 +290,6 @@ export function ProductGallery({
             </div>
           ) : null}
           </div>
-          <button
-            type="button"
-            onClick={() => void toggleFavorite(productId)}
-            aria-pressed={favorited}
-            aria-label={`${favorited ? "Remover" : "Adicionar"} ${productName} ${favorited ? "dos" : "aos"} favoritos`}
-            title={favorited ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-[#0c2d72] shadow-sm transition-colors hover:bg-white hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
-          >
-            <Heart
-              aria-hidden="true"
-              className={`h-5 w-5 transition-transform ${favorited ? "scale-110 fill-[#ff6a00] text-[#ff6a00]" : ""}`}
-            />
-          </button>
         </div>
 
         <button
@@ -299,7 +299,7 @@ export function ProductGallery({
           aria-label="Ampliar imagem do produto"
           aria-expanded={isExpandLabelVisible}
           title="Clique para ampliar"
-          className={`group absolute bottom-10 left-3 z-20 inline-flex h-11 min-w-11 items-center overflow-hidden rounded-full border border-slate-100 bg-white/95 text-sm font-medium text-slate-800 shadow-md transition-[padding,gap] duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] ${
+          className={`group absolute bottom-10 left-3 z-20 inline-flex h-11 min-w-11 items-center overflow-hidden rounded-full border border-slate-100 bg-white/95 text-sm font-medium text-foreground shadow-md transition-[padding,gap] duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
             isExpandLabelVisible
               ? "gap-2 px-4"
               : "justify-center gap-0 px-3 hover:justify-start hover:gap-2 hover:px-4 focus-visible:justify-start focus-visible:gap-2 focus-visible:px-4"
@@ -323,7 +323,7 @@ export function ProductGallery({
               type="button"
               onClick={showPreviousImage}
               aria-label="Exibir imagem anterior"
-              className="absolute left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-[#0c2d72] shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+              className="absolute left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-primary shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <ChevronLeft className="h-6 w-6" aria-hidden="true" />
             </button>
@@ -331,7 +331,7 @@ export function ProductGallery({
               type="button"
               onClick={showNextImage}
               aria-label="Exibir próxima imagem"
-              className="absolute right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-[#0c2d72] shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+              className="absolute right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-primary shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <ChevronRight className="h-6 w-6" aria-hidden="true" />
             </button>
@@ -350,9 +350,9 @@ export function ProductGallery({
               onClick={() => selectImage(index)}
               aria-label={`Exibir imagem ${index + 1} de ${productName}`}
               aria-pressed={isSelected}
-              className={`relative aspect-square w-20 shrink-0 overflow-hidden rounded-xl border bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2 ${
+              className={`relative aspect-square w-20 shrink-0 overflow-hidden rounded-xl border bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                 isSelected
-                  ? "border-[#0c2d72]"
+                  ? "border-primary"
                   : "border-slate-200 hover:border-slate-400"
               }`}
             >
@@ -395,7 +395,7 @@ function ShareLink({ href, label, icon }: ShareLinkProps) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex min-h-10 items-center gap-3 rounded-lg px-3 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+      className="flex min-h-10 items-center gap-3 rounded-lg px-3 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       {icon}
       {label}

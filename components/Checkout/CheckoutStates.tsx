@@ -6,7 +6,7 @@ import { Button } from "@/components/UI/Button";
 export function CheckoutLoading() {
   return (
     <div
-      className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600"
+      className="rounded-xl border border-slate-200 bg-white p-8 text-center text-muted"
       role="status"
       aria-live="polite"
     >
@@ -18,10 +18,10 @@ export function CheckoutLoading() {
 export function CheckoutError() {
   return (
     <section className="rounded-xl border border-red-200 bg-white p-8 text-center">
-      <h2 className="text-xl text-[#0c2d72]">
+      <h2 className="text-xl text-primary">
         Não foi possível carregar seu pedido agora.
       </h2>
-      <p className="mt-3 text-sm text-slate-600">
+      <p className="mt-3 text-sm text-muted">
         Verifique sua conexão e tente novamente.
       </p>
       <Button
@@ -37,8 +37,8 @@ export function CheckoutError() {
 export function CheckoutEmptyCart() {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-      <h2 className="text-xl text-[#0c2d72]">Seu carrinho está vazio</h2>
-      <p className="mt-3 text-sm text-slate-600">
+      <h2 className="text-xl text-primary">Seu carrinho está vazio</h2>
+      <p className="mt-3 text-sm text-muted">
         Adicione produtos antes de iniciar a finalização da compra.
       </p>
       <Link

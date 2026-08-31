@@ -14,7 +14,7 @@ import {
 import { useRecaptcha } from "@/hooks/useRecaptcha";
 
 const input =
-  "min-h-11 w-full rounded-xl border border-slate-300 px-3 focus:border-[#0c2d72] focus:outline-none focus:ring-2 focus:ring-[#0c2d72]/20";
+  "min-h-11 w-full rounded-xl border border-slate-300 px-3 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
 
 export function AccountRegisterForm() {
   const [loading, setLoading] = useState(false);
@@ -123,7 +123,7 @@ export function AccountRegisterForm() {
       <div>
         <label htmlFor="register-phone" className="mb-2 block font-medium">
           Telefone{" "}
-          <span className="font-normal text-slate-500">(opcional)</span>
+          <span className="font-normal text-muted">(opcional)</span>
         </label>
         <input
           id="register-phone"
@@ -166,7 +166,7 @@ export function AccountRegisterForm() {
           minLength={8}
           className={input}
         />
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted">
           Use pelo menos 8 caracteres.
         </p>
       </div>
@@ -188,7 +188,7 @@ export function AccountRegisterForm() {
           name="acceptTerms"
           type="checkbox"
           required
-          className="mt-1 h-4 w-4 accent-[#0c2d72]"
+          className="mt-1 h-4 w-4 accent-primary"
         />
         <span>Li e aceito os termos e a política de privacidade.</span>
       </label>

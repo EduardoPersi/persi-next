@@ -1,5 +1,5 @@
 const TONE_CLASSES = {
-  muted: "text-slate-500 hover:[&_a]:text-slate-700",
+  muted: "text-muted hover:[&_a]:text-foreground",
   light: "text-white/35 hover:[&_a]:text-white/70 [&_a]:decoration-white/35 hover:[&_a]:decoration-white/70",
 } as const;
 

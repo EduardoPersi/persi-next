@@ -30,7 +30,7 @@ export function CheckoutStepCard({
   onEdit,
   children,
 }: CheckoutStepCardProps) {
-  const borderClass = "border-secondary/25";
+  const borderClass = "border-border";
   // No mobile só a etapa ativa fica visível — voltar para uma etapa
   // concluída é feito pelo CheckoutMobileStepper no topo, então o resumo
   // "done" aqui seria redundante; etapas futuras também ficam escondidas
@@ -42,7 +42,7 @@ export function CheckoutStepCard({
     return (
       <section
         className={clsx(
-          "overflow-hidden rounded-xl border bg-white shadow-[0_8px_24px_rgba(255,106,0,0.10)]",
+          "overflow-hidden rounded-xl border bg-white shadow-sm",
           borderClass,
           visibilityClass,
         )}
@@ -55,14 +55,14 @@ export function CheckoutStepCard({
         >
           <span className="flex items-center gap-3">
             <span
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-black text-xs font-bold text-white"
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white"
               aria-hidden="true"
             >
               <Check size={13} />
             </span>
-            <h2 className="text-base font-bold text-black">{title}</h2>
+            <h2 className="text-base font-bold text-heading">{title}</h2>
           </span>
-          <span className="text-xs text-slate-700">{doneSummary}</span>
+          <span className="text-xs text-foreground">{doneSummary}</span>
         </button>
         {/* Mantém os campos montados (só ocultos) para preservar os valores
             já digitados no react-hook-form (shouldUnregister: false) sem
@@ -75,7 +75,7 @@ export function CheckoutStepCard({
   return (
     <section
       className={clsx(
-        "rounded-xl border bg-white p-5 shadow-[0_8px_24px_rgba(255,106,0,0.10)]",
+        "rounded-xl border bg-white p-5 shadow-sm",
         borderClass,
         visibilityClass,
       )}
@@ -85,7 +85,7 @@ export function CheckoutStepCard({
         <span
           className={clsx(
             "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white",
-            state === "upcoming" ? "bg-blue-200" : "bg-black",
+            state === "upcoming" ? "bg-slate-300" : "bg-primary",
           )}
           aria-hidden="true"
         >
@@ -94,7 +94,7 @@ export function CheckoutStepCard({
         <h2
           className={clsx(
             "text-base font-bold",
-            state === "upcoming" ? "text-slate-400" : "text-black",
+            state === "upcoming" ? "text-slate-400" : "text-heading",
           )}
         >
           {title}
@@ -103,7 +103,7 @@ export function CheckoutStepCard({
 
       <div className={state === "active" ? "mt-5" : "mt-3"}>
         {state === "upcoming" ? (
-          <p className="text-xs text-slate-500">{upcomingText}</p>
+          <p className="text-xs text-muted">{upcomingText}</p>
         ) : null}
         {/* Mantém os campos montados (só ocultos) fora do estado "active"
             para preservar os valores já digitados no react-hook-form

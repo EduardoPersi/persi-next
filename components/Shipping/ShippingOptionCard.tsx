@@ -45,13 +45,13 @@ export function ShippingOptionCard({
         disabled={disabled}
         onChange={onSelect}
         aria-describedby={detail ? descriptionId : undefined}
-        className="mt-0.5 h-5 w-5 shrink-0 accent-[#0c2d72]"
+        className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
       />
       ) : null}
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap justify-between gap-x-4 gap-y-1">
-          <strong className="text-sm text-slate-900">{rate.name}</strong>
-          <strong className="text-sm text-slate-900">
+          <strong className="text-sm text-foreground">{rate.name}</strong>
+          <strong className="text-sm text-foreground">
             {isZeroMoney(rate.price)
               ? "Grátis"
               : formatStoreMoney(rate.price)}
@@ -60,7 +60,7 @@ export function ShippingOptionCard({
         {detail ? (
           <span
             id={descriptionId}
-            className="mt-1 block text-sm leading-5 text-slate-600"
+            className="mt-1 block text-sm leading-5 text-muted"
           >
             {detail}
           </span>
@@ -70,7 +70,7 @@ export function ShippingOptionCard({
   );
 
   return selectable ? (
-    <label className="flex min-h-16 cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition duration-200 has-[:checked]:border-[#0c2d72] has-[:checked]:bg-blue-50/60">
+    <label className="flex min-h-16 cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition duration-200 has-[:checked]:border-primary has-[:checked]:bg-blue-50/60">
       {content}
     </label>
   ) : (

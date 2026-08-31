@@ -8,6 +8,7 @@ import {
   type PimEditorialDraftInput,
   type PimWorkflowActionInput,
 } from "@/lib/validation/pimEditorial";
+import {assertProfileApprovalAllowed,assertSuggestionDecisionAllowed} from "@/lib/pim/conflict-policy";
 
 export type PimDecision = "approved" | "rejected";
 type PimTransaction = Parameters<Parameters<PersiDatabase["transaction"]>[0]>[0];
@@ -32,6 +33,10 @@ function snapshot(input:PimEditorialDraftInput) {
     seoTitle:input.seoTitle, metaDescription:input.metaDescription, searchTerms:input.searchTerms,
     imageAltText:input.imageAltText,
   };
+}
+
+function textArray(values:string[]){
+  return sql`array[${sql.join(values.map(value=>sql`${value}`),sql`, `)}]::text[]`;
 }
 
 async function lockProfile(tx:PimTransaction,productId:string):Promise<ProfileLock|null>{
@@ -60,14 +65,14 @@ export async function savePimEditorialDraft(raw:PimEditorialDraftInput,actorRefe
     const operation=profile?"UPDATE_DRAFT":"CREATE_DRAFT";
     if(profile){
       await tx.execute(sql`update pim_product_profiles set workflow_status='draft',commercial_name=${input.commercialName},short_description=${input.shortDescription},
-        description=${input.description},bullet_points=${input.bulletPoints},application=${input.application},specifications=${input.specifications},
-        seo_title=${input.seoTitle},meta_description=${input.metaDescription},search_terms=${input.searchTerms},image_alt_text=${input.imageAltText},
+        description=${input.description},bullet_points=${textArray(input.bulletPoints)},application=${input.application},specifications=${input.specifications},
+        seo_title=${input.seoTitle},meta_description=${input.metaDescription},search_terms=${textArray(input.searchTerms)},image_alt_text=${input.imageAltText},
         draft_started_at=coalesce(draft_started_at,now()),submitted_at=null,rejected_at=null,version=version+1 where product_id=${input.productId}::uuid`);
     }else{
       await tx.execute(sql`insert into pim_product_profiles(product_id,workflow_status,commercial_name,short_description,description,bullet_points,application,
         specifications,seo_title,meta_description,search_terms,image_alt_text,draft_started_at,version)
-        values(${input.productId}::uuid,'draft',${input.commercialName},${input.shortDescription},${input.description},${input.bulletPoints},${input.application},
-        ${input.specifications},${input.seoTitle},${input.metaDescription},${input.searchTerms},${input.imageAltText},now(),1)`);
+        values(${input.productId}::uuid,'draft',${input.commercialName},${input.shortDescription},${input.description},${textArray(input.bulletPoints)},${input.application},
+        ${input.specifications},${input.seoTitle},${input.metaDescription},${textArray(input.searchTerms)},${input.imageAltText},now(),1)`);
     }
     await audit(tx,{productId:input.productId,actor,operation,before:profile?.draft??null,after:next});
     return {productId:input.productId,status:"draft" as const,version:input.version+BigInt(1)};
@@ -87,14 +92,16 @@ export async function transitionPimEditorial(raw:PimWorkflowActionInput,actorRef
     else throw new Error(`Transição ${input.action} inválida para ${profile.workflowStatus}.`);
 
     if(input.action==="APPROVE"){
+      const blocking=await tx.execute(sql`select count(*)::int count from pim_suggestions where product_id=${input.productId}::uuid and superseded_at is null and status in ('needs_review','approved') and (payload @> '{"editorialBlockedByConflict":true}'::jsonb or payload @> '{"acceptableForDraft":false}'::jsonb or case when jsonb_typeof(payload->'blockingConflicts')='array' then jsonb_array_length(payload->'blockingConflicts')>0 else false end)`);
+      assertProfileApprovalAllowed(Number((blocking as unknown as Array<{count:number}>)[0]?.count??0));
       await tx.execute(sql`update pim_product_profiles set workflow_status='approved',approved_content=${JSON.stringify(profile.draft)}::jsonb,
         approved_at=now(),submitted_at=null,rejected_at=null,version=version+1 where product_id=${input.productId}::uuid`);
     }else if(input.action==="DISCARD_DRAFT"&&profile.approvedContent){
       const approved=profile.approvedContent;
       await tx.execute(sql`update pim_product_profiles set workflow_status='approved',
         commercial_name=${approved.commercialName??null},short_description=${approved.shortDescription??null},description=${approved.description??null},
-        bullet_points=${Array.isArray(approved.bulletPoints)?approved.bulletPoints:[]},application=${approved.application??null},specifications=${approved.specifications??null},
-        seo_title=${approved.seoTitle??null},meta_description=${approved.metaDescription??null},search_terms=${Array.isArray(approved.searchTerms)?approved.searchTerms:[]},
+        bullet_points=${textArray(Array.isArray(approved.bulletPoints)?approved.bulletPoints as string[]:[])},application=${approved.application??null},specifications=${approved.specifications??null},
+        seo_title=${approved.seoTitle??null},meta_description=${approved.metaDescription??null},search_terms=${textArray(Array.isArray(approved.searchTerms)?approved.searchTerms as string[]:[])},
         image_alt_text=${approved.imageAltText??null},draft_started_at=null,submitted_at=null,rejected_at=null,version=version+1 where product_id=${input.productId}::uuid`);
       after=approved;
     }else if(input.action==="DISCARD_DRAFT"){
@@ -118,10 +125,16 @@ export async function decidePimSuggestion(input:{suggestionId:string;decision:Pi
   if(!/^[0-9a-f-]{36}$/i.test(input.suggestionId))throw new Error("Sugestão inválida.");
   const actor=requireActor(input.actorReference);
   return getDatabase().transaction(async(tx)=>{
-    const locked=await tx.execute(sql`select id,product_id,field_name,suggested_value,status::text from pim_suggestions where id=${input.suggestionId}::uuid for update`);
-    const suggestion=(locked as unknown as Array<{id:string;product_id:string;field_name:string;suggested_value:string;status:string}>)[0];
+    const locked=await tx.execute(sql`select id,product_id,field_name,suggested_value,status::text,superseded_at,payload from pim_suggestions where id=${input.suggestionId}::uuid for update`);
+    const suggestion=(locked as unknown as Array<{id:string;product_id:string;field_name:string;suggested_value:string;status:string;superseded_at:Date|null;payload:Record<string,unknown>}>)[0];
     if(!suggestion)throw new Error("Sugestão não encontrada.");
     if(suggestion.status!=="needs_review")throw new Error("Sugestão já revisada.");
+    if(suggestion.superseded_at)throw new Error("Sugestão substituída por uma versão mais recente.");
+    assertSuggestionDecisionAllowed(suggestion.payload,input.decision);
+    if(input.decision==="approved"&&["commercialName","commercial_name","shortDescription","short_description","description","application","specifications","seoTitle","seo_title","metaDescription","meta_description","imageAltText","image_alt_text"].includes(suggestion.field_name)){
+      await tx.execute(sql`insert into pim_product_profiles(product_id,workflow_status,draft_started_at,version) values(${suggestion.product_id}::uuid,'draft',now(),0) on conflict(product_id) do nothing`);
+      await tx.execute(sql`update pim_product_profiles set workflow_status='draft',draft_started_at=coalesce(draft_started_at,now()),commercial_name=case when ${suggestion.field_name} in ('commercialName','commercial_name') then ${suggestion.suggested_value} else commercial_name end,short_description=case when ${suggestion.field_name} in ('shortDescription','short_description') then ${suggestion.suggested_value} else short_description end,description=case when ${suggestion.field_name}='description' then ${suggestion.suggested_value} else description end,application=case when ${suggestion.field_name}='application' then ${suggestion.suggested_value} else application end,specifications=case when ${suggestion.field_name}='specifications' then ${suggestion.suggested_value} else specifications end,seo_title=case when ${suggestion.field_name} in ('seoTitle','seo_title') then ${suggestion.suggested_value} else seo_title end,meta_description=case when ${suggestion.field_name} in ('metaDescription','meta_description') then ${suggestion.suggested_value} else meta_description end,image_alt_text=case when ${suggestion.field_name} in ('imageAltText','image_alt_text') then ${suggestion.suggested_value} else image_alt_text end,version=version+1 where product_id=${suggestion.product_id}::uuid`);
+    }
     await tx.execute(sql`update pim_suggestions set status=${input.decision}::pim_decision_status,reviewed_by=${actor},reviewed_at=now() where id=${input.suggestionId}::uuid`);
     await tx.execute(sql`insert into pim_audit_log(product_id,entity_type,entity_id,field_name,previous_value,new_value,source,actor_reference,operation,reason)
       values(${suggestion.product_id}::uuid,'suggestion',${suggestion.id}::uuid,${suggestion.field_name},'needs_review',${input.decision},'manual',${actor},${`suggestion_${input.decision}`},${input.reason??null})`);

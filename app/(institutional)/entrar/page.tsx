@@ -37,7 +37,7 @@ export default async function LoginPage({
       accountSession={{ authenticated: false }}
     >
       <div className="mx-auto max-w-md">
-        <p className="mb-6 text-sm leading-6 text-slate-600">
+        <p className="mb-6 text-sm leading-6 text-muted">
           Use o e-mail ou usuário cadastrado no site da Persi.
         </p>
         <>
@@ -58,7 +58,7 @@ export default async function LoginPage({
           <AccountLoginForm />
           <div className="mt-6">
             <SocialLoginButtons descriptionId="social-login-status" />
-            <p id="social-login-status" className="mt-2 text-center text-xs text-slate-500">
+            <p id="social-login-status" className="mt-2 text-center text-xs text-muted">
               Use Google ou Facebook para entrar com segurança.
             </p>
           </div>

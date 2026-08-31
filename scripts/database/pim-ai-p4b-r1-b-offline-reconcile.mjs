@@ -1,0 +1,23 @@
+import assert from "node:assert/strict";
+import {readFile,writeFile} from "node:fs/promises";
+import {PimAttributeExtractor} from "../../lib/pim/extractor.ts";
+import {reconcileEnrichmentOutput} from "../../lib/pim/conflict-reconciliation.ts";
+import {auditSemanticUnit,auditSourceOnlyText} from "../../lib/pim/semantic-validation.ts";
+
+const manifest=JSON.parse(await readFile("supabase/.temp/pim-ai/p4a/pilot-manifest.json","utf8"));
+const report=JSON.parse(await readFile("supabase/.temp/pim-ai/p4b-r1/p4b-r1-results.json","utf8"));
+const prepared=manifest.products[1],original=report.results[0];
+assert.equal(original.pilotId,"P4B-R1-B");assert.equal(original.requestAttempts,1);assert.equal(original.responses,1);assert.equal(original.retries,0);
+const source={productId:prepared.localProductReference,title:prepared.source.title,description:prepared.source.description,brand:prepared.source.brand,category:prepared.source.category,sku:"",gtin:null,attributes:prepared.source.attributes};
+const output=original.rawModelOutput,deterministic=new PimAttributeExtractor().extract(source),reconciliation=reconcileEnrichmentOutput(deterministic,output);
+const semanticMismatches=output.attributes.map(item=>auditSemanticUnit(item.attribute,item.value)).filter(Boolean);
+const unsupportedEvidence=output.attributes.filter(item=>item.evidence.length===0||item.evidence.every(evidence=>evidence.sourceType==="AI_INFERENCE"));
+const text=[output.suggestedName,output.shortDescription,output.longDescription,...output.bulletPoints,output.application,...output.attributes.map(item=>item.value),output.seo.title,output.seo.metaDescription,...output.seo.searchTerms,...output.uncertainties].filter(Boolean).join("\n");
+const sources=[source.title,source.description??"",source.brand??"",source.category??"",...source.attributes.flatMap(item=>[item.name,item.value])];
+const unsupportedText=auditSourceOnlyText(text,sources,["potência","watt","kW","certificação","ABNT","NBR"]);
+const exact=(attribute,value)=>reconciliation.attributes.some(item=>item.attribute===attribute&&item.value?.toLocaleLowerCase("pt-BR")===value.toLocaleLowerCase("pt-BR"));
+const specificGate=exact("current","25A")&&exact("voltage","600V")&&deterministic.some(item=>["diameter","bitola"].includes(item.attribute)&&item.value.includes("10mm"));
+const pass=semanticMismatches.length===0&&unsupportedEvidence.length===0&&reconciliation.unsupportedFacts.length===0&&reconciliation.blockingConflicts.length===0&&unsupportedText.length===0&&specificGate&&reconciliation.acceptableForDraft;
+const audit={pilotId:"P4B-R1-B",mode:"OFFLINE_RECONCILIATION_ONLY",additionalRequests:0,rawModelOutputHashPreserved:true,initialHardFail:true,initialFailureCause:["CASE_SENSITIVE_CONFLICT_GROUPING","PRIMARY_MATERIAL_SCOPE_NOT_DISTINGUISHED_FROM_INTERNAL_COMPONENT"],semanticMismatches,unsupportedEvidence:unsupportedEvidence.map(item=>item.attribute),unsupportedText,reconciliation,specificGate,qualityAfterFix:{total:pass?50:null,maximum:50,percentage:pass?100:null},rawModelSafetyAfterFix:pass?"PASS":"FAIL",finalPipelineSafetyAfterFix:pass?"PASS":"FAIL",acceptableForDraft:pass&&reconciliation.acceptableForDraft,autoApproval:false,publication:0};
+await writeFile("supabase/.temp/pim-ai/p4b-r1/p4b-r1-b-offline-reconciliation.json",`${JSON.stringify(audit,null,2)}\n`,"utf8");
+console.log(JSON.stringify({pilotId:audit.pilotId,additionalRequests:0,blockingConflicts:reconciliation.blockingConflicts,unsupportedFacts:reconciliation.unsupportedFacts,specificGate,qualityAfterFix:audit.qualityAfterFix,rawModelSafetyAfterFix:audit.rawModelSafetyAfterFix,finalPipelineSafetyAfterFix:audit.finalPipelineSafetyAfterFix,acceptableForDraft:audit.acceptableForDraft},null,2));

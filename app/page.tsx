@@ -64,16 +64,22 @@ export default async function Home() {
     <>
       <Header />
 
-      <HeroBanner />
+      <main className="bg-background">
+        <div className="relative px-2 pb-4 pt-2 sm:px-0 sm:pb-0 sm:pt-0">
+          <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1/2 bg-primary sm:hidden" />
+          <div className="relative">
+            <HeroBanner />
+          </div>
+        </div>
 
-      <section className="border-b border-slate-200 bg-white py-6">
+      <section className="hidden border-b border-slate-200 bg-background py-6 sm:block">
         <Container>
           <HomeBenefits />
         </Container>
       </section>
 
       {mainCategories.length > 0 ? (
-        <section className="bg-white py-8 sm:py-10">
+        <section className="bg-background py-8 sm:py-10">
           <Container>
             <HomeCategoryCarousel categories={mainCategories} />
           </Container>
@@ -81,20 +87,20 @@ export default async function Home() {
       ) : null}
 
       {newArrivals.length > 0 ? (
-        <section className="bg-white pb-8 sm:pb-10">
+        <section className="bg-background pb-8 sm:pb-10">
           <Container>
             <NewArrivalsCarousel products={newArrivals} />
           </Container>
         </section>
       ) : null}
 
-      <section className="bg-slate-50 py-10 sm:py-12">
+      <section className="bg-background py-10 sm:py-12">
         <Container>
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-[#0c2d72]">
+            <h2 className="text-2xl font-bold text-primary">
               Produtos em destaque
             </h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-muted">
               Confira alguns produtos selecionados para você.
             </p>
           </div>
@@ -105,7 +111,7 @@ export default async function Home() {
         </Container>
       </section>
 
-      <section className="bg-white py-8 sm:py-10">
+      <section className="bg-background py-8 sm:py-10">
         <Container>
           <Suspense fallback={null}>
             <FlashDeals context={{ type: "home" }} />
@@ -118,7 +124,7 @@ export default async function Home() {
         ferramentas em Jundiaí e região
       </h1>
 
-      <section className="bg-white pb-10">
+      <section className="bg-background pb-10">
         <Container>
           <BrandCarousel
             brands={brands}
@@ -134,6 +140,7 @@ export default async function Home() {
           </Suspense>
         </Container>
       </section>
+      </main>
     </>
   );
 }

@@ -87,7 +87,7 @@ export function PixPaymentResult({ result, onPaid, onExpired }: PixPaymentResult
       instructions={
         <>
           Faça um pix de{" "}
-          <strong className="text-slate-900">
+          <strong className="text-foreground">
             {amountFormatter.format(result.amount)}
           </strong>{" "}
           para garantir sua compra.
@@ -95,9 +95,9 @@ export function PixPaymentResult({ result, onPaid, onExpired }: PixPaymentResult
       }
       helperText="Assim que identificarmos o pagamento, esta página é atualizada automaticamente."
     >
-      <p className="text-center text-sm leading-6 text-slate-700">
+      <p className="text-center text-sm leading-6 text-foreground">
         Abra seu aplicativo de pagamentos Pix e escolha a opção{" "}
-        <strong className="text-slate-900">Ler QR Code</strong>
+        <strong className="text-foreground">Ler QR Code</strong>
       </p>
 
       <div className="mt-4 flex justify-center">
@@ -116,7 +116,7 @@ export function PixPaymentResult({ result, onPaid, onExpired }: PixPaymentResult
         </span>
       </div>
 
-      <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-slate-500">
+      <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted">
         <Smartphone className="h-3.5 w-3.5" aria-hidden="true" />
         Aponte a câmera
       </p>
@@ -132,13 +132,13 @@ export function PixPaymentResult({ result, onPaid, onExpired }: PixPaymentResult
         />
       </div>
 
-      <p className="mt-5 text-center text-xs leading-5 text-slate-600">
+      <p className="mt-5 text-center text-xs leading-5 text-muted">
         Se preferir, utilize o código <strong>Pix Copia e Cola</strong> no seu
         aplicativo de pagamentos ou Internet Banking. Para isso, clique no botão
         abaixo para copiar o código e realizar o pagamento.
       </p>
 
-      <label htmlFor="pix-copy-paste" className="mt-5 block text-sm font-medium text-slate-800">
+      <label htmlFor="pix-copy-paste" className="mt-5 block text-sm font-medium text-foreground">
         Pix copia e cola
       </label>
       <input
@@ -146,7 +146,7 @@ export function PixPaymentResult({ result, onPaid, onExpired }: PixPaymentResult
         id="pix-copy-paste"
         readOnly
         value={result.qrCodeCopyPaste}
-        className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+        className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-foreground"
       />
       <button
         type="button"

@@ -1,0 +1,4 @@
+export const PIM_AI_ERROR_CODES=["AI_DISABLED","AI_NOT_CONFIGURED","AI_RATE_LIMITED","AI_BUDGET_EXCEEDED","AI_TIMEOUT","AI_PROVIDER_ERROR","AI_INVALID_RESPONSE"] as const;
+export type PimAiErrorCode=(typeof PIM_AI_ERROR_CODES)[number];
+export class PimAiError extends Error{readonly code:PimAiErrorCode;readonly retryable:boolean;constructor(code:PimAiErrorCode,message:string,retryable=false){super(message);this.name="PimAiError";this.code=code;this.retryable=retryable;}}
+export function normalizePimAiError(error:unknown){if(error instanceof PimAiError)return error;if(error instanceof DOMException&&error.name==="TimeoutError")return new PimAiError("AI_TIMEOUT","O provider de IA excedeu o tempo limite.",false);return new PimAiError("AI_PROVIDER_ERROR","O provider de IA não conseguiu concluir a solicitação.",false);}

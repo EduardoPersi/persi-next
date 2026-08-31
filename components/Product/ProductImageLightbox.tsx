@@ -150,7 +150,7 @@ export function ProductImageLightbox({
         type="button"
         onClick={onClose}
         aria-label="Fechar galeria"
-        className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-900 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:right-6 sm:top-6"
+        className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white text-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:right-6 sm:top-6"
       >
         <X className="h-6 w-6" aria-hidden="true" />
       </button>
@@ -176,7 +176,7 @@ export function ProductImageLightbox({
             type="button"
             onClick={showPrevious}
             aria-label="Imagem anterior"
-            className="absolute left-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:left-6"
+            className="absolute left-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:left-6"
           >
             <ChevronLeft className="h-7 w-7" aria-hidden="true" />
           </button>
@@ -185,7 +185,7 @@ export function ProductImageLightbox({
             type="button"
             onClick={showNext}
             aria-label="Próxima imagem"
-            className="absolute right-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:right-6"
+            className="absolute right-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:right-6"
           >
             <ChevronRight className="h-7 w-7" aria-hidden="true" />
           </button>

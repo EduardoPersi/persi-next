@@ -2,10 +2,17 @@
 
 :root {
   /* Brand */
-  --persi-primary: #0b3a8d;
-  --persi-primary-hover: #082f73;
-  --persi-secondary: #ff6a00;
-  --persi-secondary-hover: #e85f00;
+  --persi-navy: #002b57;
+  --persi-navy-dark: #001f42;
+  --persi-blue: #063b73;
+  --persi-orange: #ff6b00;
+  --persi-orange-hover: #e85f00;
+
+  /* Semantic brand roles (kept compatible with existing utilities) */
+  --persi-primary: var(--persi-navy);
+  --persi-primary-hover: var(--persi-navy-dark);
+  --persi-secondary: var(--persi-orange);
+  --persi-secondary-hover: var(--persi-orange-hover);
 
   /* Feedback */
   --persi-success: #16a34a;
@@ -14,11 +21,17 @@
 
   /* Neutrals */
   --persi-background: #f8fafc;
+  --persi-background-soft: #f6f7f9;
   --persi-surface: #ffffff;
+  --persi-surface-hover: #f6f7f9;
   --persi-foreground: #1f2937;
-  --persi-muted: #6b7280;
+  --persi-heading: var(--persi-navy);
+  --persi-link: var(--persi-blue);
+  --persi-muted: #687386;
   --persi-border: #e5e7eb;
   --persi-border-strong: #cbd5e1;
+  --persi-focus-ring: var(--persi-blue);
+  --persi-disabled: #9ca3af;
 
   /* Typography */
   --persi-font-weight-regular: 400;
@@ -27,10 +40,12 @@
   --persi-font-weight-bold: 700;
 
   /* Radius */
-  --persi-radius-sm: 6px;
-  --persi-radius-md: 6px;
-  --persi-radius-lg: 6px;
-  --persi-radius-xl: 6px;
+  --persi-radius-sm: 8px;
+  --persi-radius-md: 8px;
+  --persi-radius-lg: 8px;
+  --persi-radius-xl: 8px;
+  --persi-radius-2xl: 8px;
+  --persi-radius-3xl: 8px;
   --persi-radius-pill: 999px;
 
   /* Shadows */
@@ -46,8 +61,12 @@
 
 @theme inline {
   --color-background: var(--persi-background);
+  --color-background-soft: var(--persi-background-soft);
   --color-surface: var(--persi-surface);
+  --color-surface-hover: var(--persi-surface-hover);
   --color-foreground: var(--persi-foreground);
+  --color-heading: var(--persi-heading);
+  --color-link: var(--persi-link);
   --color-muted: var(--persi-muted);
   --color-border: var(--persi-border);
   --color-border-strong: var(--persi-border-strong);
@@ -60,11 +79,15 @@
   --color-success: var(--persi-success);
   --color-warning: var(--persi-warning);
   --color-danger: var(--persi-danger);
+  --color-focus-ring: var(--persi-focus-ring);
+  --color-disabled: var(--persi-disabled);
 
   --radius-sm: var(--persi-radius-sm);
   --radius-md: var(--persi-radius-md);
   --radius-lg: var(--persi-radius-lg);
   --radius-xl: var(--persi-radius-xl);
+  --radius-2xl: var(--persi-radius-2xl);
+  --radius-3xl: var(--persi-radius-3xl);
   --radius-pill: var(--persi-radius-pill);
 
   --shadow-sm: var(--persi-shadow-sm);
@@ -99,14 +122,6 @@ body {
 }
 
 /* Botões laranja sempre preservam contraste, inclusive quando usados como links. */
-:is(a, button, [role="button"]):is(.bg-secondary, .bg-\[\#ff6a00\]) {
-  color: #ffffff !important;
-}
-
-:is(a, button, [role="button"]):is(.bg-secondary, .bg-\[\#ff6a00\]) svg {
-  color: inherit !important;
-}
-
 button,
 input,
 select,
@@ -114,16 +129,20 @@ textarea {
   font: inherit;
 }
 
-h1,
-h2 {
-  font-weight: var(--persi-font-weight-bold);
-}
+@layer base {
+  h1,
+  h2 {
+    color: var(--persi-heading);
+    font-weight: var(--persi-font-weight-bold);
+  }
 
-h3,
-h4,
-h5,
-h6 {
-  font-weight: var(--persi-font-weight-semibold);
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--persi-heading);
+    font-weight: var(--persi-font-weight-semibold);
+  }
 }
 
 button,
@@ -179,6 +198,14 @@ svg {
   img {
     max-width: 100%;
     height: auto;
+  }
+
+  :where(
+    input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+    select,
+    textarea
+  ) {
+    border-radius: var(--persi-radius-md);
   }
 }
 
@@ -277,16 +304,15 @@ svg {
 }
 
 .institutional-content {
-  --wp-content-heading-color: #071f5c;
+  --wp-content-heading-color: var(--persi-heading);
   color: var(--persi-foreground);
   font-size: 1rem;
   line-height: 1.75;
 }
 
-/* Produto/categoria/marca usam o mesmo azul de destaque já em produção
-   nessas páginas (#0c2d72), diferente do azul de página institucional. */
+/* Storefront and institutional content share the official heading token. */
 .institutional-content--storefront {
-  --wp-content-heading-color: #0c2d72;
+  --wp-content-heading-color: var(--persi-heading);
 }
 
 .institutional-content :where(h2, h3, h4) {
@@ -326,7 +352,7 @@ svg {
 }
 
 .institutional-content a {
-  color: #0c2d72;
+  color: var(--persi-link);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -350,13 +376,13 @@ svg {
 }
 
 .institutional-content blockquote {
-  border-left: 4px solid #ff6a00;
+  border-left: 4px solid var(--persi-orange);
   padding-left: 1rem;
   color: var(--persi-muted);
 }
 
 :focus-visible {
-  outline: 2px solid #0b3a8d;
+  outline: 2px solid var(--persi-focus-ring);
   outline-offset: 2px;
 }
 

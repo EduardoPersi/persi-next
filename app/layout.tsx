@@ -23,7 +23,7 @@ import { CustomerListsProvider } from "@/lib/customer-lists/provider";
 import { NavigationProvider } from "@/components/navigation/NavigationProvider";
 import { getMegaMenuData } from "@/services/menu/menu";
 
-const PERSI_HEADER_COLOR = "#0c2d72";
+const PERSI_HEADER_COLOR = "#002b57";
 
 const inter = Inter({
   variable: "--font-inter",

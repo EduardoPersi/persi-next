@@ -43,10 +43,10 @@ export function FlashDealCard({ product }: { product: Product }) {
         data-flash-deal-product
         data-product-id={product.sku || product.id}
         data-product-name={product.name}
-        className="relative aspect-square overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+        className="relative aspect-square overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         aria-label={`Ver ${product.name}`}
       >
-        <span className="absolute left-2 top-2 z-10 rounded-md bg-[#ff6a00] px-2 py-1 text-[10px] font-bold text-white sm:text-xs">
+        <span className="absolute left-2 top-2 z-10 rounded-md bg-secondary px-2 py-1 text-[10px] font-bold text-white sm:text-xs">
           ⚡ Oferta do Dia
         </span>
         {discount > 0 ? (
@@ -56,19 +56,19 @@ export function FlashDealCard({ product }: { product: Product }) {
         <Image src={safeImage(product.image?.src)} alt={product.image?.alt || product.name} fill sizes="(min-width: 1280px) 16vw, (min-width: 768px) 25vw, 50vw" className="object-contain p-3" />
       </Link>
       <div className="flex flex-1 flex-col p-3">
-        <Link href={href} data-flash-deal-product data-product-id={product.sku || product.id} data-product-name={product.name} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]">
-          <h3 className="line-clamp-2 min-h-9 text-xs font-semibold leading-[18px] text-slate-800 sm:text-sm">{product.name}</h3>
+        <Link href={href} data-flash-deal-product data-product-id={product.sku || product.id} data-product-name={product.name} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          <h3 className="line-clamp-2 min-h-9 text-xs font-semibold leading-[18px] text-foreground sm:text-sm">{product.name}</h3>
         </Link>
-        <div className="mt-2 flex items-center gap-1 text-xs text-slate-600" aria-label={`${product.averageRating.toFixed(1)} de 5 estrelas, ${product.reviewCount} avaliações`}>
+        <div className="mt-2 flex items-center gap-1 text-xs text-muted" aria-label={`${product.averageRating.toFixed(1)} de 5 estrelas, ${product.reviewCount} avaliações`}>
           <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true" />
           <span>{product.averageRating.toFixed(1)} ({product.reviewCount})</span>
         </div>
         <div className="mt-auto pt-2">
-          {product.regularPrice ? <p className="text-xs text-slate-500 line-through">{money(product.regularPrice, product.currencyCode)}</p> : null}
-          <p className="text-base font-bold text-[#0c2d72]">{money(product.price, product.currencyCode)}</p>
+          {product.regularPrice ? <p className="text-xs text-muted line-through">{money(product.regularPrice, product.currencyCode)}</p> : null}
+          <p className="text-base font-bold text-primary">{money(product.price, product.currencyCode)}</p>
           <p className="text-sm font-bold text-emerald-700">{money(payment.pixPrice, product.currencyCode)} no Pix</p>
-          <p className="text-[11px] text-slate-600">{money(product.price, product.currencyCode)} no boleto</p>
-          <p className="mt-1 text-[11px] text-slate-600">ou {payment.installments}x de {money(payment.installmentValue, product.currencyCode)} sem juros</p>
+          <p className="text-[11px] text-muted">{money(product.price, product.currencyCode)} no boleto</p>
+          <p className="mt-1 text-[11px] text-muted">ou {payment.installments}x de {money(payment.installmentValue, product.currencyCode)} sem juros</p>
           {product.stockQuantity !== undefined && product.stockQuantity > 0 ? (
             <p className="mt-2 text-xs font-semibold text-red-700">🔥 Restam poucas unidades</p>
           ) : null}

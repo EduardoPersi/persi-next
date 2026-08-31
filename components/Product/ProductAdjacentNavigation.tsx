@@ -31,10 +31,10 @@ function ProductPreview({
         />
       </span>
       <span className="min-w-0">
-        <span className="block text-xs font-medium text-slate-500">
+        <span className="block text-xs font-medium text-muted">
           {direction === "previous" ? "Produto anterior" : "Próximo produto"}
         </span>
-        <span className="mt-0.5 line-clamp-2 block text-sm font-semibold leading-5 text-slate-900">
+        <span className="mt-0.5 line-clamp-2 block text-sm font-semibold leading-5 text-foreground">
           {product.name}
         </span>
         <span className="mt-1 block text-sm font-bold text-emerald-700">
@@ -67,7 +67,7 @@ export function ProductAdjacentNavigation({
           <Link
             href={data.previous.href}
             aria-label={`Produto anterior: ${data.previous.name}`}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-50 hover:text-[#ff6a00] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-slate-50 hover:text-secondary focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           </Link>
@@ -79,7 +79,7 @@ export function ProductAdjacentNavigation({
             href={data.category.href}
             aria-label={`Ver produtos da categoria ${data.category.name}`}
             title={`Ver todos os produtos de ${data.category.name}`}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-50 hover:text-[#ff6a00] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-slate-50 hover:text-secondary focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <Grid2X2 className="h-4 w-4" aria-hidden="true" />
           </Link>
@@ -89,7 +89,7 @@ export function ProductAdjacentNavigation({
           <Link
             href={data.next.href}
             aria-label={`Próximo produto: ${data.next.name}`}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-50 hover:text-[#ff6a00] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-slate-50 hover:text-secondary focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </Link>

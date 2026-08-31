@@ -304,7 +304,9 @@ export async function POST(request: Request) {
       ? capabilities.pix
       : input.method === "inter_boleto"
         ? capabilities.boleto
-        : capabilities.card;
+        : input.method === "pagbank_apple_pay" || input.method === "pagbank_google_pay"
+          ? capabilities.wallet
+          : capabilities.card;
     if (!methodEnabled) {
       throw new CheckoutTransferError(422, "Forma de pagamento indisponível.");
     }

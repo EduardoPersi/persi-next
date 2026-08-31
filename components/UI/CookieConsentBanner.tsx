@@ -16,7 +16,7 @@ export function CookieConsentBanner() {
       className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white px-4 py-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] sm:px-6"
     >
       <div className="mx-auto flex max-w-6xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm leading-6 text-slate-600">
+        <p className="text-sm leading-6 text-muted">
           Usamos cookies para melhorar sua experiência de navegação e compra.
           Ao continuar, você concorda com nossa{" "}
           <Link
@@ -34,7 +34,7 @@ export function CookieConsentBanner() {
           <button
             type="button"
             onClick={decline}
-            className="text-sm text-slate-500 underline underline-offset-2 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className="text-sm text-muted underline underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             Recusar
           </button>

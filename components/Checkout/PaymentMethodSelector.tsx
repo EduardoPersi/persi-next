@@ -149,7 +149,9 @@ export function PaymentMethodSelector({
       ? capabilities.pix
       : option.value === "inter_boleto"
         ? capabilities.boleto
-        : capabilities.card;
+        : option.value === "pagbank_apple_pay" || option.value === "pagbank_google_pay"
+          ? capabilities.wallet
+          : capabilities.card;
     return enabled;
   });
 
@@ -178,7 +180,7 @@ export function PaymentMethodSelector({
             <RadioDot selected={selected} />
             <span className="min-w-0 flex-1">
               <span className="flex flex-wrap items-baseline gap-x-1.5">
-                <span className="text-sm font-semibold text-slate-900">
+                <span className="text-sm font-semibold text-foreground">
                   {option.label}
                 </span>
                 {option.discountLabel ? (
@@ -187,12 +189,12 @@ export function PaymentMethodSelector({
                   </span>
                 ) : null}
               </span>
-              <span className="mt-0.5 block text-xs text-slate-600">
+              <span className="mt-0.5 block text-xs text-muted">
                 {option.description}
               </span>
             </span>
             {option.icon ? (
-              <span className="shrink-0 text-slate-500" aria-hidden="true">
+              <span className="shrink-0 text-muted" aria-hidden="true">
                 {option.icon}
               </span>
             ) : null}

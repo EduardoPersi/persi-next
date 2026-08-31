@@ -42,7 +42,7 @@ select is((select sku from product_variants where id='92000000-0000-0000-0000-00
 select is((select gtin from product_variants where id='92000000-0000-0000-0000-000000000001'),'7891234567890','operational GTIN is immutable');
 select is((select count(*) from prices where product_variant_id='92000000-0000-0000-0000-000000000001'),0::bigint,'price is untouched');
 select is((select count(*) from inventory_levels where product_variant_id='92000000-0000-0000-0000-000000000001'),0::bigint,'stock is untouched');
-select is((select count(*) from inventory_movements where product_variant_id='92000000-0000-0000-0000-000000000001'),0::bigint,'inventory movements are untouched');
+select is((select count(*) from inventory_movements im join inventory_levels il on il.id=im.inventory_level_id where il.product_variant_id='92000000-0000-0000-0000-000000000001'),0::bigint,'inventory movements are untouched');
 
 select * from finish();
 rollback;

@@ -25,7 +25,7 @@ export function ShippingOptions({
           disabled={disabled}
           className="min-w-0"
         >
-          <legend className="mb-3 text-sm font-semibold text-slate-900">
+          <legend className="mb-3 text-sm font-semibold text-foreground">
             {packages.length > 1
               ? shippingPackage.name || `Entrega ${packageIndex + 1}`
               : "Opções disponíveis"}

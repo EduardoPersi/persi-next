@@ -22,7 +22,7 @@ export function FooterVisibility({ children }: { children: ReactNode }) {
   return (
     <footer className="border-t border-[#E5E7EB] bg-slate-50">
       <Container className="py-4 text-center">
-        <h2 className="text-sm font-bold text-slate-800">Formas de pagamento</h2>
+        <h2 className="text-sm font-bold text-foreground">Formas de pagamento</h2>
         <ul className="mx-auto mt-3 grid max-w-[280px] grid-cols-6 gap-2.5 sm:max-w-[320px]">
           {PAYMENT_ICONS.map((icon) => (
             <li
@@ -40,7 +40,7 @@ export function FooterVisibility({ children }: { children: ReactNode }) {
             </li>
           ))}
         </ul>
-        <p className="mt-3 text-[13px] leading-5 text-slate-500">
+        <p className="mt-3 text-[13px] leading-5 text-muted">
           © 2016-2026 Persi Construções e Comércio Ltda. CNPJ:
           26.069.136/0001-41. Todos os direitos reservados.
         </p>

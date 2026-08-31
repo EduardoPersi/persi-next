@@ -27,8 +27,8 @@ export function CheckoutEmailStep({
   return (
     <div className="w-full max-w-xl text-center">
       <Mail className="mx-auto h-11 w-11 text-slate-400" aria-hidden="true" />
-      <h1 className="mt-5 text-xl font-bold text-slate-900">Informe seu e-mail</h1>
-      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
+      <h1 className="mt-5 text-xl font-bold text-foreground">Informe seu e-mail</h1>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">
         Preencha seu e-mail para iniciar. Utilizaremos este endereço para
         acessar sua conta ou criar uma nova.
       </p>
@@ -50,7 +50,7 @@ export function CheckoutEmailStep({
             placeholder="seu@email.com"
             aria-invalid={Boolean(error)}
             aria-describedby="checkout-identity-status"
-            className="min-h-11 min-w-0 flex-1 rounded-xl px-4 text-slate-900 outline-none focus:ring-2 focus:ring-[#0c2d72]/25"
+            className="min-h-11 min-w-0 flex-1 rounded-xl px-4 text-foreground outline-none focus:ring-2 focus:ring-primary/25"
           />
           <Button type="submit" disabled={loading} className="sm:min-w-28">
             {loading ? "Verificando..." : error ? "Tentar novamente" : "Avançar"}

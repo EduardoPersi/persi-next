@@ -93,6 +93,12 @@ export const pimSuggestions = pgTable("pim_suggestions", {
   fieldName: text("field_name").notNull(), suggestedValue: text("suggested_value").notNull(), source: pimSource().notNull(),
   confidence: numeric({ precision: 5, scale: 4 }), status: pimDecisionStatus().notNull().default("needs_review"),
   evidence: text(), providerReference: text("provider_reference"), reviewedBy: text("reviewed_by"), reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  suggestionType: text("suggestion_type").notNull().default("field"), payload: jsonb().notNull().default({}),
+  provider: text().notNull().default("deterministic"), modelVersion: text("model_version").notNull().default("rules-v1"),
+  promptVersion: text("prompt_version").notNull().default("pim-enrichment-v1"), sourceFingerprint: text("source_fingerprint").notNull().default(""),
+  extractionMethod: text("extraction_method").notNull().default("deterministic"), evidenceReferences: jsonb("evidence_references").notNull().default([]),
+  inputTokens: integer("input_tokens"), outputTokens: integer("output_tokens"), estimatedCostMinor: bigint("estimated_cost_minor", { mode: "bigint" }),
+  supersededAt: timestamp("superseded_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [index("pim_suggestions_queue_idx").on(table.status, table.createdAt, table.productId)]);
 

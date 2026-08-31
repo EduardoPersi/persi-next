@@ -57,7 +57,7 @@ export function SocialLoginButtons({
     <div className="space-y-3">
       <div className="flex items-center gap-3" aria-hidden="true">
         <span className="h-px flex-1 bg-slate-200" />
-        <span className="text-xs font-medium uppercase text-slate-500">
+        <span className="text-xs font-medium uppercase text-muted">
           Ou entre com
         </span>
         <span className="h-px flex-1 bg-slate-200" />

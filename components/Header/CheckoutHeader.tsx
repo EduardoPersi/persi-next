@@ -14,7 +14,7 @@ interface CheckoutHeaderProps {
 // consegue sair/voltar normalmente.
 export function CheckoutHeader({ centered = false }: CheckoutHeaderProps) {
   return (
-    <header className="bg-[#0c2d72] text-white">
+    <header className="bg-gradient-to-br from-primary to-primary-hover text-white">
       <div
         className={
           centered

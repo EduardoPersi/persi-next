@@ -250,8 +250,8 @@ export function ProductSearch({
           }
           className={
             isDesktop
-              ? "min-w-0 flex-1 px-5 py-0 text-sm text-slate-900 outline-none"
-              : "min-w-0 flex-1 px-4 py-2 text-sm text-slate-900 outline-none"
+              ? "min-w-0 flex-1 px-5 py-0 text-sm text-foreground outline-none"
+              : "min-w-0 flex-1 px-4 py-2 text-sm text-foreground outline-none"
           }
         />
 
@@ -260,14 +260,14 @@ export function ProductSearch({
           aria-label={isLoading ? "Pesquisando produtos" : "Pesquisar"}
           className={
             isDesktop
-              ? "flex items-center justify-center px-4 text-[#0c2d72] transition-colors hover:bg-slate-100 active:bg-slate-200"
-              : "flex items-center justify-center px-4 text-[#0c2d72] transition-colors active:bg-slate-200"
+              ? "flex min-w-16 items-center justify-center rounded-lg border-2 border-white bg-secondary px-5 text-white transition-colors hover:bg-secondary-hover active:bg-secondary-hover"
+              : "flex min-w-14 items-center justify-center rounded-lg border-2 border-white bg-secondary px-4 text-white transition-colors hover:bg-secondary-hover active:bg-secondary-hover"
           }
         >
           {isLoading ? (
             <LoaderCircle
               size={isDesktop ? 23 : 22}
-              className="animate-spin text-[#0c2d72]"
+              className="animate-spin text-white"
               aria-hidden="true"
             />
           ) : (
@@ -288,20 +288,20 @@ export function ProductSearch({
       {isOpen ? (
         <div
           id={resultsId}
-          className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-[6px] border border-slate-200 bg-white text-slate-900 shadow-xl"
+          className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white text-foreground shadow-xl"
           role="listbox"
           aria-label="Sugestões de produtos"
         >
           {status === "loading" ? (
-            <p className="px-4 py-3 text-sm text-slate-500">Pesquisando...</p>
+            <p className="px-4 py-3 text-sm text-muted">Pesquisando...</p>
           ) : null}
           {status === "error" ? (
-            <p className="px-4 py-3 text-sm text-slate-600">
+            <p className="px-4 py-3 text-sm text-muted">
               Não foi possível pesquisar agora.
             </p>
           ) : null}
           {status === "success" && products.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-slate-600">
+            <p className="px-4 py-3 text-sm text-muted">
               Nenhum produto encontrado.
             </p>
           ) : null}
@@ -315,7 +315,7 @@ export function ProductSearch({
                   aria-selected={index === activeIndex}
                   className={
                     index === activeIndex
-                      ? "bg-blue-50 ring-2 ring-inset ring-[#0c2d72]"
+                      ? "bg-blue-50 ring-2 ring-inset ring-primary"
                       : ""
                   }
                 >
@@ -326,7 +326,7 @@ export function ProductSearch({
                       setIsFocused(false);
                       setActiveIndex(-1);
                     }}
-                    className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-slate-50 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0c2d72]"
+                    className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-slate-50 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                   >
                     <Image
                       src={product.image?.src || FALLBACK_IMAGE}
@@ -334,14 +334,14 @@ export function ProductSearch({
                       width={56}
                       height={56}
                       sizes="56px"
-                      className="h-14 w-14 shrink-0 rounded-[6px] border border-slate-100 object-contain p-1"
+                      className="h-14 w-14 shrink-0 rounded-xl border border-slate-100 object-contain p-1"
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="line-clamp-2 block text-sm font-semibold text-slate-800">
+                      <span className="line-clamp-2 block text-sm font-semibold text-foreground">
                         {product.name}
                       </span>
                       <span className="mt-1 flex flex-wrap items-center gap-x-2 text-xs">
-                        <span className="font-bold text-[#0c2d72]">
+                        <span className="font-bold text-primary">
                           {formatCurrency(product.price, product.currencyCode)}
                         </span>
                         <span

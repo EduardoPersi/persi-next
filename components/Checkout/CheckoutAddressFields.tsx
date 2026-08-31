@@ -146,7 +146,7 @@ export function CheckoutAddressFields({
           onChange={handlePostalCodeChange}
         />
         {isLookingUpAddress ? (
-          <p className="mt-1.5 text-xs text-slate-500" role="status">
+          <p className="mt-1.5 text-xs text-muted" role="status">
             Buscando endereço...
           </p>
         ) : null}
@@ -154,12 +154,12 @@ export function CheckoutAddressFields({
 
       {hasResolvedAddress ? (
         <div className="sm:col-span-6">
-          <p className="text-xs font-semibold text-slate-700">Enviando para</p>
-          <p className="text-sm text-black">
+          <p className="text-xs font-semibold text-foreground">Enviando para</p>
+          <p className="text-sm text-foreground">
             {addressLine1}
             {neighborhood ? `, bairro ${neighborhood}` : ""}
           </p>
-          <p className="text-sm text-black">
+          <p className="text-sm text-foreground">
             {city} / {state}
           </p>
         </div>
@@ -213,7 +213,7 @@ export function CheckoutAddressFields({
           <div className="sm:col-span-6">
             <label
               htmlFor={`${kind}-state`}
-              className="mb-1.5 block text-xs font-medium text-black"
+              className="mb-1.5 block text-xs font-medium text-foreground"
             >
               Estado (UF)
               <span className="text-danger"> *</span>
@@ -226,7 +226,7 @@ export function CheckoutAddressFields({
               aria-describedby={
                 addressErrors?.state ? `${kind}-state-error` : undefined
               }
-              className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-black outline-none transition focus:border-primary aria-[invalid=true]:border-danger"
+              className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary aria-[invalid=true]:border-danger"
             >
               <option value="">Selecione</option>
               {BRAZILIAN_STATES.map((stateOption) => (

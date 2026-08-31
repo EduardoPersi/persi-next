@@ -50,12 +50,12 @@ function FeedbackCard({
       className={`rounded-xl border p-4 ${
         danger
           ? "border-red-200 bg-red-50 text-red-900"
-          : "border-blue-100 bg-blue-50/70 text-slate-700"
+          : "border-blue-100 bg-blue-50/70 text-foreground"
       }`}
     >
       <div className="flex items-start gap-3">
         <span
-          className={danger ? "text-red-700" : "text-[#0c2d72]"}
+          className={danger ? "text-red-700" : "text-primary"}
           aria-hidden="true"
         >
           {icon}
@@ -89,22 +89,22 @@ export function ShippingCalculator(props: ShippingCalculatorProps) {
   return (
     <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center gap-2">
-        <MapPin className="h-5 w-5 text-[#ff6a00]" aria-hidden="true" />
-        <h2 className="font-bold text-[#0c2d72]">Calcular frete e prazo</h2>
+        <MapPin className="h-5 w-5 text-secondary" aria-hidden="true" />
+        <h2 className="font-bold text-primary">Calcular frete e prazo</h2>
       </div>
 
       {calculator.status === "idle" ? (
-        <p className="mt-3 text-sm text-slate-600" aria-live="polite">
+        <p className="mt-3 text-sm text-muted" aria-live="polite">
           Informe seu CEP para consultar prazo e valor do frete.
         </p>
       ) : null}
 
       {calculator.status === "success" && calculator.postcode ? (
         <div className="mt-4 rounded-xl bg-white p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">
             Entrega para
           </p>
-          <p className="mt-1 text-sm text-slate-800">
+          <p className="mt-1 text-sm text-foreground">
             {destinationParts.length
               ? destinationParts.join(" — ")
               : `CEP ${calculator.postcode}`}
@@ -112,7 +112,7 @@ export function ShippingCalculator(props: ShippingCalculatorProps) {
           <button
             type="button"
             onClick={calculator.reset}
-            className="mt-2 text-sm font-semibold text-[#ff6a00] underline underline-offset-2"
+            className="mt-2 text-sm font-semibold text-secondary underline underline-offset-2"
           >
             Alterar CEP
           </button>
@@ -143,7 +143,7 @@ export function ShippingCalculator(props: ShippingCalculatorProps) {
               role="status"
               aria-label="Calculando opções de entrega"
             >
-              <p className="text-sm font-medium text-[#0c2d72]">
+              <p className="text-sm font-medium text-primary">
                 Calculando opções de entrega...
               </p>
               {[1, 2].map((item) => (
@@ -183,7 +183,7 @@ export function ShippingCalculator(props: ShippingCalculatorProps) {
 
       <div className="mt-3" role="status" aria-live="polite" aria-atomic="true">
         {calculator.status === "success" && calculator.message ? (
-          <p className="text-sm text-slate-600">{calculator.message}</p>
+          <p className="text-sm text-muted">{calculator.message}</p>
         ) : null}
 
         {calculator.status === "empty" ? (
@@ -200,7 +200,7 @@ export function ShippingCalculator(props: ShippingCalculatorProps) {
                 href="https://buscacepinter.correios.com.br/app/endereco/index.php?t"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-9 items-center justify-center gap-2 rounded-xl border border-[#0c2d72] px-3 py-1.5 text-sm font-medium text-[#0c2d72] transition-colors hover:bg-blue-100"
+                className="inline-flex min-h-9 items-center justify-center gap-2 rounded-xl border border-primary px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-blue-100"
               >
                 <Search className="h-4 w-4" aria-hidden="true" />
                 Pesquisar CEP
@@ -209,7 +209,7 @@ export function ShippingCalculator(props: ShippingCalculatorProps) {
                 href={STORE_INFO.whatsapp.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-9 items-center justify-center gap-2 rounded-xl bg-[#ff6a00] px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-orange-700"
+                className="inline-flex min-h-9 items-center justify-center gap-2 rounded-xl bg-secondary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-orange-700"
               >
                 <MessageCircle className="h-4 w-4" aria-hidden="true" />
                 Falar com um consultor

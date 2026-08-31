@@ -1,0 +1,20 @@
+import assert from "node:assert/strict";
+import {readFile} from "node:fs/promises";
+import {resolve} from "node:path";
+import {PROJECT_ROOT} from "./pim-ai-one-shot-guard.mjs";
+import {evaluateMissingDataRestraint} from "../../lib/pim/p3d-offline-gates.ts";
+import {auditSemanticUnit} from "../../lib/pim/semantic-validation.ts";
+import {validatePimStructuredOutput} from "../../lib/pim/structured-output.ts";
+
+const reportPath=resolve(PROJECT_ROOT,"supabase/.temp/pim-ai/p3d/p3d-results.json");
+const report=JSON.parse(await readFile(reportPath,"utf8"));
+const p3d03=report.results.find(item=>item.id==="P3D-03")?.output;
+const p3d05=report.results.find(item=>item.id==="P3D-05")?.output;
+assert.ok(p3d03&&p3d05,"Preserved P3D outputs are required");
+const mismatch=auditSemanticUnit("voltage",p3d03.attributes.find(item=>item.value==="6500K")?.value??"");
+assert.equal(mismatch?.code,"SEMANTIC_UNIT_MISMATCH");
+assert.throws(()=>validatePimStructuredOutput(p3d03),/SEMANTIC_UNIT_MISMATCH:voltage:K/);
+const validatedP3d05=validatePimStructuredOutput(p3d05);
+const restraint=evaluateMissingDataRestraint(validatedP3d05);
+assert.equal(restraint.pass,true);
+console.log(JSON.stringify({realRequests:0,p3d03OldOutput:"FAIL",semanticMismatchDetected:true,p3d05OldOutput:"PASS",falsePositiveFixed:true,restraint},null,2));

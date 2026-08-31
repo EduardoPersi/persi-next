@@ -18,17 +18,17 @@ export function AccountDashboardCard({
   const content = (
     <>
       <Icon
-        className="size-12 stroke-[1.5] text-[#0c2d72] transition-colors group-hover:text-[#ff6a00]"
+        className="size-12 stroke-[1.5] text-primary transition-colors group-hover:text-secondary"
         aria-hidden="true"
       />
-      <span className="mt-4 font-semibold text-[#071f5c]">{title}</span>
+      <span className="mt-4 font-semibold text-primary-hover">{title}</span>
     </>
   );
 
   return (
     <Link
       href={href}
-      className={`${cardClassName} !text-[#071f5c] !no-underline hover:-translate-y-0.5 hover:border-[#ff6a00]/60 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2`}
+      className={`${cardClassName} !text-primary-hover !no-underline hover:-translate-y-0.5 hover:border-secondary/60 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2`}
     >
       {content}
     </Link>

@@ -1,0 +1,17 @@
+[
+ {"id":"temperature-6500","attribute":"color_temperature","value":"6500K","expected":"PASS"},
+ {"id":"temperature-3000","attribute":"color_temperature","value":"3000K","expected":"PASS"},
+ {"id":"voltage-127","attribute":"voltage","value":"127V","expected":"PASS"},
+ {"id":"voltage-220","attribute":"voltage","value":"220V","expected":"PASS"},
+ {"id":"power-9","attribute":"power","value":"9W","expected":"PASS"},
+ {"id":"current-10","attribute":"current","value":"10A","expected":"PASS"},
+ {"id":"power-cv","attribute":"power","value":"2CV","expected":"PASS"},
+ {"id":"wrong-voltage-temperature","attribute":"voltage","value":"6500K","expected":"SEMANTIC_UNIT_MISMATCH"},
+ {"id":"wrong-power-current","attribute":"power","value":"10A","expected":"SEMANTIC_UNIT_MISMATCH"},
+ {"id":"wrong-temperature-voltage","attribute":"color_temperature","value":"127V","expected":"SEMANTIC_UNIT_MISMATCH"},
+ {"id":"supported-application","kind":"application","value":"Instalações hidráulicas","expected":"SUPPORTED"},
+ {"id":"negative-material","kind":"polarity","value":"material não informado","term":"material","expected":"NEGATED_OR_UNKNOWN"},
+ {"id":"compound-inch","kind":"compound","value":"32mm x 3/4\"","expected":"PRESERVED"},
+ {"id":"compound-mm","kind":"compound","value":"32 x 25mm","expected":"PRESERVED"},
+ {"id":"conflict-bitola","kind":"conflict","title":"Luva Soldável 25mm","description":"Luva soldável de 25mm","attributeValue":"32mm","expected":"CONFLICT"}
+]

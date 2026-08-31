@@ -68,7 +68,7 @@ export function Pagination({
       {currentPage > 1 ? (
         <Link
           href={getPageHref(currentPage - 1)}
-          className="flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:border-[#0c2d72] hover:text-[#0c2d72]"
+          className="flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-foreground hover:border-primary hover:text-primary"
           rel="prev"
         >
           Anterior
@@ -83,14 +83,14 @@ export function Pagination({
             aria-current={page === currentPage ? "page" : undefined}
             className={`flex h-10 min-w-10 items-center justify-center rounded-xl border px-3 text-sm font-semibold ${
               page === currentPage
-                ? "border-[#0c2d72] bg-[#0c2d72] text-white"
-                : "border-slate-200 bg-white text-slate-700 hover:border-[#0c2d72] hover:text-[#0c2d72]"
+                ? "border-primary bg-primary text-white"
+                : "border-slate-200 bg-white text-foreground hover:border-primary hover:text-primary"
             }`}
           >
             {page}
           </Link>
         ) : (
-          <span key={page} className="px-1 text-slate-500">
+          <span key={page} className="px-1 text-muted">
             …
           </span>
         ),
@@ -99,7 +99,7 @@ export function Pagination({
       {currentPage < totalPages ? (
         <Link
           href={getPageHref(currentPage + 1)}
-          className="flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:border-[#0c2d72] hover:text-[#0c2d72]"
+          className="flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-foreground hover:border-primary hover:text-primary"
           rel="next"
         >
           Próxima

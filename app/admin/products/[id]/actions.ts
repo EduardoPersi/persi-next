@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { requirePimAdmin } from "@/lib/pim/authorization";
 import { decidePimSuggestion, PimConcurrencyError, savePimEditorialDraft, transitionPimEditorial, type PimDecision } from "@/lib/pim/workflow";
+import { generateDeterministicSuggestions } from "@/lib/pim/enrichment-service";
 
 export type PimActionState={ok:boolean;error?:string};
 const actor=(id:string|number)=>`wp:${id}`;
@@ -39,4 +40,11 @@ export async function reviewSuggestion(formData:FormData){
   if(decision!=="approved"&&decision!=="rejected")throw new Error("Decisão inválida.");
   const result=await decidePimSuggestion({suggestionId,decision,actorReference:actor(user.id)});
   revalidatePath(`/admin/products/${result.productId}`); revalidatePath("/admin/products"); revalidatePath("/admin/pim");
+}
+
+export async function extractDeterministicSuggestions(formData:FormData){
+  await requirePimAdmin();const productId=String(formData.get("productId")??"");
+  if(!/^[0-9a-f-]{36}$/i.test(productId))throw new Error("Produto inválido.");
+  await generateDeterministicSuggestions(productId);
+  revalidatePath(`/admin/products/${productId}`);revalidatePath("/admin/pim");
 }

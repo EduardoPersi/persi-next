@@ -95,13 +95,13 @@ export function BoletoPaymentResult({ result, onPaid }: BoletoPaymentResultProps
       instructions={
         <>
           Pague o boleto de{" "}
-          <strong className="text-slate-900">
+          <strong className="text-foreground">
             {amountFormatter.format(result.amount)}
           </strong>
           {formattedDueDate ? (
             <>
               {" "}
-              até <strong className="text-slate-900">{formattedDueDate}</strong>
+              até <strong className="text-foreground">{formattedDueDate}</strong>
             </>
           ) : null}{" "}
           para garantir sua compra.
@@ -112,12 +112,12 @@ export function BoletoPaymentResult({ result, onPaid }: BoletoPaymentResultProps
       {isGenerating ? (
         <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
           <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
-          <p className="text-sm text-slate-600">Gerando seu boleto, aguarde um instante…</p>
+          <p className="text-sm text-muted">Gerando seu boleto, aguarde um instante…</p>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
           <div>
-            <label htmlFor="boleto-digitable-line" className="mb-2 block text-sm text-slate-800">
+            <label htmlFor="boleto-digitable-line" className="mb-2 block text-sm text-foreground">
               Linha digitável
             </label>
             <div className="flex gap-2">
@@ -126,13 +126,13 @@ export function BoletoPaymentResult({ result, onPaid }: BoletoPaymentResultProps
                 id="boleto-digitable-line"
                 readOnly
                 value={details.digitableLine}
-                className="min-h-11 min-w-0 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                className="min-h-11 min-w-0 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-foreground"
               />
               <button
                 type="button"
                 onClick={handleCopy}
                 aria-label="Copiar linha digitável"
-                className="min-h-11 min-w-11 rounded-xl border border-slate-300 bg-white px-3 text-slate-700 hover:bg-slate-50"
+                className="min-h-11 min-w-11 rounded-xl border border-slate-300 bg-white px-3 text-foreground hover:bg-slate-50"
               >
                 {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
               </button>
@@ -152,7 +152,7 @@ export function BoletoPaymentResult({ result, onPaid }: BoletoPaymentResultProps
             Baixar boleto (PDF)
           </a>
 
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted">
             Guarde o número do pedido para acompanhar o pagamento em Minha Conta.
           </p>
         </div>

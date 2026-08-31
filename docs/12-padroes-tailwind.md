@@ -21,13 +21,21 @@ Usar a escala padrão do Tailwind.
 
 ## Cores oficiais
 
-- #071f5c
-- #0c2d72
-- #ff6a00
+- Azul Persi: `#002B57`
+- Azul escuro: `#001F42`
+- Azul institucional: `#063B73`
+- Laranja Persi: `#FF6B00`
+- Laranja hover: `#E85F00`
+- Texto principal: `#1F2937`
+- Texto secundÃ¡rio: `#687386`
+- Fundo suave: `#F6F7F9`
+
+Usar os tokens Tailwind definidos em `app/globals.css`; hexadecimais literais
+sÃ³ sÃ£o aceitos para estados ou identidades de terceiros documentadas.
 
 ## Border Radius
 
-Padrão de 12px para:
+Padrão de 8px para:
 
 - botões
 - inputs

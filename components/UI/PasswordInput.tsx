@@ -25,7 +25,7 @@ export function PasswordInput({ className, disabled, id, ...props }: PasswordInp
         aria-controls={id}
         aria-pressed={isVisible}
         disabled={disabled}
-        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-slate-500 transition hover:text-[#0c2d72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] disabled:cursor-not-allowed disabled:opacity-50"
+        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-muted transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isVisible ? (
           <EyeOff size={20} aria-hidden="true" />

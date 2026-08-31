@@ -441,11 +441,11 @@ export default async function CategoryPage({
       <main className="py-3 sm:py-6 lg:py-10">
         <Container>
           <nav aria-label="Breadcrumb" data-route-transition-skip>
-            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 sm:text-sm">
+            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted sm:text-sm">
               <li>
                 <Link
                   href="/"
-                  className="tap-feedback rounded-sm px-0.5 transition-colors hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                  className="tap-feedback rounded-sm px-0.5 transition-colors hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   Home
                 </Link>
@@ -453,7 +453,7 @@ export default async function CategoryPage({
               {selectedBrand ? (
                 <li className="flex min-w-0 items-center gap-2">
                   <span aria-hidden="true">›</span>
-                  <span className="text-slate-800" aria-current="page">
+                  <span className="text-foreground" aria-current="page">
                     {selectedBrand.name}
                   </span>
                 </li>
@@ -466,7 +466,7 @@ export default async function CategoryPage({
                     <span aria-hidden="true">›</span>
                     {breadcrumbCategory.id ===
                     breadcrumbCategories.at(-1)?.id ? (
-                      <span className="text-slate-800" aria-current="page">
+                      <span className="text-foreground" aria-current="page">
                         {breadcrumbCategory.name}
                       </span>
                     ) : (
@@ -475,7 +475,7 @@ export default async function CategoryPage({
                           breadcrumbCategory,
                           categories,
                         )}
-                        className="tap-feedback rounded-sm px-0.5 transition-colors hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                        className="tap-feedback rounded-sm px-0.5 transition-colors hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
                         {breadcrumbCategory.name}
                       </Link>
@@ -509,7 +509,7 @@ export default async function CategoryPage({
               <div className="flex flex-col gap-4 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="min-w-0">
-                    <h1 className="text-2xl font-bold text-[#0c2d72]">
+                    <h1 className="text-2xl font-bold text-primary">
                       {contextName}
                     </h1>
                     <p className="sr-only" aria-live="polite">
@@ -583,16 +583,16 @@ export default async function CategoryPage({
                   </>
                 ) : (
                   <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-                    <h2 className="text-lg font-bold text-[#0c2d72]">
+                    <h2 className="text-lg font-bold text-primary">
                       Nenhum produto encontrado
                     </h2>
-                    <p className="mt-2 text-sm text-slate-600">
+                    <p className="mt-2 text-sm text-muted">
                       Tente remover alguns filtros ou escolher outra
                       subcategoria.
                     </p>
                     <Link
                       href={pathname}
-                      className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-[#ff6a00] px-5 text-sm font-semibold text-white"
+                      className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-secondary px-5 text-sm font-semibold text-white"
                     >
                       Limpar filtros
                     </Link>
@@ -609,7 +609,7 @@ export default async function CategoryPage({
             >
               <h2
                 id="category-description-title"
-                className="text-xl font-bold text-[#0c2d72]"
+                className="text-xl font-bold text-primary"
               >
                 Sobre {contextName}
               </h2>

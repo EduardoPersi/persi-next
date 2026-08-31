@@ -50,7 +50,7 @@ export function DirectCheckoutRedirect() {
           </Button>
         </>
       ) : (
-        <p role="status" aria-live="polite" className="text-sm text-slate-600">
+        <p role="status" aria-live="polite" className="text-sm text-muted">
           Preparando seu checkout…
         </p>
       )}

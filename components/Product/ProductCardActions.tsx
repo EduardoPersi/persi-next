@@ -39,18 +39,18 @@ export function ProductCardActions({
             aria-label={`${favoriteLabel}: ${productName}`}
             aria-pressed={favorited}
             title={favoriteLabel}
-            className="flex min-h-11 min-w-11 items-center justify-center rounded-[6px] bg-white/60 text-[#0c2d72] shadow-sm transition-colors hover:bg-white hover:text-[#ff6a00] active:bg-white active:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-xl bg-white/60 text-primary shadow-sm transition-colors hover:bg-white hover:text-secondary active:bg-white active:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <Heart
               className={`h-5 w-5 transition-transform duration-200 ${
-                favorited ? "scale-110 fill-[#ff6a00] text-[#ff6a00]" : ""
+                favorited ? "scale-110 fill-secondary text-secondary" : ""
               }`}
               aria-hidden="true"
             />
           </button>
           <span
             role="tooltip"
-            className="pointer-events-none absolute right-full top-1/2 mr-2 hidden -translate-y-1/2 whitespace-nowrap rounded-[6px] bg-slate-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity md:block md:group-hover/action:opacity-100 md:group-focus-within/action:opacity-100"
+            className="pointer-events-none absolute right-full top-1/2 mr-2 hidden -translate-y-1/2 whitespace-nowrap rounded-xl bg-slate-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity md:block md:group-hover/action:opacity-100 md:group-focus-within/action:opacity-100"
           >
             {favoriteLabel}
           </span>
@@ -65,13 +65,13 @@ export function ProductCardActions({
             aria-haspopup="dialog"
             aria-expanded={isQuickViewOpen}
             title="Visualização rápida"
-            className="flex min-h-11 min-w-11 items-center justify-center rounded-[6px] bg-white/60 text-[#0c2d72] shadow-sm transition-colors hover:bg-white hover:text-[#ff6a00] active:bg-white active:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-xl bg-white/60 text-primary shadow-sm transition-colors hover:bg-white hover:text-secondary active:bg-white active:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <Search className="h-5 w-5" aria-hidden="true" />
           </button>
           <span
             role="tooltip"
-            className="pointer-events-none absolute right-full top-1/2 mr-2 hidden -translate-y-1/2 whitespace-nowrap rounded-[6px] bg-slate-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity md:block md:group-hover/action:opacity-100 md:group-focus-within/action:opacity-100"
+            className="pointer-events-none absolute right-full top-1/2 mr-2 hidden -translate-y-1/2 whitespace-nowrap rounded-xl bg-slate-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity md:block md:group-hover/action:opacity-100 md:group-focus-within/action:opacity-100"
           >
             Visualização rápida
           </span>

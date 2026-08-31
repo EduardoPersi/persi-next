@@ -107,13 +107,13 @@ export function MobileMenu({
             <Link
               href="/promocoes"
               onClick={onClose}
-              className="tap-feedback flex items-center justify-between rounded-md px-3 py-3.5 text-[17px] font-semibold text-[#0c2d72] transition-colors hover:bg-slate-100"
+              className="tap-feedback flex items-center justify-between rounded-md px-3 py-3.5 text-[17px] font-semibold text-primary transition-colors hover:bg-slate-100"
             >
               <span>Promoções</span>
-              <ChevronRight size={18} className="text-[#ff6a00]" />
+              <ChevronRight size={18} className="text-secondary" />
             </Link>
           </div>
-          <div className="px-5 pb-2 pt-5 text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <div className="px-5 pb-2 pt-5 text-xs font-semibold uppercase tracking-wider text-muted">
             Categorias
           </div>
 

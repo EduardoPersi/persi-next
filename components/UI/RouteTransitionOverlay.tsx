@@ -32,7 +32,7 @@ export function RouteTransitionOverlay({
         <span
           role="status"
           aria-live="polite"
-          className="text-lg font-bold uppercase tracking-wide text-[#ff6a00]"
+          className="text-lg font-bold uppercase tracking-wide text-secondary"
         >
           Carregando...
         </span>

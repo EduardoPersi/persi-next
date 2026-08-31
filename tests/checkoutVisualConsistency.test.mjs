@@ -4,14 +4,14 @@ import test from "node:test";
 
 const read = (path) => readFileSync(path, "utf8");
 
-test("etapas e resumos compartilham borda e sombra azul-claro", () => {
+test("etapas e resumos compartilham borda sutil e sombra neutra", () => {
   const step = read("components/Checkout/CheckoutStepCard.tsx");
   const desktop = read("components/Checkout/CheckoutOrderSummary.tsx");
   const mobile = read("components/Checkout/CheckoutMobileOrderSummary.tsx");
 
   for (const source of [step, desktop, mobile]) {
-    assert.match(source, /border-blue-200/);
-    assert.match(source, /shadow-\[0_8px_24px_rgba\(59,130,246,0\.10\)\]/);
+    assert.match(source, /border-border/);
+    assert.match(source, /shadow-sm/);
   }
 });
 

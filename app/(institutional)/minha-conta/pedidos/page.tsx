@@ -33,7 +33,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       {result.orders.length === 0 ? (
         <div className="rounded-xl bg-slate-50 p-6 text-center">
           <p>Você ainda não fez nenhum pedido.</p>
-          <Link href="/" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-[#ff6a00] px-5 font-semibold text-white">Continuar comprando</Link>
+          <Link href="/" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-secondary px-5 font-semibold text-white">Continuar comprando</Link>
         </div>
       ) : (
         <>
@@ -42,17 +42,17 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
               <article key={order.id} className="rounded-xl border border-slate-200 p-5">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
-                    <h2 className="font-bold text-[#071f5c]">Pedido #{order.number}</h2>
-                    <p className="mt-1 text-sm text-slate-600">{new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(order.dateCreated))}</p>
+                    <h2 className="font-bold text-primary-hover">Pedido #{order.number}</h2>
+                    <p className="mt-1 text-sm text-muted">{new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(order.dateCreated))}</p>
                   </div>
-                  <span className="w-fit rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-[#0c2d72]">{order.statusLabel}</span>
+                  <span className="w-fit rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-primary">{order.statusLabel}</span>
                 </div>
                 <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-                  <div><dt className="text-slate-500">Total</dt><dd className="font-semibold">{order.total.formatted}</dd></div>
-                  <div><dt className="text-slate-500">Itens</dt><dd>{order.itemCount}</dd></div>
-                  <div><dt className="text-slate-500">Pagamento</dt><dd>{order.paymentMethodTitle || "Não informado"}</dd></div>
+                  <div><dt className="text-muted">Total</dt><dd className="font-semibold">{order.total.formatted}</dd></div>
+                  <div><dt className="text-muted">Itens</dt><dd>{order.itemCount}</dd></div>
+                  <div><dt className="text-muted">Pagamento</dt><dd>{order.paymentMethodTitle || "Não informado"}</dd></div>
                 </dl>
-                <Link href={`/minha-conta/pedidos/${order.id}`} className="mt-5 inline-flex min-h-11 items-center rounded-xl border border-[#0c2d72] px-4 font-semibold text-[#0c2d72]">Ver detalhes</Link>
+                <Link href={`/minha-conta/pedidos/${order.id}`} className="mt-5 inline-flex min-h-11 items-center rounded-xl border border-primary px-4 font-semibold text-primary">Ver detalhes</Link>
               </article>
             ))}
           </div>

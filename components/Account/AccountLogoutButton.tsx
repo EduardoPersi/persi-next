@@ -25,10 +25,10 @@ export function AccountLogoutButton({
         variant="outline"
         onClick={logout}
         disabled={loading}
-        className="group min-h-36 w-full flex-col !border-slate-200 !bg-white p-5 !text-[#071f5c] shadow-sm transition duration-200 hover:-translate-y-0.5 hover:!border-[#ff6a00]/60 hover:!bg-white hover:shadow-md focus-visible:ring-[#0c2d72]"
+        className="group min-h-36 w-full flex-col !border-slate-200 !bg-white p-5 !text-primary-hover shadow-sm transition duration-200 hover:-translate-y-0.5 hover:!border-secondary/60 hover:!bg-white hover:shadow-md focus-visible:ring-primary"
       >
         <LogOut
-          className="size-12 stroke-[1.5] text-[#0c2d72] transition-colors group-hover:text-[#ff6a00]"
+          className="size-12 stroke-[1.5] text-primary transition-colors group-hover:text-secondary"
           aria-hidden="true"
         />
         <span className="mt-2 font-semibold">

@@ -24,12 +24,12 @@ export function PaymentResultLayout({
       </div>
 
       <div>
-        <h1 className="text-xl font-bold text-[#0c2d72] sm:text-2xl">
+        <h1 className="text-xl font-bold text-primary sm:text-2xl">
           Pedido {orderId}
         </h1>
-        <p className="mt-3 text-base leading-6 text-slate-700">{instructions}</p>
+        <p className="mt-3 text-base leading-6 text-foreground">{instructions}</p>
         {helperText ? (
-          <p className="mt-3 text-xs text-slate-500">{helperText}</p>
+          <p className="mt-3 text-xs text-muted">{helperText}</p>
         ) : null}
       </div>
     </div>

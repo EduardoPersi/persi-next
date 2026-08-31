@@ -86,13 +86,13 @@ export function NewsletterForm() {
             placeholder="E-mail"
             autoComplete="email"
             aria-describedby="footer-newsletter-status"
-            className="box-border h-11 w-full min-w-0 rounded-[6px] border border-slate-200 bg-white px-4 text-sm leading-normal text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20 md:rounded-md"
+            className="box-border h-11 w-full min-w-0 rounded-xl border border-border bg-white px-4 text-sm leading-normal text-foreground outline-none placeholder:text-muted focus:border-link focus:ring-2 focus:ring-link/20"
           />
         </div>
         <button
           type="submit"
           disabled={state === "submitting"}
-          className="box-border flex h-11 min-h-0 w-full items-center justify-center rounded-[6px] bg-[#ff6a00] px-8 text-sm font-medium leading-normal text-white transition-colors duration-200 hover:bg-[#e85f00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#1246ab] disabled:cursor-not-allowed disabled:opacity-70 md:w-auto md:rounded-md"
+          className="box-border flex h-11 min-h-0 w-full items-center justify-center rounded-xl bg-secondary px-8 text-sm font-medium leading-normal text-white transition-colors duration-200 hover:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary disabled:cursor-not-allowed disabled:opacity-70 md:w-auto"
         >
           {state === "submitting" ? "Enviando..." : "ENVIAR"}
         </button>

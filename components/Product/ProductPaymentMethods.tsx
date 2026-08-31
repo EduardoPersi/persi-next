@@ -66,16 +66,16 @@ export function ProductPaymentMethods({
         ref={triggerRef}
         type="button"
         onClick={openDialog}
-        className="mt-5 flex min-h-12 w-full items-center gap-2 border-t border-slate-200 pt-4 text-left text-sm font-medium text-slate-800 transition-colors hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+        className="mt-5 flex min-h-12 w-full items-center gap-2 border-t border-slate-200 pt-4 text-left text-sm font-medium text-foreground transition-colors hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         aria-haspopup="dialog"
       >
-        <span className="flex items-center gap-1.5 text-slate-600" aria-hidden="true">
+        <span className="flex items-center gap-1.5 text-muted" aria-hidden="true">
           <CreditCard className="h-4 w-4" />
           <PixIcon className="h-4 w-4" />
           <Barcode className="h-4 w-4" />
         </span>
         <span className="flex-1">Mais formas de pagamento</span>
-        <ChevronRight className="h-5 w-5 text-[#ff6a00]" aria-hidden="true" />
+        <ChevronRight className="h-5 w-5 text-secondary" aria-hidden="true" />
       </button>
 
       <dialog
@@ -85,18 +85,18 @@ export function ProductPaymentMethods({
         onClick={(event) => {
           if (event.target === event.currentTarget) closeDialog();
         }}
-        className="m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-3xl overflow-hidden rounded-xl bg-white p-0 text-slate-800 shadow-2xl backdrop:bg-slate-950/60"
+        className="m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-3xl overflow-hidden rounded-xl bg-white p-0 text-foreground shadow-2xl backdrop:bg-slate-950/60"
       >
         <div className="flex max-h-[90vh] flex-col">
           <header className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-7">
-            <h2 id={titleId} className="text-xl font-bold text-[#0c2d72] sm:text-2xl">
+            <h2 id={titleId} className="text-xl font-bold text-primary sm:text-2xl">
               Mais formas de pagamento
             </h2>
             <button
               type="button"
               onClick={closeDialog}
               aria-label="Fechar formas de pagamento"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <X className="h-6 w-6" aria-hidden="true" />
             </button>
@@ -113,10 +113,10 @@ export function ProductPaymentMethods({
                   type="button"
                   onClick={() => setActiveMethod(method.id)}
                   aria-pressed={activeMethod === method.id}
-                  className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] ${
+                  className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                     activeMethod === method.id
-                      ? "border-[#0c2d72] bg-[#0c2d72] text-white"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
+                      ? "border-primary bg-primary text-white"
+                      : "border-slate-200 bg-white text-foreground hover:border-slate-400"
                   }`}
                 >
                   {method.id === "credit-card" ? (
@@ -149,7 +149,7 @@ export function ProductPaymentMethods({
                   ))}
                 </div>
               ) : activeMethod === "pix" ? (
-                <div className="p-5 leading-7 text-slate-700">
+                <div className="p-5 leading-7 text-foreground">
                   <p>
                     <strong className="text-emerald-700">
                       {currencyFormatter.format(payment.pixPrice)}
@@ -162,7 +162,7 @@ export function ProductPaymentMethods({
                   </p>
                 </div>
               ) : (
-                <div className="p-5 leading-7 text-slate-700">
+                <div className="p-5 leading-7 text-foreground">
                   <p>
                     <strong>{currencyFormatter.format(payment.currentPrice)}</strong>{" "}
                     à vista no boleto bancário.
@@ -180,7 +180,7 @@ export function ProductPaymentMethods({
             <button
               type="button"
               onClick={closeDialog}
-              className="min-h-11 rounded-xl bg-[#0c2d72] px-5 font-medium text-white hover:bg-[#071f5c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+              className="min-h-11 rounded-xl bg-primary px-5 font-medium text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
               Fechar
             </button>

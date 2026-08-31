@@ -38,12 +38,12 @@ export function CheckoutOrderSummary({
   return (
     <aside
       aria-labelledby="checkout-summary-title"
-      className="rounded-xl border border-secondary/25 bg-white p-5 shadow-[0_8px_24px_rgba(255,106,0,0.10)] lg:sticky lg:top-6"
+      className="rounded-xl border border-border bg-white p-5 shadow-sm lg:sticky lg:top-6"
     >
       <Link
         href="/carrinho"
         aria-label="Editar carrinho"
-        className="flex items-center gap-2 rounded-lg transition-colors hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="flex items-center gap-2 rounded-lg transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <span
           className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-black text-xs font-bold text-white"
@@ -71,11 +71,11 @@ export function CheckoutOrderSummary({
               className="h-12 w-12 shrink-0 border border-slate-200 object-contain"
             />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold leading-5 text-slate-900">
+              <p className="text-xs font-semibold leading-5 text-foreground">
                 {item.name}
               </p>
               {item.variation.length ? (
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-muted">
                   {item.variation
                     .map(({ label, value }) => `${label}: ${value}`)
                     .join(" · ")}
@@ -100,7 +100,7 @@ export function CheckoutOrderSummary({
         aria-atomic="true"
       >
         <div className="flex justify-between gap-4">
-          <dt className="text-slate-600">Subtotal</dt>
+          <dt className="text-muted">Subtotal</dt>
           <dd className="font-semibold">
             <AnimatedValue animationKey={cart.totals.items.value}>
               {formatStoreMoney(cart.totals.items)}
@@ -133,8 +133,8 @@ export function CheckoutOrderSummary({
           </div>
         ) : null}
         <div className="flex justify-between gap-4">
-          <dt className="text-slate-600">Entrega</dt>
-          <dd className="max-w-52 text-right text-slate-600">
+          <dt className="text-muted">Entrega</dt>
+          <dd className="max-w-52 text-right text-muted">
             {cart.hasCalculatedShipping && hasSelectedShippingRate
               ? isZeroMoney(cart.totals.shipping)
                 ? "Grátis"
@@ -144,13 +144,13 @@ export function CheckoutOrderSummary({
         </div>
         {cart.fees.map((fee) => (
           <div key={fee.key} className="flex justify-between gap-4">
-            <dt className="text-slate-600">{fee.name}</dt>
+            <dt className="text-muted">{fee.name}</dt>
             <dd>{formatStoreMoney(fee.total)}</dd>
           </div>
         ))}
         {!isZeroMoney(cart.totals.tax) ? (
           <div className="flex justify-between gap-4">
-            <dt className="text-slate-600">Impostos</dt>
+            <dt className="text-muted">Impostos</dt>
             <dd>{formatStoreMoney(cart.totals.tax)}</dd>
           </div>
         ) : null}

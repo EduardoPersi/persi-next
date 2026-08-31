@@ -23,7 +23,7 @@ export function ZipCodeInput({
 
   return (
     <form onSubmit={submit} noValidate>
-      <label htmlFor={id} className="block text-sm font-medium text-slate-700">
+      <label htmlFor={id} className="block text-sm font-medium text-foreground">
         CEP
       </label>
       <div className="mt-2 grid items-stretch gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
@@ -37,7 +37,7 @@ export function ZipCodeInput({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           aria-describedby={`${id}-hint`}
-          className="block min-h-11 w-full min-w-0 appearance-none rounded-xl border border-slate-200 bg-white px-4 py-2.5 leading-5 text-slate-900 outline-none transition focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20"
+          className="block min-h-11 w-full min-w-0 appearance-none rounded-xl border border-slate-200 bg-white px-4 py-2.5 leading-5 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
         <Button
           type="submit"
@@ -52,12 +52,12 @@ export function ZipCodeInput({
         id={`${id}-hint`}
         className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm"
       >
-        <span className="text-slate-500">Digite com ou sem hífen.</span>
+        <span className="text-muted">Digite com ou sem hífen.</span>
         <a
           href="https://buscacepinter.correios.com.br/app/endereco/index.php?t"
           target="_blank"
           rel="noopener noreferrer"
-          className="font-medium text-[#ff6a00] underline underline-offset-2"
+          className="font-medium text-secondary underline underline-offset-2"
         >
           Pesquisar CEP
         </a>

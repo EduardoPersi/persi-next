@@ -31,7 +31,7 @@ export async function ProductGrid() {
   if (hasLoadError) {
     return (
       <p
-        className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600"
+        className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-muted"
         role="status"
       >
         Não foi possível carregar os produtos neste momento.
@@ -41,7 +41,7 @@ export async function ProductGrid() {
 
   if (products.length === 0) {
     return (
-      <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+      <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-muted">
         Nenhum produto foi encontrado neste momento.
       </p>
     );

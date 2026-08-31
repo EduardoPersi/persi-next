@@ -43,11 +43,11 @@ export function CheckoutOtpStep(props: CheckoutOtpStepProps) {
 
   return (
     <div className="w-full max-w-xl text-center">
-      <ShieldCheck className="mx-auto h-12 w-12 text-[#0c2d72]" aria-hidden="true" />
-      <h1 className="mt-5 text-xl font-bold text-slate-900">Enviamos um código para você!</h1>
-      <p className="mt-2 text-sm leading-6 text-slate-600">
+      <ShieldCheck className="mx-auto h-12 w-12 text-primary" aria-hidden="true" />
+      <h1 className="mt-5 text-xl font-bold text-foreground">Enviamos um código para você!</h1>
+      <p className="mt-2 text-sm leading-6 text-muted">
         Digite o código enviado para:<br />
-        <strong className="text-slate-800">{props.maskedEmail}</strong>
+        <strong className="text-foreground">{props.maskedEmail}</strong>
       </p>
 
       <div className="mx-auto mt-6 grid max-w-sm grid-cols-6 gap-2" role="group" aria-label="Código de acesso com seis dígitos">
@@ -64,7 +64,7 @@ export function CheckoutOtpStep(props: CheckoutOtpStepProps) {
             maxLength={1}
             autoComplete={index === 0 ? "one-time-code" : "off"}
             aria-label={`Dígito ${index + 1} do código`}
-            className="aspect-square min-w-0 rounded-xl border border-slate-300 bg-white text-center text-xl font-bold text-slate-900 outline-none focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20"
+            className="aspect-square min-w-0 rounded-xl border border-slate-300 bg-white text-center text-xl font-bold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
         ))}
       </div>
@@ -73,17 +73,17 @@ export function CheckoutOtpStep(props: CheckoutOtpStepProps) {
         {props.loading ? "Validando..." : "Validar"}
       </Button>
 
-      <div className="mt-4 text-sm text-slate-600">
+      <div className="mt-4 text-sm text-muted">
         <span>Não recebeu? </span>
         {props.cooldown > 0 ? (
           <span>Aguarde {props.cooldown} segundos para enviar novamente.</span>
         ) : (
-          <button type="button" onClick={props.onResend} disabled={props.loading} className="font-semibold text-[#ff6a00] underline underline-offset-2">
+          <button type="button" onClick={props.onResend} disabled={props.loading} className="font-semibold text-secondary underline underline-offset-2">
             Enviar novamente
           </button>
         )}
       </div>
-      <button type="button" onClick={props.onBack} disabled={props.loading} className="mt-4 text-sm font-medium text-[#0c2d72] underline underline-offset-2">
+      <button type="button" onClick={props.onBack} disabled={props.loading} className="mt-4 text-sm font-medium text-primary underline underline-offset-2">
         Voltar para a senha
       </button>
     </div>

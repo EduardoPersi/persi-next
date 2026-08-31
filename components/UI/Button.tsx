@@ -18,9 +18,9 @@ export interface ButtonProps
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-white hover:bg-primary-hover active:bg-primary-hover",
+    "bg-secondary text-white hover:bg-secondary-hover active:bg-secondary-hover",
   secondary:
-    "bg-secondary !text-white hover:bg-secondary-hover hover:!text-white active:bg-secondary-hover active:!text-white [&_svg]:text-white",
+    "border border-secondary bg-transparent text-secondary hover:bg-secondary/10 active:bg-secondary/15",
   outline:
     "border border-primary bg-transparent text-primary hover:bg-primary/10 active:bg-primary/15",
   ghost:
@@ -50,7 +50,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ref={ref}
       type={type}
       className={clsx(
-        "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
         variantClasses[variant],
         sizeClasses[size],
         className,

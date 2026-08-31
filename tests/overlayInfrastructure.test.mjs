@@ -80,7 +80,8 @@ test("busca fecha sem limpar o termo e indica carregamento na lupa", async () =>
   assert.match(source, /if \(event\.key === "Escape"\) \{\s*event\.preventDefault\(\)/);
   assert.match(source, /onPointerDown=\{closeSearch\}/);
   assert.match(source, /<LoaderCircle/);
-  assert.match(source, /animate-spin text-\[#0c2d72\]/);
+  assert.match(source, /bg-secondary/);
+  assert.match(source, /animate-spin text-white/);
   assert.match(source, /if \(!canSuggest \|\| !isFocused\) return/);
   assert.doesNotMatch(
     source.match(/function closeSearch\(\)[\s\S]*?\n  \}/)?.[0] ?? "",

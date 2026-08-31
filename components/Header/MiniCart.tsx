@@ -106,12 +106,12 @@ export function MiniCart() {
                   />
                 ) : null}
                 <div className="min-w-0 flex-1">
-                  <h3 className="line-clamp-2 text-sm font-medium leading-5 text-slate-900">
+                  <h3 className="line-clamp-2 text-sm font-medium leading-5 text-foreground">
                     {item.name}
                   </h3>
                   {item.freeShipping ? <div className="mt-1"><FreeShippingBadge compact /></div> : null}
                   {item.variation.length > 0 ? (
-                    <dl className="mt-1 text-xs text-slate-500">
+                    <dl className="mt-1 text-xs text-muted">
                       {item.variation.map((attribute) => (
                         <div key={`${attribute.attribute}-${attribute.value}`}>
                           <dt className="inline font-medium">
@@ -139,7 +139,7 @@ export function MiniCart() {
                         isLoading || item.quantity <= item.minQuantity
                       }
                       aria-label={`Diminuir quantidade de ${item.name}`}
-                      className="relative flex h-full w-7 items-center justify-center rounded-l-md text-slate-700 transition-colors before:absolute before:-bottom-2 before:-left-2 before:-top-2 before:right-0 before:content-[''] hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-300"
+                      className="relative flex h-full w-7 items-center justify-center rounded-l-md text-foreground transition-colors before:absolute before:-bottom-2 before:-left-2 before:-top-2 before:right-0 before:content-[''] hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-300"
                     >
                       <Minus className="h-3 w-3" aria-hidden="true" />
                     </button>
@@ -168,7 +168,7 @@ export function MiniCart() {
                         }
                       }}
                       aria-label={`Quantidade de ${item.name}`}
-                      className="h-full w-9 appearance-none border-x border-slate-200 bg-white text-center text-xs font-semibold text-slate-900 outline-none focus:border-[#0c2d72] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      className="h-full w-9 appearance-none border-x border-slate-200 bg-white text-center text-xs font-semibold text-foreground outline-none focus:border-primary [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <button
                       type="button"
@@ -185,14 +185,14 @@ export function MiniCart() {
                         isLoading || item.quantity >= (item.maxQuantity ?? 999)
                       }
                       aria-label={`Aumentar quantidade de ${item.name}`}
-                      className="relative flex h-full w-7 items-center justify-center rounded-r-md text-slate-700 transition-colors before:absolute before:-bottom-2 before:-right-2 before:-top-2 before:left-0 before:content-[''] hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-300"
+                      className="relative flex h-full w-7 items-center justify-center rounded-r-md text-foreground transition-colors before:absolute before:-bottom-2 before:-right-2 before:-top-2 before:left-0 before:content-[''] hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-300"
                     >
                       <Plus className="h-3 w-3" aria-hidden="true" />
                     </button>
                   </div>
                     <p className="text-xs text-slate-400">
                       {item.quantity} ×{" "}
-                      <strong className="font-semibold text-[#0c2d72]">
+                      <strong className="font-semibold text-primary">
                         {formatter.format(item.price)}
                       </strong>
                     </p>
@@ -207,7 +207,7 @@ export function MiniCart() {
                   className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition-colors before:absolute before:-inset-2 before:content-[''] hover:bg-red-50 hover:text-red-700 active:bg-red-100 active:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:cursor-wait disabled:opacity-50"
                 >
                   {pendingItemKey === item.key ? (
-                    <span className="h-3 w-3 animate-spin rounded-full border border-slate-300 border-t-[#0c2d72]" />
+                    <span className="h-3 w-3 animate-spin rounded-full border border-slate-300 border-t-primary" />
                   ) : (
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
                   )}
@@ -225,14 +225,14 @@ export function MiniCart() {
             <h3 className="mt-6 text-lg font-semibold">
               Seu carrinho está vazio
             </h3>
-            <p className="mt-3 text-sm leading-6 text-slate-500">
+            <p className="mt-3 text-sm leading-6 text-muted">
               Adicione produtos ao carrinho para visualizar o subtotal e
               finalizar sua compra.
             </p>
             <button
               type="button"
               onClick={closeCart}
-              className="mt-8 w-full rounded-md bg-[#0c2d72] py-3 font-medium text-white transition-colors hover:bg-[#17439f] active:bg-[#0a2456]"
+              className="mt-8 w-full rounded-md bg-primary py-3 font-medium text-white transition-colors hover:bg-primary-hover active:bg-primary-hover"
             >
               CONTINUAR COMPRANDO
             </button>
@@ -247,7 +247,7 @@ export function MiniCart() {
 
         <footer className="shrink-0 border-t px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5">
           <div className="mb-4 flex items-center justify-between">
-            <span className="text-sm text-slate-600">Subtotal</span>
+            <span className="text-sm text-muted">Subtotal</span>
             <strong className="text-lg">
               {formatter.format(cart?.subtotal ?? 0)}
             </strong>
@@ -255,7 +255,7 @@ export function MiniCart() {
           <Link
             href="/carrinho"
             onClick={closeCart}
-            className="mb-3 inline-flex h-11 w-full items-center justify-center rounded-md border border-[#0c2d72] px-4 font-medium text-[#0c2d72] transition-colors hover:bg-slate-50 active:bg-slate-100"
+            className="mb-3 inline-flex h-11 w-full items-center justify-center rounded-md border border-primary px-4 font-medium text-primary transition-colors hover:bg-slate-50 active:bg-slate-100"
           >
             Ver carrinho
           </Link>
@@ -268,7 +268,7 @@ export function MiniCart() {
               Boolean(pendingItemKey) ||
               isPreparingCheckout
             }
-            className="flex w-full items-center justify-center rounded-md bg-[#ff6a00] py-3 font-medium text-white transition-colors hover:bg-[#e85f00] active:bg-[#cc5200] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-200 disabled:text-slate-500"
+            className="flex w-full items-center justify-center rounded-md bg-secondary py-3 font-medium text-white transition-colors hover:bg-secondary-hover active:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-200 disabled:text-muted"
           >
             {isPreparingCheckout ? "PREPARANDO..." : "FINALIZAR COMPRA"}
           </button>

@@ -7,7 +7,7 @@ import { RecaptchaNotice } from "@/components/UI/RecaptchaNotice";
 import { useRecaptcha } from "@/hooks/useRecaptcha";
 
 const inputClassName =
-  "min-h-11 w-full rounded-xl border border-slate-300 px-3 outline-none focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20";
+  "min-h-11 w-full rounded-xl border border-slate-300 px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
 
 export function AccountResetPasswordForm({
   login,

@@ -55,7 +55,7 @@ export function CheckoutPayment({
 
   return (
     <div className="space-y-5">
-      <p className="text-xs leading-6 text-slate-600">
+      <p className="text-xs leading-6 text-muted">
         Escolha como prefere pagar. O valor final é sempre confirmado com o Banco
         Inter, o Mercado Pago ou o PagBank antes da confirmação do pedido.
       </p>
@@ -78,7 +78,7 @@ export function CheckoutPayment({
         />
       ) : null}
       {isWalletMethod ? (
-        <p className="rounded-xl bg-slate-50 p-4 text-xs leading-6 text-slate-600">
+        <p className="rounded-xl bg-slate-50 p-4 text-xs leading-6 text-muted">
           Você vai confirmar o pagamento pela carteira digital do seu dispositivo ao
           continuar.
         </p>

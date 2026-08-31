@@ -87,7 +87,7 @@ export function BrandCarousel({
     >
       <h2
         id="brand-carousel-title"
-        className="text-xl font-bold text-slate-900 sm:text-2xl"
+        className="text-xl font-bold text-foreground sm:text-2xl"
       >
         Selecionar por marca
       </h2>
@@ -135,7 +135,7 @@ export function BrandCarousel({
           <SwiperSlide key={brand.id} className="h-auto!">
             <Link
               href={getBrandHref(brand)}
-              className="flex h-24 w-full items-center justify-center rounded-[6px] px-2 opacity-80 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+              className="flex h-24 w-full items-center justify-center rounded-xl px-2 opacity-80 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               aria-label={`Ver produtos da marca ${brand.name}`}
             >
               {brand.image ? (
@@ -148,7 +148,7 @@ export function BrandCarousel({
                   className="h-auto max-h-16 w-full max-w-[90px] object-contain lg:max-w-[130px]"
                 />
               ) : (
-                <span className="line-clamp-2 text-center text-sm font-medium text-slate-600">
+                <span className="line-clamp-2 text-center text-sm font-medium text-muted">
                   {brand.name}
                 </span>
               )}
@@ -159,7 +159,7 @@ export function BrandCarousel({
 
       <button
         type="button"
-        className={`${previousClass} absolute top-[5.75rem] left-0 z-10 h-10 w-10 -translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-slate-700 opacity-0 shadow-sm transition-opacity hover:text-[#ff6a00] focus-visible:opacity-100 ${
+        className={`${previousClass} absolute top-[5.75rem] left-0 z-10 h-10 w-10 -translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-foreground opacity-0 shadow-sm transition-opacity hover:text-secondary focus-visible:opacity-100 ${
           hasOverflow
             ? "hidden lg:flex lg:group-hover/brands:opacity-100"
             : "hidden"
@@ -172,7 +172,7 @@ export function BrandCarousel({
       </button>
       <button
         type="button"
-        className={`${nextClass} absolute top-[5.75rem] right-0 z-10 h-10 w-10 translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-slate-700 opacity-0 shadow-sm transition-opacity hover:text-[#ff6a00] focus-visible:opacity-100 ${
+        className={`${nextClass} absolute top-[5.75rem] right-0 z-10 h-10 w-10 translate-x-1/3 items-center justify-center rounded-full bg-white/90 text-foreground opacity-0 shadow-sm transition-opacity hover:text-secondary focus-visible:opacity-100 ${
           hasOverflow
             ? "hidden lg:flex lg:group-hover/brands:opacity-100"
             : "hidden"

@@ -44,7 +44,7 @@ export function ProductCardAction({
         <div className="mt-3">
           <Link
             href={href}
-            className="-mx-1.5 inline-flex h-10 w-[calc(100%+0.75rem)] items-center justify-center rounded-[6px] bg-slate-600 px-3 text-center text-base font-medium uppercase text-white transition-colors hover:bg-slate-700 active:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-600 focus-visible:ring-offset-2 lg:mx-0 lg:w-full md:text-sm"
+            className="-mx-1.5 inline-flex h-10 w-[calc(100%+0.75rem)] items-center justify-center rounded-xl bg-slate-600 px-3 text-center text-base font-medium uppercase text-white transition-colors hover:bg-slate-700 active:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-600 focus-visible:ring-offset-2 lg:mx-0 lg:w-full md:text-sm"
           >
             Avise-me
           </Link>
@@ -60,7 +60,7 @@ export function ProductCardAction({
       <div className="mt-3">
         <Link
           href={href}
-          className="-mx-1.5 inline-flex h-10 w-[calc(100%+0.75rem)] items-center justify-center rounded-[6px] border border-[#0c2d72] px-3 text-center text-base font-medium text-[#0c2d72] transition-colors hover:bg-[#0c2d72] hover:text-white active:bg-[#071f5c] active:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2 lg:mx-0 lg:w-full md:text-sm"
+          className="-mx-1.5 inline-flex h-10 w-[calc(100%+0.75rem)] items-center justify-center rounded-xl border border-primary px-3 text-center text-base font-medium text-primary transition-colors hover:bg-primary hover:text-white active:bg-primary-hover active:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 lg:mx-0 lg:w-full md:text-sm"
         >
           {label}
         </Link>
@@ -75,7 +75,7 @@ export function ProductCardAction({
         type="button"
         onClick={handleAdd}
         disabled={isAdding}
-        className="-mx-1.5 inline-flex h-10 w-[calc(100%+0.75rem)] items-center justify-center rounded-[6px] bg-[#ff6a00] px-2 py-1 text-center text-[10px] font-medium leading-[13px] text-white transition-colors hover:bg-[#e85f00] active:bg-[#cc5200] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 lg:mx-0 lg:w-full lg:px-3 lg:py-2 lg:text-sm lg:leading-4"
+        className="-mx-1.5 inline-flex h-10 w-[calc(100%+0.75rem)] items-center justify-center rounded-xl bg-secondary px-2 py-1 text-center text-[10px] font-medium leading-[13px] text-white transition-colors hover:bg-secondary-hover active:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 lg:mx-0 lg:w-full lg:px-3 lg:py-2 lg:text-sm lg:leading-4"
       >
         {isAdding ? (
           "Adicionando..."
@@ -87,7 +87,7 @@ export function ProductCardAction({
         )}
       </button>
       {message ? (
-        <p className="mt-1 text-xs text-slate-600" role="status">
+        <p className="mt-1 text-xs text-muted" role="status">
           {message}
         </p>
       ) : null}

@@ -10,7 +10,7 @@ export interface IconButtonProps
 
 const variantClasses: Record<IconButtonVariant, string> = {
   default:
-    "text-primary hover:bg-primary/10 active:bg-primary/15 focus-visible:ring-primary",
+    "text-primary hover:bg-primary/10 active:bg-primary/15 focus-visible:ring-focus-ring",
   inverse:
     "text-white hover:bg-white/10 active:bg-white/20 focus-visible:ring-white",
 };

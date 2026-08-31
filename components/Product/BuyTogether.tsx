@@ -114,7 +114,7 @@ export function BuyTogether({
 
   return (
     <section className="mt-8" aria-labelledby="buy-together-title">
-      <h2 id="buy-together-title" className="text-xl font-bold text-slate-900">
+      <h2 id="buy-together-title" className="text-xl font-bold text-foreground">
         Compre junto
       </h2>
 
@@ -123,12 +123,12 @@ export function BuyTogether({
           {[mainProduct, ...complementaryProducts].map((product, index) => (
             <div key={product.id} className="contents">
               {index > 0 ? (
-                <Plus className="h-6 w-6 shrink-0 text-slate-800" aria-hidden="true" />
+                <Plus className="h-6 w-6 shrink-0 text-foreground" aria-hidden="true" />
               ) : null}
               <Link
                 href={getProductHref(product.slug)}
                 aria-label={`Ver ${product.name}`}
-                className="relative h-16 min-w-0 flex-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                className="relative h-16 min-w-0 flex-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <Image
                   src={product.image?.src || FALLBACK_IMAGE}
@@ -149,9 +149,9 @@ export function BuyTogether({
               checked
               disabled
               aria-label="Produto principal selecionado"
-              className="mt-1 h-4 w-4 shrink-0 accent-[#0c2d72]"
+              className="mt-1 h-4 w-4 shrink-0 accent-primary"
             />
-            <p className="min-w-0 flex-1 text-center text-sm leading-5 text-slate-800">
+            <p className="min-w-0 flex-1 text-center text-sm leading-5 text-foreground">
               {mainProduct.name}{" "}
               <strong>{formatCurrency(mainProduct.price, mainProduct.currencyCode)}</strong>
             </p>
@@ -173,12 +173,12 @@ export function BuyTogether({
                 checked={isSelected}
                 onChange={() => toggleProduct(product.id)}
                 aria-label={`Selecionar ${product.name}`}
-                className="h-4 w-4 shrink-0 accent-[#0c2d72]"
+                className="h-4 w-4 shrink-0 accent-primary"
               />
               <div className="min-w-0 flex-1">
                 <Link
                   href={getProductHref(product.slug)}
-                  className="line-clamp-2 text-center text-sm leading-5 text-slate-800 hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                  className="line-clamp-2 text-center text-sm leading-5 text-foreground hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   {product.name}{" "}
                   <strong>{formatCurrency(product.price, product.currencyCode)}</strong>
@@ -195,7 +195,7 @@ export function BuyTogether({
                         onClick={() => updateQuantity(product, quantity - 1)}
                         disabled={quantity <= 1}
                         aria-label={`Diminuir quantidade de ${product.name}`}
-                        className="flex h-full w-8 items-center justify-center text-slate-700 hover:bg-slate-100 disabled:text-slate-300"
+                        className="flex h-full w-8 items-center justify-center text-foreground hover:bg-slate-100 disabled:text-slate-300"
                       >
                         <Minus className="h-4 w-4" aria-hidden="true" />
                       </button>
@@ -213,7 +213,7 @@ export function BuyTogether({
                           }
                         }}
                         aria-label={`Quantidade de ${product.name}`}
-                        className="h-full w-12 appearance-none border-x border-slate-200 bg-white text-center text-sm font-semibold text-slate-900 outline-none focus:border-[#0c2d72] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        className="h-full w-12 appearance-none border-x border-slate-200 bg-white text-center text-sm font-semibold text-foreground outline-none focus:border-primary [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                       />
                       <button
                         type="button"
@@ -222,7 +222,7 @@ export function BuyTogether({
                           quantity >= Math.min(999, product.stockQuantity ?? 999)
                         }
                         aria-label={`Aumentar quantidade de ${product.name}`}
-                        className="flex h-full w-8 items-center justify-center text-slate-700 hover:bg-slate-100 disabled:text-slate-300"
+                        className="flex h-full w-8 items-center justify-center text-foreground hover:bg-slate-100 disabled:text-slate-300"
                       >
                         <Plus className="h-4 w-4" aria-hidden="true" />
                       </button>
@@ -230,7 +230,7 @@ export function BuyTogether({
                   </div>
                 ) : null}
               </div>
-              <ChevronRight className="h-5 w-5 shrink-0 text-[#ff6a00]" aria-hidden="true" />
+              <ChevronRight className="h-5 w-5 shrink-0 text-secondary" aria-hidden="true" />
             </div>
             );
           })}
@@ -238,14 +238,14 @@ export function BuyTogether({
 
         <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
           <div>
-            <p className="text-sm text-slate-700">
+            <p className="text-sm text-foreground">
               {selectedComplements.length > 0 ? (
                 <>Compre os <strong>{selectedItemCount} itens</strong> por</>
               ) : (
                 <>Selecione até <strong>2 complementos</strong></>
               )}
             </p>
-            <p className="mt-1 text-3xl font-bold text-slate-900" aria-live="polite">
+            <p className="mt-1 text-3xl font-bold text-foreground" aria-live="polite">
               {formatCurrency(payment.currentPrice, mainProduct.currencyCode)}
             </p>
           </div>
@@ -254,14 +254,14 @@ export function BuyTogether({
             size="lg"
             onClick={() => void handleAddSelected()}
             disabled={isAdding || selectedComplements.length === 0}
-            className="w-full border-[#ff6a00] text-[#ff6a00] hover:bg-[#ff6a00] hover:text-white sm:min-w-48"
+            className="w-full border-secondary bg-transparent text-secondary hover:bg-secondary hover:text-white disabled:border-secondary disabled:bg-transparent disabled:text-secondary disabled:opacity-40 sm:min-w-48"
           >
             {isAdding ? "Adicionando..." : "Comprar junto"}
           </Button>
         </div>
       </div>
 
-      <p className="mt-3 text-sm text-slate-600" role="status" aria-live="polite">
+      <p className="mt-3 text-sm text-muted" role="status" aria-live="polite">
         {message}
       </p>
     </section>

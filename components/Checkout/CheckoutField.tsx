@@ -49,7 +49,7 @@ export function CheckoutField({
 
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-xs font-medium text-black">
+      <label htmlFor={id} className="mb-1.5 block text-xs font-medium text-foreground">
         {label}
         {required ? <span className="text-danger"> *</span> : null}
       </label>
@@ -72,7 +72,7 @@ export function CheckoutField({
               : registration.onChange
           }
           className={clsx(
-            "min-h-11 w-full rounded-xl border bg-white px-3 py-2 pr-9 text-sm text-black outline-none transition focus:border-primary",
+            "min-h-11 w-full rounded-xl border bg-white px-3 py-2 pr-9 text-sm text-foreground outline-none transition focus:border-primary",
             error ? "border-danger" : "border-slate-300",
           )}
         />

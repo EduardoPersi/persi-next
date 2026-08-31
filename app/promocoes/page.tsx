@@ -177,25 +177,25 @@ export default async function PromotionsPage({
       <main className="py-3 sm:py-6 lg:py-10">
         <Container>
           <nav aria-label="Breadcrumb">
-            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 sm:text-sm">
+            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted sm:text-sm">
               <li>
                 <Link
                   href="/"
-                  className="rounded-sm hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                  className="rounded-sm hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   Home
                 </Link>
               </li>
               <li className="flex min-w-0 items-center gap-2">
                 <span aria-hidden="true">›</span>
-                <span className="text-slate-800" aria-current="page">
+                <span className="text-foreground" aria-current="page">
                   Promoções
                 </span>
               </li>
             </ol>
           </nav>
 
-          <section className="mt-5 overflow-hidden rounded-xl bg-gradient-to-r from-[#071f5c] via-[#0c2d72] to-[#ff6a00] px-5 py-5 text-white sm:px-8 sm:py-6">
+          <section className="mt-5 overflow-hidden rounded-xl bg-gradient-to-r from-primary-hover via-primary to-secondary px-5 py-5 text-white sm:px-8 sm:py-6">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/80">
               Ofertas selecionadas
             </p>
@@ -218,8 +218,8 @@ export default async function PromotionsPage({
 
             <div className="min-w-0">
               <div className="flex flex-col gap-4 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-slate-600" aria-live="polite">
-                  <strong className="text-slate-900">{firstPage.total}</strong>{" "}
+                <p className="text-sm text-muted" aria-live="polite">
+                  <strong className="text-foreground">{firstPage.total}</strong>{" "}
                   {firstPage.total === 1
                     ? "produto em promoção"
                     : "produtos em promoção"}
@@ -280,15 +280,15 @@ export default async function PromotionsPage({
                   </>
                 ) : (
                   <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-                    <h2 className="text-lg font-bold text-[#0c2d72]">
+                    <h2 className="text-lg font-bold text-primary">
                       Nenhuma promoção encontrada
                     </h2>
-                    <p className="mt-2 text-sm text-slate-600">
+                    <p className="mt-2 text-sm text-muted">
                       Tente remover alguns filtros para visualizar outras ofertas.
                     </p>
                     <Link
                       href={pathname}
-                      className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-[#ff6a00] px-5 text-sm font-semibold text-white"
+                      className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-secondary px-5 text-sm font-semibold text-white"
                     >
                       Limpar filtros
                     </Link>

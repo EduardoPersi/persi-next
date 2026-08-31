@@ -12,7 +12,7 @@ import type { CustomerWorkspaceProfile } from "@/lib/customer-workspace/types";
 type EditableProfileKey = "firstName" | "lastName" | "phone" | "birthDate" | "cpf";
 
 const inputClassName =
-  "mt-2 h-11 w-full rounded-xl border border-slate-300 px-3 font-normal outline-none focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20";
+  "mt-2 h-11 w-full rounded-xl border border-slate-300 px-3 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
 
 function formatProfile(profile: CustomerWorkspaceProfile): CustomerWorkspaceProfile {
   return {
@@ -50,7 +50,7 @@ export function CustomerProfileForm({
   ) {
     const isMaskedField = key === "phone" || key === "cpf";
     return (
-      <label className="block text-sm font-semibold text-slate-700">
+      <label className="block text-sm font-semibold text-foreground">
         {label}
         <input
           type={type}
@@ -111,21 +111,21 @@ export function CustomerProfileForm({
         {field("phone", "Telefone", "tel")}
         {field("birthDate", "Data de nascimento", "date")}
         {field("cpf", "CPF")}
-        <label className="block text-sm font-semibold text-slate-700">
+        <label className="block text-sm font-semibold text-foreground">
           E-mail
           <input
             value={profile.email}
             readOnly
             aria-readonly="true"
-            className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-100 px-3 font-normal text-slate-500"
+            className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-100 px-3 font-normal text-muted"
           />
-          <span className="mt-1 block text-xs font-normal text-slate-500">
+          <span className="mt-1 block text-xs font-normal text-muted">
             A alteração de e-mail exige verificação segura.
           </span>
         </label>
       </div>
       <fieldset className="rounded-xl border border-slate-200 p-4">
-        <legend className="px-2 font-bold text-[#071f5c]">Alterar senha</legend>
+        <legend className="px-2 font-bold text-primary-hover">Alterar senha</legend>
         <div className="grid gap-4 sm:grid-cols-2">
           <label htmlFor="profile-current-password" className="text-sm font-semibold">
             Senha atual
@@ -151,7 +151,7 @@ export function CustomerProfileForm({
         </div>
       </fieldset>
       {message ? (
-        <p role="status" className="text-sm text-slate-700">
+        <p role="status" className="text-sm text-foreground">
           {message}
         </p>
       ) : null}

@@ -221,11 +221,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
         <Container>
           <div className="flex min-w-0 items-center justify-between gap-4">
             <nav aria-label="Breadcrumb" className="min-w-0" data-route-transition-skip>
-              <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 sm:text-sm">
+              <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted sm:text-sm">
               <li>
                 <Link
                   href="/"
-                  className="tap-feedback rounded-sm px-0.5 transition-colors hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                  className="tap-feedback rounded-sm px-0.5 transition-colors hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   Home
                 </Link>
@@ -238,14 +238,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   <span aria-hidden="true">›</span>
                   <Link
                     href={item.href ?? "/"}
-                    className="tap-feedback rounded-sm px-0.5 transition-colors hover:text-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                    className="tap-feedback rounded-sm px-0.5 transition-colors hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     {item.label}
                   </Link>
                 </li>
               ))}
               <li
-                className="flex min-w-0 items-center gap-2 text-slate-800"
+                className="flex min-w-0 items-center gap-2 text-foreground"
                 aria-current="page"
               >
                 <span aria-hidden="true">›</span>
@@ -296,7 +296,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             >
               <h2
                 id="related-products-title"
-                className="text-2xl font-bold text-[#0c2d72]"
+                className="text-2xl font-bold text-primary"
               >
                 Produtos relacionados
               </h2>

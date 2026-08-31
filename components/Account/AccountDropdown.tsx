@@ -245,7 +245,7 @@ export function AccountDropdown({
             "--account-dropdown-top": `${dropdownPosition.top}px`,
           } as CSSProperties
         }
-        className={`fixed left-(--account-dropdown-left) top-(--account-dropdown-top) z-60 w-84 text-left text-slate-800 transition-[opacity,transform,visibility] duration-200 ease-out ${
+        className={`fixed left-(--account-dropdown-left) top-(--account-dropdown-top) z-60 w-84 text-left text-foreground transition-[opacity,transform,visibility] duration-200 ease-out ${
           open
             ? "visible translate-y-0 opacity-100"
             : "invisible translate-y-2 opacity-0"
@@ -256,16 +256,16 @@ export function AccountDropdown({
         <div className="max-h-[calc(100vh-5rem)] overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_20px_50px_-20px_rgba(15,23,42,0.4)]">
           <div className="rounded-xl bg-slate-50 p-4">
             <div className="flex items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0c2d72]/10 text-[#0c2d72]">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <UserRound className="h-5 w-5" aria-hidden="true" />
               </span>
               <div className="min-w-0">
-                <p className="truncate font-bold text-[#071f5c]">
+                <p className="truncate font-bold text-primary-hover">
                   {authenticated
                     ? `Olá, ${customerName || "Cliente"}!`
                     : "Olá!"}
                 </p>
-                <p className="mt-1 text-xs leading-5 text-slate-600">
+                <p className="mt-1 text-xs leading-5 text-muted">
                   {authenticated
                     ? "Gerencie pedidos, endereços e sua conta."
                     : "Entre ou crie sua conta para acompanhar seus pedidos."}
@@ -275,14 +275,14 @@ export function AccountDropdown({
 
             {authenticated ? (
               <>
-                <p className="mt-3 truncate text-xs text-slate-600">
-                  <span className="font-semibold text-slate-700">Conta:</span>{" "}
+                <p className="mt-3 truncate text-xs text-muted">
+                  <span className="font-semibold text-foreground">Conta:</span>{" "}
                   {customerEmail}
                 </p>
                 <Link
                   href="/minha-conta"
                   onClick={closeDropdown}
-                  className="mt-4 flex min-h-11 items-center justify-center rounded-xl bg-[#0c2d72] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#071f5c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+                  className="mt-4 flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
                   Minha Conta
                 </Link>
@@ -292,14 +292,14 @@ export function AccountDropdown({
                 <button
                   type="button"
                   onClick={handleTriggerClick}
-                  className="flex min-h-11 items-center justify-center rounded-xl bg-[#0c2d72] px-3 text-sm font-semibold text-white transition-colors hover:bg-[#071f5c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+                  className="flex min-h-11 items-center justify-center rounded-xl bg-primary px-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
                   Entrar
                 </button>
                 <Link
                   href="/criar-conta"
                   onClick={closeDropdown}
-                  className="flex min-h-11 items-center justify-center rounded-xl border border-[#0c2d72] px-3 text-sm font-semibold text-[#0c2d72] transition-colors hover:bg-[#0c2d72]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+                  className="flex min-h-11 items-center justify-center rounded-xl border border-primary px-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
                   Criar conta
                 </Link>
@@ -319,17 +319,17 @@ export function AccountDropdown({
                         <Link
                           href={item.href}
                           onClick={closeDropdown}
-                          className="group flex min-h-12 items-center gap-3 rounded-[10px] px-3 text-sm font-medium transition-colors duration-150 hover:bg-[#0c2d72]/8 hover:text-[#0c2d72] active:bg-[#0c2d72]/14 active:text-[#0c2d72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+                          className="group flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors duration-150 hover:bg-primary/8 hover:text-primary active:bg-primary/14 active:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         >
                           <Icon
-                            className="h-5 w-5 shrink-0 text-slate-500 transition-colors group-hover:text-[#0c2d72]"
+                            className="h-5 w-5 shrink-0 text-muted transition-colors group-hover:text-primary"
                             aria-hidden="true"
                           />
                           {item.label}
                         </Link>
                       ) : (
                         <span
-                          className="flex min-h-12 cursor-not-allowed items-center gap-3 rounded-[10px] px-3 text-sm text-slate-400"
+                          className="flex min-h-12 cursor-not-allowed items-center gap-3 rounded-xl px-3 text-sm text-slate-400"
                           aria-disabled="true"
                         >
                           <Icon
@@ -337,7 +337,7 @@ export function AccountDropdown({
                             aria-hidden="true"
                           />
                           <span className="flex-1">{item.label}</span>
-                          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
                             Em breve
                           </span>
                         </span>
@@ -350,10 +350,10 @@ export function AccountDropdown({
                     type="button"
                     onClick={handleLogout}
                     disabled={loggingOut}
-                    className="group flex min-h-12 w-full items-center gap-3 rounded-[10px] px-3 text-left text-sm font-medium transition-colors duration-150 hover:bg-[#0c2d72]/8 hover:text-[#0c2d72] active:bg-[#0c2d72]/14 active:text-[#0c2d72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] disabled:cursor-wait disabled:opacity-60"
+                    className="group flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition-colors duration-150 hover:bg-primary/8 hover:text-primary active:bg-primary/14 active:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-wait disabled:opacity-60"
                   >
                     <LogOut
-                      className="h-5 w-5 shrink-0 text-slate-500 transition-colors group-hover:text-[#0c2d72]"
+                      className="h-5 w-5 shrink-0 text-muted transition-colors group-hover:text-primary"
                       aria-hidden="true"
                     />
                     {loggingOut ? "Saindo..." : "Sair"}

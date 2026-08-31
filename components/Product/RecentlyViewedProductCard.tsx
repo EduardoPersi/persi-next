@@ -36,7 +36,7 @@ export function RecentlyViewedProductCard({
   return (
     <Link
       href={getProductHref(product.slug)}
-      className="grid h-full min-h-32 grid-cols-[88px_minmax(0,1fr)] gap-3 rounded-[6px] border border-slate-200 bg-white p-3 transition-colors hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"
+      className="grid h-full min-h-32 grid-cols-[88px_minmax(0,1fr)] gap-3 rounded-xl border border-slate-200 bg-white p-3 transition-colors hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       aria-label={`Ver ${product.name}`}
     >
       <span className="flex aspect-square items-center justify-center overflow-hidden">
@@ -52,7 +52,7 @@ export function RecentlyViewedProductCard({
         ) : null}
       </span>
       <span className="min-w-0">
-        <span className="line-clamp-2 text-sm font-medium leading-5 text-slate-800">
+        <span className="line-clamp-2 text-sm font-medium leading-5 text-foreground">
           {product.name}
         </span>
         {product.pixPrice !== undefined ? (
@@ -60,11 +60,11 @@ export function RecentlyViewedProductCard({
             {formatCurrency(product.pixPrice, product.currencyCode)} no Pix
           </span>
         ) : null}
-        <span className="mt-1 block text-sm font-semibold text-[#0c2d72]">
+        <span className="mt-1 block text-sm font-semibold text-primary">
           {formatCurrency(product.price, product.currencyCode)}
         </span>
         {product.commercialText ? (
-          <span className="mt-1 line-clamp-2 block text-[11px] leading-4 text-slate-500">
+          <span className="mt-1 line-clamp-2 block text-[11px] leading-4 text-muted">
             {product.commercialText}
           </span>
         ) : null}

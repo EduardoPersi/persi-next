@@ -34,10 +34,10 @@ function WorkspaceNavigation({ onNavigate }: { onNavigate?: () => void }) {
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
                 title={item.label}
-                className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold no-underline transition-[color,background-color,transform,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] ${
+                className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold no-underline transition-[color,background-color,transform,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                   active
-                    ? "bg-[#0c2d72] !text-white shadow-sm"
-                    : "text-slate-700 hover:translate-x-1 hover:bg-slate-100 hover:text-[#0c2d72]"
+                    ? "bg-primary !text-white shadow-sm"
+                    : "text-foreground hover:translate-x-1 hover:bg-slate-100 hover:text-primary"
                 }`}
               >
                 <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -67,12 +67,12 @@ export function CustomerWorkspaceShell({
       <aside className="hidden lg:block">
         <div className="sticky top-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-4 flex items-center gap-3 border-b border-slate-200 pb-4">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0c2d72]/10 text-[#0c2d72]">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
               <UserRound aria-hidden="true" className="h-5 w-5" />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-[#071f5c]">{customerName}</p>
-              <p className="truncate text-xs text-slate-500">{customerEmail}</p>
+              <p className="truncate text-sm font-bold text-primary-hover">{customerName}</p>
+              <p className="truncate text-xs text-muted">{customerEmail}</p>
             </div>
           </div>
           <WorkspaceNavigation />
@@ -83,7 +83,7 @@ export function CustomerWorkspaceShell({
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
-          className="mb-5 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 font-semibold text-[#0c2d72] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] lg:hidden"
+          className="mb-5 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 font-semibold text-primary shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
           aria-controls="customer-workspace-menu"
           aria-expanded={mobileOpen}
         >

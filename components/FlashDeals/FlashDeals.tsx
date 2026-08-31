@@ -17,8 +17,8 @@ export async function FlashDeals({ context }: { context: FlashDealsContext }) {
       <section className="rounded-xl border border-orange-200 bg-orange-50/60 p-4 sm:p-6" aria-labelledby={`${promotionId}-title`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <Zap className="h-6 w-6 shrink-0 fill-[#ff6a00] text-[#ff6a00]" aria-hidden="true" />
-            <h2 id={`${promotionId}-title`} className="text-xl font-bold text-[#0c2d72] sm:text-2xl">Ofertas Relâmpago</h2>
+            <Zap className="h-6 w-6 shrink-0 fill-secondary text-secondary" aria-hidden="true" />
+            <h2 id={`${promotionId}-title`} className="text-xl font-bold text-primary sm:text-2xl">Ofertas Relâmpago</h2>
             <span className="hidden h-px flex-1 bg-orange-300 sm:block" aria-hidden="true" />
           </div>
           <FlashDealsTimer endsAt={result.endsAt} />

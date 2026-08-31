@@ -30,7 +30,7 @@ export function ProductFamilyOptions({ data }: { data: ProductFamilyResponse }) 
     >
       <h2
         id="product-family-label"
-        className="text-sm font-semibold text-slate-900"
+        className="text-sm font-semibold text-foreground"
       >
         {attribute.label}:
       </h2>
@@ -38,14 +38,14 @@ export function ProductFamilyOptions({ data }: { data: ProductFamilyResponse }) 
         {items.map((item) => {
           const label = item.attributes[attribute.taxonomy].label;
           const classes =
-            "inline-flex min-h-7 min-w-7 items-center justify-center rounded-md border bg-white px-1.5 text-xs font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2";
+            "inline-flex min-h-7 min-w-7 items-center justify-center rounded-md border bg-white px-1.5 text-xs font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
 
           if (item.isCurrent) {
             return (
               <span
                 key={item.productId}
                 aria-current="page"
-                className={`${classes} border-2 border-slate-900 text-slate-900`}
+                className={`${classes} border-2 border-slate-900 text-foreground`}
               >
                 {label}
               </span>
@@ -58,8 +58,8 @@ export function ProductFamilyOptions({ data }: { data: ProductFamilyResponse }) 
               href={item.href}
               prefetch={false}
               aria-label={`${label}${item.inStock ? "" : " — fora de estoque"}`}
-              className={`${classes} border-slate-200 text-slate-900 hover:border-[#ff6a00] hover:text-[#ff6a00] ${
-                item.inStock ? "" : "text-slate-500 opacity-60"
+              className={`${classes} border-slate-200 text-foreground hover:border-secondary hover:text-secondary ${
+                item.inStock ? "" : "text-muted opacity-60"
               }`}
             >
               {label}

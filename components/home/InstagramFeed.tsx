@@ -26,11 +26,11 @@ export async function InstagramFeed() {
         <div>
           <h2
             id="instagram-feed-title"
-            className="text-xl font-bold text-slate-900 sm:text-2xl"
+            className="text-xl font-bold text-foreground sm:text-2xl"
           >
             Siga a Persi no Instagram
           </h2>
-          <p className="mt-1 text-sm text-slate-600 sm:text-base">
+          <p className="mt-1 text-sm text-muted sm:text-base">
             Novidades, lançamentos, instalações e dicas para sua obra.
           </p>
         </div>
@@ -40,7 +40,7 @@ export async function InstagramFeed() {
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Ver perfil completo da Persi Materiais no Instagram"
-          className="inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-xl border border-[#0c2d72] px-4 text-sm font-semibold text-[#0c2d72] transition-colors hover:bg-[#0c2d72] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2"
+          className="inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-xl border border-primary px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
           <InstagramIcon className="h-5 w-5" />
           Ver perfil completo

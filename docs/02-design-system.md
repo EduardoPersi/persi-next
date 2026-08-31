@@ -6,19 +6,46 @@ Definir um padrão visual único para toda a Persi Materiais.
 
 ## Cores
 
-- Azul superior: `#071f5c`
-- Azul principal: `#0c2d72`
-- Laranja: `#ff6a00`
-- Branco: `#ffffff`
+### Paleta oficial
+
+- Azul Persi: `#002B57` (`primary` / `heading`)
+- Azul escuro: `#001F42` (`primary-hover`)
+- Azul institucional: `#063B73` (`link` / `focus-ring`)
+- Laranja Persi: `#FF6B00` (`secondary`)
+- Laranja hover: `#E85F00` (`secondary-hover`)
+- Texto principal: `#1F2937` (`foreground`)
+- Texto secundÃ¡rio: `#687386` (`muted`)
+- Fundo geral do site: `#F8FAFC` (`background`)
+- SuperfÃ­cies e cards: `#FFFFFF` (`surface`)
+- Fundo suave: `#F6F7F9` (`background-soft` / `surface-hover`)
+
+Os tokens ficam centralizados em `app/globals.css` e sÃ£o expostos ao Tailwind.
+NÃ£o repetir hexadecimais da marca em componentes.
+
+### Hierarquia semÃ¢ntica
+
+- conteÃºdo e descriÃ§Ãµes usam `foreground`;
+- tÃ­tulos e identidade usam `heading` ou `primary`;
+- links informativos usam `link`;
+- CTAs e promoÃ§Ãµes usam `secondary`;
+- informaÃ§Ãµes auxiliares usam `muted`;
+- superfÃ­cies usam `background`, `surface` ou `background-soft`.
+
+Cores de estado (`success`, `warning`, `danger`) e identidades de terceiros
+(WhatsApp, redes sociais, meios de pagamento e fabricantes) nÃ£o devem ser
+convertidas para a paleta Persi.
 
 ## Border Radius
 
 Padrão:
 
-- Botões: 12px
-- Cards: 12px
-- Inputs: 12px
-- Modais: 12px
+- Botões: 8px
+- Cards: 8px
+- Inputs: 8px
+- Modais: 8px
+
+Elementos genuinamente circulares, como avatares, badges e botões de ícone
+redondos, podem continuar usando `rounded-full`.
 
 ## Container
 
@@ -72,11 +99,11 @@ Evitar valores arbitrários.
 
 Variantes:
 
-- Primary
-- Secondary
-- Outline
-- Ghost
-- Destructive
+- `primary`: CTA de conversÃ£o com fundo laranja;
+- `secondary`: aÃ§Ã£o secundÃ¡ria contornada em laranja;
+- `outline`: aÃ§Ã£o institucional contornada em azul;
+- `ghost`: aÃ§Ã£o terciÃ¡ria azul sem fundo;
+- `destructive`: aÃ§Ã£o destrutiva com semÃ¢ntica de erro.
 
 Todos devem suportar:
 
@@ -107,10 +134,15 @@ Projetar sempre em mobile first.
 Validar em:
 
 - 320px
+- 360px
 - 375px
+- 390px
+- 430px
 - 768px
 - 1024px
 - 1280px
+- 1440px
+- 1920px
 
 ## Consistência
 

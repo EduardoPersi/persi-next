@@ -26,13 +26,13 @@ export function AccountDashboard({ customer, summary }: { customer: AccountCusto
   return (
     <div>
       <section aria-labelledby="account-greeting">
-        <h2 id="account-greeting" className="text-2xl font-bold text-[#071f5c]">Olá{greetingName ? `, ${greetingName}` : ""}!</h2>
-        <p className="mt-2 text-slate-600">Bem-vindo novamente.</p>
+        <h2 id="account-greeting" className="text-2xl font-bold text-primary-hover">Olá{greetingName ? `, ${greetingName}` : ""}!</h2>
+        <p className="mt-2 text-muted">Bem-vindo novamente.</p>
       </section>
       <section aria-label="Resumo da conta" className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {metrics.map(([label, value, href]) => <Link key={label} href={href} className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72]"><span className="block text-2xl font-bold text-[#071f5c]">{value ?? "—"}</span><span className="mt-1 block text-sm text-slate-600">{label}</span></Link>)}
+        {metrics.map(([label, value, href]) => <Link key={label} href={href} className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><span className="block text-2xl font-bold text-primary-hover">{value ?? "—"}</span><span className="mt-1 block text-sm text-muted">{label}</span></Link>)}
       </section>
-      {!summary ? <p role="status" className="mt-3 text-sm text-slate-500">O resumo será atualizado assim que o serviço da conta responder.</p> : null}
+      {!summary ? <p role="status" className="mt-3 text-sm text-muted">O resumo será atualizado assim que o serviço da conta responder.</p> : null}
       <section aria-label="Recursos da minha conta" className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {dashboardItems.map((item) => <AccountDashboardCard key={item.title} {...item} />)}
         <AccountDashboardCard title="Produtos vistos" href="/minha-conta/produtos-vistos" icon={Eye} />

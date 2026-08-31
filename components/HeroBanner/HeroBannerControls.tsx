@@ -27,7 +27,7 @@ export function HeroBannerControls({ slideCount }: HeroBannerControlsProps) {
       const isActive = index === normalizedIndex;
       dot.setAttribute("aria-current", isActive ? "true" : "false");
       dot.classList.toggle("w-7", isActive);
-      dot.classList.toggle("bg-[#ff6a00]", isActive);
+      dot.classList.toggle("bg-secondary", isActive);
       dot.classList.toggle("w-2.5", !isActive);
       dot.classList.toggle("bg-white/70", !isActive);
     });
@@ -72,7 +72,7 @@ export function HeroBannerControls({ slideCount }: HeroBannerControlsProps) {
       </IconButton>
       <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center gap-2">
         {Array.from({ length: slideCount }, (_, index) => (
-          <button key={index} type="button" data-hero-dot aria-label={`Ir para o slide ${index + 1}`} aria-current={index === 0 ? "true" : "false"} onClick={() => showSlide(index)} className={`h-2.5 rounded-full transition-[width,background-color] ${index === 0 ? "w-7 bg-[#ff6a00]" : "w-2.5 bg-white/70"}`} />
+          <button key={index} type="button" data-hero-dot aria-label={`Ir para o slide ${index + 1}`} aria-current={index === 0 ? "true" : "false"} onClick={() => showSlide(index)} className={`h-2.5 rounded-full transition-[width,background-color] ${index === 0 ? "w-7 bg-secondary" : "w-2.5 bg-white/70"}`} />
         ))}
       </div>
     </div>

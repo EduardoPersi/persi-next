@@ -98,14 +98,14 @@ export default async function PostPage({ params }: PostPageProps) {
       <main className="py-5 sm:py-8 lg:py-10">
         <Container size="md">
           <nav aria-label="Breadcrumb" className="mb-4" data-route-transition-skip>
-            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 sm:text-sm">
+            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted sm:text-sm">
               <li>
-                <Link href="/" className="hover:text-[#ff6a00]">
+                <Link href="/" className="hover:text-secondary">
                   Início
                 </Link>
               </li>
               <li aria-hidden="true">/</li>
-              <li aria-current="page" className="truncate text-slate-800">
+              <li aria-current="page" className="truncate text-foreground">
                 {post.title}
               </li>
             </ol>
@@ -113,10 +113,10 @@ export default async function PostPage({ params }: PostPageProps) {
 
           <article className="rounded-md border border-slate-200 bg-white px-5 py-6 shadow-sm sm:px-8 sm:py-8">
             {metaLine ? (
-              <p className="text-sm font-medium text-slate-500">{metaLine}</p>
+              <p className="text-sm font-medium text-muted">{metaLine}</p>
             ) : null}
 
-            <h1 className="mt-1.5 text-2xl font-bold text-[#071f5c] sm:text-3xl">
+            <h1 className="mt-1.5 text-2xl font-bold text-primary-hover sm:text-3xl">
               {post.title}
             </h1>
 
@@ -130,7 +130,7 @@ export default async function PostPage({ params }: PostPageProps) {
                   className="h-7 w-7 shrink-0 rounded-full"
                 />
               ) : null}
-              <span className="text-sm text-slate-600">
+              <span className="text-sm text-muted">
                 Por {post.author.name}
               </span>
             </div>
@@ -154,7 +154,7 @@ export default async function PostPage({ params }: PostPageProps) {
           <p className="mt-6">
             <Link
               href="/"
-              className="text-sm font-semibold text-[#ff6a00] hover:underline"
+              className="text-sm font-semibold text-secondary hover:underline"
             >
               ← Voltar para a Home
             </Link>

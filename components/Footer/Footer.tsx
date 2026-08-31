@@ -55,7 +55,7 @@ const usefulLinks = [
 ];
 
 const footerLinkClasses =
-  "tap-feedback inline-flex min-h-9 items-center rounded-md text-sm text-slate-600 transition-colors hover:text-[#ff6a00]";
+  "tap-feedback inline-flex min-h-9 items-center rounded-md text-sm text-white/80 transition-colors hover:text-secondary";
 
 type FooterLinksProps = {
   items: ReadonlyArray<{ label: string; href: string }>;
@@ -77,10 +77,10 @@ function FooterLinks({ items }: FooterLinksProps) {
 
 export function Footer() {
   return (
-    <footer className="overflow-x-hidden bg-white text-slate-800">
+    <footer className="overflow-x-hidden bg-gradient-to-br from-primary to-primary-hover text-white">
       <section
         aria-labelledby="newsletter-title"
-        className="bg-[#1246ab] text-white"
+        className="border-b border-white/10 bg-primary-hover text-white"
       >
         <Container className="flex flex-col gap-3 py-4 md:gap-4 lg:flex-row lg:items-start lg:justify-center lg:gap-10">
           <div className="mx-auto flex w-full max-w-[92%] items-center gap-2 md:mx-0 md:w-auto md:max-w-none md:gap-3 lg:pt-2">
@@ -94,7 +94,7 @@ export function Footer() {
             />
             <h2
               id="newsletter-title"
-              className="text-xl font-bold"
+              className="text-xl font-bold text-white"
             >
               Assine nossa newsletter
             </h2>
@@ -104,24 +104,24 @@ export function Footer() {
         </Container>
       </section>
 
-      <Container className="py-6 md:py-9 lg:py-10">
+      <Container className="py-6 text-white md:py-9 lg:py-10">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-7 md:gap-x-10 lg:grid-cols-4 lg:gap-7">
           <section aria-labelledby="footer-contact-title">
             <h2
               id="footer-contact-title"
-              className="text-sm font-bold text-[#ff6a00] md:text-base"
+              className="text-sm font-bold text-secondary md:text-base"
             >
               Contato
             </h2>
 
-            <ul className="mt-3 space-y-1.5 text-sm leading-5 text-slate-600 md:mt-4 md:leading-6">
+            <ul className="mt-3 space-y-1.5 text-sm leading-5 text-white/80 md:mt-4 md:leading-6">
               <li className="flex items-start gap-3">
                 <MapPin
                   aria-hidden="true"
-                  className="mt-0.5 h-5 w-5 shrink-0 text-[#ff6a00]"
+                  className="mt-0.5 h-5 w-5 shrink-0 text-secondary"
                 />
                 <address className="not-italic">
-                  <strong className="font-semibold text-slate-800">
+                  <strong className="font-semibold text-white">
                     ENDEREÇO:
                   </strong>{" "}
                   {STORE_INFO.address.line}
@@ -133,11 +133,11 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Conversar com a Persi Materiais pelo WhatsApp"
-                  className="tap-feedback flex min-h-9 items-center gap-3 rounded-md transition-colors hover:text-[#ff6a00]"
+                  className="tap-feedback flex min-h-9 items-center gap-3 rounded-md transition-colors hover:text-secondary"
                 >
                   <WhatsAppIcon
                     aria-hidden="true"
-                    className="h-5 w-5 shrink-0 text-[#ff6a00]"
+                    className="h-5 w-5 shrink-0 text-secondary"
                   />
                   WhatsApp: {STORE_INFO.whatsapp.label}
                 </a>
@@ -145,11 +145,11 @@ export function Footer() {
               <li>
                 <a
                   href={STORE_INFO.phone.href}
-                  className="tap-feedback flex min-h-9 items-center gap-3 rounded-md transition-colors hover:text-[#ff6a00]"
+                  className="tap-feedback flex min-h-9 items-center gap-3 rounded-md transition-colors hover:text-secondary"
                 >
                   <Phone
                     aria-hidden="true"
-                    className="h-5 w-5 shrink-0 text-[#ff6a00]"
+                    className="h-5 w-5 shrink-0 text-secondary"
                   />
                   Telefone: {STORE_INFO.phone.label}
                 </a>
@@ -157,11 +157,11 @@ export function Footer() {
               <li>
                 <a
                   href={STORE_INFO.email.href}
-                  className="tap-feedback flex min-h-9 items-center gap-3 break-all rounded-md transition-colors hover:text-[#ff6a00]"
+                  className="tap-feedback flex min-h-9 items-center gap-3 break-all rounded-md transition-colors hover:text-secondary"
                 >
                   <Mail
                     aria-hidden="true"
-                    className="h-5 w-5 shrink-0 text-[#ff6a00]"
+                    className="h-5 w-5 shrink-0 text-secondary"
                   />
                   E-mail: {STORE_INFO.email.label}
                 </a>
@@ -169,10 +169,10 @@ export function Footer() {
               <li className="flex items-start gap-3">
                 <Clock
                   aria-hidden="true"
-                  className="mt-0.5 h-5 w-5 shrink-0 text-[#ff6a00]"
+                  className="mt-0.5 h-5 w-5 shrink-0 text-secondary"
                 />
                 <span>
-                  <strong className="font-semibold text-slate-800">
+                  <strong className="font-semibold text-white">
                     Horário de atendimento:
                   </strong>
                   <br />
@@ -187,7 +187,7 @@ export function Footer() {
           <nav aria-labelledby="footer-categories-title">
             <h2
               id="footer-categories-title"
-              className="text-sm font-bold text-[#ff6a00] md:text-base"
+              className="text-sm font-bold text-secondary md:text-base"
             >
               Categorias
             </h2>
@@ -197,7 +197,7 @@ export function Footer() {
           <nav aria-labelledby="footer-institutional-title">
             <h2
               id="footer-institutional-title"
-              className="text-sm font-bold text-[#ff6a00] md:text-base"
+              className="text-sm font-bold text-secondary md:text-base"
             >
               Institucional
             </h2>
@@ -208,7 +208,7 @@ export function Footer() {
             <nav aria-labelledby="footer-useful-title">
               <h2
                 id="footer-useful-title"
-                className="text-sm font-bold text-[#ff6a00] md:text-base"
+                className="text-sm font-bold text-secondary md:text-base"
               >
                 Links úteis
               </h2>
@@ -221,7 +221,7 @@ export function Footer() {
             >
               <h2
                 id="footer-social-title"
-                className="text-sm font-bold text-[#ff6a00] md:text-base"
+                className="text-sm font-bold text-secondary md:text-base"
               >
                 Redes Sociais:
               </h2>
@@ -311,14 +311,14 @@ export function Footer() {
                 className="h-auto w-[80px] max-w-full object-contain"
               />
             </h2>
-            <p className="mt-2 text-sm leading-5 text-slate-600 md:mt-3 md:leading-6">
+            <p className="mt-2 text-sm leading-5 text-white/80 md:mt-3 md:leading-6">
               As fotos dos produtos são meramente ilustrativas. Os valores
               mencionados são válidos somente para compras online neste
               website. Nota fiscal para pessoa jurídica, fora do estado de São
               Paulo, está sujeita à cobrança adicional de ICMS Substituição
               Tributária, conforme a legislação aplicável.
             </p>
-            <p className="mt-2 text-sm font-semibold text-slate-700 md:mt-3">
+            <p className="mt-2 text-sm font-semibold text-white/90 md:mt-3">
               Persi Construções e Comércio LTDA
             </p>
           </section>
@@ -326,7 +326,7 @@ export function Footer() {
           <section aria-labelledby="footer-payment-title">
             <h2
               id="footer-payment-title"
-              className="text-sm font-bold text-[#ff6a00] md:text-base"
+              className="text-sm font-bold text-secondary md:text-base"
             >
               Formas de pagamento
             </h2>
@@ -352,7 +352,7 @@ export function Footer() {
           <section aria-labelledby="footer-security-title">
             <h2
               id="footer-security-title"
-              className="text-sm font-bold text-[#ff6a00] md:text-base"
+              className="text-sm font-bold text-secondary md:text-base"
             >
               Site seguro
             </h2>
@@ -387,7 +387,7 @@ export function Footer() {
           <section aria-labelledby="footer-shipping-title">
             <h2
               id="footer-shipping-title"
-              className="text-sm font-bold text-[#ff6a00] md:text-base"
+              className="text-sm font-bold text-secondary md:text-base"
             >
               Formas de envio
             </h2>
@@ -403,8 +403,8 @@ export function Footer() {
         </div>
       </Container>
 
-      <div className="border-t border-[#E5E7EB] bg-slate-50">
-        <Container className="py-4 text-center text-[13px] leading-5 text-slate-500">
+      <div className="border-t border-white/15 bg-primary-hover/70">
+        <Container className="py-4 text-center text-[13px] leading-5 text-white/70">
           <p>
             © 2016-2026 Persi Construções e Comércio Ltda. CNPJ:
             26.069.136/0001-41. Todos os direitos reservados.

@@ -1,0 +1,15 @@
+{
+  "phase": "P.5-B-FIX",
+  "sourceArtifacts": {
+    "results": "supabase/.temp/pim-ai/p5b/small-batch-results.json",
+    "resultsSha256": "ce6120d388a693b45434a0165db40767b747ffaffbd1b1451590536a7e54fed7",
+    "product4Diagnostic": "supabase/.temp/pim-ai/p5b/product-04-diagnostic.json",
+    "product4DiagnosticSha256": "fbdd66f87441f0f5cd74a50f8be714e1cd9eedb952ade26365c2d4517bc5e0dc"
+  },
+  "outputs": [
+    {"product":1,"historicalResult":"QUALITY_REVIEW_FAILURE","parsedSha256":"e0413af19a30320029967277ffa082316e67fb615359a50faa562530c38a83a0"},
+    {"product":2,"historicalResult":"QUALITY_REVIEW_FAILURE","parsedSha256":"eae61b527c09a54de59925d99622a155c8fcfda25306333f527a907896014df7"},
+    {"product":3,"historicalResult":"PASS","parsedSha256":"9f2ed2f772037a7051aeed2509a79a1a7b8f4a37ccbd692eaae856891e1be35c"},
+    {"product":4,"historicalResult":"LOCAL_VALIDATION_FAILURE","parsedSha256":"3efdd508b60879388530af5108aa9d0f52ade046cbf18892923d5f3615dacd18"}
+  ]
+}

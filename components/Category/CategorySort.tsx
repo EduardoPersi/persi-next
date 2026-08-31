@@ -72,7 +72,7 @@ export function CategorySort({
         name="ordem"
         defaultValue={currentOrder}
         onChange={handleOrderChange}
-        className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-[#0c2d72] focus:ring-2 focus:ring-[#0c2d72]/20 sm:min-w-48"
+        className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:min-w-48"
       >
         {[
           ...(showRelevance
@@ -88,7 +88,7 @@ export function CategorySort({
       <button
         type="submit"
         disabled={isPending}
-        className="hidden h-11 rounded-xl border border-[#0c2d72] px-4 text-sm font-medium text-[#0c2d72] transition-colors hover:bg-[#0c2d72] hover:text-white sm:inline-flex sm:items-center sm:justify-center"
+        className="hidden h-11 rounded-xl border border-primary px-4 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-white sm:inline-flex sm:items-center sm:justify-center"
       >
         {isPending ? "Ordenando..." : "Ordenar"}
       </button>

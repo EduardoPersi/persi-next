@@ -75,7 +75,7 @@ export const QuantitySelect = memo(function QuantitySelect({
           aria-label={label}
           title={label}
           onChange={(event) => void changeQuantity(Number(event.currentTarget.value))}
-          className="h-9 min-w-16 shrink-0 cursor-pointer rounded-lg border border-slate-300 bg-white py-0 pl-2.5 pr-7 text-sm font-medium tabular-nums text-slate-900 transition-colors hover:border-slate-400 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 sm:min-w-[72px] sm:pl-3 sm:pr-8"
+          className="h-9 min-w-16 shrink-0 cursor-pointer rounded-lg border border-slate-300 bg-white py-0 pl-2.5 pr-7 text-sm font-medium tabular-nums text-foreground transition-colors hover:border-slate-400 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 sm:min-w-[72px] sm:pl-3 sm:pr-8"
         >
           {quantities.map((quantity) => (
             <option key={quantity} value={quantity}>{quantity}</option>

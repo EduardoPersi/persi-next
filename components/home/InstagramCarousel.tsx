@@ -61,7 +61,7 @@ export function InstagramCarousel({
 
       <button
         type="button"
-        className={`${previousClass} absolute left-0 top-1/2 z-10 hidden h-11 w-11 -translate-x-1/3 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#0c2d72] opacity-0 shadow-md transition hover:bg-[#0c2d72] hover:text-white focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2 lg:flex ${
+        className={`${previousClass} absolute left-0 top-1/2 z-10 hidden h-11 w-11 -translate-x-1/3 -translate-y-1/2 items-center justify-center rounded-full bg-white text-primary opacity-0 shadow-md transition hover:bg-primary hover:text-white focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 lg:flex ${
           hasOverflow
             ? "lg:group-hover/instagram-carousel:opacity-100"
             : "lg:hidden"
@@ -74,7 +74,7 @@ export function InstagramCarousel({
 
       <button
         type="button"
-        className={`${nextClass} absolute right-0 top-1/2 z-10 hidden h-11 w-11 translate-x-1/3 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#0c2d72] opacity-0 shadow-md transition hover:bg-[#0c2d72] hover:text-white focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c2d72] focus-visible:ring-offset-2 lg:flex ${
+        className={`${nextClass} absolute right-0 top-1/2 z-10 hidden h-11 w-11 translate-x-1/3 -translate-y-1/2 items-center justify-center rounded-full bg-white text-primary opacity-0 shadow-md transition hover:bg-primary hover:text-white focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 lg:flex ${
           hasOverflow
             ? "lg:group-hover/instagram-carousel:opacity-100"
             : "lg:hidden"
