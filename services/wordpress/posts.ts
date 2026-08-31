@@ -1,5 +1,6 @@
 import "server-only";
 import { sanitizeWordPressHtml } from "@/lib/formatting/sanitizeWordPressHtml";
+import { isTransientHttpStatus, withSingleRetry } from "@/lib/network/retry";
 import { stripHtml } from "@/services/woocommerce/mappers";
 import type { BlogPost, BlogPostDetail } from "@/types/blogPost";
 
@@ -90,12 +91,19 @@ export async function getLatestBlogPosts(limit = 3): Promise<BlogPost[]> {
   if (!wordpressUrl) return [];
 
   try {
-    const response = await fetch(
-      new URL(`/wp-json/wp/v2/posts?per_page=${limit}&_embed=1`, wordpressUrl),
+    const url = new URL(`/wp-json/wp/v2/posts?per_page=${limit}&_embed=1`, wordpressUrl);
+    const response = await withSingleRetry(
+      () =>
+        fetch(url, {
+          headers: { Accept: "application/json" },
+          next: { revalidate: 3600 },
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        }),
       {
-        headers: { Accept: "application/json" },
-        next: { revalidate: 3600 },
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        shouldRetryResult: (result) => isTransientHttpStatus(result.status),
+        onRetry: (reason) => {
+          console.warn("[wordpress-posts-retry]", { reason });
+        },
       },
     );
     if (!response.ok) return [];
@@ -116,15 +124,22 @@ export async function getBlogPostBySlug(
   if (!wordpressUrl) return undefined;
 
   try {
-    const response = await fetch(
-      new URL(
-        `/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_embed=1`,
-        wordpressUrl,
-      ),
+    const url = new URL(
+      `/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_embed=1`,
+      wordpressUrl,
+    );
+    const response = await withSingleRetry(
+      () =>
+        fetch(url, {
+          headers: { Accept: "application/json" },
+          next: { revalidate: 3600 },
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        }),
       {
-        headers: { Accept: "application/json" },
-        next: { revalidate: 3600 },
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        shouldRetryResult: (result) => isTransientHttpStatus(result.status),
+        onRetry: (reason) => {
+          console.warn("[wordpress-posts-retry]", { slug, reason });
+        },
       },
     );
     if (!response.ok) return undefined;

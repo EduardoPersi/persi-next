@@ -1,4 +1,5 @@
 import "server-only";
+import { isTransientHttpStatus, withSingleRetry } from "@/lib/network/retry";
 
 const REQUEST_TIMEOUT_MS = 5_000;
 
@@ -16,13 +17,21 @@ export async function persiHeadlessGet<T>(
   const wordpressUrl = process.env.WORDPRESS_URL;
   if (!wordpressUrl) throw new PersiHeadlessError("WORDPRESS_URL não configurada.");
 
+  const url = new URL(`/wp-json/persi/v1/${path.replace(/^\/+/, "")}`, wordpressUrl);
+
   try {
-    const response = await fetch(
-      new URL(`/wp-json/persi/v1/${path.replace(/^\/+/, "")}`, wordpressUrl),
+    const response = await withSingleRetry(
+      () =>
+        fetch(url, {
+          headers: { Accept: "application/json" },
+          next: { revalidate },
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        }),
       {
-        headers: { Accept: "application/json" },
-        next: { revalidate },
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        shouldRetryResult: (result) => isTransientHttpStatus(result.status),
+        onRetry: (reason) => {
+          console.warn("[persi-headless-retry]", { path, reason });
+        },
       },
     );
     if (!response.ok) {

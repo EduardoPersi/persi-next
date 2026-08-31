@@ -1,4 +1,5 @@
 import "server-only";
+import { isTransientHttpStatus, withSingleRetry } from "@/lib/network/retry";
 import { WooCommerceRestError } from "./restError.ts";
 
 export { WooCommerceRestError };
@@ -62,28 +63,42 @@ export async function restApiGetWithMeta<T>(
   const url = getRestApiUrl(endpoint, options.query);
 
   try {
-    const startedAt = performance.now();
-    const response = await fetch(url, {
-      headers: {
-        Accept: "application/json",
-        Authorization: getAuthorizationHeader(),
-      },
-      next: {
-        revalidate: options.revalidate ?? DEFAULT_REVALIDATE_SECONDS,
-      },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-
-    if (process.env.WOO_REQUEST_DIAGNOSTICS === "1") {
-      console.info("[woocommerce-outbound]", {
-        api: "rest-v3",
-        endpoint,
-        status: response.status,
-        durationMs: Math.round(performance.now() - startedAt),
-        attempt: 1,
-        revalidate: options.revalidate ?? DEFAULT_REVALIDATE_SECONDS,
+    const authorization = getAuthorizationHeader();
+    let attempt = 0;
+    const request = async () => {
+      attempt += 1;
+      const startedAt = performance.now();
+      const response = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+          Authorization: authorization,
+        },
+        next: {
+          revalidate: options.revalidate ?? DEFAULT_REVALIDATE_SECONDS,
+        },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
-    }
+
+      if (process.env.WOO_REQUEST_DIAGNOSTICS === "1") {
+        console.info("[woocommerce-outbound]", {
+          api: "rest-v3",
+          endpoint,
+          status: response.status,
+          durationMs: Math.round(performance.now() - startedAt),
+          attempt,
+          revalidate: options.revalidate ?? DEFAULT_REVALIDATE_SECONDS,
+        });
+      }
+
+      return response;
+    };
+
+    const response = await withSingleRetry(request, {
+      shouldRetryResult: (result) => isTransientHttpStatus(result.status),
+      onRetry: (reason) => {
+        console.warn("[woocommerce-rest-retry]", { endpoint, reason });
+      },
+    });
 
     if (!response.ok) {
       // Diagnóstico temporário: nunca exposto ao cliente — só o

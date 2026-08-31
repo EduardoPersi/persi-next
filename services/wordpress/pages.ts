@@ -1,4 +1,5 @@
 import { sanitizeWordPressHtml } from "@/lib/formatting/sanitizeWordPressHtml";
+import { isTransientHttpStatus, withSingleRetry } from "@/lib/network/retry";
 import type { InstitutionalPage } from "@/types/wordpress";
 
 const WORDPRESS_PAGES_PATH = "/wp-json/wp/v2/pages";
@@ -78,11 +79,20 @@ export async function getWordPressPageBySlug(
   );
 
   try {
-    const response = await fetch(url, {
-      headers: { Accept: "application/json" },
-      next: { revalidate: DEFAULT_REVALIDATE_SECONDS },
-      signal: AbortSignal.timeout(10_000),
-    });
+    const response = await withSingleRetry(
+      () =>
+        fetch(url, {
+          headers: { Accept: "application/json" },
+          next: { revalidate: DEFAULT_REVALIDATE_SECONDS },
+          signal: AbortSignal.timeout(10_000),
+        }),
+      {
+        shouldRetryResult: (result) => isTransientHttpStatus(result.status),
+        onRetry: (reason) => {
+          console.warn("[wordpress-page-retry]", { slug, reason });
+        },
+      },
+    );
     if (!response.ok) return null;
 
     const payload: unknown = await response.json();
