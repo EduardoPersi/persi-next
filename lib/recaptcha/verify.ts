@@ -121,8 +121,16 @@ export async function verifyRecaptcha(input: {
   }
 }
 
+// cf-connecting-ip é definido pelo Cloudflare (que fica na frente dos dois
+// domínios) e não pode ser forjado pelo cliente — o Cloudflare sobrescreve
+// esse header em todo request que passa por ele. x-forwarded-for e
+// x-real-ip ficam só como fallback para tráfego que não passar pelo
+// Cloudflare (ex.: chamada direta ao servidor de origem), mas um cliente
+// pode enviar qualquer valor nesses dois, então não servem para limitar
+// abuso sozinhos.
 export function getRequestIp(headers: Headers): string {
   return (
+    headers.get("cf-connecting-ip") ||
     headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     headers.get("x-real-ip") ||
     ""

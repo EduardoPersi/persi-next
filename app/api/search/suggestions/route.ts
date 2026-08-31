@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { searchWooCommerceProducts } from "@/services/woocommerce/search";
+import { createRateLimiter } from "@/lib/network/rateLimit";
 import type {
   ProductSearchSuggestion,
   ProductSearchSuggestionsResponse,
@@ -9,7 +10,16 @@ const MINIMUM_QUERY_LENGTH = 3;
 const MAXIMUM_QUERY_LENGTH = 100;
 const SUGGESTIONS_LIMIT = 6;
 
+const rateLimiter = createRateLimiter(60 * 1000, 30);
+
 export async function GET(request: Request) {
+  if (rateLimiter.isLimited(request.headers)) {
+    return NextResponse.json(
+      { message: "Muitas buscas em sequência. Aguarde um instante." },
+      { status: 429 },
+    );
+  }
+
   const query = new URL(request.url).searchParams.get("q")?.trim() ?? "";
 
   if (

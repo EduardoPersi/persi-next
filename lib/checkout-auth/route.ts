@@ -17,6 +17,7 @@ import {
   type CheckoutIdentityRoute,
 } from "@/services/checkout/checkoutIdentity";
 import { isJsonContentType, validateMutationSource } from "@/lib/account/validation";
+import { getRequestIp } from "@/lib/recaptcha/verify";
 
 const ROUTES: Record<CheckoutIdentityAction, CheckoutIdentityRoute> = {
   identify: "/checkout-auth/identify",
@@ -85,7 +86,7 @@ export async function handleCheckoutIdentityRequest(
     const rawBody = JSON.stringify(payload);
     const fingerprintSecret = process.env.PERSI_HEADLESS_CHECKOUT_AUTH_SECRET ?? "";
     const clientFingerprint = createHmac("sha256", fingerprintSecret)
-      .update(`${request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? ""}|${request.headers.get("user-agent") ?? ""}`)
+      .update(`${getRequestIp(request.headers)}|${request.headers.get("user-agent") ?? ""}`)
       .digest("hex");
     const upstream = await requestCheckoutIdentity(
       ROUTES[action],

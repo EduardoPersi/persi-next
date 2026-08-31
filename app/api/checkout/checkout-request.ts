@@ -40,10 +40,13 @@ export const shippingRatePayloadSchema = z
   .strict();
 
 export function exceedsRequestLimit(request: Request): boolean {
+  // Sem Content-Length (ex.: Transfer-Encoding: chunked) não há como
+  // confirmar o tamanho antes de ler o corpo — falha fechado (rejeita) em
+  // vez de deixar passar, senão o limite vira decorativo.
   const contentLength = request.headers.get("content-length");
-  if (!contentLength) return false;
+  if (!contentLength) return true;
   const parsed = Number(contentLength);
-  return Number.isFinite(parsed) && parsed > MAX_CHECKOUT_REQUEST_BYTES;
+  return !Number.isFinite(parsed) || parsed > MAX_CHECKOUT_REQUEST_BYTES;
 }
 
 export function getCheckoutError(

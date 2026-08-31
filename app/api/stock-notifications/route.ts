@@ -10,30 +10,14 @@ import {
 } from "@/lib/stock-notifications/validation";
 import { getStockHmacConfig } from "@/services/woocommerce/stockNotifications";
 import { getRequestIp, verifyRecaptcha } from "@/lib/recaptcha/verify";
+import { createRateLimiter } from "@/lib/network/rateLimit";
 
 const RECAPTCHA_ACTION = "stock_notification_subscribe";
 
-const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
-const RATE_LIMIT_MAX_REQUESTS = 5;
-const requestLog = new Map<string, number[]>();
-function isRateLimited(request: NextRequest): boolean {
-  const now = Date.now();
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown";
-  const recentRequests = (requestLog.get(ip) ?? []).filter(
-    (timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS,
-  );
-
-  recentRequests.push(now);
-  requestLog.set(ip, recentRequests);
-
-  return recentRequests.length > RATE_LIMIT_MAX_REQUESTS;
-}
+const rateLimiter = createRateLimiter(10 * 60 * 1000, 5);
 
 export async function POST(request: NextRequest) {
-  if (isRateLimited(request)) {
+  if (rateLimiter.isLimited(request.headers)) {
     return NextResponse.json(
       {
         code: "rate_limited",
