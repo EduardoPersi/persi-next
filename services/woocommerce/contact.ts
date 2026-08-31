@@ -48,7 +48,13 @@ export function getContactHmacConfig(
 ): ContactHmacConfig {
   const secret = environment.PERSI_HEADLESS_CONTACT_HMAC_SECRET?.trim();
   const keyId = environment.PERSI_HEADLESS_CONTACT_HMAC_KEY_ID?.trim();
-  const origin = environment.PERSI_HEADLESS_CONTACT_ORIGIN?.trim();
+  // PERSI_HEADLESS_CONTACT_ORIGIN nunca foi provisionada em produção — cai
+  // para APP_BASE_URL, que já existe e representa a mesma origem pública
+  // do front-end usada pelas demais integrações (account/checkout).
+  const origin =
+    environment.PERSI_HEADLESS_CONTACT_ORIGIN?.trim() ||
+    environment.PERSI_HEADLESS_CONTACT_FRONTEND_URL?.trim() ||
+    environment.APP_BASE_URL?.trim();
   if (
     !secret ||
     !keyId ||

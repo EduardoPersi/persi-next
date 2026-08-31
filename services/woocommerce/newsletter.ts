@@ -49,7 +49,11 @@ export function getNewsletterEndpoint(
 export function getNewsletterHmacConfig(environment:NodeJS.ProcessEnv=process.env):NewsletterHmacConfig {
   const secret=environment.PERSI_HEADLESS_NEWSLETTER_HMAC_SECRET?.trim();
   const keyId=environment.PERSI_HEADLESS_NEWSLETTER_HMAC_KEY_ID?.trim();
-  const origin=environment.PERSI_HEADLESS_NEWSLETTER_ORIGIN?.trim();
+  // PERSI_HEADLESS_NEWSLETTER_FRONTEND_URL é o nome usado no deploy de
+  // produção para o mesmo valor; PERSI_HEADLESS_NEWSLETTER_ORIGIN é o nome
+  // usado localmente e pelas demais integrações (account/checkout) — aceita
+  // os dois para não depender de qual foi provisionado.
+  const origin=(environment.PERSI_HEADLESS_NEWSLETTER_ORIGIN?.trim()||environment.PERSI_HEADLESS_NEWSLETTER_FRONTEND_URL?.trim());
   if(!secret||!keyId||!origin||!/^[A-Za-z0-9._-]{1,40}$/.test(keyId)) throw new NewsletterError("Configuração HMAC indisponível.",503);
   let parsed:URL;try{parsed=new URL(origin);}catch{throw new NewsletterError("Origem HMAC inválida.",503);}
   if(parsed.protocol!=="https:"||parsed.origin!==origin.replace(/\/$/,"")||parsed.pathname!=="/"||parsed.search||parsed.hash)throw new NewsletterError("Origem HMAC inválida.",503);
