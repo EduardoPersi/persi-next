@@ -1,6 +1,6 @@
 import { getInstagramMedia } from "@/lib/social/instagram";
 import type { InstagramFeedItem } from "@/types/instagram";
-import { InstagramCarousel } from "./InstagramCarousel";
+import { InstagramCarouselLazy } from "./InstagramCarouselLazy";
 import { InstagramIcon } from "./InstagramIcon";
 
 const INSTAGRAM_PROFILE_URL =
@@ -47,7 +47,7 @@ export async function InstagramFeed() {
         </a>
       </div>
 
-      <InstagramCarousel posts={posts} />
+      <InstagramCarouselLazy posts={posts} />
     </section>
   );
 }
