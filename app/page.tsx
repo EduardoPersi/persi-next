@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { BrandCarousel } from "@/components/Brand/BrandCarousel";
-import { HomeCategoryCarousel } from "@/components/Category/HomeCategoryCarousel";
+import { BrandCarouselLazy } from "@/components/Brand/BrandCarouselLazy";
+import { HomeCategoryCarouselLazy } from "@/components/Category/HomeCategoryCarouselLazy";
 import { Header } from "@/components/Header/Header";
 import { HeroBanner } from "@/components/HeroBanner/HeroBanner";
 import { ExpertAdviceSection } from "@/components/home/ExpertAdviceSection";
@@ -9,7 +9,7 @@ import { HomeBenefits } from "@/components/home/HomeBenefits";
 import { InstagramFeed } from "@/components/home/InstagramFeed";
 import { InstagramSkeleton } from "@/components/home/InstagramSkeleton";
 import { FlashDeals } from "@/components/FlashDeals/FlashDeals";
-import { NewArrivalsCarousel } from "@/components/Product/NewArrivalsCarousel";
+import { NewArrivalsCarouselLazy } from "@/components/Product/NewArrivalsCarouselLazy";
 import { ProductGrid } from "@/components/Product/ProductGrid";
 import { ProductGridSkeleton } from "@/components/Product/ProductGridSkeleton";
 import { RecentlyViewedProducts } from "@/components/Product/RecentlyViewedProducts";
@@ -81,7 +81,7 @@ export default async function Home() {
       {mainCategories.length > 0 ? (
         <section className="bg-background py-8 sm:py-10">
           <Container>
-            <HomeCategoryCarousel categories={mainCategories} />
+            <HomeCategoryCarouselLazy categories={mainCategories} />
           </Container>
         </section>
       ) : null}
@@ -89,7 +89,7 @@ export default async function Home() {
       {newArrivals.length > 0 ? (
         <section className="bg-background pb-8 sm:pb-10">
           <Container>
-            <NewArrivalsCarousel products={newArrivals} />
+            <NewArrivalsCarouselLazy products={newArrivals} />
           </Container>
         </section>
       ) : null}
@@ -126,7 +126,7 @@ export default async function Home() {
 
       <section className="bg-background pb-10">
         <Container>
-          <BrandCarousel
+          <BrandCarouselLazy
             brands={brands}
             pathname="/busca"
           />
