@@ -12,8 +12,15 @@ export const inventoryMovementType = pgEnum("inventory_movement_type", [
 export const inventoryReservationStatus = pgEnum("inventory_reservation_status", [
   "active", "released", "confirmed", "expired", "cancelled",
 ]);
-export const externalSystem = pgEnum("external_system", ["woocommerce", "olist", "banco_inter", "pagbank"]);
+export const externalSystem = pgEnum("external_system", [
+  "woocommerce", "olist", "banco_inter", "pagbank", "melhor_envio", "mercadopago",
+]);
 export const externalMappingStatus = pgEnum("external_mapping_status", ["active", "conflict", "inactive"]);
+export const shipmentStatus = pgEnum("shipment_status", [
+  "pending", "preparing", "ready_to_ship", "posted", "in_transit",
+  "out_for_delivery", "delivered", "delivery_failed", "delayed",
+  "returning", "returned", "cancelled",
+]);
 export const pimWorkflowStatus = pgEnum("pim_workflow_status", [
   "raw", "normalized", "needs_enrichment", "draft", "ai_suggested", "needs_review", "approved", "rejected", "published",
 ]);

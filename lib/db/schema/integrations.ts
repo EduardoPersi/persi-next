@@ -14,6 +14,10 @@ export const externalMappings = pgTable("external_mappings", {
   uniqueIndex("external_mappings_internal_unique").on(table.system, table.entityType, table.internalId),
   index("external_mappings_internal_lookup_idx").on(table.entityType, table.internalId),
   index("external_mappings_external_sku_idx").on(table.system, table.externalSku).where(sql`${table.externalSku} is not null`),
+  // Habilita a FK composta de shipments.order_mapping_id -> (id, entity_type):
+  // garante em nível de banco que só um mapping entity_type='order' pode ser
+  // referenciado como pedido de uma remessa.
+  uniqueIndex("external_mappings_id_entity_type_unique").on(table.id, table.entityType),
 ]);
 
 export type ExternalMappingRow = typeof externalMappings.$inferSelect;
