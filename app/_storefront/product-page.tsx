@@ -12,6 +12,7 @@ import { ProductPurchasePanel } from "@/components/Product/ProductPurchasePanel"
 import { RecentlyViewedProducts } from "@/components/Product/RecentlyViewedProducts";
 import { RecentlyViewedTracker } from "@/components/Product/RecentlyViewedTracker";
 import { Container } from "@/components/UI/Container";
+import { BreadcrumbBackLink } from "@/components/UI/BreadcrumbBackLink";
 import {
   buildBreadcrumbListJsonLd,
   buildProductCategoryBreadcrumb,
@@ -156,6 +157,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     SITE_URL,
     getProductHref(product.slug),
   );
+  const mobileBreadcrumbTarget = breadcrumbItems[breadcrumbItems.length - 2];
   const productUrl = new URL(getProductHref(product.slug), SITE_URL).toString();
   const productJsonLd = {
     "@context": "https://schema.org",
@@ -221,7 +223,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
         <Container>
           <div className="flex min-w-0 items-center justify-between gap-4">
             <nav aria-label="Breadcrumb" className="min-w-0" data-route-transition-skip>
-              <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted sm:text-sm">
+              <BreadcrumbBackLink
+                label={mobileBreadcrumbTarget.label}
+                href={mobileBreadcrumbTarget.href ?? "/"}
+              />
+              <ol className="hidden items-center gap-x-2 gap-y-1 text-xs text-muted sm:flex sm:flex-wrap sm:text-sm">
               <li>
                 <Link
                   href="/"

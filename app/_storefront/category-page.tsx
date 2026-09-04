@@ -14,6 +14,7 @@ import { ProductCard } from "@/components/Product/ProductCard";
 import { RecentlyViewedProducts } from "@/components/Product/RecentlyViewedProducts";
 import { Container } from "@/components/UI/Container";
 import { WordPressContent } from "@/components/UI/WordPressContent";
+import { BreadcrumbBackLink } from "@/components/UI/BreadcrumbBackLink";
 import { JsonLd } from "@/components/SEO/JsonLd";
 import { getBrandByIdentifier } from "@/services/woocommerce/brands";
 import { getAllProductCategories } from "@/services/woocommerce/categories";
@@ -417,6 +418,17 @@ export default async function CategoryPage({
       current: index === breadcrumbCategories.length - 1,
     })),
   ];
+  const mobileBreadcrumbTarget = selectedBrand
+    ? { label: (selectedSubcategory ?? category).name, href: pathname }
+    : breadcrumbCategories.length > 1
+      ? {
+          label: breadcrumbCategories[breadcrumbCategories.length - 2].name,
+          href: getCategoryHref(
+            breadcrumbCategories[breadcrumbCategories.length - 2],
+            categories,
+          ),
+        }
+      : { label: "Home", href: "/" };
   const categoryJsonLd = buildCollectionPageJsonLd({
     name: contextName,
     description: contextDescription,
@@ -441,7 +453,11 @@ export default async function CategoryPage({
       <main className="py-3 sm:py-6 lg:py-10">
         <Container>
           <nav aria-label="Breadcrumb" data-route-transition-skip>
-            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted sm:text-sm">
+            <BreadcrumbBackLink
+              label={mobileBreadcrumbTarget.label}
+              href={mobileBreadcrumbTarget.href}
+            />
+            <ol className="hidden items-center gap-x-2 gap-y-1 text-xs text-muted sm:flex sm:flex-wrap sm:text-sm">
               <li>
                 <Link
                   href="/"
