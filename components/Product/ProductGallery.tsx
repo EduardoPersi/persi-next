@@ -203,7 +203,7 @@ export function ProductGallery({
             setSelectedIndex(swiper.activeIndex);
             handleZoomLeave();
           }}
-          className="h-full w-full [&_.swiper-pagination-bullet-active]:bg-primary"
+          className="product-gallery-pagination h-full w-full [--swiper-pagination-bullet-inactive-color:#cbd5e1] [--swiper-pagination-bullet-inactive-opacity:1] [--swiper-pagination-color:var(--color-secondary)] sm:[--swiper-pagination-bullet-inactive-color:#000] sm:[--swiper-pagination-bullet-inactive-opacity:0.2] sm:[--swiper-pagination-color:var(--color-primary)]"
         >
           {galleryImages.map((image, index) => (
             <SwiperSlide key={`${image.src}-${index}`}>
@@ -234,6 +234,15 @@ export function ProductGallery({
             </SwiperSlide>
           ))}
         </Swiper>
+
+        {hasMultipleImages ? (
+          <div
+            className="absolute left-3 top-3 z-20 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-foreground shadow-sm sm:hidden"
+            aria-live="polite"
+          >
+            {selectedIndex + 1}/{galleryImages.length}
+          </div>
+        ) : null}
 
         <div className="absolute right-3 top-3 z-20 flex flex-col items-center gap-2">
           <button
@@ -353,7 +362,7 @@ export function ProductGallery({
         ) : null}
       </div>
 
-      <div className="mt-3 flex min-w-0 max-w-full gap-3 overflow-x-auto pb-2">
+      <div className="mt-3 hidden min-w-0 max-w-full gap-3 overflow-x-auto pb-2 sm:flex">
         {galleryImages.slice(0, renderedThumbnailCount).map((image, index) => {
           const isSelected = index === selectedIndex;
           const isOverflowSlot = hasHiddenThumbnails && index === thumbnailLimit;

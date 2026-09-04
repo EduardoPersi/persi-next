@@ -401,6 +401,20 @@ textarea:focus-visible {
   visibility: hidden;
 }
 
+/* Swiper só expõe --swiper-pagination-bullet-width para todas as bolinhas
+   ao mesmo tempo, sem variável separada para a ativa — por isso o formato
+   de pílula alongada da bolinha ativa (mobile) precisa de uma regra real
+   em vez de uma variante arbitrária do Tailwind. */
+.product-gallery-pagination .swiper-pagination-bullet-active {
+  width: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .product-gallery-pagination .swiper-pagination-bullet-active {
+    width: 8px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
