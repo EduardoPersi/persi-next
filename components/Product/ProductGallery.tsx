@@ -73,6 +73,15 @@ export function ProductGallery({
     () => false,
   );
   const hasMultipleImages = galleryImages.length > 1;
+  // Miniaturas normais exibidas antes do indicador "+N" ocupar o próximo slot.
+  const thumbnailLimit = 6;
+  const hasHiddenThumbnails = galleryImages.length > thumbnailLimit;
+  const hiddenThumbnailCount = hasHiddenThumbnails
+    ? galleryImages.length - thumbnailLimit
+    : 0;
+  const renderedThumbnailCount = hasHiddenThumbnails
+    ? thumbnailLimit + 1
+    : galleryImages.length;
 
   function closeShareMenu() {
     setIsShareMenuOpen(false);
@@ -129,6 +138,11 @@ export function ProductGallery({
 
   function selectLightboxImage(index: number) {
     selectImage(index);
+  }
+
+  function openLightboxAtIndex(index: number) {
+    selectImage(index);
+    setIsLightboxOpen(true);
   }
 
   function handleExpandClick() {
@@ -340,8 +354,34 @@ export function ProductGallery({
       </div>
 
       <div className="mt-3 flex min-w-0 max-w-full gap-3 overflow-x-auto pb-2">
-        {galleryImages.map((image, index) => {
+        {galleryImages.slice(0, renderedThumbnailCount).map((image, index) => {
           const isSelected = index === selectedIndex;
+          const isOverflowSlot = hasHiddenThumbnails && index === thumbnailLimit;
+
+          if (isOverflowSlot) {
+            return (
+              <button
+                key={`${image.src}-${index}`}
+                type="button"
+                onClick={() => openLightboxAtIndex(index)}
+                aria-label={`Ver mais ${hiddenThumbnailCount} ${hiddenThumbnailCount === 1 ? "imagem" : "imagens"} de ${productName}`}
+                className="relative aspect-square w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white transition-colors hover:border-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                <Image
+                  src={image.src}
+                  alt=""
+                  fill
+                  sizes="80px"
+                  draggable={false}
+                  onDragStart={(event) => event.preventDefault()}
+                  className="select-none object-contain p-2"
+                />
+                <span className="absolute inset-0 flex items-center justify-center bg-slate-950/60 text-base font-semibold text-white">
+                  +{hiddenThumbnailCount}
+                </span>
+              </button>
+            );
+          }
 
           return (
             <button
