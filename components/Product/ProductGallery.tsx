@@ -203,7 +203,7 @@ export function ProductGallery({
             setSelectedIndex(swiper.activeIndex);
             handleZoomLeave();
           }}
-          className="product-gallery-pagination h-full w-full [--swiper-pagination-bullet-inactive-color:#cbd5e1] [--swiper-pagination-bullet-inactive-opacity:1] [--swiper-pagination-color:var(--color-secondary)] sm:[--swiper-pagination-bullet-inactive-color:#000] sm:[--swiper-pagination-bullet-inactive-opacity:0.2] sm:[--swiper-pagination-color:var(--color-primary)]"
+          className="product-gallery-pagination h-full w-full [--swiper-pagination-bullet-inactive-color:#cbd5e1] [--swiper-pagination-bullet-inactive-opacity:1] [--swiper-pagination-bullet-size:10px] [--swiper-pagination-bullet-border-radius:9999px] [--swiper-pagination-color:var(--color-secondary)]"
         >
           {galleryImages.map((image, index) => (
             <SwiperSlide key={`${image.src}-${index}`}>
