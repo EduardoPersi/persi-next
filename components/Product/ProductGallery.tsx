@@ -74,7 +74,7 @@ export function ProductGallery({
   );
   const hasMultipleImages = galleryImages.length > 1;
   // Miniaturas normais exibidas antes do indicador "+N" ocupar o próximo slot.
-  const thumbnailLimit = 6;
+  const thumbnailLimit = 4;
   const hasHiddenThumbnails = galleryImages.length > thumbnailLimit;
   const hiddenThumbnailCount = hasHiddenThumbnails
     ? galleryImages.length - thumbnailLimit
@@ -182,7 +182,7 @@ export function ProductGallery({
       <section
       aria-label={`Galeria de imagens de ${productName}`}
       onContextMenu={(event) => event.preventDefault()}
-      className="min-w-0 max-w-full"
+      className="relative min-w-0 max-w-full"
     >
       <div className="relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-white">
         <Swiper
@@ -244,77 +244,6 @@ export function ProductGallery({
           </div>
         ) : null}
 
-        <div className="absolute right-3 top-3 z-20 flex flex-col items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void toggleFavorite(productId)}
-            aria-pressed={favorited}
-            aria-label={`${favorited ? "Remover" : "Adicionar"} ${productName} ${favorited ? "dos" : "aos"} favoritos`}
-            title={favorited ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-            className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 bg-white text-primary transition-colors hover:border-secondary hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <Heart
-              aria-hidden="true"
-              className={`h-6 w-6 transition-transform ${favorited ? "scale-110 fill-secondary text-secondary" : ""}`}
-            />
-          </button>
-          <div ref={shareMenuRef} className="relative">
-          <button
-            ref={shareTriggerRef}
-            type="button"
-            onClick={() => setIsShareMenuOpen((current) => !current)}
-            aria-label={`Compartilhar ${productName}`}
-            aria-expanded={isShareMenuOpen}
-            aria-controls="product-share-menu"
-            className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 bg-white text-primary transition-colors hover:border-secondary hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <Share2 className="h-6 w-6" aria-hidden="true" />
-          </button>
-          {isShareMenuOpen ? (
-            <div
-              id="product-share-menu"
-              className="absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-2 text-sm text-foreground shadow-lg"
-            >
-              {canShareNatively ? (
-                <button
-                  type="button"
-                  onClick={() => void shareNatively()}
-                  className="flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <Share2 className="h-4 w-4" aria-hidden="true" />
-                  Compartilhar pelo celular
-                </button>
-              ) : null}
-              <ShareLink
-                href={`https://wa.me/?text=${encodedMessage}`}
-                label="WhatsApp"
-                icon={<WhatsAppIcon className="h-4 w-4" aria-hidden="true" />}
-              />
-              <ShareLink
-                href={`sms:?body=${encodedMessage}`}
-                label="Mensagens"
-                icon={<MessagesSquare className="h-4 w-4" aria-hidden="true" />}
-              />
-              <ShareLink
-                href={`mailto:?subject=${encodedText}&body=${encodedMessage}`}
-                label="E-mail"
-                icon={<Mail className="h-4 w-4" aria-hidden="true" />}
-              />
-              <ShareLink
-                href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
-                label="Facebook"
-                icon={<FacebookIcon className="h-4 w-4" aria-hidden="true" />}
-              />
-              <ShareLink
-                href={`https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`}
-                label="Telegram"
-                icon={<Send className="h-4 w-4" aria-hidden="true" />}
-              />
-            </div>
-          ) : null}
-          </div>
-        </div>
-
         <button
           type="button"
           onClick={handleExpandClick}
@@ -360,6 +289,80 @@ export function ProductGallery({
             </button>
           </>
         ) : null}
+      </div>
+
+      {/* Fora da caixa overflow-hidden da imagem de propósito: o menu de
+          compartilhar precisa poder crescer além do quadrado da imagem sem
+          ser cortado (era clipado no mobile antes desta correção). */}
+      <div className="absolute right-3 top-3 z-20 flex flex-col items-center gap-2">
+        <button
+          type="button"
+          onClick={() => void toggleFavorite(productId)}
+          aria-pressed={favorited}
+          aria-label={`${favorited ? "Remover" : "Adicionar"} ${productName} ${favorited ? "dos" : "aos"} favoritos`}
+          title={favorited ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+          className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 bg-white text-primary transition-colors hover:border-secondary hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <Heart
+            aria-hidden="true"
+            className={`h-6 w-6 transition-transform ${favorited ? "scale-110 fill-secondary text-secondary" : ""}`}
+          />
+        </button>
+        <div ref={shareMenuRef} className="relative">
+          <button
+            ref={shareTriggerRef}
+            type="button"
+            onClick={() => setIsShareMenuOpen((current) => !current)}
+            aria-label={`Compartilhar ${productName}`}
+            aria-expanded={isShareMenuOpen}
+            aria-controls="product-share-menu"
+            className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 bg-white text-primary transition-colors hover:border-secondary hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <Share2 className="h-6 w-6" aria-hidden="true" />
+          </button>
+          {isShareMenuOpen ? (
+            <div
+              id="product-share-menu"
+              className="absolute right-0 mt-2 max-h-[70vh] w-52 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-2 text-sm text-foreground shadow-lg"
+            >
+              {canShareNatively ? (
+                <button
+                  type="button"
+                  onClick={() => void shareNatively()}
+                  className="flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <Share2 className="h-4 w-4" aria-hidden="true" />
+                  Compartilhar pelo celular
+                </button>
+              ) : null}
+              <ShareLink
+                href={`https://wa.me/?text=${encodedMessage}`}
+                label="WhatsApp"
+                icon={<WhatsAppIcon className="h-4 w-4" aria-hidden="true" />}
+              />
+              <ShareLink
+                href={`sms:?body=${encodedMessage}`}
+                label="Mensagens"
+                icon={<MessagesSquare className="h-4 w-4" aria-hidden="true" />}
+              />
+              <ShareLink
+                href={`mailto:?subject=${encodedText}&body=${encodedMessage}`}
+                label="E-mail"
+                icon={<Mail className="h-4 w-4" aria-hidden="true" />}
+              />
+              <ShareLink
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
+                label="Facebook"
+                icon={<FacebookIcon className="h-4 w-4" aria-hidden="true" />}
+              />
+              <ShareLink
+                href={`https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`}
+                label="Telegram"
+                icon={<Send className="h-4 w-4" aria-hidden="true" />}
+              />
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-3 hidden min-w-0 max-w-full gap-3 overflow-x-auto pb-2 sm:flex">
