@@ -90,6 +90,10 @@ export function ProductPurchasePanel({
     currentPrice: activePrice,
     isVariable: isVariable && !selectedVariation,
   });
+  const discountPercentage =
+    hasDiscount && regularPrice
+      ? Math.round((1 - payment.pixPrice / regularPrice) * 100)
+      : 0;
   const currencyFormatter = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: product.currencyCode,
@@ -228,9 +232,16 @@ export function ProductPurchasePanel({
 
       <div className="mt-6 border-y border-slate-200 py-5">
         {hasDiscount ? (
-          <p className="text-sm text-muted line-through">
-            {currencyFormatter.format(regularPrice)}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-muted line-through">
+              {currencyFormatter.format(regularPrice)}
+            </p>
+            {discountPercentage > 0 ? (
+              <span className="rounded-md bg-emerald-700 px-2 py-1 text-xs font-bold text-white">
+                -{discountPercentage}%
+              </span>
+            ) : null}
+          </div>
         ) : null}
         <p className="mt-1 text-3xl font-bold text-emerald-700">
           {currencyFormatter.format(payment.pixPrice)}
