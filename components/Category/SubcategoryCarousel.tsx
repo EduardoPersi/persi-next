@@ -104,7 +104,7 @@ export function SubcategoryCarousel({
 
   return (
     <section
-      className="group/subcategories relative mt-4 sm:mt-6 lg:mt-8"
+      className="group/subcategories relative mt-2 sm:mt-6 lg:mt-8"
       aria-label="Selecionar subcategoria"
       aria-busy={isPending}
       onFocusCapture={pauseAutoplay}

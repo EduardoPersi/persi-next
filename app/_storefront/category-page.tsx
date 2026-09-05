@@ -447,7 +447,7 @@ export default async function CategoryPage({
     <>
       <JsonLd data={[categoryJsonLd, breadcrumbJsonLd, itemListJsonLd]} />
       <Header />
-      <main className="py-3 sm:py-6 lg:py-10">
+      <main className="pt-2 pb-3 sm:py-6 lg:py-10">
         <Container>
           <nav aria-label="Breadcrumb" data-route-transition-skip>
             <BreadcrumbBackLink items={mobileBreadcrumbItems} />
