@@ -418,17 +418,14 @@ export default async function CategoryPage({
       current: index === breadcrumbCategories.length - 1,
     })),
   ];
-  const mobileBreadcrumbTarget = selectedBrand
-    ? { label: (selectedSubcategory ?? category).name, href: pathname }
-    : breadcrumbCategories.length > 1
-      ? {
-          label: breadcrumbCategories[breadcrumbCategories.length - 2].name,
-          href: getCategoryHref(
-            breadcrumbCategories[breadcrumbCategories.length - 2],
-            categories,
-          ),
-        }
-      : { label: "Home", href: "/" };
+  const mobileBreadcrumbItems = selectedBrand
+    ? [{ label: (selectedSubcategory ?? category).name, href: pathname }]
+    : categoryBreadcrumbItems
+        .slice(
+          Math.max(0, categoryBreadcrumbItems.length - 3),
+          categoryBreadcrumbItems.length - 1,
+        )
+        .map((item) => ({ label: item.label, href: item.href }));
   const categoryJsonLd = buildCollectionPageJsonLd({
     name: contextName,
     description: contextDescription,
@@ -453,10 +450,7 @@ export default async function CategoryPage({
       <main className="py-3 sm:py-6 lg:py-10">
         <Container>
           <nav aria-label="Breadcrumb" data-route-transition-skip>
-            <BreadcrumbBackLink
-              label={mobileBreadcrumbTarget.label}
-              href={mobileBreadcrumbTarget.href}
-            />
+            <BreadcrumbBackLink items={mobileBreadcrumbItems} />
             <ol className="hidden items-center gap-x-2 gap-y-1 text-xs text-muted sm:flex sm:flex-wrap sm:text-sm">
               <li>
                 <Link

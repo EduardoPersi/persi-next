@@ -157,7 +157,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
     SITE_URL,
     getProductHref(product.slug),
   );
-  const mobileBreadcrumbTarget = breadcrumbItems[breadcrumbItems.length - 2];
+  const mobileBreadcrumbItems = breadcrumbItems
+    .slice(Math.max(0, breadcrumbItems.length - 3), breadcrumbItems.length - 1)
+    .map((item) => ({ label: item.label, href: item.href ?? "/" }));
   const productUrl = new URL(getProductHref(product.slug), SITE_URL).toString();
   const productJsonLd = {
     "@context": "https://schema.org",
@@ -223,10 +225,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         <Container>
           <div className="flex min-w-0 items-center justify-between gap-4">
             <nav aria-label="Breadcrumb" className="min-w-0" data-route-transition-skip>
-              <BreadcrumbBackLink
-                label={mobileBreadcrumbTarget.label}
-                href={mobileBreadcrumbTarget.href ?? "/"}
-              />
+              <BreadcrumbBackLink items={mobileBreadcrumbItems} />
               <ol className="hidden items-center gap-x-2 gap-y-1 text-xs text-muted sm:flex sm:flex-wrap sm:text-sm">
               <li>
                 <Link
