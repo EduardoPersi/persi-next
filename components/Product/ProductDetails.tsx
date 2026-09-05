@@ -1,7 +1,13 @@
 "use client";
 
 import { ChevronDown, FileText, Table2 } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { WordPressContent } from "@/components/UI/WordPressContent";
 import type { Product } from "@/types/product";
 
@@ -13,6 +19,22 @@ interface ProductDetailsProps {
 // técnica": evita que uma descrição muito longa domine a página mesmo
 // com a seção aberta.
 const CLAMP_HEIGHT_PX = 420;
+
+// Mesmo breakpoint usado no restante do storefront para separar mobile
+// de desktop (`sm:` do Tailwind = 640px).
+const DESKTOP_QUERY = "(min-width: 640px)";
+
+function subscribeToBrowserState() {
+  return () => undefined;
+}
+
+function useIsDesktopViewport() {
+  return useSyncExternalStore(
+    subscribeToBrowserState,
+    () => window.matchMedia(DESKTOP_QUERY).matches,
+    () => false,
+  );
+}
 
 interface AccordionSectionProps {
   icon: ReactNode;
@@ -29,7 +51,12 @@ function AccordionSection({
   expandLabel,
   children,
 }: AccordionSectionProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const isDesktop = useIsDesktopViewport();
+  // No desktop a sanfona já começa aberta; no mobile ela começa fechada.
+  // `manualOpen` só existe depois que o usuário clica no cabeçalho — até
+  // lá o estado efetivo segue o viewport.
+  const [manualOpen, setManualOpen] = useState<boolean | null>(null);
+  const isOpen = manualOpen ?? isDesktop;
   const [isExpanded, setIsExpanded] = useState(false);
   const [isClamped, setIsClamped] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -45,7 +72,7 @@ function AccordionSection({
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
       <button
         type="button"
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={() => setManualOpen(!isOpen)}
         aria-expanded={isOpen}
         className="flex w-full items-center gap-3 px-5 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
