@@ -1,0 +1,2 @@
+"use client";
+export default function AdminError({reset}:{error:Error&{digest?:string};reset:()=>void}){return <section role="alert" className="rounded-lg border border-red-200 bg-white p-6"><h1 className="text-xl font-bold text-red-800">Não foi possível carregar o PIM</h1><p className="mt-2 text-sm text-slate-600">Tente novamente. Se o problema continuar, informe a equipe técnica.</p><button onClick={reset} className="mt-4 rounded-lg bg-primary px-4 py-2 font-semibold text-white">Tentar novamente</button></section>;}

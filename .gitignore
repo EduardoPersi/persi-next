@@ -28,6 +28,14 @@
 *.p12
 *.pfx
 
+# local database and container storage
+*.vhd
+*.vhdx
+*.dump
+/docker-data/
+/pgdata/
+/postgres-data/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

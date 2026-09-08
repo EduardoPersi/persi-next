@@ -1,5 +1,7 @@
 import { sql } from "drizzle-orm";
 import { bigint, boolean, index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { checkoutSessionItems } from "./checkout";
+import { orderItems } from "./orders";
 import { productVariants } from "./catalog";
 import { inventoryMovementType, inventoryReservationStatus, recordStatus } from "./core";
 
@@ -32,10 +34,15 @@ export const inventoryReservations = pgTable("inventory_reservations", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(), releasedAt: timestamp("released_at", { withTimezone: true }),
   confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  checkoutSessionItemId: uuid("checkout_session_item_id").references(() => checkoutSessionItems.id, { onDelete: "restrict" }),
+  orderItemId: uuid("order_item_id").references(() => orderItems.id, { onDelete: "restrict" }),
 }, (table) => [
   uniqueIndex("inventory_reservations_idempotency_unique").on(table.idempotencyKey),
   index("inventory_reservations_active_expiry_idx").on(table.expiresAt, table.id).where(sql`${table.status} = 'active'`),
   index("inventory_reservations_level_status_idx").on(table.inventoryLevelId, table.status, table.id),
+  uniqueIndex("inventory_reservations_checkout_item_level_unique").on(table.checkoutSessionItemId, table.inventoryLevelId).where(sql`${table.checkoutSessionItemId} is not null`),
+  index("inventory_reservations_checkout_item_idx").on(table.checkoutSessionItemId, table.status, table.id).where(sql`${table.checkoutSessionItemId} is not null`),
+  uniqueIndex("inventory_reservations_order_item_level_unique").on(table.orderItemId, table.inventoryLevelId).where(sql`${table.orderItemId} is not null`),
 ]);
 
 export const inventoryMovements = pgTable("inventory_movements", {

@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import postgres from "postgres";
+import { localDatabaseUrl } from "./local-database.mjs";
 
 if (!process.argv.includes("--local")) throw new Error("Este teste exige --local e nunca aceita conexão remota.");
-const localUrl="postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+const localUrl=localDatabaseUrl();
 process.env.DATABASE_URL=localUrl;
 const sql=postgres(localUrl,{max:3,prepare:false});
 const {savePimEditorialDraft,transitionPimEditorial,PimConcurrencyError}=await import("../../lib/pim/workflow.ts");

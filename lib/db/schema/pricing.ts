@@ -9,7 +9,10 @@ export const priceLists = pgTable("price_lists", {
   priority: integer().notNull().default(0), status: recordStatus().notNull().default("draft"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-}, (table) => [uniqueIndex("price_lists_code_unique").on(table.code)]);
+}, (table) => [
+  uniqueIndex("price_lists_code_unique").on(table.code),
+  uniqueIndex("price_lists_id_currency_unique").on(table.id, table.currency),
+]);
 
 export const prices = pgTable("prices", {
   id: uuid().primaryKey().defaultRandom(),

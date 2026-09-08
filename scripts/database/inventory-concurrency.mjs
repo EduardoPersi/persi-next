@@ -1,20 +1,24 @@
 import assert from "node:assert/strict";
 import postgres from "postgres";
+import { localDatabaseUrl } from "./local-database.mjs";
+import { assertFixtureBaseline, captureFixtureBaseline, cleanupFixtureRun, injectFixtureFailureIfRequested } from "./fixture-isolation.mjs";
 
 if (!process.argv.includes("--local")) {
   throw new Error("Este teste exige --local e nunca aceita uma conexão remota.");
 }
 
-const localUrl = "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+const localUrl = localDatabaseUrl();
 const setup = postgres(localUrl, { max: 1, prepare: false });
 const first = postgres(localUrl, { max: 1, prepare: false });
 const second = postgres(localUrl, { max: 1, prepare: false });
+const runId = crypto.randomUUID();
+const baseline = await captureFixtureBaseline(setup);
 
 async function createLevel(quantityOnHand) {
   const suffix = crypto.randomUUID();
   const [product] = await setup`
     insert into public.products (name, slug)
-    values ('Concurrency test', ${`concurrency-${suffix}`}) returning id
+    values ('Concurrency test', ${`concurrency-${runId}-${suffix}`}) returning id
   `;
   const [variant] = await setup`
     insert into public.product_variants (product_id, sku)
@@ -22,7 +26,7 @@ async function createLevel(quantityOnHand) {
   `;
   const [location] = await setup`
     insert into public.inventory_locations (code, name, status)
-    values (${`conc-${suffix}`}, 'Concurrency location', 'active') returning id
+    values (${`conc-${runId}-${suffix}`}, 'Concurrency location', 'active') returning id
   `;
   const [level] = await setup`
     insert into public.inventory_levels (product_variant_id, inventory_location_id, quantity_on_hand)
@@ -46,6 +50,7 @@ try {
 
   for (let cycle = 1; cycle <= 50; cycle += 1) {
     const { levelId, suffix } = await createLevel(1);
+    if (cycle === 1) injectFixtureFailureIfRequested();
     const results = await Promise.allSettled([
       reserve(first, levelId, `cycle-${cycle}-a`, suffix),
       reserve(second, levelId, `cycle-${cycle}-b`, suffix),
@@ -96,5 +101,8 @@ try {
       + `unexpected_errors=${unexpectedErrors}, overselling_occurrences=${oversellingOccurrences}; burst=5 success/5 rejection.\n`,
   );
 } finally {
+  await cleanupFixtureRun(setup, { productSlugPrefixes: [`concurrency-${runId}-`], locationCodePrefixes: [`conc-${runId}-`] });
+  assertFixtureBaseline(baseline, await captureFixtureBaseline(setup));
+  process.stdout.write("FIXTURE_CLEANUP_PASS\n");
   await Promise.all([setup.end(), first.end(), second.end()]);
 }

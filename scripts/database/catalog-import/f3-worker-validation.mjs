@@ -1,8 +1,9 @@
 import crypto from "node:crypto";
 import postgres from "postgres";
 import { claimSignals, enqueueSignal, finishSignal } from "./incremental-core.mjs";
+import { localDatabaseUrl } from "../local-database.mjs";
 if(!process.argv.includes("--local"))throw new Error("Exige --local.");
-const sql=postgres("postgresql://postgres:postgres@127.0.0.1:54322/postgres",{max:4,prepare:false}),prefix=`f3-${crypto.randomUUID()}`;
+const sql=postgres(localDatabaseUrl(),{max:4,prepare:false}),prefix=`f3-${crypto.randomUUID()}`;
 try{
   for(let i=0;i<40;i+=1)await enqueueSignal(sql,{eventType:"product.updated",externalEventId:`${prefix}-${i}`,entityType:"product",externalEntityId:String(900000+i)});
   const claimed=[];async function worker(id){for(;;){const rows=await claimSignals(sql,id,3);if(!rows.length)return;for(const row of rows){claimed.push(row.id);await finishSignal(sql,row,{ok:true,result:"noop",durationMs:1});}}}await Promise.all([worker("f3-worker-a"),worker("f3-worker-b")]);

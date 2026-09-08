@@ -1,48 +1,22 @@
+import Image from "next/image";
 import Link from "next/link";
+import {getPimDashboardCounts,listPimReviewQueue} from "@/lib/pim/repository";
 
-import { getPimQueueCounts } from "@/lib/pim/repository";
+type SearchParams=Promise<Record<string,string|string[]|undefined>>;
+const param=(value:string|string[]|undefined)=>Array.isArray(value)?value[0]??"":value??"";
+const href=(page:number,query:string)=>{const params=new URLSearchParams();if(query)params.set("q",query);if(page>1)params.set("page",String(page));return `/admin/pim${params.size?`?${params}`:""}`;};
 
-export default async function PimReviewPage() {
-  const counts = await getPimQueueCounts();
-  const queues = [
-    ["Needs Enrichment", "/admin/products?status=needs_enrichment", counts.needsEnrichment],
-    ["Draft", "/admin/products?status=draft", counts.draft],
-    ["Needs Review", "/admin/products?issue=needs_review", counts.needsReview],
-    ["Rejected", "/admin/products?status=rejected", counts.rejected],
-    ["AI Suggested", "/admin/products?status=ai_suggested", counts.aiSuggested],
-    ["Ambiguous", "/admin/products?issue=ambiguous", counts.ambiguous],
-    ["Unmapped", "/admin/products?issue=unmapped", counts.unmapped],
-    ["Missing Data", "/admin/products?issue=missing", counts.missingData],
-    ["Ready for Approval", "/admin/products?status=needs_enrichment", counts.readyForApproval],
-    ["Approved", "/admin/products?status=approved", counts.approved],
-  ] as const;
-
-  return (
-    <div>
-      <p className="text-sm font-semibold uppercase tracking-wide text-[#ff6a00]">
-        PIM review queue
-      </p>
-      <h1 className="text-2xl font-bold text-[#071f5c]">Fila de revisão</h1>
-      <p className="mt-2 text-slate-600">
-        Escolha uma fila operacional. Nenhuma aprovação em massa é executada nesta fase.
-      </p>
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {queues.map(([label, href, count]) => (
-          <Link
-            key={href}
-            href={href}
-            className="rounded-xl border bg-white p-5 text-[#0c2d72] shadow-sm hover:border-blue-300"
-          >
-            <span className="block font-semibold">{label}</span>
-            <span
-              className="mt-2 block text-2xl font-bold"
-              aria-label={`${count.toLocaleString("pt-BR")} produtos`}
-            >
-              {count.toLocaleString("pt-BR")}
-            </span>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
+export default async function PimReviewPage({searchParams}:{searchParams:SearchParams}){
+  const params=await searchParams,query=param(params.q),requestedPage=Number(param(params.page));
+  const [counts,queue]=await Promise.all([getPimDashboardCounts(),listPimReviewQueue({query,page:requestedPage,pageSize:25})]);
+  const pages=Math.max(1,Math.ceil(queue.total/queue.pageSize));
+  const cards=[["Total de produtos",counts.products,"/admin/products"],["Produtos com sugestões",counts.productsWithSuggestions,"/admin/products?suggestions=with"],["Sugestões aguardando revisão",counts.pendingSuggestions,"/admin/pim"],["Produtos com conflito",counts.conflicts,"/admin/products?issue=ambiguous"],["Produtos sem imagem",counts.withoutImage,"/admin/products?issue=missing&image=without"],["Rascunhos",counts.drafts,"/admin/products?status=draft"],["Em revisão",counts.inReview,"/admin/products?status=needs_review"],["Aprovados no PIM",counts.approved,"/admin/products?status=approved"]] as const;
+  return <div>
+    <p className="text-sm font-semibold uppercase tracking-wide text-secondary">PIM operacional</p><h1 className="text-2xl font-bold text-heading">Revisão de catálogo</h1><p className="mt-2 text-muted">Revise as sugestões produto por produto. Aprovação no PIM não publica conteúdo no site.</p>
+    <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{cards.map(([label,count,link])=><Link key={label} href={link} className="rounded-lg border bg-surface p-5 shadow-sm transition-colors hover:border-primary"><span className="block text-sm font-semibold text-muted">{label}</span><span className="mt-2 block text-2xl font-bold text-primary">{count.toLocaleString("pt-BR")}</span></Link>)}</div>
+    <section className="mt-8" aria-labelledby="review-queue-title"><div className="flex flex-wrap items-end justify-between gap-4"><div><h2 id="review-queue-title" className="text-xl font-bold text-heading">Produtos aguardando revisão</h2><p className="text-sm text-muted">{counts.needsReview.toLocaleString("pt-BR")} produtos agrupados · {counts.pendingSuggestions.toLocaleString("pt-BR")} sugestões</p></div><form className="flex w-full max-w-xl gap-2"><label className="sr-only" htmlFor="pim-search">Buscar produto</label><input id="pim-search" name="q" defaultValue={query} placeholder="Nome, nome comercial, marca, SKU ou GTIN" className="min-h-11 flex-1 rounded-lg border px-3"/><button className="rounded-lg bg-secondary px-4 font-semibold text-white">Buscar</button></form></div>
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">{queue.items.map(item=><article key={item.id} className="rounded-lg border bg-surface p-4 shadow-sm"><div className="flex gap-4"><div className="relative"><Image src={item.imageUrl??"/images/placeholders/product-placeholder.svg"} alt="" width={80} height={80} unoptimized className="h-20 w-20 rounded-lg border object-contain"/>{!item.imageUrl&&<span className="absolute -bottom-2 left-0 whitespace-nowrap rounded bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-900">SEM IMAGEM</span>}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-start justify-between gap-2"><h3 className="font-semibold text-heading">{item.name}</h3>{item.hasConflict&&<span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900">Conflito</span>}</div><p className="mt-1 text-sm text-muted">{item.brand??"Sem marca"} · {item.category??"Sem categoria"}</p>{item.categoryIsFallback&&<p className="text-xs text-muted">Categoria exibida pela associação secundária</p>}<p className="mt-2 font-semibold text-primary">{item.pendingCount} sugestões aguardando revisão</p><p className="text-xs text-muted">SKU {item.sku} · {item.gtin?`GTIN ${item.gtin}`:"Sem GTIN"}</p></div></div><Link href={`/admin/products/${item.id}`} className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-white">Abrir revisão</Link></article>)}{queue.items.length===0&&<div className="rounded-lg border bg-surface p-10 text-center text-muted lg:col-span-2">Nenhum produto aguardando revisão corresponde à busca.</div>}</div>
+      <nav aria-label="Paginação da fila" className="mt-5 flex items-center justify-between"><span className="text-sm text-muted">Página {queue.page} de {pages}</span><div className="flex gap-2">{queue.page>1&&<Link className="rounded-lg border bg-surface px-4 py-2" href={href(queue.page-1,query)}>Anterior</Link>}{queue.page<pages&&<Link className="rounded-lg border bg-surface px-4 py-2" href={href(queue.page+1,query)}>Próxima</Link>}</div></nav>
+    </section>
+  </div>;
 }

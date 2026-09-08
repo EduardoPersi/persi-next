@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import postgres from "postgres";
 import { CatalogImporter } from "./catalog-import/import.mjs";
+import { localDatabaseUrl } from "./local-database.mjs";
 
 if (!process.argv.includes("--local")) {
   throw new Error("Este teste exige --local e nunca aceita uma conexão remota.");
 }
 
-const sql = postgres("postgresql://postgres:postgres@127.0.0.1:54322/postgres", {
+const sql = postgres(localDatabaseUrl(), {
   max: 6,
   prepare: false,
 });

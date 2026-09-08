@@ -6,10 +6,16 @@ export const measurementPattern=new RegExp(`(?:(?:${number}\\s*(?:mm|cm|m)|${fra
 export function confidenceBand(value:number){return value>=.85?"HIGH" as const:value>=.6?"MEDIUM" as const:"LOW" as const;}
 export function normalizeMeasurement(raw:string){
  let value=raw.trim().replace(/—/g,"x").replace(/(\d|mm|cm|m|")\s*[xX]\s*(?=\d)/gi,"$1 x ").replace(/(\d)\s+(mm|cm|m|V|A|W|kW|CV|HP|K|L|ml|kg|g)\b/gi,"$1$2").replace(/\s*\/\s*/g,"/");
- value=value.replace(/\bpol\.?/gi,'"').replace(/(\d)\s*"/g,'$1"');
+ value=value.replace(/\bpol(?:\.|\b)/gi,'"').replace(/(\d)\s*"/g,'$1"');
  if(/(?:mm|cm|m) x (?:\d+ )?\d+\/\d+$/i.test(value))value+='"';
- value=value.replace(/(mm|cm|kw|cv|hp|ml|kg|k)\b/gi,match=>unitMap[match.toLowerCase()]??match);
+ value=value.replace(/(\d)(mm|cm|kw|cv|hp|ml|kg|v|a|w|k|l|g)\b/gi,(_,digit,unit)=>`${digit}${unitMap[unit.toLowerCase()]??unit}`);
+ value=value.replace(/^(\d+)\.(\d{3})K$/,(_,whole,thousands)=>`${whole}${thousands}K`);
+ value=value.replace(/\d+(?:[.,]\d+)?/g,token=>{
+  const number=Number(token.replace(",","."));
+  if(!Number.isFinite(number))return token;
+  return Number.isInteger(number)?String(number):String(number).replace(".",",");
+ });
  return value;
 }
 export function detectUnit(value:string){const match=value.match(/\d\s*(kW|CV|HP|mm|cm|ml|kg|V|A|W|K|L|m|g|")(?=$|\s|x)/);return match?.[1]??null;}
-export function extractMeasurements(text:string){return [...text.matchAll(measurementPattern)].map(match=>({raw:match[0],normalized:normalizeMeasurement(match[0])}));}
+export function extractMeasurements(text:string){return [...text.matchAll(measurementPattern)].filter(match=>match.index===0||!/[\p{L}\d]/u.test(text[(match.index??0)-1])).map(match=>({raw:match[0],normalized:normalizeMeasurement(match[0])}));}

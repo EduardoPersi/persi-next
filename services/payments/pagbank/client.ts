@@ -1,5 +1,6 @@
 import "server-only";
 import { PagBankPaymentError, type PagBankHttpMethod } from "./errors.ts";
+import { sanitizeProviderError } from "@/lib/observability/providerError";
 
 export { PagBankPaymentError, type PagBankHttpMethod };
 
@@ -53,15 +54,9 @@ export async function pagbankRequest<T>(
   const parsedBody = await response.json().catch(() => null);
 
   if (!response.ok) {
-    console.error("[pagbank-client]", {
-      path,
-      method,
-      status: response.status,
-      errorMessages:
-        parsedBody && typeof parsedBody === "object" && "error_messages" in parsedBody
-          ? (parsedBody as { error_messages: unknown }).error_messages
-          : parsedBody,
-    });
+    console.error("[pagbank-client]", sanitizeProviderError({
+      provider: "pagbank", operation: `${method}:${path}`, status: response.status, payload: parsedBody,
+    }));
     throw new PagBankPaymentError(
       response.status >= 400 && response.status < 600 ? response.status : 502,
       "O PagBank recusou a requisição",

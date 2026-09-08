@@ -1,5 +1,6 @@
 import "server-only";
 import { MercadoPagoPaymentError, type MercadoPagoHttpMethod } from "./errors.ts";
+import { sanitizeProviderError } from "@/lib/observability/providerError";
 
 export { MercadoPagoPaymentError, type MercadoPagoHttpMethod };
 
@@ -55,15 +56,9 @@ export async function mercadopagoRequest<T>(
   const parsedBody = await response.json().catch(() => null);
 
   if (!response.ok) {
-    console.error("[mercadopago-client]", {
-      path,
-      method,
-      status: response.status,
-      errorMessages:
-        parsedBody && typeof parsedBody === "object" && "cause" in parsedBody
-          ? (parsedBody as { cause: unknown }).cause
-          : parsedBody,
-    });
+    console.error("[mercadopago-client]", sanitizeProviderError({
+      provider: "mercadopago", operation: `${method}:${path}`, status: response.status, payload: parsedBody,
+    }));
     throw new MercadoPagoPaymentError(
       response.status >= 400 && response.status < 600 ? response.status : 502,
       "O Mercado Pago recusou a requisição",

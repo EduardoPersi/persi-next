@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import postgres from "postgres";
+import { localDatabaseUrl } from "./local-database.mjs";
 if(!process.argv.includes("--local"))throw new Error("Este teste exige --local.");
-const url="postgresql://postgres:postgres@127.0.0.1:54322/postgres";process.env.DATABASE_URL=url;
+const url=localDatabaseUrl();process.env.DATABASE_URL=url;
 const sql=postgres(url,{max:3,prepare:false});
 const {generateDeterministicSuggestions}=await import("../../lib/pim/enrichment-service.ts");
 const {decidePimSuggestion}=await import("../../lib/pim/workflow.ts");

@@ -39,8 +39,8 @@ Revise o SQL antes de aplicar. Não executar `supabase link`, `db push`,
 
 ## URLs locais
 
-O `config.toml` usa portas padrão do projeto: PostgreSQL `127.0.0.1:54322`, API
-`54321` e Studio `54323`. Credenciais locais exibidas pelo CLI são apenas de
+O `config.toml` usa portas locais do projeto: PostgreSQL `127.0.0.1:15422`, API
+`15421` e Studio `15423`. Credenciais locais exibidas pelo CLI são apenas de
 desenvolvimento e não podem ser usadas fora da máquina.
 
 ## Segurança

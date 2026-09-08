@@ -109,5 +109,20 @@ export const pimAuditLog = pgTable("pim_audit_log", {
   operation: text().notNull(), reason: text(), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [index("pim_audit_log_entity_idx").on(table.entityType, table.entityId, table.createdAt), index("pim_audit_log_product_idx").on(table.productId, table.createdAt)]);
 
+export const pimConflicts = pgTable("pim_conflicts", {
+  id: uuid().primaryKey().defaultRandom(),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  attributeKey: text("attribute_key").notNull(), conflictType: text("conflict_type").notNull(), status: text().notNull().default("open"),
+  sourceFingerprint: text("source_fingerprint").notNull(), evidenceFingerprint: text("evidence_fingerprint").notNull(),
+  detectorVersion: text("detector_version").notNull(), metadata: jsonb().notNull().default({}),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }), resolvedBy: text("resolved_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("pim_conflicts_logical_identity_unique").on(table.productId, table.attributeKey, table.conflictType, table.sourceFingerprint, table.evidenceFingerprint, table.detectorVersion),
+  index("pim_conflicts_open_queue_idx").on(table.status, table.createdAt, table.productId),
+  index("pim_conflicts_product_idx").on(table.productId, table.status, table.createdAt),
+]);
+
 export type AttributeValueRow = typeof attributeValues.$inferSelect;
 export type MeasurementComponentRow = typeof measurementComponents.$inferSelect;

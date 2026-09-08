@@ -1,5 +1,7 @@
 import "server-only";
 import { isTransientHttpStatus, withSingleRetry } from "@/lib/network/retry";
+import { sanitizeProviderError } from "@/lib/observability/providerError";
+import { assertExternalIoAllowed } from "@/lib/server/externalIo";
 import { WooCommerceRestError } from "./restError.ts";
 
 export { WooCommerceRestError };
@@ -60,6 +62,7 @@ export async function restApiGetWithMeta<T>(
   endpoint: string,
   options: RestApiOptions = {},
 ): Promise<RestApiResponse<T>> {
+  assertExternalIoAllowed("woocommerce");
   const url = getRestApiUrl(endpoint, options.query);
 
   try {
@@ -105,11 +108,10 @@ export async function restApiGetWithMeta<T>(
       // WooCommerceRestError genérico é lançado abaixo. Sem isso não dá pra
       // saber qual campo o WooCommerce rejeitou (a mensagem genérica some o
       // corpo real do erro, que costuma ter code/message explicando o motivo).
-      console.error("[woocommerce-rest]", {
-        endpoint,
-        status: response.status,
-        body: await response.json().catch(() => null),
-      });
+      const errorPayload = await response.json().catch(() => null);
+      console.error("[woocommerce-rest]", sanitizeProviderError({
+        provider: "woocommerce", operation: endpoint, status: response.status, payload: errorPayload,
+      }));
       throw new WooCommerceRestError(
         `A REST API respondeu com status ${response.status}.`,
         response.status,
@@ -185,12 +187,9 @@ async function restApiWrite<T>(
   if (!response.ok) {
     // Diagnóstico temporário: nunca exposto ao cliente — mesma razão do
     // restApiGetWithMeta acima.
-    console.error("[woocommerce-rest]", {
-      endpoint,
-      method,
-      status: response.status,
-      body: parsedBody,
-    });
+    console.error("[woocommerce-rest]", sanitizeProviderError({
+      provider: "woocommerce", operation: `${method}:${endpoint}`, status: response.status, payload: parsedBody,
+    }));
     throw new WooCommerceRestError(
       `A REST API respondeu com status ${response.status}.`,
       response.status,

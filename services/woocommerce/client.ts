@@ -1,4 +1,5 @@
 import { isTransientHttpStatus, withSingleRetry } from "@/lib/network/retry";
+import { assertExternalIoAllowed } from "@/lib/server/externalIo";
 
 const STORE_API_PATH = "/wp-json/wc/store/v1";
 const DEFAULT_REVALIDATE_SECONDS = 120;
@@ -74,6 +75,7 @@ export async function storeApiGetWithMeta<T>(
   endpoint: string,
   options: StoreApiRequestOptions = {},
 ): Promise<StoreApiResponse<T>> {
+  assertExternalIoAllowed("woocommerce");
   const url = getStoreApiUrl(endpoint, options.query);
 
   try {

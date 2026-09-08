@@ -2,6 +2,7 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 import type { InstagramMedia } from "@/types/instagram";
+import { assertExternalIoAllowed, isOfflineValidation } from "@/lib/server/externalIo";
 import {
   INSTAGRAM_POST_LIMIT,
   normalizeInstagramResponse,
@@ -97,6 +98,9 @@ const getCachedInstagramMedia = unstable_cache(
 );
 
 export async function getInstagramMedia(): Promise<InstagramMedia[]> {
+  if (isOfflineValidation()) {
+    try { assertExternalIoAllowed("instagram"); } catch { return []; }
+  }
   logInstagramEnvironmentStatus();
 
   if (!getInstagramCredentials()) {

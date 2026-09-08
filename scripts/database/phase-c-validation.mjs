@@ -3,15 +3,18 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { eq } from "drizzle-orm";
 import postgres from "postgres";
 import * as schema from "../../lib/db/schema/index.ts";
+import { localDatabaseUrl } from "./local-database.mjs";
+import { assertFixtureBaseline, captureFixtureBaseline, cleanupFixtureRun, injectFixtureFailureIfRequested } from "./fixture-isolation.mjs";
 
 if (!process.argv.includes("--local")) {
   throw new Error("Este teste exige --local e nunca aceita uma conexão remota.");
 }
 
-const localUrl = "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+const localUrl = localDatabaseUrl();
 const sql = postgres(localUrl, { max: 12, prepare: false });
 const db = drizzle(sql, { schema });
 const suffix = crypto.randomUUID();
+const baseline = await captureFixtureBaseline(sql);
 const gtin = String((BigInt(`0x${suffix.replaceAll("-", "").slice(0, 12)}`) % 9_000_000_000_000n) + 1_000_000_000_000n);
 const expiry = () => new Date(Date.now() + 300_000);
 
@@ -23,7 +26,7 @@ async function expectError(work, code, message) {
   });
 }
 
-async function createProduct(sku, slugSuffix = crypto.randomUUID()) {
+async function createProduct(sku, slugSuffix = `${suffix}-${crypto.randomUUID()}`) {
   const [product] = await sql`
     insert into public.products (name, slug)
     values ('Phase C validation', ${`phase-c-${slugSuffix}`}) returning id
@@ -96,6 +99,7 @@ try {
   }
 
   const skuProduct = await createProduct(` sku-${suffix} `);
+  injectFixtureFailureIfRequested();
   const [skuRow] = await sql`select sku_normalized from public.product_variants where id = ${skuProduct.variantId}`;
   assert.equal(skuRow.sku_normalized, `SKU-${suffix}`.toUpperCase());
   await expectError(sql`insert into public.product_variants (product_id, sku) values (${skuProduct.productId}, ${`SKU-${suffix}`})`, '23505');
@@ -203,5 +207,14 @@ try {
     drizzle: { queriesPassed: true, bigintType: 'bigint' },
   }, null, 2) + '\n');
 } finally {
+  await cleanupFixtureRun(sql, {
+    productSlugPrefixes: [`phase-c-${suffix}`],
+    locationCodePrefixes: [`inv-${suffix}`],
+    priceListCodePrefixes: [`validation-${suffix}`],
+    attributeCodePrefixes: [`measure_${suffix.replaceAll("-", "_")}`, `fraction_1_2_${suffix.replaceAll("-", "_")}`, `fraction_3_4_${suffix.replaceAll("-", "_")}`, `fraction_1_4_${suffix.replaceAll("-", "_")}`, `fraction_3_8_${suffix.replaceAll("-", "_")}`],
+    categorySlugPrefixes: [`root-${suffix}`, `child-${suffix}`, `deep-${suffix}`],
+  });
+  assertFixtureBaseline(baseline, await captureFixtureBaseline(sql));
+  process.stdout.write("FIXTURE_CLEANUP_PASS\n");
   await sql.end();
 }
