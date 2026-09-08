@@ -1,0 +1,12 @@
+{
+  "fixtureVersion": 1,
+  "classification": "SYNTHETIC_CONTRACT_FIXTURE",
+  "batch": {"authorized":10,"attempts":10,"responses":9,"retries":0,"sequential":true},
+  "budget": {"spentUsdMicros":"42000","hardBudgetUsdMicros":"100000"},
+  "quarantine": {"eligible":9,"quarantined":1,"unsafeFactsAccepted":0,"silentPrecedence":0},
+  "marker": {"state":"COMPLETED","attempts":1,"completed":1,"insertedRows":1},
+  "resume": {"alreadyCompleted":[1,2,3],"pending":[4,5],"duplicateAttempts":0},
+  "conflicts": {"sourceConflictsBefore":4,"sourceConflictsAfter":2,"recoveredEligible":2,"unitGuessing":0},
+  "persistence": {"status":"needs_review","autoApprove":false,"publish":false,"exactHashRequired":true,"unexpectedRows":0},
+  "remote": {"openAiCalls":0,"stagingWrites":0,"productionAccess":0,"pimAiEnabledFinal":false}
+}

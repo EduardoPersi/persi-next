@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "file": "p3d-r2-regression.v1.json",
+      "contract": "structured output reconciliation",
+      "provenance": "synthetic reconstruction of two regression shapes",
+      "sanitization": "no commercial identifiers, prompts, credentials, personal data, or machine paths"
+    },
+    {
+      "file": "pipeline-contracts.v1.json",
+      "contract": "batch, quarantine, marker, budget, replay, and persistence invariants",
+      "provenance": "purpose-built deterministic synthetic fixture",
+      "sanitization": "aggregate fictional values only; not evidence of a real execution"
+    }
+  ]
+}
