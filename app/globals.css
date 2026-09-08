@@ -413,6 +413,10 @@ textarea:focus-visible {
    variante arbitrária do Tailwind (que vive em @layer utilities) perde a
    cascata mesmo com seletor mais específico. Regra real e não-"layered"
    para o dot de paginação em pílula usado nos carrosséis da home/loja. */
+.pagination-pill {
+  user-select: none;
+}
+
 .pagination-pill .swiper-pagination-bullet {
   margin: 0;
   width: 0.5rem;
