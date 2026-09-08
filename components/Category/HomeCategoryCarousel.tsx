@@ -175,9 +175,9 @@ export function HomeCategoryCarousel({
         <ChevronRight className="h-5 w-5" aria-hidden="true" />
       </button>
       <div
-        className={`${paginationClass} absolute inset-x-0 bottom-0 z-10 h-4 items-center justify-center gap-2 ${
+        className={`${paginationClass} pagination-pill absolute inset-x-0 bottom-0 z-10 h-4 items-center justify-center gap-2 ${
           hasOverflow ? "flex" : "hidden"
-        } [&_.swiper-pagination-bullet]:m-0! [&_.swiper-pagination-bullet]:h-2 [&_.swiper-pagination-bullet]:w-2 [&_.swiper-pagination-bullet]:rounded-full [&_.swiper-pagination-bullet]:bg-slate-300 [&_.swiper-pagination-bullet]:transition-all [&_.swiper-pagination-bullet]:duration-300 [&_.swiper-pagination-bullet-active]:w-6 [&_.swiper-pagination-bullet-active]:bg-secondary`}
+        }`}
         aria-label="Paginação das categorias"
         aria-hidden={!hasOverflow}
       />
