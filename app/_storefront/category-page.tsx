@@ -1,72 +1,34 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { BrandCarousel } from "@/components/Brand/BrandCarousel";
 import {
-  CategoryFilters,
-  type CategoryFilterValues,
-} from "@/components/Category/CategoryFilters";
-import { LoadMoreButton } from "@/components/Category/LoadMoreButton";
-import { CategorySort } from "@/components/Category/CategorySort";
+  CategoryProductsFallback,
+  CategoryProductsInteractive,
+} from "@/components/Category/CategoryProductsClient";
 import { SubcategoryCarousel } from "@/components/Category/SubcategoryCarousel";
 import { Header } from "@/components/Header/Header";
-import { ProductCard } from "@/components/Product/ProductCard";
 import { RecentlyViewedProducts } from "@/components/Product/RecentlyViewedProducts";
 import { Container } from "@/components/UI/Container";
 import { WordPressContent } from "@/components/UI/WordPressContent";
 import { BreadcrumbBackLink } from "@/components/UI/BreadcrumbBackLink";
 import { JsonLd } from "@/components/SEO/JsonLd";
-import { getBrandByIdentifier } from "@/services/woocommerce/brands";
 import { getAllProductCategories } from "@/services/woocommerce/categories";
 import { getCategoryFilterData } from "@/services/woocommerce/filters";
-import {
-  getAvailabilityFirstProductsPage,
-  type GetProductsOptions,
-} from "@/services/woocommerce/products";
+import { getAvailabilityFirstProductsPage } from "@/services/woocommerce/products";
 import type { ProductCategory } from "@/types/category";
-import {
-  getCategoryHref,
-  getProductHref,
-  SITE_URL,
-} from "@/lib/routing/storefrontUrls";
+import { getCategoryHref, SITE_URL } from "@/lib/routing/storefrontUrls";
 import { buildBreadcrumbListJsonLd } from "@/lib/seo/productBreadcrumb";
 import {
   buildCollectionPageJsonLd,
   buildProductItemListJsonLd,
 } from "@/lib/seo/structuredData";
 
-type RawSearchParams = Record<
-  string,
-  string | string[] | undefined
->;
-
 interface CategoryPageProps {
   params: Promise<{
     slug: string;
   }>;
-  searchParams: Promise<RawSearchParams>;
-}
-
-function getSingleParam(
-  params: RawSearchParams,
-  key: string,
-): string | undefined {
-  const value = params[key];
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function getPositiveNumber(value: string | undefined): number | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  const number = Number(value.replace(",", "."));
-  return Number.isFinite(number) && number >= 0 ? number : undefined;
-}
-
-function getPositiveInteger(value: string | undefined, fallback: number) {
-  const number = Number.parseInt(value ?? "", 10);
-  return Number.isInteger(number) && number > 0 ? number : fallback;
 }
 
 function getCategoryPath(
@@ -92,78 +54,15 @@ function getCategoryPath(
   return path;
 }
 
-function isCategoryDescendant(
-  candidate: ProductCategory,
-  rootCategory: ProductCategory,
-  categories: ProductCategory[],
-): boolean {
-  let parentId = candidate.parent;
-  const visitedIds = new Set([candidate.id]);
-
-  while (parentId > 0 && !visitedIds.has(parentId)) {
-    if (parentId === rootCategory.id) return true;
-
-    const parent = categories.find((item) => item.id === parentId);
-    if (!parent) return false;
-
-    visitedIds.add(parent.id);
-    parentId = parent.parent;
-  }
-
-  return false;
-}
-
-function getOrderOptions(order: string): Pick<
-  GetProductsOptions,
-  "order" | "orderby"
-> {
-  switch (order) {
-    case "menor-preco":
-      return { order: "asc", orderby: "price" };
-    case "maior-preco":
-      return { order: "desc", orderby: "price" };
-    case "mais-vendidos":
-      return { order: "desc", orderby: "popularity" };
-    case "nome-az":
-      return { order: "asc", orderby: "title" };
-    default:
-      return { order: "desc", orderby: "date" };
-  }
-}
-
-function normalizeSearchParams(
-  searchParams: RawSearchParams,
-): Record<string, string> {
-  const normalized: Record<string, string> = {};
-
-  Object.entries(searchParams).forEach(([key, value]) => {
-    const singleValue = Array.isArray(value) ? value[0] : value;
-
-    if (singleValue) {
-      normalized[key] = singleValue;
-    }
-  });
-
-  return normalized;
-}
+const PRODUCTS_PER_PAGE = 16;
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: CategoryPageProps): Promise<Metadata> {
-  const [{ slug }, rawSearchParams] = await Promise.all([
-    params,
-    searchParams,
-  ]);
-  const brandIdentifier = getSingleParam(rawSearchParams, "marca");
+  const { slug } = await params;
 
   try {
-    const [categories, selectedBrand] = await Promise.all([
-      getAllProductCategories(),
-      brandIdentifier
-        ? getBrandByIdentifier(brandIdentifier).catch(() => undefined)
-        : Promise.resolve(undefined),
-    ]);
+    const categories = await getAllProductCategories();
     const category = categories.find((item) => item.slug === slug);
 
     if (!category) {
@@ -173,42 +72,35 @@ export async function generateMetadata({
       };
     }
 
-    const contextName = selectedBrand?.name ?? category.name;
-    const description = selectedBrand
-      ? selectedBrand.description.slice(0, 160) ||
-        `Encontre produtos ${selectedBrand.name} na Persi Materiais, com opções para sua obra e entrega para Jundiaí e região.`
-      : category.description.slice(0, 160) ||
-        `Encontre produtos de ${category.name} na Persi Materiais, com entrega para Jundiaí e região.`;
-    const contextImage = selectedBrand?.image ?? category.image;
+    const description =
+      category.description.slice(0, 160) ||
+      `Encontre produtos de ${category.name} na Persi Materiais, com entrega para Jundiaí e região.`;
 
     return {
-      title: `${contextName} | Persi Materiais`,
+      title: `${category.name} | Persi Materiais`,
       description,
       alternates: {
         canonical: getCategoryHref(category, categories),
       },
-      robots: brandIdentifier
-        ? { index: false, follow: true }
-        : undefined,
       openGraph: {
-        title: `${contextName} | Persi Materiais`,
+        title: `${category.name} | Persi Materiais`,
         description,
         type: "website",
         url: getCategoryHref(category, categories),
-        images: contextImage
+        images: category.image
           ? [
               {
-                url: contextImage.src,
-                alt: contextImage.alt || contextName,
+                url: category.image.src,
+                alt: category.image.alt || category.name,
               },
             ]
           : undefined,
       },
       twitter: {
         card: "summary_large_image",
-        title: `${contextName} | Persi Materiais`,
+        title: `${category.name} | Persi Materiais`,
         description,
-        images: contextImage ? [contextImage.src] : undefined,
+        images: category.image ? [category.image.src] : undefined,
       },
     };
   } catch {
@@ -219,14 +111,8 @@ export async function generateMetadata({
   }
 }
 
-export default async function CategoryPage({
-  params,
-  searchParams,
-}: CategoryPageProps) {
-  const [{ slug }, rawSearchParams] = await Promise.all([
-    params,
-    searchParams,
-  ]);
+export default async function CategoryPage({ params }: CategoryPageProps) {
+  const { slug } = await params;
   const categories = await getAllProductCategories();
   const category = categories.find((item) => item.slug === slug);
 
@@ -236,107 +122,17 @@ export default async function CategoryPage({
 
   const subcategories = categories
     .filter((item) => item.parent === category.id && (item.count ?? 0) > 0)
-    .sort((first, second) =>
-      first.name.localeCompare(second.name, "pt-BR"),
-    );
-  const selectedSubcategorySlug = undefined;
-  const selectedSubcategory = categories.find(
-    (item) =>
-      item.slug === selectedSubcategorySlug &&
-      isCategoryDescendant(item, category, categories),
-  );
-  const selectedCategoryChildren = selectedSubcategory
-    ? categories
-        .filter(
-          (item) =>
-            item.parent === selectedSubcategory.id &&
-            (item.count ?? 0) > 0,
-        )
-        .sort((first, second) =>
-          first.name.localeCompare(second.name, "pt-BR"),
-        )
-    : [];
-  const selectorSubcategories = selectedSubcategory
-    ? selectedCategoryChildren.length > 0
-      ? selectedCategoryChildren
-      : categories
-          .filter(
-            (item) =>
-              item.parent === selectedSubcategory.parent &&
-              (item.count ?? 0) > 0,
-          )
-          .sort((first, second) =>
-            first.name.localeCompare(second.name, "pt-BR"),
-          )
-    : subcategories;
-  const currentPage = getPositiveInteger(
-    getSingleParam(rawSearchParams, "pagina"),
-    1,
-  );
-  const currentOrder =
-    getSingleParam(rawSearchParams, "ordem") ?? "recentes";
-  const minPrice = getSingleParam(rawSearchParams, "preco_min");
-  const maxPrice = getSingleParam(rawSearchParams, "preco_max");
-  const availability = getSingleParam(rawSearchParams, "estoque");
-  const promotion = getSingleParam(rawSearchParams, "promocao");
-  const brandIdentifier = getSingleParam(rawSearchParams, "marca");
-  const selectedBrand = brandIdentifier
-    ? await getBrandByIdentifier(brandIdentifier).catch((error) => {
-        if (process.env.NODE_ENV === "development") {
-          console.error("Erro ao identificar a marca selecionada:", error);
-        }
-        return undefined;
-      })
-    : undefined;
+    .sort((first, second) => first.name.localeCompare(second.name, "pt-BR"));
 
-  if (
-    brandIdentifier &&
-    !selectedBrand &&
-    process.env.NODE_ENV === "development"
-  ) {
-    console.error(`Marca selecionada não encontrada: ${brandIdentifier}`);
-  }
-
-  const selectedAttributeValues: Record<string, string> = {};
-
-  Object.entries(rawSearchParams).forEach(([key, value]) => {
-    if (!key.startsWith("atributo_")) return;
-
-    const normalizedValue = Array.isArray(value)
-      ? value.join(",")
-      : value ?? "";
-    if (normalizedValue) {
-      selectedAttributeValues[key.replace(/^atributo_/, "")] =
-        normalizedValue;
-    }
-  });
-  const orderOptions = getOrderOptions(currentOrder);
-  const productsPerPage = 16;
-  const productOptions: GetProductsOptions = {
-    category: selectedSubcategory?.id ?? category.id,
-    perPage: productsPerPage,
-    minPrice: getPositiveNumber(minPrice),
-    maxPrice: getPositiveNumber(maxPrice),
-    stockStatus:
-      availability === "disponivel" ? "instock" : undefined,
-    onSale: promotion === "sim" ? true : undefined,
-    brand: selectedBrand ? brandIdentifier : undefined,
-    attributes: Object.entries(selectedAttributeValues).map(
-      ([taxonomy, attributeSlug]) => ({
-        taxonomy,
-        slug: attributeSlug,
-      }),
-    ),
-    ...orderOptions,
-  };
   const [firstProductsPage, filterData] = await Promise.all([
     getAvailabilityFirstProductsPage({
+      category: category.id,
+      perPage: PRODUCTS_PER_PAGE,
       page: 1,
-      ...productOptions,
+      order: "desc",
+      orderby: "date",
     }),
-    getCategoryFilterData(
-      selectedSubcategory?.id ?? category.id,
-    ).catch(() => ({
+    getCategoryFilterData(category.id).catch(() => ({
       minPrice: 0,
       maxPrice: 0,
       inStockCount: 0,
@@ -345,93 +141,29 @@ export default async function CategoryPage({
       attributes: [],
     })),
   ]);
-  const loadedPageCount = Math.min(
-    currentPage,
-    Math.max(firstProductsPage.totalPages, 1),
-  );
-  const additionalProductPages =
-    loadedPageCount > 1
-      ? await Promise.all(
-          Array.from(
-            { length: loadedPageCount - 1 },
-            (_, index) =>
-              getAvailabilityFirstProductsPage({
-                page: index + 2,
-                ...productOptions,
-              }),
-          ),
-        )
-      : [];
-  const productsPage = {
-    ...firstProductsPage,
-    products: [
-      ...firstProductsPage.products,
-      ...additionalProductPages.flatMap((page) => page.products),
-    ],
-  };
-  const breadcrumbCategories = selectedBrand
-    ? []
-    : getCategoryPath(selectedSubcategory ?? category, categories);
-  const pathname = getCategoryHref(
-    selectedSubcategory ?? category,
-    categories,
-  );
-  const contextName =
-    selectedBrand?.name ?? selectedSubcategory?.name ?? category.name;
-  const contextDescription = selectedBrand
-    ? selectedBrand.description
-    : category.description;
-  const contextDescriptionHtml = selectedBrand
-    ? selectedBrand.descriptionHtml
-    : category.descriptionHtml;
-  const contextImage =
-    selectedBrand?.image ?? selectedSubcategory?.image ?? category.image;
-  const filterValues: CategoryFilterValues = {
-    minPrice,
-    maxPrice,
-    availability,
-    promotion,
-    brand: selectedBrand ? brandIdentifier : undefined,
-    subcategory: selectedSubcategory?.slug,
-    order: currentOrder,
-    attributes: selectedAttributeValues,
-  };
-  const normalizedParams = normalizeSearchParams(rawSearchParams);
-  if (brandIdentifier && !selectedBrand) {
-    delete normalizedParams.marca;
-  }
-  const preservedSortParams = { ...normalizedParams };
-  delete preservedSortParams.ordem;
-  delete preservedSortParams.pagina;
-  const loadMoreParams = {
-    ...normalizedParams,
-    pagina: String(loadedPageCount + 1),
-  };
-  const hasMoreProducts =
-    productsPage.products.length < productsPage.total;
+
+  const pathname = getCategoryHref(category, categories);
+  const categoryPath = getCategoryPath(category, categories);
   const categoryUrl = new URL(pathname, SITE_URL).toString();
   const categoryBreadcrumbItems = [
     { label: "Home", href: "/" },
-    ...breadcrumbCategories.map((item, index) => ({
+    ...categoryPath.map((item, index) => ({
       label: item.name,
       href: getCategoryHref(item, categories),
-      current: index === breadcrumbCategories.length - 1,
+      current: index === categoryPath.length - 1,
     })),
   ];
-  const mobileBreadcrumbItems = selectedBrand
-    ? [{ label: (selectedSubcategory ?? category).name, href: pathname }]
-    : categoryBreadcrumbItems
-        .slice(
-          Math.max(0, categoryBreadcrumbItems.length - 3),
-          categoryBreadcrumbItems.length - 1,
-        )
-        .map((item) => ({ label: item.label, href: item.href }));
+  const mobileBreadcrumbItems = categoryBreadcrumbItems
+    .slice(
+      Math.max(0, categoryBreadcrumbItems.length - 3),
+      categoryBreadcrumbItems.length - 1,
+    )
+    .map((item) => ({ label: item.label, href: item.href }));
   const categoryJsonLd = buildCollectionPageJsonLd({
-    name: contextName,
-    description: contextDescription,
+    name: category.name,
+    description: category.description,
     url: categoryUrl,
-    image: contextImage?.src,
-    brand: selectedBrand ? { name: selectedBrand.name } : undefined,
+    image: category.image?.src,
   });
   const breadcrumbJsonLd = buildBreadcrumbListJsonLd(
     categoryBreadcrumbItems,
@@ -439,7 +171,7 @@ export default async function CategoryPage({
     pathname,
   );
   const itemListJsonLd = buildProductItemListJsonLd(
-    productsPage.products,
+    firstProductsPage.products,
     SITE_URL,
   );
 
@@ -447,7 +179,7 @@ export default async function CategoryPage({
     <>
       <JsonLd data={[categoryJsonLd, breadcrumbJsonLd, itemListJsonLd]} />
       <Header />
-      <main className="pt-2 pb-3 sm:py-6 lg:py-10">
+      <main id="main-content" className="pt-2 pb-3 sm:py-6 lg:py-10">
         <Container>
           <nav aria-label="Breadcrumb" data-route-transition-skip>
             <BreadcrumbBackLink items={mobileBreadcrumbItems} />
@@ -460,159 +192,72 @@ export default async function CategoryPage({
                   Home
                 </Link>
               </li>
-              {selectedBrand ? (
-                <li className="flex min-w-0 items-center gap-2">
+              {categoryPath.map((breadcrumbCategory) => (
+                <li
+                  key={breadcrumbCategory.id}
+                  className="flex min-w-0 items-center gap-2"
+                >
                   <span aria-hidden="true">›</span>
-                  <span className="text-foreground" aria-current="page">
-                    {selectedBrand.name}
-                  </span>
+                  {breadcrumbCategory.id === categoryPath.at(-1)?.id ? (
+                    <span className="text-foreground" aria-current="page">
+                      {breadcrumbCategory.name}
+                    </span>
+                  ) : (
+                    <Link
+                      href={getCategoryHref(breadcrumbCategory, categories)}
+                      className="tap-feedback rounded-sm px-0.5 transition-colors hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      {breadcrumbCategory.name}
+                    </Link>
+                  )}
                 </li>
-              ) : (
-                breadcrumbCategories.map((breadcrumbCategory) => (
-                  <li
-                    key={breadcrumbCategory.id}
-                    className="flex min-w-0 items-center gap-2"
-                  >
-                    <span aria-hidden="true">›</span>
-                    {breadcrumbCategory.id ===
-                    breadcrumbCategories.at(-1)?.id ? (
-                      <span className="text-foreground" aria-current="page">
-                        {breadcrumbCategory.name}
-                      </span>
-                    ) : (
-                      <Link
-                        href={getCategoryHref(
-                          breadcrumbCategory,
-                          categories,
-                        )}
-                        className="tap-feedback rounded-sm px-0.5 transition-colors hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      >
-                        {breadcrumbCategory.name}
-                      </Link>
-                    )}
-                  </li>
-                ))
-              )}
+              ))}
             </ol>
           </nav>
 
-          <SubcategoryCarousel
-            category={category}
-            allCategories={categories}
-            subcategories={selectorSubcategories}
-            selectedSlug={selectedSubcategory?.slug}
-            includeMainCategory={!selectedSubcategory}
-          />
+          <Suspense
+            fallback={
+              <div
+                className="mt-4 flex gap-3 overflow-hidden"
+                aria-hidden="true"
+              >
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-20 w-20 shrink-0 animate-pulse rounded-xl bg-slate-100"
+                  />
+                ))}
+              </div>
+            }
+          >
+            <SubcategoryCarousel
+              category={category}
+              allCategories={categories}
+              subcategories={subcategories}
+              includeMainCategory
+            />
+          </Suspense>
 
-          <div className="mt-4 sm:mt-6 lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start lg:gap-4">
-            <div className="hidden lg:block">
-              <CategoryFilters
-                key={`desktop-${JSON.stringify(filterValues)}`}
-                mode="desktop"
-                pathname={pathname}
-                values={filterValues}
-                filterData={filterData}
+          <Suspense
+            fallback={
+              <CategoryProductsFallback
+                categoryName={category.name}
+                initialProducts={firstProductsPage.products}
+                initialTotal={firstProductsPage.total}
               />
-            </div>
+            }
+          >
+            <CategoryProductsInteractive
+              categorySlug={category.slug}
+              categoryName={category.name}
+              pathname={pathname}
+              filterData={filterData}
+              initialProducts={firstProductsPage.products}
+              initialTotal={firstProductsPage.total}
+            />
+          </Suspense>
 
-            <div className="min-w-0">
-              <div className="flex flex-col gap-4 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="min-w-0">
-                    <h1 className="text-2xl font-bold text-primary">
-                      {contextName}
-                    </h1>
-                    <p className="sr-only" aria-live="polite">
-                      {productsPage.total}{" "}
-                      {productsPage.total === 1
-                        ? "produto encontrado"
-                        : "produtos encontrados"}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                  <CategoryFilters
-                    key={`mobile-${JSON.stringify(filterValues)}`}
-                    mode="mobile"
-                    pathname={pathname}
-                    values={filterValues}
-                    filterData={filterData}
-                  />
-                  <CategorySort
-                    key={currentOrder}
-                    pathname={pathname}
-                    currentOrder={currentOrder}
-                    preservedParams={preservedSortParams}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6">
-                {productsPage.products.length > 0 ? (
-                  <>
-                    <div
-                      className="grid grid-cols-2 gap-[10px] md:grid-cols-3 lg:grid-cols-4"
-                      aria-busy="false"
-                    >
-                      {productsPage.products.map((product) => (
-                        <ProductCard
-                          key={product.id}
-                          name={product.name}
-                          image={product.image?.src ?? ""}
-                          images={product.images}
-                          href={getProductHref(product.slug)}
-                          price={product.price}
-                          regularPrice={
-                            product.onSale
-                              ? product.regularPrice
-                              : undefined
-                          }
-                          currencyCode={product.currencyCode}
-                          commercialText={product.commercialText}
-                          brand={product.brands[0]?.name}
-                          badge={product.onSale ? "Oferta" : undefined}
-                          available={product.available}
-                          showAddToCart
-                          productId={product.id}
-                          productSlug={product.slug}
-                          freeShipping={product.freeShipping}
-                          productType={product.type}
-                          isPurchasable={product.isPurchasable}
-                          hasOptions={product.hasOptions}
-                        />
-                      ))}
-                    </div>
-                    {hasMoreProducts ? (
-                      <div className="mt-8 flex justify-center">
-                        <LoadMoreButton
-                          pathname={pathname}
-                          searchParams={loadMoreParams}
-                        />
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-                    <h2 className="text-lg font-bold text-primary">
-                      Nenhum produto encontrado
-                    </h2>
-                    <p className="mt-2 text-sm text-muted">
-                      Tente remover alguns filtros ou escolher outra
-                      subcategoria.
-                    </p>
-                    <Link
-                      href={pathname}
-                      className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-secondary px-5 text-sm font-semibold text-white"
-                    >
-                      Limpar filtros
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {contextDescriptionHtml ? (
+          {category.descriptionHtml ? (
             <section
               className="mt-10 border-t border-slate-200 pt-8"
               aria-labelledby="category-description-title"
@@ -621,21 +266,17 @@ export default async function CategoryPage({
                 id="category-description-title"
                 className="text-xl font-bold text-primary"
               >
-                Sobre {contextName}
+                Sobre {category.name}
               </h2>
               <WordPressContent
-                html={contextDescriptionHtml}
+                html={category.descriptionHtml}
                 variant="storefront"
                 className="mt-4"
               />
             </section>
           ) : null}
 
-          <BrandCarousel
-            brands={filterData.brands}
-            pathname={pathname}
-            subcategorySlug={selectedSubcategory?.slug}
-          />
+          <BrandCarousel brands={filterData.brands} pathname={pathname} />
 
           <RecentlyViewedProducts />
         </Container>

@@ -23,8 +23,18 @@ import { getBlogPostBySlug } from "@/services/wordpress/posts";
 
 type PublicPageProps = {
   params: Promise<{ segments: string[] }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+
+// Sem isso, o Next trata a rota inteira como totalmente dinâmica (nunca
+// cacheada) mesmo para caminhos que não usam nenhuma API de request-time.
+// Uma lista vazia já habilita o fallback de ISR (renderiza uma vez por
+// caminho resolvido, cacheia as próximas requisições). Isso só funciona
+// porque nenhuma das páginas delegadas aqui (Categoria, Produto, Post,
+// Institucional) lê `searchParams` no servidor mais — a Categoria lê seus
+// filtros no cliente via useSearchParams (ver CategoryProductsClient).
+export async function generateStaticParams() {
+  return [];
+}
 
 async function resolvePublicRoute(segments: string[]) {
   if (segments.length === 1 && isInstitutionalRouteSlug(segments[0])) {
@@ -62,7 +72,6 @@ async function resolvePublicRoute(segments: string[]) {
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: PublicPageProps): Promise<Metadata> {
   const { segments } = await params;
   const route = await resolvePublicRoute(segments);
@@ -73,7 +82,7 @@ export async function generateMetadata({
     return generateInstitutionalMetadata({ params: routeParams });
   }
   if (route.type === "category") {
-    return generateCategoryMetadata({ params: routeParams, searchParams });
+    return generateCategoryMetadata({ params: routeParams });
   }
   if (route.type === "post") {
     return generatePostMetadata({ params: routeParams });
@@ -81,23 +90,20 @@ export async function generateMetadata({
   return generateProductMetadata({ params: routeParams });
 }
 
-export default async function PublicPage({
-  params,
-  searchParams,
-}: PublicPageProps) {
+export default async function PublicPage({ params }: PublicPageProps) {
   const { segments } = await params;
   const route = await resolvePublicRoute(segments);
   if (!route) notFound();
 
   const routeParams = Promise.resolve({ slug: route.slug });
   if (route.type === "institutional") {
-    return InstitutionalPage({ params: routeParams });
+    return <InstitutionalPage params={routeParams} />;
   }
   if (route.type === "category") {
-    return CategoryPage({ params: routeParams, searchParams });
+    return <CategoryPage params={routeParams} />;
   }
   if (route.type === "post") {
-    return PostPage({ params: routeParams });
+    return <PostPage params={routeParams} />;
   }
-  return ProductPage({ params: routeParams });
+  return <ProductPage params={routeParams} />;
 }
