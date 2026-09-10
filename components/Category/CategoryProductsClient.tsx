@@ -53,7 +53,7 @@ async function fetchCategoryProducts(
   return response.json();
 }
 
-function ProductGrid({ products }: { products: Product[] }) {
+export function ProductGrid({ products }: { products: Product[] }) {
   return (
     <div className="grid grid-cols-2 gap-[10px] md:grid-cols-3 lg:grid-cols-4">
       {products.map((product) => (
