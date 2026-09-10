@@ -21,7 +21,7 @@ export function InstitutionalPageLayout({
   return (
     <>
       <Header initialAccountSession={accountSession} />
-      <main className="py-5 sm:py-8 lg:py-10">
+      <main id="main-content" className="py-5 sm:py-8 lg:py-10">
         <Container size={containerSize}>
           <article className="rounded-md border border-slate-200 bg-white px-5 py-6 shadow-sm sm:px-8 sm:py-8">
             <h1 className="text-2xl font-bold text-primary-hover sm:text-3xl">

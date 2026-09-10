@@ -18,7 +18,7 @@ export default function ErrorPage({
   }, [error]);
 
   return (
-    <main className="flex min-h-[60vh] items-center justify-center bg-slate-50 px-4 py-12">
+    <main id="main-content" className="flex min-h-[60vh] items-center justify-center bg-slate-50 px-4 py-12">
       <section className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm sm:p-8">
         <h1 className="text-2xl font-bold text-primary-hover">
           Não foi possível carregar esta página

@@ -12,6 +12,6 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       <Link href="/admin/pim" className="text-lg font-bold">Admin Persi</Link>
       <nav aria-label="Administração" className="flex items-center gap-4 text-sm"><Link href="/admin/pim">PIM</Link><Link href="/admin/products">Produtos</Link></nav>
       <span className="hidden text-sm text-blue-100 md:block">{user.displayName || user.email}</span>
-    </div></header><main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6">{children}</main>
+    </div></header><main id="main-content" className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6">{children}</main>
   </div>;
 }

@@ -174,7 +174,7 @@ export default async function PromotionsPage({
   return (
     <>
       <Header />
-      <main className="py-3 sm:py-6 lg:py-10">
+      <main id="main-content" className="py-3 sm:py-6 lg:py-10">
         <Container>
           <nav aria-label="Breadcrumb">
             <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted sm:text-sm">

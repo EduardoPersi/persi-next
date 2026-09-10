@@ -454,7 +454,7 @@ export default async function CheckoutConfirmationPage({
   return (
     <>
       <CheckoutHeader centered={isPaid && Boolean(details)} />
-      <main className="bg-slate-50 py-5 sm:py-8 lg:py-10">
+      <main id="main-content" className="bg-slate-50 py-5 sm:py-8 lg:py-10">
         <Container>
           {cardResult ? (
             <div className="mx-auto max-w-4xl">
