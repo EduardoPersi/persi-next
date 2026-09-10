@@ -259,7 +259,7 @@ export async function ProductListingPage({
   return (
     <>
       <Header />
-      <main className="py-6 sm:py-8 lg:py-10">
+      <main id="main-content" className="py-6 sm:py-8 lg:py-10">
         <Container>
           <nav aria-label="Breadcrumb">
             <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted sm:text-sm">

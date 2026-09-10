@@ -221,7 +221,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       <JsonLd data={[breadcrumbJsonLd, productJsonLd]} />
       <Header />
       <RecentlyViewedTracker slug={product.slug} />
-      <main className="pb-6 pt-2 sm:pb-8 sm:pt-4 lg:pb-10 lg:pt-5">
+      <main id="main-content" className="pb-6 pt-2 sm:pb-8 sm:pt-4 lg:pb-10 lg:pt-5">
         <Container>
           <div className="flex min-w-0 items-center justify-between gap-4">
             <nav aria-label="Breadcrumb" className="min-w-0" data-route-transition-skip>

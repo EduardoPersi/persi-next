@@ -95,7 +95,7 @@ export default async function PostPage({ params }: PostPageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
       />
       <Header />
-      <main className="py-5 sm:py-8 lg:py-10">
+      <main id="main-content" className="py-5 sm:py-8 lg:py-10">
         <Container size="md">
           <nav aria-label="Breadcrumb" className="mb-4" data-route-transition-skip>
             <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted sm:text-sm">

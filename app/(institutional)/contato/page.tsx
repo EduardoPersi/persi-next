@@ -18,7 +18,7 @@ export default function ContactPage() {
   return (
     <>
       <Header />
-      <main className="py-6 sm:py-8 lg:py-10">
+      <main id="main-content" className="py-6 sm:py-8 lg:py-10">
         <Container size="lg">
           <h1 className="text-center text-2xl font-bold text-secondary sm:text-3xl">
             Entre em contato conosco para dúvidas e sugestões

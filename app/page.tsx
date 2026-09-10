@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { BrandCarouselLazy } from "@/components/Brand/BrandCarouselLazy";
 import { HomeCategoryCarouselLazy } from "@/components/Category/HomeCategoryCarouselLazy";
 import { Header } from "@/components/Header/Header";
@@ -22,6 +23,33 @@ const HIDDEN_CATEGORY_SLUGS = new Set([
   "sem-categoria",
   "uncategorized",
 ]);
+
+const HOME_TITLE = "Persi Materiais elétricos e hidráulicos";
+const HOME_DESCRIPTION =
+  "Loja de materiais de construção, elétrica, hidráulica, ferramentas e EPIs em Jundiaí. Compre online com entrega para Jundiaí, Itupeva, Várzea Paulista e região.";
+const HOME_OG_IMAGE =
+  "/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas cabeçalho.webp";
+
+export const metadata: Metadata = {
+  title: HOME_TITLE,
+  description: HOME_DESCRIPTION,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+    type: "website",
+    url: "/",
+    images: [{ url: HOME_OG_IMAGE, alt: HOME_TITLE }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+    images: [HOME_OG_IMAGE],
+  },
+};
 
 export default async function Home() {
   const [allCategories, allBrands, newArrivals] = await Promise.all([
@@ -64,7 +92,7 @@ export default async function Home() {
     <>
       <Header />
 
-      <main className="bg-background">
+      <main id="main-content" className="bg-background">
         <div className="relative px-2 pb-4 pt-2 sm:px-0 sm:pb-0 sm:pt-0">
           <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1/2 bg-primary sm:hidden" />
           <div className="relative">

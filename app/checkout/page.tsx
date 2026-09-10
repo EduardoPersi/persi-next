@@ -57,7 +57,7 @@ export default async function CheckoutPage() {
   return (
     <>
       <CheckoutHeader />
-      <main className="bg-slate-50 py-5 sm:py-8 lg:py-10">
+      <main id="main-content" className="bg-slate-50 py-5 sm:py-8 lg:py-10">
         <Container>
           <h1 className="sr-only">Finalizar compra</h1>
           {authenticated ? (

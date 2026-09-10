@@ -73,7 +73,7 @@ export default async function NotFound() {
   return (
     <>
       <Header />
-      <main className="bg-slate-50 pb-12 sm:pb-16">
+      <main id="main-content" className="bg-slate-50 pb-12 sm:pb-16">
         <Container>
           <nav
             className="flex items-center gap-2 py-4 text-sm text-muted"
