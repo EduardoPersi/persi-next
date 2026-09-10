@@ -1,8 +1,30 @@
 import type { NextConfig } from "next";
 
+const SECURITY_HEADERS = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=(), web-share=(self)",
+  },
+  // max-age moderado (180 dias), sem includeSubDomains (o subdomínio
+  // loja.persimateriais.com.br roda o WordPress/WooCommerce administrativo
+  // e não foi validado para HSTS) e sem preload (praticamente irreversível).
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=15552000",
+  },
+];
+
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   async headers() {
     return [
+      {
+        source: "/:path*",
+        headers: SECURITY_HEADERS,
+      },
       {
         source: "/api/cart/:path*",
         headers: [
