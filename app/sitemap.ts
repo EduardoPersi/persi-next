@@ -7,19 +7,22 @@ import {
   RESERVED_ROOT_SLUGS,
   SITE_URL,
 } from "@/lib/routing/storefrontUrls";
+import { getAllProductBrands } from "@/services/woocommerce/brands";
 import { getAllProductCategories } from "@/services/woocommerce/categories";
 import { getAllProducts } from "@/services/woocommerce/products";
 
 export const revalidate = 86_400;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [categories, products] = await Promise.all([
+  const [categories, products, brands] = await Promise.all([
     getAllProductCategories({
       hideEmpty: false,
       revalidate: 86_400,
     }).catch(() => []),
     getAllProducts().catch(() => []),
+    getAllProductBrands().catch(() => []),
   ]);
+  const publicBrands = brands.filter((brand) => brand.count > 0);
   const url = (pathname: string) => new URL(pathname, SITE_URL).toString();
   const publicCategories = categories.filter((category) => {
     const rootSlug = getCategoryPath(category, categories)[0]?.slug;
@@ -57,6 +60,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         : undefined,
       changeFrequency: "daily" as const,
       priority: 0.7,
+    })),
+    ...publicBrands.map((brand) => ({
+      url: url(`/marca/${brand.slug}`),
+      changeFrequency: "weekly" as const,
+      priority: 0.6,
     })),
   ];
 }
