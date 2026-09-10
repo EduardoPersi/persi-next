@@ -15,6 +15,11 @@ import { ProductGrid } from "@/components/Product/ProductGrid";
 import { ProductGridSkeleton } from "@/components/Product/ProductGridSkeleton";
 import { RecentlyViewedProducts } from "@/components/Product/RecentlyViewedProducts";
 import { Container } from "@/components/UI/Container";
+import { JsonLd } from "@/components/SEO/JsonLd";
+import {
+  buildLocalBusinessJsonLd,
+  buildWebSiteJsonLd,
+} from "@/lib/seo/structuredData";
 import { getAllProductBrands } from "@/services/woocommerce/brands";
 import { getAllProductCategories } from "@/services/woocommerce/categories";
 import { getProducts } from "@/services/woocommerce/products";
@@ -90,6 +95,7 @@ export default async function Home() {
     }));
   return (
     <>
+      <JsonLd data={[buildLocalBusinessJsonLd(), buildWebSiteJsonLd()]} />
       <Header />
 
       <main id="main-content" className="bg-background">
@@ -154,10 +160,7 @@ export default async function Home() {
 
       <section className="bg-background pb-10">
         <Container>
-          <BrandCarouselLazy
-            brands={brands}
-            pathname="/busca"
-          />
+          <BrandCarouselLazy brands={brands} linkTo="brand-page" />
           <Suspense fallback={<InstagramSkeleton />}>
             <InstagramFeed />
           </Suspense>

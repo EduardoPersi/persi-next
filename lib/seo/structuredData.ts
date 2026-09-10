@@ -1,4 +1,5 @@
-import { getProductHref } from "@/lib/routing/storefrontUrls";
+import { getProductHref, SITE_URL } from "@/lib/routing/storefrontUrls";
+import { STORE_INFO } from "@/lib/constants/storeInfo";
 
 interface CollectionPageJsonLdInput {
   name: string;
@@ -31,6 +32,50 @@ const ITEM_LIST_LIMIT = 20;
 interface ItemListProductInput {
   slug: string;
   name: string;
+}
+
+const LOGO_PATH =
+  "/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas cabeçalho.webp";
+
+export function buildLocalBusinessJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "HardwareStore",
+    name: STORE_INFO.name,
+    url: SITE_URL,
+    logo: new URL(LOGO_PATH, SITE_URL).toString(),
+    image: new URL(LOGO_PATH, SITE_URL).toString(),
+    telephone: STORE_INFO.phone.label,
+    email: STORE_INFO.email.label,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "Rua Itirapina, 163, Vila Lacerda",
+      addressLocality: "Jundiaí",
+      addressRegion: "SP",
+      postalCode: STORE_INFO.address.postcode,
+      addressCountry: "BR",
+    },
+    sameAs: [
+      "https://www.instagram.com/persimateriais/",
+      "https://www.facebook.com/pemaconbr/",
+      "https://www.youtube.com/@persimateriais",
+      "https://www.tiktok.com/@persimateriais/",
+    ],
+  };
+}
+
+export function buildWebSiteJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: STORE_INFO.name,
+    url: SITE_URL,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${SITE_URL}/busca?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  };
 }
 
 export function buildProductItemListJsonLd(
