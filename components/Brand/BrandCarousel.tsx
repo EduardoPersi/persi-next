@@ -14,14 +14,22 @@ import "swiper/css/pagination";
 
 interface BrandCarouselProps {
   brands: CatalogFilterOption[];
-  pathname: string;
+  pathname?: string;
   subcategorySlug?: string;
+  /**
+   * "filter" (padrão): link filtra a marca dentro de `pathname` via
+   * `?marca=`. "brand-page": link vai direto para a página da marca
+   * (`/marca/{slug}`) — usado onde não há uma categoria/listagem para
+   * filtrar, como na Home.
+   */
+  linkTo?: "filter" | "brand-page";
 }
 
 export function BrandCarousel({
   brands,
   pathname,
   subcategorySlug,
+  linkTo = "filter",
 }: BrandCarouselProps) {
   const swiperRef = useRef<SwiperInstance | null>(null);
   const carouselId = useId().replaceAll(":", "");
@@ -58,6 +66,10 @@ export function BrandCarousel({
   }
 
   function getBrandHref(brand: CatalogFilterOption) {
+    if (linkTo === "brand-page") {
+      return `/marca/${brand.slug}`;
+    }
+
     const params = new URLSearchParams();
     if (subcategorySlug) params.set("subcategoria", subcategorySlug);
     params.set("marca", String(brand.id));
