@@ -107,11 +107,13 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
   min-height: 100vh;
   margin: 0;
+  overflow-x: hidden;
   background: var(--persi-background);
   color: var(--persi-foreground);
   font-family: var(--font-inter), Arial, Helvetica, sans-serif;
