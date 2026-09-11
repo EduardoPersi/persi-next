@@ -7,6 +7,7 @@ import { Container } from "@/components/UI/Container";
 import { BreadcrumbBackLink } from "@/components/UI/BreadcrumbBackLink";
 import { JsonLd } from "@/components/SEO/JsonLd";
 import {
+  DELIVERY_REGIONS,
   formatBRL,
   getDeliveryRegionBySlug,
 } from "@/lib/constants/deliveryRegions";
@@ -30,6 +31,8 @@ export interface RegionalSegmentConfig {
   productSummary: string;
   /** Subcategorias reais em destaque (label + href já existentes no catálogo). */
   featuredSubcategories: Array<{ label: string; href: string }>;
+  /** O outro segmento regional (Elétrica ↔ Hidráulica), para link cruzado na mesma cidade. */
+  crossSegment: { label: string; routeBase: string };
 }
 
 interface RegionalSegmentPageProps {
@@ -193,6 +196,14 @@ export function createRegionalSegmentPage(config: RegionalSegmentConfig) {
                 .
               </p>
 
+              <p className="mt-3 max-w-3xl text-sm text-muted">
+                A entrega é feita com caminhões próprios da Persi, em até três
+                tentativas — se não houver ninguém pra receber, o pedido
+                retorna à loja em Jundiaí. Entregas são feitas somente para
+                maiores de idade. Gesso, drywall e cimento CPII/CPIII ficam de
+                fora da política de frete grátis por peso e volume.
+              </p>
+
               {config.featuredSubcategories.length > 0 ? (
                 <div className="mt-5 flex flex-wrap gap-2">
                   {config.featuredSubcategories.map((sub) => (
@@ -206,6 +217,18 @@ export function createRegionalSegmentPage(config: RegionalSegmentConfig) {
                   ))}
                 </div>
               ) : null}
+
+              <p className="mt-5 text-sm text-muted">
+                Também precisa de{" "}
+                {config.crossSegment.label.toLowerCase()} em {region.name}?{" "}
+                <Link
+                  href={`${config.crossSegment.routeBase}/${region.slug}`}
+                  className="font-medium text-primary underline hover:text-secondary"
+                >
+                  Veja {config.crossSegment.label.toLowerCase()} para {region.name}
+                </Link>
+                .
+              </p>
             </div>
 
             <div className="mt-6">
@@ -223,11 +246,36 @@ export function createRegionalSegmentPage(config: RegionalSegmentConfig) {
             <div className="mt-8 text-center">
               <Link
                 href={categoryHref}
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-secondary px-6 text-sm font-semibold text-white"
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-secondary px-6 text-sm font-semibold text-primary"
               >
                 Ver catálogo completo de {config.segmentLabel}
               </Link>
             </div>
+
+            <section
+              className="mt-10 border-t border-slate-200 pt-8"
+              aria-labelledby="regional-nearby-cities-title"
+            >
+              <h2
+                id="regional-nearby-cities-title"
+                className="text-lg font-bold text-primary"
+              >
+                Também entregamos {config.segmentLabel.toLowerCase()} em
+              </h2>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {DELIVERY_REGIONS.filter(
+                  (other) => other.slug !== region.slug,
+                ).map((other) => (
+                  <Link
+                    key={other.slug}
+                    href={`${config.routeBase}/${other.slug}`}
+                    className="tap-feedback rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-muted transition-colors hover:border-primary hover:text-primary"
+                  >
+                    {other.name}
+                  </Link>
+                ))}
+              </div>
+            </section>
           </Container>
         </main>
       </>

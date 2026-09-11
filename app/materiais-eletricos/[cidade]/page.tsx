@@ -21,6 +21,7 @@ const config: RegionalSegmentConfig = {
     },
     { label: "Tomadas e Interruptores", href: "/eletrica/tomadas-e-interruptores" },
   ],
+  crossSegment: { label: "Materiais Hidráulicos", routeBase: "/materiais-hidraulicos" },
 };
 
 export const generateStaticParams = createRegionalGenerateStaticParams();

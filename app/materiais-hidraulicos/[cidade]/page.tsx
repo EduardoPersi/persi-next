@@ -21,6 +21,7 @@ const config: RegionalSegmentConfig = {
     { label: "Válvulas e Registros", href: "/hidraulica/valvulas-registros" },
     { label: "PEX", href: "/hidraulica/pex" },
   ],
+  crossSegment: { label: "Materiais Elétricos", routeBase: "/materiais-eletricos" },
 };
 
 export const generateStaticParams = createRegionalGenerateStaticParams();
