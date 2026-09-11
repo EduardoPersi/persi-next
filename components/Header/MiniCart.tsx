@@ -268,7 +268,7 @@ export function MiniCart() {
               Boolean(pendingItemKey) ||
               isPreparingCheckout
             }
-            className="flex w-full items-center justify-center rounded-md bg-secondary py-3 font-medium text-white transition-colors hover:bg-secondary-hover active:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-200 disabled:text-muted"
+            className="flex w-full items-center justify-center rounded-md bg-secondary py-3 font-medium text-primary transition-colors hover:bg-secondary-hover active:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-200 disabled:text-muted"
           >
             {isPreparingCheckout ? "PREPARANDO..." : "FINALIZAR COMPRA"}
           </button>

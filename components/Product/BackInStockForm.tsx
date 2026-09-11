@@ -167,7 +167,7 @@ export function BackInStockForm({
             !integrationEnabled ||
             variationPending
           }
-          className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-secondary px-4 text-sm font-medium text-white transition-colors hover:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-secondary px-4 text-sm font-medium text-primary transition-colors hover:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {state === "submitting"
             ? "Enviando..."

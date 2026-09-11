@@ -19,6 +19,11 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Facilita depurar erros reais de produção (ex: mismatches de
+  // hidratação) sem expor o código-fonte de forma óbvia — os .map ficam
+  // publicados junto com o bundle, mas não são referenciados por nada
+  // que um usuário comum abriria.
+  productionBrowserSourceMaps: true,
   async headers() {
     return [
       {

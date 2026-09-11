@@ -33,7 +33,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       {result.orders.length === 0 ? (
         <div className="rounded-xl bg-slate-50 p-6 text-center">
           <p>Você ainda não fez nenhum pedido.</p>
-          <Link href="/" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-secondary px-5 font-semibold text-white">Continuar comprando</Link>
+          <Link href="/" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-secondary px-5 font-semibold text-primary">Continuar comprando</Link>
         </div>
       ) : (
         <>

@@ -139,14 +139,16 @@ function HeaderActions({
         className="relative hidden min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-white transition-colors duration-150 hover:bg-white/10 hover:text-secondary active:bg-white/20 active:text-secondary md:flex"
       >
         <Heart size={compact ? 21 : 24} />
-        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-white">{favoritesCount}</span>
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-primary">{favoritesCount}</span>
       </Link>
 
       <IconButton
         variant="inverse"
         onClick={onOpenCart}
         aria-label={
-          isCartPage ? "Atualizar página do carrinho" : "Abrir mini carrinho"
+          isCartPage
+            ? "Atualizar página do carrinho"
+            : `Abrir mini carrinho: ${itemsCount} ${itemsCount === 1 ? "item" : "itens"}`
         }
         aria-expanded={isCartPage ? undefined : isCartOpen}
         aria-controls={isCartPage ? undefined : "mini-cart-drawer"}
@@ -155,7 +157,7 @@ function HeaderActions({
         <ShoppingCart
           className={compact ? "h-6 w-6" : "h-6 w-6 md:h-7 md:w-7"}
         />
-        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-white">
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-primary">
           {itemsCount}
         </span>
       </IconButton>

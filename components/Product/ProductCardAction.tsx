@@ -75,7 +75,7 @@ export function ProductCardAction({
         type="button"
         onClick={handleAdd}
         disabled={isAdding}
-        className="-mx-1.5 inline-flex h-10 w-[calc(100%+0.75rem)] items-center justify-center rounded-xl bg-secondary px-2 py-1 text-center text-[10px] font-medium leading-[13px] text-white transition-colors hover:bg-secondary-hover active:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 lg:mx-0 lg:w-full lg:px-3 lg:py-2 lg:text-sm lg:leading-4"
+        className="-mx-1.5 inline-flex h-10 w-[calc(100%+0.75rem)] items-center justify-center rounded-xl bg-secondary px-2 py-1 text-center text-[10px] font-medium leading-[13px] text-primary transition-colors hover:bg-secondary-hover active:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 lg:mx-0 lg:w-full lg:px-3 lg:py-2 lg:text-sm lg:leading-4"
       >
         {isAdding ? (
           "Adicionando..."

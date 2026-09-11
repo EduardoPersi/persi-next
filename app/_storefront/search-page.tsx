@@ -426,7 +426,7 @@ export async function ProductListingPage({
                       </p>
                       <Link
                         href={clearHref}
-                        className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-secondary px-5 text-sm font-semibold text-white"
+                        className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-secondary px-5 text-sm font-semibold text-primary"
                       >
                         Limpar filtros
                       </Link>
