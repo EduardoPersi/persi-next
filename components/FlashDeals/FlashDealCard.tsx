@@ -46,7 +46,7 @@ export function FlashDealCard({ product }: { product: Product }) {
         className="relative aspect-square overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         aria-label={`Ver ${product.name}`}
       >
-        <span className="absolute left-2 top-2 z-10 rounded-md bg-secondary px-2 py-1 text-[10px] font-bold text-white sm:text-xs">
+        <span className="absolute left-2 top-2 z-10 rounded-md bg-secondary px-2 py-1 text-[10px] font-bold text-primary sm:text-xs">
           ⚡ Oferta do Dia
         </span>
         {discount > 0 ? (

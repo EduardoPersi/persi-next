@@ -6,7 +6,7 @@ export function GoogleTagManagerScript() {
   if (!GTM_ID) return null;
 
   return (
-    <Script id="gtm-consent-init" strategy="beforeInteractive">
+    <Script id="gtm-consent-init" strategy="lazyOnload">
       {`
         window.dataLayer = window.dataLayer || [];
         function gtag(){window.dataLayer.push(arguments);}
