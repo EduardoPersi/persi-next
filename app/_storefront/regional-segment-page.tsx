@@ -7,7 +7,6 @@ import { Container } from "@/components/UI/Container";
 import { BreadcrumbBackLink } from "@/components/UI/BreadcrumbBackLink";
 import { JsonLd } from "@/components/SEO/JsonLd";
 import {
-  DELIVERY_REGIONS,
   formatBRL,
   getDeliveryRegionBySlug,
 } from "@/lib/constants/deliveryRegions";
@@ -37,9 +36,14 @@ interface RegionalSegmentPageProps {
   params: Promise<{ cidade: string }>;
 }
 
+// Lista vazia + fallback sob demanda (mesmo padrão de app/marca/[slug]):
+// gera cada página na primeira visita e cacheia via ISR, em vez de
+// pré-gerar as 34 de uma vez no build — evita que uma falha pontual da
+// API do WooCommerce (ou, em builds isolados, uma env var ausente)
+// derrube o build inteiro por causa de uma única página.
 export function createRegionalGenerateStaticParams() {
   return async function generateStaticParams() {
-    return DELIVERY_REGIONS.map((region) => ({ cidade: region.slug }));
+    return [];
   };
 }
 
