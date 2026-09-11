@@ -419,21 +419,26 @@ textarea:focus-visible {
 
 .pagination-pill .swiper-pagination-bullet {
   /* A bolinha visível continua pequena (0.5rem), mas a área clicável
-     precisa de pelo menos 24x24px (WCAG 2.5.8 Target Size). O padding
-     expande a caixa real do elemento sem alterar o visual, já que a cor
-     só é pintada na content-box — precisa de box-sizing: content-box
-     explícito porque o preflight do Tailwind força border-box global. */
-  box-sizing: content-box;
+     precisa de pelo menos 24x24px (WCAG 2.5.8 Target Size). Usar
+     padding pra isso quebrou o layout (o padding conta no fluxo real
+     da página, alargando a fileira de dots e causando scroll
+     horizontal). Um ::before absolutamente posicionado expande a área
+     de toque sem ocupar espaço real no documento. */
+  position: relative;
   margin: 0;
   width: 0.5rem;
   height: 0.5rem;
-  padding: 0.5rem;
-  background-clip: content-box;
   border-radius: 9999px;
   background-color: var(--color-slate-300);
   transition:
     width 0.3s,
     background-color 0.3s;
+}
+
+.pagination-pill .swiper-pagination-bullet::before {
+  content: "";
+  position: absolute;
+  inset: -0.5rem;
 }
 
 .pagination-pill .swiper-pagination-bullet-active {

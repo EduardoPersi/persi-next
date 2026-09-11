@@ -228,7 +228,7 @@ export function CartPage() {
           type="button"
           disabled={isLoading || Boolean(pendingItemKey) || isPreparingCheckout}
           onClick={() => void prepareCheckout()}
-          className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-secondary px-4 font-semibold text-primary transition hover:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-200 disabled:text-muted"
+          className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-secondary px-4 font-semibold text-white transition hover:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-200 disabled:text-muted"
         >
           {isPreparingCheckout ? "Preparando checkout..." : "Finalizar compra"}
         </button>

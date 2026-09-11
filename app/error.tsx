@@ -30,7 +30,7 @@ export default function ErrorPage({
           <button
             type="button"
             onClick={reset}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-secondary px-5 font-semibold text-primary hover:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-secondary px-5 font-semibold text-white hover:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <RotateCcw className="h-5 w-5" aria-hidden="true" />
             Tentar novamente

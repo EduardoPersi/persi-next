@@ -137,7 +137,7 @@ export function ProductCard({
         className="product-card-image-link relative block aspect-square overflow-hidden bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
       >
         {badge ? (
-          <span className="absolute left-2 top-2 z-10 rounded-md bg-secondary px-2 py-1 text-xs font-semibold text-primary">
+          <span className="absolute left-2 top-2 z-10 rounded-md bg-secondary px-2 py-1 text-xs font-semibold text-white">
             {badge}
           </span>
         ) : null}

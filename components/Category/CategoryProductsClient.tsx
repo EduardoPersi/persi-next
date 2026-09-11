@@ -328,7 +328,7 @@ export function CategoryProductsInteractive({
               </p>
               <Link
                 href={pathname}
-                className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-secondary px-5 text-sm font-semibold text-primary"
+                className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-secondary px-5 text-sm font-semibold text-white"
               >
                 Limpar filtros
               </Link>

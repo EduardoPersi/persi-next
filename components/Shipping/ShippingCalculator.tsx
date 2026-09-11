@@ -209,7 +209,7 @@ export function ShippingCalculator(props: ShippingCalculatorProps) {
                 href={STORE_INFO.whatsapp.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-9 items-center justify-center gap-2 rounded-xl bg-secondary px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-orange-700"
+                className="inline-flex min-h-9 items-center justify-center gap-2 rounded-xl bg-secondary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-orange-700"
               >
                 <MessageCircle className="h-4 w-4" aria-hidden="true" />
                 Falar com um consultor

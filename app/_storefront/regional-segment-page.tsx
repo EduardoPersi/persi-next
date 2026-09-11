@@ -246,7 +246,7 @@ export function createRegionalSegmentPage(config: RegionalSegmentConfig) {
             <div className="mt-8 text-center">
               <Link
                 href={categoryHref}
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-secondary px-6 text-sm font-semibold text-primary"
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-secondary px-6 text-sm font-semibold text-white"
               >
                 Ver catálogo completo de {config.segmentLabel}
               </Link>

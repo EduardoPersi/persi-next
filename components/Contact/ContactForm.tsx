@@ -169,7 +169,7 @@ export function ContactForm() {
       <button
         type="submit"
         disabled={state === "submitting"}
-        className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-secondary px-4 text-base font-bold uppercase text-primary transition-colors hover:bg-secondary-hover active:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+        className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-secondary px-4 text-base font-bold uppercase text-white transition-colors hover:bg-secondary-hover active:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
       >
         {state === "submitting" ? "Enviando..." : "Enviar"}
       </button>

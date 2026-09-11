@@ -260,8 +260,8 @@ export function ProductSearch({
           aria-label={isLoading ? "Pesquisando produtos" : "Pesquisar"}
           className={
             isDesktop
-              ? "flex min-w-16 items-center justify-center rounded-lg border-2 border-white bg-secondary px-5 text-primary transition-colors hover:bg-secondary-hover active:bg-secondary-hover"
-              : "flex min-w-14 items-center justify-center rounded-lg border-2 border-white bg-secondary px-4 text-primary transition-colors hover:bg-secondary-hover active:bg-secondary-hover"
+              ? "flex min-w-16 items-center justify-center rounded-lg border-2 border-white bg-secondary px-5 text-white transition-colors hover:bg-secondary-hover active:bg-secondary-hover"
+              : "flex min-w-14 items-center justify-center rounded-lg border-2 border-white bg-secondary px-4 text-white transition-colors hover:bg-secondary-hover active:bg-secondary-hover"
           }
         >
           {isLoading ? (

@@ -92,7 +92,7 @@ export function NewsletterForm() {
         <button
           type="submit"
           disabled={state === "submitting"}
-          className="box-border flex h-11 min-h-0 w-full items-center justify-center rounded-xl bg-secondary px-8 text-sm font-medium leading-normal text-primary transition-colors duration-200 hover:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary disabled:cursor-not-allowed disabled:opacity-70 md:w-auto"
+          className="box-border flex h-11 min-h-0 w-full items-center justify-center rounded-xl bg-secondary px-8 text-sm font-medium leading-normal text-white transition-colors duration-200 hover:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary disabled:cursor-not-allowed disabled:opacity-70 md:w-auto"
         >
           {state === "submitting" ? "Enviando..." : "ENVIAR"}
         </button>
