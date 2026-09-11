@@ -7,6 +7,7 @@ import {
   RESERVED_ROOT_SLUGS,
   SITE_URL,
 } from "@/lib/routing/storefrontUrls";
+import { DELIVERY_REGIONS } from "@/lib/constants/deliveryRegions";
 import { getAllProductBrands } from "@/services/woocommerce/brands";
 import { getAllProductCategories } from "@/services/woocommerce/categories";
 import { getAllProducts } from "@/services/woocommerce/products";
@@ -69,5 +70,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
       images: brand.image?.src ? [brand.image.src] : undefined,
     })),
+    ...DELIVERY_REGIONS.flatMap((region) => [
+      {
+        url: url(`/materiais-eletricos/${region.slug}`),
+        changeFrequency: "weekly" as const,
+        priority: 0.6,
+      },
+      {
+        url: url(`/materiais-hidraulicos/${region.slug}`),
+        changeFrequency: "weekly" as const,
+        priority: 0.6,
+      },
+    ]),
   ];
 }
