@@ -60,6 +60,7 @@ export async function generateMetadata({
       description,
       alternates: { canonical: pathname },
       openGraph: {
+        locale: "pt_BR",
         title: `${brand.name} | Persi Materiais`,
         description,
         type: "website",

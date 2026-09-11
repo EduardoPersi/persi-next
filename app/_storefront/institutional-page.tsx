@@ -32,6 +32,7 @@ export async function generateMetadata({
     description,
     alternates: { canonical: `/${slug}` },
     openGraph: {
+      locale: "pt_BR",
       title: `${config.title} | Persi Materiais de Construção`,
       description,
       type: "article",

@@ -33,6 +33,7 @@ export const metadata: Metadata = {
     "Confira produtos em promoção na Persi Materiais para sua obra, com entrega para Jundiaí e região.",
   alternates: { canonical: "/promocoes" },
   openGraph: {
+    locale: "pt_BR",
     title: "Promoções | Persi Materiais",
     description:
       "Ofertas em materiais para construção, ferramentas, hidráulica, elétrica e muito mais.",

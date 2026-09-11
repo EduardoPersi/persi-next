@@ -44,6 +44,7 @@ export async function generateMetadata({
       description,
       alternates: { canonical: getPostHref(post.slug) },
       openGraph: {
+        locale: "pt_BR",
         title: post.title,
         description,
         type: "article",

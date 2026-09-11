@@ -83,6 +83,7 @@ export async function generateMetadata({
         canonical: getCategoryHref(category, categories),
       },
       openGraph: {
+        locale: "pt_BR",
         title: `${category.name} | Persi Materiais`,
         description,
         type: "website",
