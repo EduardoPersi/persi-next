@@ -42,6 +42,7 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
+    locale: "pt_BR",
     title: HOME_TITLE,
     description: HOME_DESCRIPTION,
     type: "website",

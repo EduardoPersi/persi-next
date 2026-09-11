@@ -8,10 +8,12 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: [
         "/api/",
+        "/admin",
         "/busca",
         "/carrinho",
         "/checkout",
         "/minha-conta",
+        "/favoritos",
         "/entrar",
         "/criar-conta",
       ],

@@ -52,6 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: url(getCategoryHref(category, categories)),
       changeFrequency: "daily" as const,
       priority: category.parent === 0 ? 0.8 : 0.7,
+      images: category.image?.src ? [category.image.src] : undefined,
     })),
     ...publicProducts.map((product) => ({
       url: url(getProductHref(product.slug)),
@@ -60,11 +61,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         : undefined,
       changeFrequency: "daily" as const,
       priority: 0.7,
+      images: product.image?.src ? [product.image.src] : undefined,
     })),
     ...publicBrands.map((brand) => ({
       url: url(`/marca/${brand.slug}`),
       changeFrequency: "weekly" as const,
       priority: 0.6,
+      images: brand.image?.src ? [brand.image.src] : undefined,
     })),
   ];
 }

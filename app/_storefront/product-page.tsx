@@ -86,6 +86,7 @@ export async function generateMetadata({
         canonical: getProductHref(product.slug),
       },
       openGraph: {
+        locale: "pt_BR",
         title: `${product.name} | Persi Materiais`,
         description,
         type: "website",
