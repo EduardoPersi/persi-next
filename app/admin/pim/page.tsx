@@ -1,12 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import {getPimDashboardCounts,listPimReviewQueue} from "@/lib/pim/repository";
+import {requirePimAdmin} from "@/lib/pim/authorization";
 
 type SearchParams=Promise<Record<string,string|string[]|undefined>>;
 const param=(value:string|string[]|undefined)=>Array.isArray(value)?value[0]??"":value??"";
 const href=(page:number,query:string)=>{const params=new URLSearchParams();if(query)params.set("q",query);if(page>1)params.set("page",String(page));return `/admin/pim${params.size?`?${params}`:""}`;};
 
 export default async function PimReviewPage({searchParams}:{searchParams:SearchParams}){
+  await requirePimAdmin();
   const params=await searchParams,query=param(params.q),requestedPage=Number(param(params.page));
   const [counts,queue]=await Promise.all([getPimDashboardCounts(),listPimReviewQueue({query,page:requestedPage,pageSize:25})]);
   const pages=Math.max(1,Math.ceil(queue.total/queue.pageSize));

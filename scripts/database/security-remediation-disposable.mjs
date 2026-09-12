@@ -105,30 +105,14 @@ try {
   }
 
   await sql("create schema supabase_migrations; create table supabase_migrations.schema_migrations(version text primary key);");
-  // Hosted staging installs this platform guard outside the project's migration
-  // history. Reproduce that catalogued prerequisite only inside this tmpfs DB.
-  await sql(`create function public.rls_auto_enable() returns event_trigger
-    language plpgsql security definer set search_path=pg_catalog as $$
-    declare command record;
-    begin
-      for command in select * from pg_event_trigger_ddl_commands()
-        where command_tag in ('CREATE TABLE','CREATE TABLE AS','SELECT INTO')
-          and object_type in ('table','partitioned table')
-      loop
-        if command.schema_name='public' then
-          execute format('alter table if exists %s enable row level security',command.object_identity);
-        end if;
-      end loop;
-    end $$;
-    create event trigger ensure_rls on ddl_command_end
-      when tag in ('CREATE TABLE','CREATE TABLE AS','SELECT INTO')
-      execute function public.rls_auto_enable();`);
+  // Use the same official pre-migration bootstrap consumed by Supabase CLI.
+  await sql(fs.readFileSync("supabase/roles.sql", "utf8"));
   // Hosted staging already removed browser SELECT/DML from postgres defaults;
   // SECURITY-R0 proved that only the four dangerous privileges remained.
   await sql(`alter default privileges for role postgres in schema public
     revoke select, insert, update, delete on tables from anon, authenticated;`);
   const migrations = fs.readdirSync("supabase/migrations").filter((name) => name.endsWith(".sql")).sort();
-  assert.equal(migrations.length, 32);
+  assert.equal(migrations.length, 33);
   assert.deepEqual(migrations.slice(migrations.indexOf(securityFilename) - 1, migrations.indexOf(securityFilename) + 2), [
     "20260903120000_store_price_authority_foundation.sql", securityFilename,
     "20260904010000_secure_checkout_pii_foundation.sql",
@@ -144,7 +128,7 @@ try {
   assert.match(before.dangerous, /anon:TRUNCATE=37/);
   assert.match(before.dangerous, /authenticated:MAINTAIN=37/);
   assert.equal(before.defaults, "8");
-  assert.equal(before.functions, "16");
+  assert.equal(before.functions, "15");
 
   await apply(securityFilename);
   const afterSecurity = {
@@ -174,7 +158,7 @@ try {
     browserCreate: await sql("select has_schema_privilege('anon','public','CREATE')::int+has_schema_privilege('authenticated','public','CREATE')::int;"),
     eventTrigger: await sql(eventProbe("security_r1_after_b3c_probe")),
   };
-  assert.equal(final.count, "32"); assert.equal(final.securityCount, "1"); assert.equal(final.m31Count, "1");
+  assert.equal(final.count, "33"); assert.equal(final.securityCount, "1"); assert.equal(final.m31Count, "1");
   assert.doesNotMatch(final.dangerous, /=([1-9][0-9]*)/);
   assert.equal(final.defaults, "0"); assert.equal(final.functions, "0");
   assert.equal(final.browserDml, "0"); assert.equal(final.browserCreate, "0");

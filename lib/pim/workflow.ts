@@ -11,6 +11,7 @@ import {
 import {assertProfileApprovalAllowed,assertSuggestionDecisionAllowed} from "@/lib/pim/conflict-policy";
 
 export type PimDecision = "approved" | "rejected";
+export type PimAdminAuditContext={identityProvider:string;identitySubject:string;adminSessionId:string;membershipId:string;effectiveRole:string;correlationId:string};
 type PimTransaction = Parameters<Parameters<PersiDatabase["transaction"]>[0]>[0];
 type EditorialStatus = "raw"|"normalized"|"needs_enrichment"|"draft"|"ai_suggested"|"needs_review"|"approved"|"rejected"|"published";
 type ProfileLock = { productId:string; workflowStatus:EditorialStatus; version:string; approvedContent:Record<string,unknown>|null; draft:Record<string,unknown> };
@@ -52,12 +53,12 @@ function assertVersion(profile:ProfileLock|null,expected:bigint){
   if(BigInt(profile?.version??"0")!==expected) throw new PimConcurrencyError();
 }
 
-async function audit(tx:PimTransaction,input:{productId:string;actor:string;operation:string;before:unknown;after:unknown;reason?:string}){
-  await tx.execute(sql`insert into pim_audit_log(product_id,entity_type,entity_id,field_name,previous_value,new_value,source,actor_reference,operation,reason)
-    values(${input.productId}::uuid,'editorial_profile',${input.productId}::uuid,'editorial_content',${JSON.stringify(input.before)},${JSON.stringify(input.after)},'manual',${input.actor},${input.operation},${input.reason??null})`);
+async function audit(tx:PimTransaction,input:{productId:string;actor:string;operation:string;before:unknown;after:unknown;reason?:string;context?:PimAdminAuditContext}){
+  await tx.execute(sql`insert into pim_audit_log(product_id,entity_type,entity_id,field_name,previous_value,new_value,source,actor_reference,operation,reason,actor_identity_provider,actor_identity_subject,admin_session_id,admin_membership_id,effective_role,correlation_id)
+    values(${input.productId}::uuid,'editorial_profile',${input.productId}::uuid,'editorial_content',${JSON.stringify(input.before)},${JSON.stringify(input.after)},'manual',${input.actor},${input.operation},${input.reason??null},${input.context?.identityProvider??null},${input.context?.identitySubject??null},${input.context?.adminSessionId??null}::uuid,${input.context?.membershipId??null}::uuid,${input.context?.effectiveRole??null},${input.context?.correlationId??null}::uuid)`);
 }
 
-export async function savePimEditorialDraft(raw:PimEditorialDraftInput,actorReference:string){
+export async function savePimEditorialDraft(raw:PimEditorialDraftInput,actorReference:string,context?:PimAdminAuditContext){
   const input=pimEditorialDraftSchema.parse(raw),actor=requireActor(actorReference),next=snapshot(input);
   return getDatabase().transaction(async(tx)=>{
     const profile=await lockProfile(tx,input.productId); assertVersion(profile,input.version);
@@ -74,12 +75,12 @@ export async function savePimEditorialDraft(raw:PimEditorialDraftInput,actorRefe
         values(${input.productId}::uuid,'draft',${input.commercialName},${input.shortDescription},${input.description},${textArray(input.bulletPoints)},${input.application},
         ${input.specifications},${input.seoTitle},${input.metaDescription},${textArray(input.searchTerms)},${input.imageAltText},now(),1)`);
     }
-    await audit(tx,{productId:input.productId,actor,operation,before:profile?.draft??null,after:next});
+    await audit(tx,{productId:input.productId,actor,operation,before:profile?.draft??null,after:next,context});
     return {productId:input.productId,status:"draft" as const,version:input.version+BigInt(1)};
   });
 }
 
-export async function transitionPimEditorial(raw:PimWorkflowActionInput,actorReference:string){
+export async function transitionPimEditorial(raw:PimWorkflowActionInput,actorReference:string,context?:PimAdminAuditContext){
   const input=pimWorkflowActionSchema.parse(raw),actor=requireActor(actorReference);
   return getDatabase().transaction(async(tx)=>{
     const profile=await lockProfile(tx,input.productId); if(!profile) throw new Error("Perfil editorial não encontrado."); assertVersion(profile,input.version);
@@ -116,12 +117,12 @@ export async function transitionPimEditorial(raw:PimWorkflowActionInput,actorRef
         draft_started_at=case when ${input.action}='REOPEN' then now() else draft_started_at end,
         version=version+1 where product_id=${input.productId}::uuid`);
     }
-    await audit(tx,{productId:input.productId,actor,operation:input.action,before:{status:profile.workflowStatus,content:profile.draft},after:{status,content:after},reason:input.reason});
+    await audit(tx,{productId:input.productId,actor,operation:input.action,before:{status:profile.workflowStatus,content:profile.draft},after:{status,content:after},reason:input.reason,context});
     return {productId:input.productId,status,version:input.version+BigInt(1)};
   });
 }
 
-export async function decidePimSuggestion(input:{suggestionId:string;decision:PimDecision;actorReference:string;reason?:string}){
+export async function decidePimSuggestion(input:{suggestionId:string;decision:PimDecision;actorReference:string;reason?:string;auditContext?:PimAdminAuditContext}){
   if(!/^[0-9a-f-]{36}$/i.test(input.suggestionId))throw new Error("Sugestão inválida.");
   const actor=requireActor(input.actorReference);
   return getDatabase().transaction(async(tx)=>{
@@ -136,8 +137,8 @@ export async function decidePimSuggestion(input:{suggestionId:string;decision:Pi
       await tx.execute(sql`update pim_product_profiles set workflow_status='draft',draft_started_at=coalesce(draft_started_at,now()),commercial_name=case when ${suggestion.field_name} in ('commercialName','commercial_name') then ${suggestion.suggested_value} else commercial_name end,short_description=case when ${suggestion.field_name} in ('shortDescription','short_description') then ${suggestion.suggested_value} else short_description end,description=case when ${suggestion.field_name}='description' then ${suggestion.suggested_value} else description end,application=case when ${suggestion.field_name}='application' then ${suggestion.suggested_value} else application end,specifications=case when ${suggestion.field_name}='specifications' then ${suggestion.suggested_value} else specifications end,seo_title=case when ${suggestion.field_name} in ('seoTitle','seo_title') then ${suggestion.suggested_value} else seo_title end,meta_description=case when ${suggestion.field_name} in ('metaDescription','meta_description') then ${suggestion.suggested_value} else meta_description end,image_alt_text=case when ${suggestion.field_name} in ('imageAltText','image_alt_text') then ${suggestion.suggested_value} else image_alt_text end,version=version+1 where product_id=${suggestion.product_id}::uuid`);
     }
     await tx.execute(sql`update pim_suggestions set status=${input.decision}::pim_decision_status,reviewed_by=${actor},reviewed_at=now() where id=${input.suggestionId}::uuid`);
-    await tx.execute(sql`insert into pim_audit_log(product_id,entity_type,entity_id,field_name,previous_value,new_value,source,actor_reference,operation,reason)
-      values(${suggestion.product_id}::uuid,'suggestion',${suggestion.id}::uuid,${suggestion.field_name},'needs_review',${input.decision},'manual',${actor},${`suggestion_${input.decision}`},${input.reason??null})`);
+    await tx.execute(sql`insert into pim_audit_log(product_id,entity_type,entity_id,field_name,previous_value,new_value,source,actor_reference,operation,reason,actor_identity_provider,actor_identity_subject,admin_session_id,admin_membership_id,effective_role,correlation_id)
+      values(${suggestion.product_id}::uuid,'suggestion',${suggestion.id}::uuid,${suggestion.field_name},'needs_review',${input.decision},'manual',${actor},${`suggestion_${input.decision}`},${input.reason??null},${input.auditContext?.identityProvider??null},${input.auditContext?.identitySubject??null},${input.auditContext?.adminSessionId??null}::uuid,${input.auditContext?.membershipId??null}::uuid,${input.auditContext?.effectiveRole??null},${input.auditContext?.correlationId??null}::uuid)`);
     return {productId:suggestion.product_id,decision:input.decision};
   });
 }

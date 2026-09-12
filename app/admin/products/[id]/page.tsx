@@ -4,6 +4,7 @@ import {notFound} from "next/navigation";
 import {PimEditorialEditor} from "@/components/admin/PimEditorialEditor";
 import {getPimProduct,type PimEditorialContent,type PimSuggestionItem} from "@/lib/pim/repository";
 import {reviewSuggestion} from "./actions";
+import {requirePimAdmin} from "@/lib/pim/authorization";
 
 const labels:Record<string,string>={commercial_name:"Nome comercial",short_description:"Descrição curta",description:"Descrição",application:"Aplicação",seo_title:"Título de SEO",meta_description:"Meta description"};
 const statusLabel=(value:string)=>({raw:"Sem edição",draft:"Rascunho",needs_review:"Em revisão",approved:"Aprovado no PIM",rejected:"Rejeitado",needs_enrichment:"Precisa revisão"}[value]??value.replaceAll("_"," "));
@@ -11,6 +12,7 @@ function currentValue(suggestion:PimSuggestionItem,source:Partial<PimEditorialCo
 function Evidence({suggestion}:{suggestion:PimSuggestionItem}){return <details className="mt-3 rounded-lg bg-background-soft p-3"><summary className="cursor-pointer text-sm font-semibold text-link">Ver evidências e detalhes técnicos</summary>{suggestion.evidenceReferences.length?<ul className="mt-3 space-y-2 text-sm">{suggestion.evidenceReferences.map((e,index)=><li key={`${suggestion.id}-${index}`}><strong>{e.sourceType??"Fonte"}:</strong> {e.rawValue??e.value??e.sourceReference??"Evidência vinculada"}</li>)}</ul>:<p className="mt-3 text-sm text-muted">A sugestão foi validada contra a fonte, mas não possui trecho técnico específico vinculado a este campo editorial.</p>}<dl className="mt-3 grid gap-2 text-xs text-muted sm:grid-cols-2"><div><dt className="font-semibold">Origem</dt><dd>Sugestão automática · {suggestion.provider}/{suggestion.modelVersion}</dd></div><div><dt className="font-semibold">Versão do prompt</dt><dd>{suggestion.promptVersion}</dd></div></dl></details>;}
 
 export default async function PimProductPage({params}:{params:Promise<{id:string}>}){
+ await requirePimAdmin();
  const {id}=await params,product=await getPimProduct(id).catch(()=>null);if(!product)notFound();
  const source:Partial<PimEditorialContent>={commercialName:product.name,shortDescription:product.sourceShortDescription,description:product.sourceDescription,application:null,seoTitle:null,metaDescription:null};
  const activeSuggestions=product.suggestions.filter(item=>!item.supersededAt),pending=activeSuggestions.filter(item=>item.status==="needs_review");

@@ -1,0 +1,16 @@
+begin;
+select plan(12);
+select has_table('public','admin_memberships','admin membership table exists');
+select ok((select relrowsecurity and relforcerowsecurity from pg_class where oid='public.admin_memberships'::regclass),'admin membership RLS is forced');
+select is(has_table_privilege('anon','public.admin_memberships','SELECT'),false,'anon cannot read memberships');
+select is(has_table_privilege('authenticated','public.admin_memberships','SELECT'),false,'authenticated cannot read memberships');
+select is(has_table_privilege('anon','public.admin_memberships','INSERT'),false,'anon cannot insert memberships');
+select is(has_table_privilege('authenticated','public.admin_memberships','UPDATE'),false,'authenticated cannot update memberships');
+select is(has_table_privilege('anon','public.admin_memberships','TRUNCATE'),false,'anon cannot truncate memberships');
+select is(has_table_privilege('authenticated','public.admin_memberships','MAINTAIN'),false,'authenticated cannot maintain memberships');
+select is(has_table_privilege('persi_app','public.admin_memberships','SELECT'),true,'server runtime can read memberships');
+select is(has_table_privilege('persi_app','public.admin_memberships','INSERT'),false,'runtime cannot create memberships');
+select is((select count(*) from public.admin_memberships),0::bigint,'migration seeds no membership');
+select ok((select count(*)=5 from information_schema.columns where table_schema='public' and table_name='pim_audit_log' and column_name in ('actor_identity_provider','actor_identity_subject','admin_membership_id','effective_role','correlation_id')),'audit attribution columns exist');
+select * from finish();
+rollback;

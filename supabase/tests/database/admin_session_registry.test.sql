@@ -1,0 +1,14 @@
+begin;
+select plan(10);
+select has_table('public','admin_sessions','admin session registry exists');
+select has_table('public','admin_session_audit','admin session audit exists');
+select ok((select relrowsecurity and relforcerowsecurity from pg_class where oid='public.admin_sessions'::regclass),'session RLS is forced');
+select ok((select relrowsecurity and relforcerowsecurity from pg_class where oid='public.admin_session_audit'::regclass),'audit RLS is forced');
+select is((select count(*)::bigint from information_schema.columns where table_schema='public' and table_name='admin_sessions' and column_name in ('access_token','refresh_token','cookie','password','totp_secret')),0::bigint,'no raw secret columns');
+select is((select count(*) from information_schema.role_table_grants where table_schema='public' and table_name in ('admin_sessions','admin_session_audit') and grantee in ('anon','authenticated')),0::bigint,'browser has no session access');
+select ok(not has_schema_privilege('anon','public','CREATE'),'anon cannot create');
+select ok(not has_schema_privilege('authenticated','public','CREATE'),'authenticated cannot create');
+select col_is_pk('public','admin_sessions','id','session id is primary key');
+select col_is_unique('public','admin_sessions','capability_hash','capability hash is unique');
+select * from finish();
+rollback;

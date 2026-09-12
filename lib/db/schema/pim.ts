@@ -106,8 +106,10 @@ export const pimAuditLog = pgTable("pim_audit_log", {
   id: uuid().primaryKey().defaultRandom(), productId: uuid("product_id").references(() => products.id, { onDelete: "restrict" }),
   entityType: text("entity_type").notNull(), entityId: uuid("entity_id").notNull(), fieldName: text("field_name"),
   previousValue: text("previous_value"), newValue: text("new_value"), source: pimSource().notNull(), actorReference: text("actor_reference").notNull(),
-  operation: text().notNull(), reason: text(), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (table) => [index("pim_audit_log_entity_idx").on(table.entityType, table.entityId, table.createdAt), index("pim_audit_log_product_idx").on(table.productId, table.createdAt)]);
+  operation: text().notNull(), reason: text(), actorIdentityProvider: text("actor_identity_provider"), actorIdentitySubject: text("actor_identity_subject"),
+  adminSessionId: uuid("admin_session_id"), adminMembershipId: uuid("admin_membership_id"), effectiveRole: text("effective_role"), correlationId: uuid("correlation_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("pim_audit_log_entity_idx").on(table.entityType, table.entityId, table.createdAt), index("pim_audit_log_product_idx").on(table.productId, table.createdAt), index("pim_audit_log_admin_session_idx").on(table.adminSessionId, table.createdAt)]);
 
 export const pimConflicts = pgTable("pim_conflicts", {
   id: uuid().primaryKey().defaultRandom(),

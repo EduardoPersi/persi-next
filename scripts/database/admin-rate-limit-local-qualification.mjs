@@ -1,0 +1,7 @@
+import assert from "node:assert/strict";import postgres from "postgres";
+if(process.env.PERSI_OFFLINE_VALIDATION!=="1")throw new Error("OFFLINE_VALIDATION_REQUIRED");
+const url="postgresql://postgres:postgres@127.0.0.1:15422/postgres",root=postgres(url,{max:1}),key="c".repeat(64);await root`delete from admin_rate_limits where bucket_key=${key}`;
+const clients=Array.from({length:12},()=>postgres(url,{max:1}));const out=await Promise.all(clients.map(client=>client`select * from consume_admin_rate_limit(${key},'admin.security',5,3600)`));const allowed=out.filter(x=>x[0].allowed).length,denied=out.length-allowed,maxCount=Math.max(...out.map(x=>x[0].current_count));assert.deepEqual({allowed,denied,maxCount},{allowed:5,denied:7,maxCount:12});
+const other=await root`select allowed from consume_admin_rate_limit(${'d'.repeat(64)},'admin.security',5,3600)`;assert.equal(other[0].allowed,true);const operation=await root`select allowed from consume_admin_rate_limit(${key},'admin.mutation',5,3600)`;assert.equal(operation[0].allowed,true);
+await assert.rejects(root`select * from consume_admin_rate_limit('bad','unknown',1,60)`);
+await root`delete from admin_rate_limits where bucket_key in (${key},${'d'.repeat(64)})`;await Promise.all(clients.map(c=>c.end()));await root.end();console.log(JSON.stringify({connections:12,limit:5,attempts:12,allowed,denied,maxCount,overshoot:0,lostUpdates:0,subjectIsolation:true,operationIsolation:true,unknownDenied:true}));

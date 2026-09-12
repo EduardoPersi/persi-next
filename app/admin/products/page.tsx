@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { listPimFilterOptions, listPimProducts, PIM_STATUSES, type PimProductFilters } from "@/lib/pim/repository";
+import {requirePimAdmin} from "@/lib/pim/authorization";
 
 type SearchParams=Promise<Record<string,string|string[]|undefined>>;
 function value(params:Record<string,string|string[]|undefined>,key:string){const item=params[key];return Array.isArray(item)?item[0]??"":item??"";}
@@ -8,6 +9,7 @@ function money(amount:string|null,currency:string|null){if(!amount)return "—";
 function statusLabel(status:string){return status.replaceAll("_"," ");}
 
 export default async function AdminProductsPage({searchParams}:{searchParams:SearchParams}){
+  await requirePimAdmin();
   const params=await searchParams;
   const filters:PimProductFilters={query:value(params,"q"),brand:value(params,"brand"),category:value(params,"category"),status:value(params,"status"),image:value(params,"image"),gtin:value(params,"gtin"),issue:value(params,"issue"),suggestions:value(params,"suggestions"),page:Number(value(params,"page")),pageSize:Number(value(params,"pageSize"))};
   const [{items,total,page,pageSize},options]=await Promise.all([listPimProducts(filters),listPimFilterOptions()]);
