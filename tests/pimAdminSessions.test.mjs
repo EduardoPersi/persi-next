@@ -41,3 +41,18 @@ test("admin layout exposes the canonical logout action and creates no parallel m
  assert.match(layout,/>Sair</);
  assert.doesNotMatch(layout,/signOut|window\.location|fetch\(|createServerClient|revokeCurrentAdminSession/);
 });
+test("logout affordance is gated on native session presence, not the route, and stays server-rendered",async()=>{
+ const layout=await read("app/admin/layout.tsx");
+ assert.doesNotMatch(layout,/"use client"/);
+ assert.match(layout,/import\s*{\s*cookies\s*}\s*from\s*"next\/headers"/);
+ assert.match(layout,/import\s*{\s*ADMIN_SESSION_COOKIE\s*}\s*from\s*"@\/lib\/admin\/session"/);
+ assert.match(layout,/hasNativeSession/);
+ const guarded=layout.slice(layout.indexOf("hasNativeSession &&"),layout.indexOf("</header>"));
+ assert.match(guarded,/>Sair</);assert.match(guarded,/Área administrativa protegida/);
+ assert.doesNotMatch(layout,/usePathname|headers\(\)\.get\("x-/);
+});
+test("access-denied keeps its own existing logout affordance untouched",async()=>{
+ const page=await read("app/admin/access-denied/page.tsx");
+ assert.match(page,/import\s*{\s*adminLogout\s*}\s*from\s*"\.\.\/mfa\/actions"/);
+ assert.match(page,/<form action=\{adminLogout\}/);
+});
