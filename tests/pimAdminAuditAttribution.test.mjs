@@ -15,8 +15,8 @@ test("all protected PIM audit writes carry the trusted AuthorizedAdmin session",
  const [actions,workflow]=await Promise.all([read("app/admin/products/[id]/actions.ts"),read("lib/pim/workflow.ts")]);
  assert.match(actions,/adminSessionId:admin\.sessionId/);
  assert.doesNotMatch(actions,/formData\.get\(["']adminSessionId|formData\.get\(["']admin_session_id/);
- assert.equal((workflow.match(/insert into pim_audit_log/g)??[]).length,2);
- assert.equal((workflow.match(/admin_session_id/g)??[]).length,2);
+ assert.equal((workflow.match(/insert into pim_audit_log/g)??[]).length,3);
+ assert.equal((workflow.match(/admin_session_id/g)??[]).length,3);
  assert.match(workflow,/adminSessionId:string/);
 });
 

@@ -5,8 +5,10 @@ import { getDatabase, type PersiDatabase } from "@/lib/db";
 import {
   pimEditorialDraftSchema,
   pimWorkflowActionSchema,
+  pimConflictResolutionSchema,
   type PimEditorialDraftInput,
   type PimWorkflowActionInput,
+  type PimConflictResolutionInput,
 } from "@/lib/validation/pimEditorial";
 import {assertProfileApprovalAllowed,assertSuggestionDecisionAllowed} from "@/lib/pim/conflict-policy";
 
@@ -19,6 +21,16 @@ type ProfileLock = { productId:string; workflowStatus:EditorialStatus; version:s
 export class PimConcurrencyError extends Error {
   readonly code = "PIM_STALE_VERSION";
   constructor() { super("Este produto foi alterado desde que você abriu a página."); }
+}
+
+export class PimConflictAlreadyResolvedError extends Error {
+  readonly code = "PIM_CONFLICT_ALREADY_RESOLVED";
+  constructor() { super("Este conflito já foi resolvido por outra pessoa."); }
+}
+
+export class PimConflictNotFoundError extends Error {
+  readonly code = "PIM_CONFLICT_NOT_FOUND";
+  constructor() { super("Conflito não encontrado."); }
 }
 
 function requireActor(actorReference:string) {
@@ -140,5 +152,25 @@ export async function decidePimSuggestion(input:{suggestionId:string;decision:Pi
     await tx.execute(sql`insert into pim_audit_log(product_id,entity_type,entity_id,field_name,previous_value,new_value,source,actor_reference,operation,reason,actor_identity_provider,actor_identity_subject,admin_session_id,admin_membership_id,effective_role,correlation_id)
       values(${suggestion.product_id}::uuid,'suggestion',${suggestion.id}::uuid,${suggestion.field_name},'needs_review',${input.decision},'manual',${actor},${`suggestion_${input.decision}`},${input.reason??null},${input.auditContext?.identityProvider??null},${input.auditContext?.identitySubject??null},${input.auditContext?.adminSessionId??null}::uuid,${input.auditContext?.membershipId??null}::uuid,${input.auditContext?.effectiveRole??null},${input.auditContext?.correlationId??null}::uuid)`);
     return {productId:suggestion.product_id,decision:input.decision};
+  });
+}
+
+// Resolves a public.pim_conflicts row only. It never touches pim_suggestions or
+// pim_product_profiles: the payload-level blocking flags checked by
+// assertSuggestionDecisionAllowed/assertProfileApprovalAllowed are a separate,
+// independent gate that this operation does not read or affect.
+export async function resolvePimConflict(raw:PimConflictResolutionInput,actorReference:string,context?:PimAdminAuditContext){
+  const input=pimConflictResolutionSchema.parse(raw),actor=requireActor(actorReference);
+  return getDatabase().transaction(async(tx)=>{
+    const locked=await tx.execute(sql`select id,product_id,attribute_key,status from pim_conflicts where id=${input.conflictId}::uuid for update`);
+    const conflict=(locked as unknown as Array<{id:string;product_id:string;attribute_key:string;status:string}>)[0];
+    if(!conflict)throw new PimConflictNotFoundError();
+    if(conflict.status!=="open")throw new PimConflictAlreadyResolvedError();
+    const updated=await tx.execute(sql`update pim_conflicts set status='resolved',resolved_at=now(),resolved_by=${actor}
+      where id=${input.conflictId}::uuid and status='open' returning id`);
+    if((updated as unknown as Array<{id:string}>).length!==1)throw new PimConflictAlreadyResolvedError();
+    await tx.execute(sql`insert into pim_audit_log(product_id,entity_type,entity_id,field_name,previous_value,new_value,source,actor_reference,operation,reason,actor_identity_provider,actor_identity_subject,admin_session_id,admin_membership_id,effective_role,correlation_id)
+      values(${conflict.product_id}::uuid,'conflict',${conflict.id}::uuid,${conflict.attribute_key},'open','resolved','manual',${actor},'CONFLICT_RESOLVED',${input.reason},${context?.identityProvider??null},${context?.identitySubject??null},${context?.adminSessionId??null}::uuid,${context?.membershipId??null}::uuid,${context?.effectiveRole??null},${context?.correlationId??null}::uuid)`);
+    return {conflictId:conflict.id,productId:conflict.product_id,status:"resolved" as const};
   });
 }
