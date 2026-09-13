@@ -7,7 +7,18 @@ export type VerifiedAdminIdentity = {
   identityProvider: "supabase_auth";
   identitySubject: string;
   assurance: AdminMfaAssurance;
+  displayName: string | null;
 };
+
+// Display-only, never used for authorization: authorization stays keyed on
+// identitySubject (the UUID) via admin_memberships/admin_sessions exclusively.
+function friendlyDisplayName(user: { email?: string | null; user_metadata?: Record<string, unknown> | null }): string | null {
+  const metadataName = user.user_metadata?.full_name ?? user.user_metadata?.name;
+  if (typeof metadataName === "string" && metadataName.trim()) return metadataName.trim();
+  const email = user.email?.trim();
+  if (email) return email.split("@")[0] || email;
+  return null;
+}
 
 export async function verifyAdminIdentity(
   client?: SupabaseClient,
@@ -22,6 +33,7 @@ export async function verifyAdminIdentity(
     identityProvider: "supabase_auth",
     identitySubject: userData.user.id,
     assurance,
+    displayName: friendlyDisplayName(userData.user),
   };
 }
 

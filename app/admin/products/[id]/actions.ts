@@ -3,18 +3,21 @@ import {revalidatePath} from "next/cache";
 import {AdminAuthorizationError,requireAdminPermission,type AuthorizedAdmin} from "@/lib/admin/authorization";
 import {permissionForWorkflowAction} from "@/lib/admin/permissions";
 import {decidePimConflictAttribute,decidePimSuggestion,PimConcurrencyError,PimConflictAlreadyResolvedError,PimConflictInvalidValueError,PimConflictNotFoundError,resolvePimConflict,savePimEditorialDraft,transitionPimEditorial,type PimDecision,type PimAdminAuditContext} from "@/lib/pim/workflow";
+import {reviewPimAttribute,PimAttributeNotFoundError,PimAttributeInvalidSelectionError} from "@/lib/pim/attribute-review";
 
 export type PimActionState={ok:boolean;code?:string;error?:string;correlationId?:string};
 const list=(value:FormDataEntryValue|null)=>String(value??"").split(/\r?\n/).map(item=>item.trim()).filter(Boolean);
 const auditContext=(admin:AuthorizedAdmin):PimAdminAuditContext=>({identityProvider:admin.identityProvider,identitySubject:admin.identitySubject,adminSessionId:admin.sessionId,membershipId:admin.membershipId,effectiveRole:admin.role,correlationId:admin.correlationId});
 function safeFailure(error:unknown):PimActionState{
  const correlationId=error instanceof AdminAuthorizationError?error.correlationId:crypto.randomUUID();
- const code=error instanceof AdminAuthorizationError?error.code:error instanceof PimConcurrencyError||error instanceof PimConflictAlreadyResolvedError||error instanceof PimConflictNotFoundError||error instanceof PimConflictInvalidValueError?error.code:"PIM_MUTATION_FAILED";
+ const code=error instanceof AdminAuthorizationError?error.code:error instanceof PimConcurrencyError||error instanceof PimConflictAlreadyResolvedError||error instanceof PimConflictNotFoundError||error instanceof PimConflictInvalidValueError||error instanceof PimAttributeNotFoundError||error instanceof PimAttributeInvalidSelectionError?error.code:"PIM_MUTATION_FAILED";
  console.error("PIM_ADMIN_MUTATION_FAILED",{correlationId,code});
  const message=error instanceof PimConcurrencyError?"Este produto foi alterado. Atualize a página e tente novamente."
   :error instanceof PimConflictAlreadyResolvedError?"Este conflito já foi resolvido por outra pessoa. Atualize a página."
   :error instanceof PimConflictNotFoundError?"Conflito não encontrado. Atualize a página."
   :error instanceof PimConflictInvalidValueError?"O valor selecionado não é mais válido para este conflito. Atualize a página."
+  :error instanceof PimAttributeNotFoundError?"Atributo não encontrado. Atualize a página."
+  :error instanceof PimAttributeInvalidSelectionError?"A seleção não corresponde aos valores reais deste atributo. Atualize a página."
   :"Não foi possível concluir a operação.";
  return{ok:false,code,error:message,correlationId};
 }
@@ -34,4 +37,7 @@ export async function resolveConflict(_state:PimActionState,formData:FormData):P
 }
 export async function decideConflictAttribute(_state:PimActionState,formData:FormData):Promise<PimActionState>{
  try{const admin=await requireAdminPermission("pim.conflict.resolve",{rateLimit:true}),result=await decidePimConflictAttribute({conflictId:String(formData.get("conflictId")??""),attributeValueId:String(formData.get("attributeValueId")??""),reason:String(formData.get("reason")??"")},admin.actorReference,auditContext(admin));revalidatePath(`/admin/products/${result.productId}`);revalidatePath("/admin/products");revalidatePath("/admin/pim");return{ok:true,correlationId:admin.correlationId}}catch(error){return safeFailure(error)}
+}
+export async function reviewAttribute(_state:PimActionState,formData:FormData):Promise<PimActionState>{
+ try{const admin=await requireAdminPermission("pim.attribute.review",{rateLimit:true}),result=await reviewPimAttribute({productId:String(formData.get("productId")??""),attributeId:String(formData.get("attributeId")??""),approvedAttributeValueIds:formData.getAll("approvedAttributeValueIds").map(String),rejectedAttributeValueIds:formData.getAll("rejectedAttributeValueIds").map(String),reason:String(formData.get("reason")??"")},admin.actorReference,auditContext(admin));revalidatePath(`/admin/products/${result.productId}`);revalidatePath("/admin/products");revalidatePath("/admin/pim");return{ok:true,correlationId:admin.correlationId}}catch(error){return safeFailure(error)}
 }

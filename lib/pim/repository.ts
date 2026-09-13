@@ -9,13 +9,17 @@ export type PimStatus = (typeof PIM_STATUSES)[number];
 
 export type PimProductFilters = { query?: string; brand?: string; category?: string; status?: string; image?: string; gtin?: string; issue?: string; suggestions?: string; page?: number; pageSize?: number };
 export type PimProductListItem = { id:string; name:string; sku:string; gtin:string|null; brand:string|null; category:string|null; categoryIsFallback:boolean; imageUrl:string|null; priceMinor:string|null; currency:string|null; stock:string|null; status:PimStatus; pendingCount:number; hasConflict:boolean; updatedAt:Date };
-export type PimAttributeItem = { id:string; name:string; value:string; source:string; status:string; confidence:string|null };
+// reviewStatus=null means no human decision exists yet ("sem revisão") — it
+// must never be displayed or coalesced as "approved".
+export type PimAttributeValueState = { attributeValueId:string; displayValue:string; source:string; reviewStatus:"approved"|"rejected"|null; reviewedBy:string|null; reviewedAt:Date|null };
+export type PimAttributeGroup = { attributeId:string; attributeName:string; cardinality:"single"|"multiple"; hasOpenConflict:boolean; values:PimAttributeValueState[] };
+export type PimAttributeSummary = { totalAttributes:number; reviewedAttributes:number; unreviewedAttributes:number; approvedValues:number; rejectedValues:number; openAttributeConflicts:number };
 export type PimEditorialContent = { commercialName:string|null; shortDescription:string|null; description:string|null; bulletPoints:string[]; application:string|null; specifications:string|null; seoTitle:string|null; metaDescription:string|null; searchTerms:string[]; imageAltText:string|null };
 export type PimAuditItem = { id:string; operation:string; actorReference:string; reason:string|null; createdAt:Date };
 export type PimSuggestionItem={id:string;fieldName:string;value:string;source:string;status:string;confidence:string|null;suggestionType:string;provider:string;modelVersion:string;promptVersion:string;sourceFingerprint:string;evidence:string|null;evidenceReferences:Array<{id?:string;attribute?:string;value?:string;sourceType?:string;sourceReference?:string;rawValue?:string;normalizedValue?:string}>;payload:Record<string,unknown>;inputTokens:number|null;outputTokens:number|null;estimatedCostMinor:string|null;createdAt:Date;supersededAt:Date|null};
 export type PimMediaItem={id:string;url:string;role:string;altText:string|null;sortOrder:number};
 export type PimConflictItem={id:string;attributeKey:string;conflictType:string;status:string;detectorVersion:string;metadata:{values?:string[];evidence?:Array<{sourceType:string;sourceReference:string;rawValue:string;normalizedValue:string}>};createdAt:Date;resolvedAt:Date|null;resolvedBy:string|null;attributeDecision:{attributeId:string;attributeName:string;candidates:AttributeConflictCandidate[]}|null};
-export type PimProductDetail = PimProductListItem & { slug:string; sourceShortDescription:string|null; sourceDescription:string|null; salePriceMinor:string|null; source:string; lastSyncedAt:Date|null; version:string; draft:PimEditorialContent; approved:PimEditorialContent|null; attributes:PimAttributeItem[]; conflicts:PimConflictItem[]; suggestions:PimSuggestionItem[]; history:PimAuditItem[]; media:PimMediaItem[] };
+export type PimProductDetail = PimProductListItem & { slug:string; sourceShortDescription:string|null; sourceDescription:string|null; salePriceMinor:string|null; source:string; lastSyncedAt:Date|null; version:string; draft:PimEditorialContent; approved:PimEditorialContent|null; attributeGroups:PimAttributeGroup[]; attributeSummary:PimAttributeSummary; conflicts:PimConflictItem[]; suggestions:PimSuggestionItem[]; history:PimAuditItem[]; media:PimMediaItem[] };
 export type PimQueueCounts = { needsEnrichment:number; draft:number; needsReview:number; rejected:number; aiSuggested:number; ambiguous:number; unmapped:number; missingData:number; readyForApproval:number; approved:number };
 export type PimDashboardCounts={products:number;productsWithSuggestions:number;needsReview:number;pendingSuggestions:number;conflicts:number;withoutImage:number;drafts:number;inReview:number;approved:number;primaryCategoryNull:number};
 
@@ -79,17 +83,34 @@ export async function getPimProduct(id:string):Promise<PimProductDetail|null>{
     left join lateral (select sum(x.quantity_available)::text quantity_available from inventory_levels x where x.product_variant_id=v.id) il on true
     left join lateral (select x.source_changed_at from external_mappings x where x.internal_id=p.id and x.entity_type='product' order by x.updated_at desc limit 1) em on true where p.id=${id}::uuid limit 1`);
   const product=(rows as unknown as PimProductDetail[])[0]; if(!product)return null;
-  const attributes=await db.execute(sql`select av.id,a.name,av.display_value value,coalesce(r.source::text,'woocommerce') source,coalesce(r.status::text,'approved') status,r.confidence::text confidence
+  const attributeRows=await db.execute(sql`select a.id "attributeId",a.name "attributeName",a.cardinality::text cardinality,
+      av.id "attributeValueId",av.display_value "displayValue",coalesce(r.source::text,'woocommerce') source,
+      r.status::text "reviewStatus",r.reviewed_by "reviewedBy",r.reviewed_at "reviewedAt"
     from product_attribute_values pav join attributes a on a.id=pav.attribute_id join attribute_values av on av.id=pav.attribute_value_id
     left join pim_attribute_reviews r on r.product_id=pav.product_id and r.attribute_id=pav.attribute_id and r.attribute_value_id=pav.attribute_value_id
-    where pav.product_id=${id}::uuid order by a.sort_order,a.name,av.display_value`);
+    where pav.product_id=${id}::uuid order by a.sort_order,a.name,av.display_value`) as unknown as Array<{attributeId:string;attributeName:string;cardinality:string;attributeValueId:string;displayValue:string;source:string;reviewStatus:"approved"|"rejected"|null;reviewedBy:string|null;reviewedAt:Date|null}>;
   const suggestions=await db.execute(sql`select id,field_name "fieldName",suggested_value value,source::text,status::text,confidence::text,suggestion_type "suggestionType",provider,model_version "modelVersion",prompt_version "promptVersion",source_fingerprint "sourceFingerprint",evidence,evidence_references "evidenceReferences",payload,input_tokens "inputTokens",output_tokens "outputTokens",estimated_cost_minor::text "estimatedCostMinor",created_at "createdAt",superseded_at "supersededAt" from pim_suggestions where product_id=${id}::uuid order by created_at desc`);
-  product.attributes=attributes as unknown as PimAttributeItem[];
   const conflicts=await db.execute(sql`select id,attribute_key "attributeKey",conflict_type "conflictType",status,detector_version "detectorVersion",metadata,created_at "createdAt",resolved_at "resolvedAt",resolved_by "resolvedBy" from pim_conflicts where product_id=${id}::uuid order by (status='open') desc,created_at,id`);
   product.conflicts=await Promise.all((conflicts as unknown as Omit<PimConflictItem,"attributeDecision">[]).map(async(conflict)=>{
     const match=await findConflictAttributeCandidates(db,id,conflict.attributeKey);
     return {...conflict,attributeDecision:match?{attributeId:match.attributeId,attributeName:match.attributeName,candidates:match.candidates}:null};
   }));
+  const openConflictAttributeIds=new Set(product.conflicts.filter(c=>c.status==="open"&&c.attributeDecision).map(c=>c.attributeDecision!.attributeId));
+  const groups=new Map<string,PimAttributeGroup>();
+  for(const row of attributeRows){
+    const group=groups.get(row.attributeId)??{attributeId:row.attributeId,attributeName:row.attributeName,cardinality:row.cardinality==="multiple"?"multiple":"single",hasOpenConflict:openConflictAttributeIds.has(row.attributeId),values:[]};
+    group.values.push({attributeValueId:row.attributeValueId,displayValue:row.displayValue,source:row.source,reviewStatus:row.reviewStatus,reviewedBy:row.reviewedBy,reviewedAt:row.reviewedAt});
+    groups.set(row.attributeId,group);
+  }
+  product.attributeGroups=[...groups.values()];
+  product.attributeSummary={
+    totalAttributes:product.attributeGroups.length,
+    reviewedAttributes:product.attributeGroups.filter(g=>g.values.every(v=>v.reviewStatus!==null)).length,
+    unreviewedAttributes:product.attributeGroups.filter(g=>g.values.some(v=>v.reviewStatus===null)).length,
+    approvedValues:product.attributeGroups.reduce((sum,g)=>sum+g.values.filter(v=>v.reviewStatus==="approved").length,0),
+    rejectedValues:product.attributeGroups.reduce((sum,g)=>sum+g.values.filter(v=>v.reviewStatus==="rejected").length,0),
+    openAttributeConflicts:openConflictAttributeIds.size,
+  };
   product.suggestions=suggestions as unknown as PimSuggestionItem[];
   const history=await db.execute(sql`select id,operation,actor_reference "actorReference",reason,created_at "createdAt" from pim_audit_log
     where product_id=${id}::uuid order by created_at desc,id desc limit 100`);

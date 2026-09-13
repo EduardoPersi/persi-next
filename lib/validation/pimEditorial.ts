@@ -37,7 +37,19 @@ export const pimConflictAttributeDecisionSchema = z.object({
   reason: z.string().trim().min(10).max(1_000),
 }).strict();
 
+const uniqueUuidList = (max: number) => z.array(z.string().uuid()).max(max).transform((items) => [...new Set(items)]);
+
+export const pimAttributeDecisionSchema = z.object({
+  productId: z.string().uuid(),
+  attributeId: z.string().uuid(),
+  approvedAttributeValueIds: uniqueUuidList(50),
+  rejectedAttributeValueIds: uniqueUuidList(50),
+  reason: z.string().trim().min(10).max(1_000),
+}).strict()
+  .refine((input) => input.approvedAttributeValueIds.every((id) => !input.rejectedAttributeValueIds.includes(id)), "Um valor não pode ser aprovado e rejeitado ao mesmo tempo.");
+
 export type PimEditorialDraftInput = z.infer<typeof pimEditorialDraftSchema>;
 export type PimWorkflowActionInput = z.infer<typeof pimWorkflowActionSchema>;
 export type PimConflictResolutionInput = z.infer<typeof pimConflictResolutionSchema>;
 export type PimConflictAttributeDecisionInput = z.infer<typeof pimConflictAttributeDecisionSchema>;
+export type PimAttributeDecisionInput = z.infer<typeof pimAttributeDecisionSchema>;

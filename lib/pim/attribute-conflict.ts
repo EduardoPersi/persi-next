@@ -50,3 +50,32 @@ export async function findConflictAttributeCandidates(executor: Executor, produc
     candidates: rows.map((row) => ({ attributeValueId: row.attributeValueId, displayValue: row.displayValue, reviewStatus: row.reviewStatus })),
   };
 }
+
+export type AttributeCandidates = { attributeId: string; attributeName: string; cardinality: "single" | "multiple"; candidates: AttributeConflictCandidate[] };
+
+// Read-only: lists every real product_attribute_values row for one
+// (product, attribute) pair, regardless of whether a pim_conflicts row
+// exists. Used by the general attribute review workflow (A3.4), which must
+// work even when there is no conflict to resolve.
+export async function listAttributeCandidates(executor: Executor, productId: string, attributeId: string): Promise<AttributeCandidates | null> {
+  const rows = (await executor.execute(sql`
+    select a.id::text as "attributeId", a.name as "attributeName", a.cardinality::text as cardinality,
+      av.id::text as "attributeValueId", av.display_value as "displayValue",
+      r.status::text as "reviewStatus"
+    from public.product_attribute_values pav
+    join public.attributes a on a.id = pav.attribute_id
+    join public.attribute_values av on av.id = pav.attribute_value_id
+    left join public.pim_attribute_reviews r
+      on r.product_id = pav.product_id and r.attribute_id = pav.attribute_id and r.attribute_value_id = pav.attribute_value_id
+    where pav.product_id = ${productId}::uuid and pav.attribute_id = ${attributeId}::uuid
+    order by av.display_value
+  `)) as unknown as Array<{ attributeId: string; attributeName: string; cardinality: string; attributeValueId: string; displayValue: string; reviewStatus: string | null }>;
+
+  if (rows.length === 0) return null;
+  return {
+    attributeId: rows[0].attributeId,
+    attributeName: rows[0].attributeName,
+    cardinality: rows[0].cardinality === "multiple" ? "multiple" : "single",
+    candidates: rows.map((row) => ({ attributeValueId: row.attributeValueId, displayValue: row.displayValue, reviewStatus: row.reviewStatus })),
+  };
+}

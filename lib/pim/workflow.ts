@@ -41,7 +41,7 @@ export class PimConflictInvalidValueError extends Error {
   constructor() { super("O valor selecionado não corresponde às evidências deste conflito. Atualize a página."); }
 }
 
-function requireActor(actorReference:string) {
+export function requireActor(actorReference:string) {
   const actor=actorReference.trim();
   if(!actor || actor.length>200) throw new Error("Ator administrativo inválido.");
   return actor;
