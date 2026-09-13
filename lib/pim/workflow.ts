@@ -6,11 +6,14 @@ import {
   pimEditorialDraftSchema,
   pimWorkflowActionSchema,
   pimConflictResolutionSchema,
+  pimConflictAttributeDecisionSchema,
   type PimEditorialDraftInput,
   type PimWorkflowActionInput,
   type PimConflictResolutionInput,
+  type PimConflictAttributeDecisionInput,
 } from "@/lib/validation/pimEditorial";
 import {assertProfileApprovalAllowed,assertSuggestionDecisionAllowed} from "@/lib/pim/conflict-policy";
+import {findConflictAttributeCandidates} from "@/lib/pim/attribute-conflict";
 
 export type PimDecision = "approved" | "rejected";
 export type PimAdminAuditContext={identityProvider:string;identitySubject:string;adminSessionId:string;membershipId:string;effectiveRole:string;correlationId:string};
@@ -31,6 +34,11 @@ export class PimConflictAlreadyResolvedError extends Error {
 export class PimConflictNotFoundError extends Error {
   readonly code = "PIM_CONFLICT_NOT_FOUND";
   constructor() { super("Conflito não encontrado."); }
+}
+
+export class PimConflictInvalidValueError extends Error {
+  readonly code = "PIM_CONFLICT_INVALID_VALUE";
+  constructor() { super("O valor selecionado não corresponde às evidências deste conflito. Atualize a página."); }
 }
 
 function requireActor(actorReference:string) {
@@ -172,5 +180,46 @@ export async function resolvePimConflict(raw:PimConflictResolutionInput,actorRef
     await tx.execute(sql`insert into pim_audit_log(product_id,entity_type,entity_id,field_name,previous_value,new_value,source,actor_reference,operation,reason,actor_identity_provider,actor_identity_subject,admin_session_id,admin_membership_id,effective_role,correlation_id)
       values(${conflict.product_id}::uuid,'conflict',${conflict.id}::uuid,${conflict.attribute_key},'open','resolved','manual',${actor},'CONFLICT_RESOLVED',${input.reason},${context?.identityProvider??null},${context?.identitySubject??null},${context?.adminSessionId??null}::uuid,${context?.membershipId??null}::uuid,${context?.effectiveRole??null},${context?.correlationId??null}::uuid)`);
     return {conflictId:conflict.id,productId:conflict.product_id,status:"resolved" as const};
+  });
+}
+
+// Semantic variant of resolvePimConflict for conflicts that correspond to a
+// structured attribute with two or more competing product_attribute_values
+// candidates (e.g. two sources each assigning a different single-value
+// color). Recording status='resolved' alone is not enough in that case: the
+// UI must stop showing every competing value as "Aprovado no PIM". This
+// records the human decision in public.pim_attribute_reviews — the table
+// already designed for exactly this — instead of deleting or overwriting
+// product_attribute_values, so every candidate and its evidence stays
+// intact and queryable.
+export async function decidePimConflictAttribute(raw:PimConflictAttributeDecisionInput,actorReference:string,context?:PimAdminAuditContext){
+  const input=pimConflictAttributeDecisionSchema.parse(raw),actor=requireActor(actorReference);
+  return getDatabase().transaction(async(tx)=>{
+    const locked=await tx.execute(sql`select id,product_id,attribute_key,status from pim_conflicts where id=${input.conflictId}::uuid for update`);
+    const conflict=(locked as unknown as Array<{id:string;product_id:string;attribute_key:string;status:string}>)[0];
+    if(!conflict)throw new PimConflictNotFoundError();
+    if(conflict.status!=="open")throw new PimConflictAlreadyResolvedError();
+
+    const match=await findConflictAttributeCandidates(tx,conflict.product_id,conflict.attribute_key);
+    if(!match||match.candidates.length<2)throw new PimConflictInvalidValueError();
+    const chosen=match.candidates.find(candidate=>candidate.attributeValueId===input.attributeValueId);
+    if(!chosen)throw new PimConflictInvalidValueError();
+
+    for(const candidate of match.candidates){
+      const approved=candidate.attributeValueId===input.attributeValueId;
+      await tx.execute(sql`insert into pim_attribute_reviews(product_id,attribute_id,attribute_value_id,source,status,reviewed_by,reviewed_at)
+        values(${conflict.product_id}::uuid,${match.attributeId}::uuid,${candidate.attributeValueId}::uuid,'manual',${approved?"approved":"rejected"},${actor},now())
+        on conflict(product_id,attribute_id,attribute_value_id) do update set status=excluded.status,reviewed_by=excluded.reviewed_by,reviewed_at=excluded.reviewed_at,updated_at=now()`);
+    }
+
+    const updated=await tx.execute(sql`update pim_conflicts set status='resolved',resolved_at=now(),resolved_by=${actor}
+      where id=${input.conflictId}::uuid and status='open' returning id`);
+    if((updated as unknown as Array<{id:string}>).length!==1)throw new PimConflictAlreadyResolvedError();
+
+    const alternatives=match.candidates.map(candidate=>candidate.displayValue);
+    await tx.execute(sql`insert into pim_audit_log(product_id,entity_type,entity_id,field_name,previous_value,new_value,source,actor_reference,operation,reason,actor_identity_provider,actor_identity_subject,admin_session_id,admin_membership_id,effective_role,correlation_id)
+      values(${conflict.product_id}::uuid,'conflict',${conflict.id}::uuid,${conflict.attribute_key},${JSON.stringify(alternatives)},${chosen.displayValue},'manual',${actor},'CONFLICT_ATTRIBUTE_DECIDED',${input.reason},${context?.identityProvider??null},${context?.identitySubject??null},${context?.adminSessionId??null}::uuid,${context?.membershipId??null}::uuid,${context?.effectiveRole??null},${context?.correlationId??null}::uuid)`);
+
+    return {conflictId:conflict.id,productId:conflict.product_id,attributeId:match.attributeId,chosenAttributeValueId:chosen.attributeValueId,status:"resolved" as const};
   });
 }

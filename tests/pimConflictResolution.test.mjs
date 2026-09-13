@@ -94,7 +94,8 @@ test("no migration was touched or created for this phase; historical migrations 
 test("UI: open conflicts show a gated, confirmable resolution action; resolved conflicts only show status",async()=>{
  const [page,component]=await Promise.all([read("app/admin/products/[id]/page.tsx"),read("components/admin/PimConflictResolution.tsx")]);
  assert.match(page,/const open=conflict\.status==="open"/);
- assert.match(page,/\{open&&canResolveConflicts&&<PimConflictResolution/);
+ assert.match(page,/open&&canResolveConflicts&&\(decision&&decision\.candidates\.length>=2/);
+ assert.match(page,/:<PimConflictResolution conflictId=\{conflict\.id\} attributeKey=\{conflict\.attributeKey\}\/>\)/);
  assert.match(page,/Conflito aberto/);assert.match(page,/Conflito resolvido/);
  assert.match(page,/roleHasPermission\(admin\.role,"pim\.conflict\.resolve"\)/);
  assert.match(component,/useState/);assert.match(component,/Cancelar/);

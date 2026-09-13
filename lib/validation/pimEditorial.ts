@@ -31,6 +31,13 @@ export const pimConflictResolutionSchema = z.object({
   reason: z.string().trim().min(10).max(1_000),
 }).strict();
 
+export const pimConflictAttributeDecisionSchema = z.object({
+  conflictId: z.string().uuid(),
+  attributeValueId: z.string().uuid(),
+  reason: z.string().trim().min(10).max(1_000),
+}).strict();
+
 export type PimEditorialDraftInput = z.infer<typeof pimEditorialDraftSchema>;
 export type PimWorkflowActionInput = z.infer<typeof pimWorkflowActionSchema>;
 export type PimConflictResolutionInput = z.infer<typeof pimConflictResolutionSchema>;
+export type PimConflictAttributeDecisionInput = z.infer<typeof pimConflictAttributeDecisionSchema>;

@@ -2,6 +2,7 @@ import "server-only";
 
 import { sql, type SQL } from "drizzle-orm";
 import { getDatabase } from "@/lib/db";
+import { findConflictAttributeCandidates, type AttributeConflictCandidate } from "./attribute-conflict";
 
 export const PIM_STATUSES = ["raw", "normalized", "needs_enrichment", "draft", "ai_suggested", "needs_review", "approved", "rejected", "published"] as const;
 export type PimStatus = (typeof PIM_STATUSES)[number];
@@ -13,7 +14,7 @@ export type PimEditorialContent = { commercialName:string|null; shortDescription
 export type PimAuditItem = { id:string; operation:string; actorReference:string; reason:string|null; createdAt:Date };
 export type PimSuggestionItem={id:string;fieldName:string;value:string;source:string;status:string;confidence:string|null;suggestionType:string;provider:string;modelVersion:string;promptVersion:string;sourceFingerprint:string;evidence:string|null;evidenceReferences:Array<{id?:string;attribute?:string;value?:string;sourceType?:string;sourceReference?:string;rawValue?:string;normalizedValue?:string}>;payload:Record<string,unknown>;inputTokens:number|null;outputTokens:number|null;estimatedCostMinor:string|null;createdAt:Date;supersededAt:Date|null};
 export type PimMediaItem={id:string;url:string;role:string;altText:string|null;sortOrder:number};
-export type PimConflictItem={id:string;attributeKey:string;conflictType:string;status:string;detectorVersion:string;metadata:{values?:string[];evidence?:Array<{sourceType:string;sourceReference:string;rawValue:string;normalizedValue:string}>};createdAt:Date;resolvedAt:Date|null;resolvedBy:string|null};
+export type PimConflictItem={id:string;attributeKey:string;conflictType:string;status:string;detectorVersion:string;metadata:{values?:string[];evidence?:Array<{sourceType:string;sourceReference:string;rawValue:string;normalizedValue:string}>};createdAt:Date;resolvedAt:Date|null;resolvedBy:string|null;attributeDecision:{attributeId:string;attributeName:string;candidates:AttributeConflictCandidate[]}|null};
 export type PimProductDetail = PimProductListItem & { slug:string; sourceShortDescription:string|null; sourceDescription:string|null; salePriceMinor:string|null; source:string; lastSyncedAt:Date|null; version:string; draft:PimEditorialContent; approved:PimEditorialContent|null; attributes:PimAttributeItem[]; conflicts:PimConflictItem[]; suggestions:PimSuggestionItem[]; history:PimAuditItem[]; media:PimMediaItem[] };
 export type PimQueueCounts = { needsEnrichment:number; draft:number; needsReview:number; rejected:number; aiSuggested:number; ambiguous:number; unmapped:number; missingData:number; readyForApproval:number; approved:number };
 export type PimDashboardCounts={products:number;productsWithSuggestions:number;needsReview:number;pendingSuggestions:number;conflicts:number;withoutImage:number;drafts:number;inReview:number;approved:number;primaryCategoryNull:number};
@@ -85,7 +86,10 @@ export async function getPimProduct(id:string):Promise<PimProductDetail|null>{
   const suggestions=await db.execute(sql`select id,field_name "fieldName",suggested_value value,source::text,status::text,confidence::text,suggestion_type "suggestionType",provider,model_version "modelVersion",prompt_version "promptVersion",source_fingerprint "sourceFingerprint",evidence,evidence_references "evidenceReferences",payload,input_tokens "inputTokens",output_tokens "outputTokens",estimated_cost_minor::text "estimatedCostMinor",created_at "createdAt",superseded_at "supersededAt" from pim_suggestions where product_id=${id}::uuid order by created_at desc`);
   product.attributes=attributes as unknown as PimAttributeItem[];
   const conflicts=await db.execute(sql`select id,attribute_key "attributeKey",conflict_type "conflictType",status,detector_version "detectorVersion",metadata,created_at "createdAt",resolved_at "resolvedAt",resolved_by "resolvedBy" from pim_conflicts where product_id=${id}::uuid order by (status='open') desc,created_at,id`);
-  product.conflicts=conflicts as unknown as PimConflictItem[];
+  product.conflicts=await Promise.all((conflicts as unknown as Omit<PimConflictItem,"attributeDecision">[]).map(async(conflict)=>{
+    const match=await findConflictAttributeCandidates(db,id,conflict.attributeKey);
+    return {...conflict,attributeDecision:match?{attributeId:match.attributeId,attributeName:match.attributeName,candidates:match.candidates}:null};
+  }));
   product.suggestions=suggestions as unknown as PimSuggestionItem[];
   const history=await db.execute(sql`select id,operation,actor_reference "actorReference",reason,created_at "createdAt" from pim_audit_log
     where product_id=${id}::uuid order by created_at desc,id desc limit 100`);

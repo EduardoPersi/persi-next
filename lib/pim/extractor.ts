@@ -6,7 +6,7 @@ type Observation={attribute:PimAttributeCode;raw:string;normalized:string;source
 const MATERIALS=["PVC","CPVC","porcelana","cobre","latão","aço inox","aço","alumínio","polietileno","borracha"];
 const COLORS=["branco","preto","azul","vermelho","verde","cinza","amarelo","marrom"];
 const CONNECTIONS=["soldável","roscável","rosca","engate rápido","compressão","flange"];
-const ATTRIBUTE_ALIASES:Record<string,PimAttributeCode>={cor:"color","tensão":"voltage",tensao:"voltage",corrente:"current",potência:"power",potencia:"power",bitola:"bitola",diâmetro:"diameter",diametro:"diameter",material:"material",aplicação:"application",aplicacao:"application",modelo:"model"};
+export const ATTRIBUTE_ALIASES:Record<string,PimAttributeCode>={cor:"color","tensão":"voltage",tensao:"voltage",corrente:"current",potência:"power",potencia:"power",bitola:"bitola",diâmetro:"diameter",diametro:"diameter",material:"material",aplicação:"application",aplicacao:"application",modelo:"model"};
 
 function observations(text:string,sourceType:PimEvidenceSource,sourceReference:string,base:number):Observation[]{
  const result:Observation[]=[];
