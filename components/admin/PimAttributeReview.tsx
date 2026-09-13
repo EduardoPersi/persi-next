@@ -1,12 +1,15 @@
 "use client";
 import {useActionState,useState} from "react";
+import {useRouter} from "next/navigation";
 import {reviewAttribute,type PimActionState} from "@/app/admin/products/[id]/actions";
 
 const initialState:PimActionState={ok:false};
 
-export function PimAttributeReview({productId,attributeId,attributeName,cardinality,values}:{productId:string;attributeId:string;attributeName:string;cardinality:"single"|"multiple";values:Array<{attributeValueId:string;displayValue:string;reviewStatus:"approved"|"rejected"|null}>}){
+export function PimAttributeReview({productId,attributeId,attributeName,cardinality,decisionVersion,values}:{productId:string;attributeId:string;attributeName:string;cardinality:"single"|"multiple";decisionVersion:string;values:Array<{attributeValueId:string;displayValue:string;reviewStatus:"approved"|"rejected"|null}>}){
  const [state,formAction,pending]=useActionState(reviewAttribute,initialState);
  const [confirming,setConfirming]=useState(false);
+ const router=useRouter();
+ const isStale=state.code==="PIM_ATTRIBUTE_STALE_DECISION";
  const alreadyDecided=values.some(value=>value.reviewStatus!==null);
  const [approved,setApproved]=useState<Set<string>>(()=>new Set(values.filter(value=>value.reviewStatus==="approved").map(value=>value.attributeValueId)));
 
@@ -28,6 +31,7 @@ export function PimAttributeReview({productId,attributeId,attributeName,cardinal
  return <form action={formAction} className="mt-2 rounded-lg border border-slate-300 bg-white p-3">
   <input type="hidden" name="productId" value={productId}/>
   <input type="hidden" name="attributeId" value={attributeId}/>
+  <input type="hidden" name="expectedDecisionVersion" value={decisionVersion}/>
   {values.map(value=><input key={value.attributeValueId} type="hidden" name={approved.has(value.attributeValueId)?"approvedAttributeValueIds":"rejectedAttributeValueIds"} value={value.attributeValueId}/>)}
   <p className="text-sm font-semibold text-heading">{alreadyDecided?`Alterar valor aprovado para "${attributeName}"`:`Revisar valor de "${attributeName}"`}</p>
   <fieldset className="mt-2 space-y-2">
@@ -42,10 +46,15 @@ export function PimAttributeReview({productId,attributeId,attributeName,cardinal
    <textarea name="reason" required minLength={10} maxLength={1000} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal"/>
   </label>
   <div className="mt-3 flex flex-wrap gap-2">
-   <button type="submit" disabled={pending||(cardinality==="single"&&approved.size!==1)} className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-white disabled:opacity-60">{pending?"Salvando…":actionLabel}</button>
+   <button type="submit" disabled={pending||isStale||(cardinality==="single"&&approved.size!==1)} className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-white disabled:opacity-60">{pending?"Salvando…":actionLabel}</button>
    <button type="button" onClick={()=>setConfirming(false)} className="min-h-11 rounded-lg border px-4 text-sm font-semibold">Cancelar</button>
   </div>
   {cardinality==="single"&&<p className="mt-1 text-xs text-muted">Este atributo aceita exatamente um valor aprovado.</p>}
-  {state.error&&<p role="alert" className="mt-2 text-sm text-red-700">{state.error}</p>}
+  {isStale?
+   <div role="alert" className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+    <p>{state.error}</p>
+    <button type="button" onClick={()=>router.refresh()} className="mt-2 min-h-11 rounded-lg border border-amber-400 px-4 text-sm font-semibold text-amber-900 hover:bg-amber-100">Atualizar dados</button>
+   </div>
+   :state.error&&<p role="alert" className="mt-2 text-sm text-red-700">{state.error}</p>}
  </form>;
 }

@@ -45,6 +45,7 @@ export const pimAttributeDecisionSchema = z.object({
   approvedAttributeValueIds: uniqueUuidList(50),
   rejectedAttributeValueIds: uniqueUuidList(50),
   reason: z.string().trim().min(10).max(1_000),
+  expectedDecisionVersion: z.coerce.bigint().min(BigInt(0)),
 }).strict()
   .refine((input) => input.approvedAttributeValueIds.every((id) => !input.rejectedAttributeValueIds.includes(id)), "Um valor não pode ser aprovado e rejeitado ao mesmo tempo.");
 
