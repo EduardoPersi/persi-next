@@ -34,3 +34,10 @@ test("touch cannot resurrect or extend absolute TTL and revocation is monotonic"
  assert.match(session,/revoked_at is null and expires_at>now\(\) and idle_expires_at>now\(\)/);
  assert.match(session,/least\(expires_at,now\(\)/);assert.match(session,/revoked_at=coalesce\(revoked_at,now\(\)\)/);
 });
+test("admin layout exposes the canonical logout action and creates no parallel mechanism",async()=>{
+ const layout=await read("app/admin/layout.tsx");
+ assert.match(layout,/import\s*{\s*adminLogout\s*}\s*from\s*"\.\/mfa\/actions"/);
+ assert.match(layout,/<form action=\{adminLogout\}>/);
+ assert.match(layout,/>Sair</);
+ assert.doesNotMatch(layout,/signOut|window\.location|fetch\(|createServerClient|revokeCurrentAdminSession/);
+});
