@@ -1,9 +1,20 @@
 import Script from "next/script";
+import { getRuntimeSafetyPolicy } from "@/lib/runtime/runtime-safety-policy";
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 
+// A3.6-D1.6 Section 21: defense in depth beyond "just leave the env var
+// blank" (D1.5's original recommendation) -- even if NEXT_PUBLIC_GTM_ID is
+// accidentally inherited by a staging deploy (e.g. copied wholesale from
+// production's real env), this runtime check still prevents the container
+// from loading. Production behavior is unchanged (allowProductionAnalytics
+// is true there, same as today's unconditional load).
+function analyticsAllowed(): boolean {
+  return getRuntimeSafetyPolicy().allowProductionAnalytics;
+}
+
 export function GoogleTagManagerScript() {
-  if (!GTM_ID) return null;
+  if (!GTM_ID || !analyticsAllowed()) return null;
 
   return (
     <Script id="gtm-consent-init" strategy="lazyOnload">
@@ -30,7 +41,7 @@ export function GoogleTagManagerScript() {
 }
 
 export function GoogleTagManagerNoScript() {
-  if (!GTM_ID) return null;
+  if (!GTM_ID || !analyticsAllowed()) return null;
 
   return (
     <noscript>

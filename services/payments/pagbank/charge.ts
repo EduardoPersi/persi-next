@@ -1,5 +1,6 @@
 import { buildWebhookUrl } from "../appBaseUrl.ts";
 import { PagBankPaymentError, type PagBankHttpMethod } from "./errors.ts";
+import { assertPaymentsAllowed } from "@/lib/runtime/external-write-guard";
 
 const PAGBANK_WEBHOOK_PATH = "/api/webhooks/pagbank";
 
@@ -110,6 +111,7 @@ export async function createCardCharge(
   input: CreateCardChargeInput,
   request: PagBankRequestFn = defaultPagBankRequest,
 ): Promise<CardChargeResult> {
+  assertPaymentsAllowed("pagbank", "create-card-charge");
   const order = await request<PagBankOrderResponse>("/orders", "POST", {
     reference_id: input.referenceId,
     customer: {

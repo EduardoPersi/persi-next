@@ -1,3 +1,5 @@
+import { assertExternalWriteAllowed } from "@/lib/runtime/external-write-guard";
+
 export const ACCOUNT_REST_BASE_PATH = "/wp-json/persi-account/v1";
 export const OAUTH_REST_BASE_PATH = "/wp-json/persi-auth/v1";
 export const CUSTOMER_LISTS_REST_BASE_PATH = "/wp-json/persi-headless/v1";
@@ -52,6 +54,9 @@ export async function requestAccountEndpoint(input: {
   bearerToken?: string;
   fetchImplementation?: typeof fetch;
 }): Promise<{ status: number; body: unknown; retryAfter?: string }> {
+  if (input.method !== "GET") {
+    assertExternalWriteAllowed({ integration: "account", operation: `${input.method}:${input.route}` }, "allowExternalWrites");
+  }
   const basePath = input.basePath ?? ACCOUNT_REST_BASE_PATH;
   const headers: Record<string, string> = { Accept: "application/json" };
   if (input.rawBody) headers["Content-Type"] = "application/json";

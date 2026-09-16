@@ -1,5 +1,6 @@
 import { signContactRequest, type ContactHmacConfig } from "../../lib/contact/hmac.ts";
 import type { ContactFormValues } from "../../lib/validation/contact.ts";
+import { assertMessagingAllowed } from "@/lib/runtime/external-write-guard";
 
 export type ContactMessage = Omit<ContactFormValues, "website">;
 
@@ -89,6 +90,7 @@ export async function submitContactMessage(
     hmacConfig?: ContactHmacConfig;
   } = {},
 ): Promise<ContactResult> {
+  assertMessagingAllowed("contact-form", "submit");
   const endpoint = options.endpoint ?? getContactEndpoint();
   const config = options.hmacConfig ?? getContactHmacConfig();
   const rawBody = JSON.stringify(message);

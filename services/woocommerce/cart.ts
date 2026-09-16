@@ -13,6 +13,7 @@ import type {
   CheckoutStoreAddress,
 } from "@/types/checkout";
 import { stripHtml } from "./mappers.ts";
+import { assertWooMutationAllowed } from "@/lib/runtime/external-write-guard";
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
@@ -474,6 +475,7 @@ async function cartRequest(
     body?: unknown;
   } = {},
 ): Promise<CartServiceResponse> {
+  if (options.method === "POST") assertWooMutationAllowed(`cart:${endpoint}`);
   let response: Response;
   const startedAt = performance.now();
   try {

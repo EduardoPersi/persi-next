@@ -64,6 +64,7 @@ export async function subscribeToNewsletter(
   subscription: NewsletterSubscription,
   options: { endpoint?: string; fetchImplementation?: typeof fetch; hmacConfig?: NewsletterHmacConfig } = {},
 ): Promise<NewsletterResult> {
+  assertMessagingAllowed("newsletter", "subscribe");
   const endpoint = options.endpoint ?? getNewsletterEndpoint();
   const config=options.hmacConfig??getNewsletterHmacConfig();
   const rawBody=JSON.stringify(subscription);
@@ -103,6 +104,7 @@ export async function subscribeToNewsletter(
 }
 
 export async function submitNewsletterToken(action:"confirm"|"unsubscribe",token:string,options:{fetchImplementation?:typeof fetch}={}) {
+  assertMessagingAllowed("newsletter", action);
   const endpoint=new URL(getNewsletterEndpoint());
   const path=`/wp-json/persi/v1/newsletter/${action}`;
   const rawBody=JSON.stringify({token});
@@ -111,3 +113,4 @@ export async function submitNewsletterToken(action:"confirm"|"unsubscribe",token
   return {ok:response.ok};
 }
 import { signNewsletterRequest, type NewsletterHmacConfig } from "../../lib/newsletter/hmac.ts";
+import { assertMessagingAllowed } from "@/lib/runtime/external-write-guard";

@@ -68,6 +68,7 @@ export async function subscribeToBackInStockNotification(
   subscription: StockNotificationSubscription,
   options: { endpoint?: string; fetchImplementation?: typeof fetch; hmacConfig?: StockHmacConfig } = {},
 ): Promise<StockNotificationResult> {
+  assertMessagingAllowed("stock-notification", "subscribe");
   const endpoint = options.endpoint ?? getStockNotificationEndpoint();
   const config=options.hmacConfig??getStockHmacConfig();
   const rawBody=JSON.stringify(subscription);
@@ -111,6 +112,7 @@ export async function subscribeToBackInStockNotification(
 }
 
 export async function submitStockToken(action:"confirm"|"unsubscribe",token:string,options:{fetchImplementation?:typeof fetch}={}) {
+  assertMessagingAllowed("stock-notification", action);
   const endpoint=new URL(getStockNotificationEndpoint());
   const path=`/wp-json/persi/v1/stock-notifications/${action}`;
   const rawBody=JSON.stringify({token});
@@ -119,3 +121,4 @@ export async function submitStockToken(action:"confirm"|"unsubscribe",token:stri
   return {ok:response.ok};
 }
 import { signStockRequest, type StockHmacConfig } from "../../lib/stock-notifications/hmac.ts";
+import { assertMessagingAllowed } from "@/lib/runtime/external-write-guard";

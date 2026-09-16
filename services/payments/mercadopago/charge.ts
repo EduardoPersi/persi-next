@@ -1,6 +1,7 @@
 import { detectBrazilianDocumentType } from "@/lib/validation/document.ts";
 import { buildWebhookUrl } from "../appBaseUrl.ts";
 import { MercadoPagoPaymentError, type MercadoPagoHttpMethod } from "./errors.ts";
+import { assertPaymentsAllowed } from "@/lib/runtime/external-write-guard";
 
 const MERCADOPAGO_WEBHOOK_PATH = "/api/webhooks/mercadopago";
 
@@ -100,6 +101,7 @@ export async function createCardCharge(
   idempotencyKey: string,
   request: MercadoPagoRequestFn = defaultMercadoPagoRequest,
 ): Promise<CardChargeResult> {
+  assertPaymentsAllowed("mercadopago", "create-card-charge");
   const documentType = detectBrazilianDocumentType(input.holderDocument);
   if (!documentType) {
     throw new MercadoPagoPaymentError(

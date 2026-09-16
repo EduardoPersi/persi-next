@@ -2,6 +2,7 @@ import "server-only";
 import { isTransientHttpStatus, withSingleRetry } from "@/lib/network/retry";
 import { sanitizeProviderError } from "@/lib/observability/providerError";
 import { assertExternalIoAllowed } from "@/lib/server/externalIo";
+import { assertWooMutationAllowed } from "@/lib/runtime/external-write-guard";
 import { WooCommerceRestError } from "./restError.ts";
 
 export { WooCommerceRestError };
@@ -137,6 +138,7 @@ async function restApiWrite<T>(
   method: "POST" | "PUT",
   body: unknown,
 ): Promise<T> {
+  assertWooMutationAllowed(`${method}:${endpoint}`);
   const url = getRestApiUrl(endpoint);
   const startedAt = performance.now();
 

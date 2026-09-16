@@ -48,6 +48,7 @@ import {
 import type { CartAddress } from "@/types/cart";
 import type { CheckoutStoreAddress } from "@/types/checkout";
 import type { PaymentInitiationResult } from "@/types/payments";
+import { assertCheckoutSubmissionAllowed, StagingExternalWriteBlockedError } from "@/lib/runtime/external-write-guard";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -265,6 +266,18 @@ function getErrorStatus(error: unknown): number {
 }
 
 export async function POST(request: Request) {
+  try {
+    assertCheckoutSubmissionAllowed();
+  } catch (error) {
+    if (error instanceof StagingExternalWriteBlockedError) {
+      return NextResponse.json(
+        { error: "Checkout indisponível neste ambiente de teste." },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
+
   let activeCartToken = (await cookies()).get(CART_TOKEN_COOKIE)?.value;
   const startedAt = Date.now();
   let stage: PaymentStage = "request_validation";

@@ -1,5 +1,6 @@
 import type { CheckoutStoreAddress } from "@/types/checkout";
 import { InterPaymentError, type InterHttpMethod } from "./errors.ts";
+import { assertPaymentsAllowed } from "@/lib/runtime/external-write-guard";
 
 type InterRequestFn = <T>(
   path: string,
@@ -164,6 +165,7 @@ export async function createBoletoCharge(
   request: InterRequestFn = defaultInterRequest,
   options: CreateBoletoOptions = {},
 ): Promise<BoletoCharge> {
+  assertPaymentsAllowed("banco-inter", "create-boleto-charge");
   const dueDate = getBoletoDueDate();
   const pollAttempts = options.pollAttempts ?? BOLETO_STATUS_POLL_ATTEMPTS;
   const pollIntervalMs = options.pollIntervalMs ?? BOLETO_STATUS_POLL_INTERVAL_MS;

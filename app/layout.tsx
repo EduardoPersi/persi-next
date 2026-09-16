@@ -22,6 +22,7 @@ import { CookieConsentProvider } from "@/hooks/useCookieConsent";
 import { CustomerListsProvider } from "@/lib/customer-lists/provider";
 import { NavigationProvider } from "@/components/navigation/NavigationProvider";
 import { getMegaMenuData } from "@/services/menu/menu";
+import { getRuntimeSafetyPolicy } from "@/lib/runtime/runtime-safety-policy";
 
 const PERSI_HEADER_COLOR = "#002b57";
 
@@ -39,10 +40,19 @@ const DEFAULT_DESCRIPTION =
 const DEFAULT_OG_IMAGE =
   "/images/brand/persi-materiais-eletricos-e-hidraulicos-ferramentas cabeçalho.webp";
 
+// A3.6-D1.6 Section 19/20: staging must never declare itself indexable.
+// Computed once at module load -- safe, since runtime identity does not
+// change during a running process. Production keeps its exact prior
+// metadata shape (no `robots` key at all) when indexing is allowed.
+const stagingRobotsOverride = getRuntimeSafetyPolicy().allowPublicIndexing
+  ? {}
+  : { robots: { index: false, follow: false, noarchive: true } };
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: DEFAULT_TITLE,
   description: DEFAULT_DESCRIPTION,
+  ...stagingRobotsOverride,
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

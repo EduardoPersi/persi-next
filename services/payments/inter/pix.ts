@@ -1,5 +1,6 @@
 import QRCode from "qrcode";
 import { InterPaymentError, type InterHttpMethod } from "./errors.ts";
+import { assertPaymentsAllowed } from "@/lib/runtime/external-write-guard";
 
 type InterRequestFn = <T>(
   path: string,
@@ -122,6 +123,7 @@ export async function createPixCharge(
   input: CreatePixChargeInput,
   request: InterRequestFn = defaultInterRequest,
 ): Promise<PixCharge> {
+  assertPaymentsAllowed("banco-inter", "create-pix-charge");
   const pixKey = process.env.INTER_PIX_KEY?.trim();
   if (!pixKey) {
     throw new InterPaymentError(

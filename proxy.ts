@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { AUTH_COOKIE_NAME, getExpiredAuthCookieOptions } from "@/lib/auth/cookies";
 import { getAuthRedirect, isPrivateAuthPath, isPublicAuthPath } from "@/lib/auth/middleware";
+import { isStagingRuntime } from "@/lib/runtime/runtime-environment";
+import { isStagingBasicAuthValid } from "@/lib/runtime/staging-access-guard";
 
 async function hasValidJwt(request: NextRequest): Promise<boolean> {
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
@@ -45,8 +47,35 @@ async function validateAdminSession(request: NextRequest) {
   } catch { return { valid: false, response }; }
 }
 
+// A3.6-D1.6 Section 22/23: local fallback access protection, active ONLY
+// when PERSI_RUNTIME_ENV=staging (never today's production, which has no
+// such variable set -- isStagingRuntime() is false there, so this whole
+// branch is skipped and production behavior below is unchanged). Runs
+// before every other check for a staging deploy, on every path the
+// broadened matcher now covers. Fail-closed: missing configured
+// credentials denies access (see staging-access-guard.ts), it never opens
+// staging publicly "by accident".
+function stagingAccessDeniedResponse(): NextResponse {
+  return new NextResponse("Authentication required.", {
+    status: 401,
+    headers: { "WWW-Authenticate": 'Basic realm="staging"' },
+  });
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  if (isStagingRuntime()) {
+    // No health-check path is exempted: no evidence of an existing generic
+    // health endpoint that would need bypassing Basic Auth (a specific
+    // checkout-auth health route exists but is unrelated to uptime
+    // monitoring). A future provisioning round can add a narrowly-scoped
+    // exemption if a real monitor requires one -- not guessed here.
+    if (!isStagingBasicAuthValid(request.headers.get("authorization"))) {
+      return stagingAccessDeniedResponse();
+    }
+  }
+
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
     if (PUBLIC_ADMIN_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
       const response = NextResponse.next();
@@ -68,6 +97,20 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+// A3.6-D1.6: matcher broadened from ["/entrar", "/minha-conta/:path*",
+// "/admin/:path*"] to cover the whole site (excluding Next.js' own static
+// asset internals) so the staging Basic Auth gate above can actually
+// protect every route, not just auth/admin ones. This adds one cheap,
+// synchronous isStagingRuntime() check per request in EVERY environment;
+// production's behavior for every path outside the original three patterns
+// is unchanged -- the function falls through to `if (!isPrivateAuthPath...)
+// return NextResponse.next()` exactly as it would have if the proxy had
+// never run for that path at all.
 export const config = {
-  matcher: ["/entrar", "/minha-conta/:path*", "/admin/:path*"],
+  // The broad pattern alone already covers /admin/:path* and the other two
+  // original entries; /admin/:path* is kept explicitly alongside it only
+  // because tests/pimAdminSecurity.test.mjs asserts on that literal string
+  // as documentation that admin defense-in-depth coverage is intentional,
+  // not incidental -- redundant for matching purposes, harmless to keep.
+  matcher: ["/((?!_next/static|_next/image|favicon\\.ico).*)", "/admin/:path*"],
 };
