@@ -6,14 +6,13 @@ import "server-only";
 // production. This is deploy-time/startup diagnostic, never a public
 // endpoint -- do not wire this into any app/api route.
 //
-// A3.6-D1.8-R3 narrow exception: no live channel existed to prove this for
-// the real deployed staging process (no debug endpoint, no working
-// Hostinger log/env access). A single, tightly-scoped, temporary route
-// (app/api/internal/staging/database-binding/route.ts) consumes
-// classifyDatabaseBinding() below -- staging-only (404 elsewhere), behind
-// the existing site-wide Basic Auth gate, GET-only, returning nothing but
-// the 3-value classification. Removed again once the live proof is
-// captured (see docs/pim/18, Section "Plano de prova ao vivo").
+// A3.6-D1.8-R3/R4 briefly connected this to a single, temporary,
+// staging-only, Basic-Auth-protected route (via a now-removed
+// classifyDatabaseBinding() helper) to obtain a one-time live proof, since
+// no other channel existed for the real deployed staging process. The live
+// proof succeeded (STAGING_DATABASE_BINDING=MATCH) and the route was
+// removed in R5 -- see docs/pim/18 for the full history. The rule above
+// stands again: do not wire this into any app/api route.
 
 export const EXPECTED_STAGING_PROJECT_REF = "vtrujmhhkmvjzfklzxip";
 
@@ -54,18 +53,4 @@ export function checkDatabaseBinding(databaseUrl: string | undefined = process.e
  */
 export function isPimShadowSafeToRun(databaseUrl: string | undefined = process.env.DATABASE_URL, expectedProjectRef: string = EXPECTED_STAGING_PROJECT_REF): boolean {
   return checkDatabaseBinding(databaseUrl, expectedProjectRef).matchesExpectedStaging;
-}
-
-export type DatabaseBindingClassification = "MATCH" | "WRONG" | "UNKNOWN";
-
-/**
- * A3.6-D1.8-R3: collapses DatabaseBindingCheck into the 3-state public
- * contract for the temporary diagnostic route. Never exposes `projectRef`,
- * `present`, or anything else -- callers must discard everything but this
- * string. Any inability to determine the binding (missing DATABASE_URL, or
- * present but unparseable) is UNKNOWN, never a default MATCH.
- */
-export function classifyDatabaseBinding(check: DatabaseBindingCheck): DatabaseBindingClassification {
-  if (!check.present || check.projectRef === null) return "UNKNOWN";
-  return check.matchesExpectedStaging ? "MATCH" : "WRONG";
 }

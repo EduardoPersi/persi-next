@@ -1,5 +1,142 @@
 # Existing Staging Safety Deployment (A3.6-D1.8)
 
+## Continuação R5 (cleanup forward-only do diagnóstico temporário)
+
+### Prova humana registrada (não reobtida por este agente)
+```
+STAGING_DATABASE_BINDING=MATCH
+DATABASE_BINDING_LIVE_PROVEN=YES
+DATABASE_BINDING_PROOF_SOURCE=OPERATOR_OBSERVED_LIVE_STAGING_RESPONSE
+```
+O operador confirmou manualmente que `GET` autenticado em `/api/internal/staging/database-binding`, no runtime real de `staging.persimateriais.com.br`, retornou exatamente `{"databaseBinding":"MATCH"}`. Este agente não refez a chamada, não leu `DATABASE_URL`, e não recebeu nem revelou `projectRef`, senha ou connection string.
+
+### Preflight
+`HEAD` confirmado em `104e0dea5aa550fcf92584c1c18bda9717434be0` (commit R4). Artefato R4 (`a36d18_r4_live_database_binding_proof.json`) confirmado íntegro no scratchpad **externo** da sessão (SHA256 `316be026ae2fe73ad6cc24e338b15b9e38565be8d52a1254abbad8f164fd91b7`) — não existe e nunca existiu dentro do repositório, consistente com todas as rodadas anteriores. Os 7 arquivos concorrentes permanecem preservados intocados.
+
+### Remoção da rota temporária
+`app/api/internal/staging/database-binding/route.ts` removido por completo; os diretórios agora vazios (`.../staging/database-binding`, `.../staging`) também foram removidos. Confirmado por build local (Seção 7 abaixo) que a rota não aparece mais na listagem de rotas. Nenhuma rota equivalente ou substituta foi criada — nenhuma informação de database binding volta a ser exposta por HTTP.
+
+### Auditoria de uso de `classifyDatabaseBinding` (Seção 4 da tarefa)
+Busca no repositório inteiro confirmou **um único consumidor real**: o próprio `route.ts` recém-removido (o arquivo de teste da R3 apenas exercitava a função, não é um "consumidor legítimo" no sentido da tarefa). Sem consumidor restante, a função e seu tipo `DatabaseBindingClassification` foram **removidos** de `lib/pim/publication-runtime-preflight.ts`, junto com o parágrafo de comentário que documentava a exceção temporária — substituído por uma nota histórica curta (proof concluída, rota removida em R5). `checkDatabaseBinding()` e `isPimShadowSafeToRun()` permanecem **byte-a-byte** sem alteração de semântica ou parsing.
+
+### Testes temporários (Seção 5)
+`tests/pimA36D18R3DatabaseBindingDiagnostic.test.mjs` removido por completo — todos os seus 19 testes cobriam exclusivamente `classifyDatabaseBinding` (removida) ou a estrutura/ordem fail-closed de `route.ts` (removido); nenhum deles testava um guard permanente que ficaria descoberto. A cobertura permanente de `checkDatabaseBinding()` (missing/match/mismatch/no-leak-de-senha) já existe e continua intacta em `tests/pimA36D1DatabaseBindingPreflight.test.mjs`.
+
+### Regressão (Seção 6)
+- `npx tsc --noEmit`: limpo.
+- Testes diretamente relacionados (`pimA36D1DatabaseBindingPreflight`, `pimA36D15DatabaseBindingGuard`, `runtimeSafetyGates`, `stagingAccessGuard`): **38/38 PASS**.
+- `npm run test:pim`: **647/647 PASS** (666 da R4 − 19 do arquivo removido = 647, exatamente como esperado; nenhuma regressão, nenhuma correção de falha histórica não relacionada).
+
+### Build (Seção 7)
+`npm run build`: sucesso. Confirmado explicitamente por inspeção da listagem de rotas impressa pelo build: `/api/internal/staging/database-binding` **não aparece mais**.
+
+### Commit e archive (Seções 8-10)
+```
+R5_CLEANUP_SOURCE_COMMIT=<ver relatório da rodada>
+R5_ARCHIVE_PATH=<ver relatório da rodada>
+R5_ARCHIVE_SHA256=<ver relatório da rodada>
+R5_REPRODUCIBLE_BUILD_PASS=<ver relatório da rodada>
+```
+Commit local seletivo (`git add` explícito, nunca `-A`), contendo somente: remoção da rota, remoção do teste temporário, edição de `publication-runtime-preflight.ts`, e esta seção append-only. Sem push. Os 7 arquivos concorrentes permanecem fora do commit, intocados.
+
+### Nenhuma ação remota nesta rodada
+Nenhum acesso à Hostinger, nenhum upload, nenhuma alteração de env, nenhum restart, nenhum push. O deploy do commit R5 será realizado **manualmente pelo operador**.
+
+### Plano de teste pós-deploy manual (Seção 12 — documentação apenas, não executado)
+Após o operador implantar o archive R5 em `staging.persimateriais.com.br`:
+1. `GET` autenticado em `https://staging.persimateriais.com.br/api/internal/staging/database-binding` → resultado obrigatório: **`404`**.
+2. Basic Auth do site continua funcional.
+3. Catálogo de staging (Home/listing/PDP) continua funcional.
+4. `PERSI_RUNTIME_ENV=staging`, `PIM_PUBLICATION_MODE=off`, `PIM_SHADOW_SAMPLE_RATE=0`, `PIM_SHADOW_TELEMETRY_SINK=noop` preservados sem alteração.
+5. Nenhuma alteração no banco, nenhuma chamada de pagamento/mensageria/ERP, produção intocada.
+
+### Fechamento condicional (Seção 13)
+```
+DATABASE_BINDING_DIAGNOSTIC_SOURCE_REMOVED=YES
+DATABASE_BINDING_DIAGNOSTIC_LIVE_REMOVAL_PROVEN=NO
+A3_6D18_PASS=NO
+```
+`A3.6-D1.8` **ainda não está fechado**. Somente após o operador implantar o R5 e comprovar o `404` ao vivo, uma rodada de reconciliação final poderá declarar `A3_6D18_PASS=YES` e então avaliar `SAFE_TO_REQUEST_A3_6_D2_CONTROLLED_SHADOW_ACTIVATION`.
+
+**RESULTADO DESTA RODADA: cleanup forward-only local completo e verificado (código, testes, tsc, build); commit e archive prontos para deploy manual pelo operador; nenhuma ação remota realizada.**
+
+## Continuação R4 (deploy do diagnóstico temporário — BLOQUEADO por conectividade Hostinger)
+
+**Objetivo desta rodada**: implantar o diagnóstico da R3 em `staging.persimateriais.com.br` e obter `STAGING_DATABASE_BINDING=MATCH|WRONG|UNKNOWN` ao vivo.
+
+### Preflight
+`HEAD` confirmado em `a1d9cdedc25798880c1b53eb3db776125e06e8e5`. Artefato R3 reconfirmado com SHA256 idêntico (`c47149f7b406f8704c421a291c29423b0368a30fe3ba31fa67fdbd9f5710befc`). `tsc` limpo, `tests/pimA36D18R3DatabaseBindingDiagnostic.test.mjs` 19/19, `npm run test:pim` 666/666 — todos reconfirmados nesta rodada, não apenas herdados. Os 7 arquivos concorrentes permanecem preservados.
+
+**Nota sobre a Seção 2 da tarefa**: o item `scratchpad/a36d18_r3_database_binding_proof_preparation.json` listado para `git add` não existe dentro do repositório — como em toda rodada anterior, esse artefato vive apenas no diretório de scratchpad da sessão, nunca commitado (confirmado inclusive no commit original `a1d9cde`, que não contém nenhum arquivo desse tipo). Foi excluído do commit/archive desta rodada, e o fato foi sinalizado explicitamente em vez de silenciosamente inventado ou ignorado.
+
+### B. Commit local seletivo
+```
+R4_DIAGNOSTIC_SOURCE_COMMIT=104e0dea5aa550fcf92584c1c18bda9717434be0
+```
+Exatamente os 4 arquivos reais da R3 (`lib/pim/publication-runtime-preflight.ts`, `app/api/internal/staging/database-binding/route.ts`, `tests/pimA36D18R3DatabaseBindingDiagnostic.test.mjs`, `docs/pim/18-existing-staging-safety-deployment.md`) — `git diff --cached --stat` confirmou 4 arquivos, zero arquivos não relacionados. Commit local, sem push. Os 7 arquivos concorrentes permanecem modificados na working tree, não staged, não commitados.
+
+### C. Archive reproduzível
+```
+R4_ARCHIVE_PATH=<scratchpad da sessão>/persi-next-104e0de-a36d18r4-node22.tar
+R4_ARCHIVE_SHA256=b0b0abf858b5a22385ade2315dd15cc61345ac18ea617590e8390b596cc143f0
+```
+1627 arquivos (1622 da R3/D1.8 + 5 novos: 2 entradas de diretório + `route.ts` + `docs/pim/18` + o novo teste), gerado via `git archive --format=tar 104e0de`. Conteúdo verificado: sem `node_modules`, `.next`, `.git`, `.env`/`.env.local`; nova rota e docs presentes.
+
+### D. Build reproduzível
+```
+R4_REPRODUCIBLE_BUILD_PASS=YES
+```
+Archive extraído em diretório isolado, `npm ci` do zero, `npm run build` com sucesso (exit 0) — a nova rota `/api/internal/staging/database-binding` aparece corretamente como rota dinâmica (`ƒ`) na saída do build.
+
+### E/F. Target remoto e deploy — BLOQUEADOS
+Servidor MCP `hostinger-hosting` inacessível (`CONNECT_TIMEOUT`) nesta rodada: 3 tentativas espaçadas, somadas às 11+ já registradas desde D1.7, totalizando 14+ tentativas sem nenhuma reconexão bem-sucedida desde D1.7. Sem essa ferramenta, não há como (a) reconfirmar a identidade do app isolado qualificado na D1.7, nem (b) executar upload/build/restart em `staging.persimateriais.com.br` — nenhum outro canal (SSH/FTP/deploy manual) está disponível ou autorizado a este agente nesta tarefa.
+
+```
+R4_TARGET_CONFIRMED=NO
+R4_STAGING_DEPLOY_PASS=NO
+```
+
+**Verificação read-only via `curl` (sem credenciais)**, apenas como checagem de drift do estado já implantado, não como prova de deploy da R4: `GET https://staging.persimateriais.com.br/` → `401` com `www-authenticate: Basic realm="staging"`, idêntico ao baseline da R2 — nenhum drift. O mesmo teste contra `/api/internal/staging/database-binding` também retorna `401` — mas isso é esperado independentemente de a rota nova já estar implantada ou não (o gate de Basic Auth em `proxy.ts` intercepta qualquer caminho antes do roteamento do Next.js resolver a rota), então **não serve como evidência em nenhum dos dois sentidos**.
+
+### G/H. Basic Auth pós-deploy e prova de binding — não aplicável
+Nenhum deploy ocorreu, logo nenhuma chamada autenticada à rota temporária foi ou poderia ser feita contra o commit `104e0de`.
+
+```
+STAGING_DATABASE_BINDING=UNKNOWN
+```
+
+### I/J. PIM OFF e invariância de banco — não aplicável
+Nenhuma variável de ambiente foi tocada; nenhuma leitura/escrita no Supabase de staging foi realizada nesta rodada (zero necessidade, já que não houve deploy). `zero_staging_db_writes=true`, `zero_production_access_or_mutation=true`.
+
+### K. Artefato
+```
+scratchpad/a36d18_r4_live_database_binding_proof.json
+SHA256=316be026ae2fe73ad6cc24e338b15b9e38565be8d52a1254abbad8f164fd91b7
+```
+
+### Estado para retomada
+Commit e archive da R4 estão prontos e reutilizáveis (`104e0dea5aa550fcf92584c1c18bda9717434be0` / `persi-next-104e0de-a36d18r4-node22.tar`), com build reprodutível já comprovado. Assim que a conectividade com o `hostinger-hosting` for restabelecida, a próxima rodada pode retomar diretamente na Seção 4 (confirmação de target) / Seção 6 (deploy), sem repetir commit, archive ou prova de build.
+
+### L. Gate final desta rodada
+```
+A3_6D18_R4_PASS=NO
+STAGING_DATABASE_BINDING=UNKNOWN
+DATABASE_BINDING_LIVE_PROVEN=NO
+SAFE_TO_REQUEST_A3_6_D18_R5_DIAGNOSTIC_CLEANUP=NO
+A3_6D18_PASS=NO
+SAFE_TO_REQUEST_A3_6_D2_CONTROLLED_SHADOW_ACTIVATION=NO
+SAFE_TO_ACTIVATE_SHADOW=NO
+SAFE_TO_PUBLISH=NO
+SAFE_TO_CONNECT_PIM_AS_STOREFRONT_SOURCE=NO
+SAFE_TO_PRODUCTION=NO
+SAFE_TO_EXECUTE_ANY_NEW_STAGING_WRITE=NO
+GIT_PUSH_PERFORMED=NO
+ROUTE_REMOVED=NO
+SECOND_DEPLOY_PERFORMED=NO
+```
+
+**RESULTADO DESTA RODADA: preparação local (commit + archive + build reprodutível) completa e verificada; execução remota e prova ao vivo BLOQUEADAS por falha de conectividade dos servidores MCP da Hostinger, não por decisão, achado de segurança, ou problema de código.**
+
 ## Continuação R3 (preparação da prova de binding de banco — NENHUM deploy nesta rodada)
 
 **Objetivo único desta rodada**: resolver tecnicamente o gate `STAGING_DATABASE_BINDING=UNKNOWN` (bloqueante desde R2), projetando e implementando **localmente** o menor endpoint de diagnóstico possível — sem commit, sem deploy, sem alteração remota.
