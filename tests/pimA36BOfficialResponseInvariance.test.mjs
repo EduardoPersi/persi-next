@@ -17,7 +17,11 @@ test("scheduleProductShadow returns void -- structurally cannot be composed into
 
 test("getProductBySlug's call site never awaits or uses scheduleProductShadow's return value (fire-and-forget by construction)", async () => {
   const source = await read("services/woocommerce/products.ts");
-  const fn = source.slice(source.indexOf("export async function getProductBySlug"));
+  // A3.6-D2-C-R1: getProductBySlug is now a cache()-wrapped named function
+  // expression (export const getProductBySlug = cache(async function
+  // getProductBySlug(...) {...})), not a top-level "export async function"
+  // declaration -- located by the inner named function expression instead.
+  const fn = source.slice(source.indexOf("async function getProductBySlug"));
   const callLine = fn.slice(fn.indexOf("scheduleProductShadow(product)") - 40, fn.indexOf("scheduleProductShadow(product)") + 40);
   assert.doesNotMatch(callLine, /await\s+scheduleProductShadow/);
   assert.match(callLine, /if \(product\) scheduleProductShadow\(product\);/);

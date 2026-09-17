@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { Product } from "@/types/product";
 import type { WooCommerceStoreProduct } from "@/types/woocommerce";
 import {
@@ -260,7 +261,23 @@ export async function getFeaturedProducts(
   });
 }
 
-export async function getProductBySlug(
+// A3.6-D2-C-R1: wrapped in React's cache() -- generateMetadata and the page
+// component (app/_storefront/product-page.tsx), plus the route-type
+// resolution that runs ahead of both of them (app/[...segments]/page.tsx's
+// resolvePublicRoute), all call this function independently for the SAME
+// slug within a single PDP request. Without per-request memoization, each
+// of those (up to 4) call sites re-executed the whole function body,
+// including the scheduleProductShadow(product) side effect -- root cause of
+// four near-simultaneous [pim-catalog-shadow] telemetry events for one
+// logical PDP load, found live during the D2-C 1% shadow activation.
+// cache() is React's own documented solution for exactly this "same data
+// needed by metadata and the page" scenario (see Next.js's own bundled
+// docs, 01-app/01-getting-started/14-metadata-and-og-images.md, "Memoizing
+// data requests"): scoped to a single request/render, never cross-request,
+// never shared between server instances -- it does not change what this
+// function returns to any of its callers, only how many times its body
+// (and scheduleProductShadow with it) actually runs per request.
+export const getProductBySlug = cache(async function getProductBySlug(
   slug: string,
 ): Promise<Product | undefined> {
   const products = await getProducts({
@@ -278,7 +295,7 @@ export async function getProductBySlug(
     ...product,
     variations: await getProductVariations(product.id),
   };
-}
+});
 
 export async function getProductVariations(productId: number) {
   const response = await storeApiGetWithMeta<unknown>("products", {
