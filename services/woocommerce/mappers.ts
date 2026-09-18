@@ -10,6 +10,7 @@ import type {
 } from "@/types/woocommerce";
 import { getProductHref } from "../../lib/routing/storefrontUrls.ts";
 import { sanitizeWordPressHtml } from "../../lib/formatting/sanitizeWordPressHtml.ts";
+import { truncateText } from "../../lib/formatting/truncateText.ts";
 
 const namedEntities: Record<string, string> = {
   amp: "&",
@@ -123,7 +124,7 @@ export function mapStoreProduct(
   const description = stripHtml(product.description);
   const shortDescription =
     stripHtml(product.short_description) ||
-    description.slice(0, 240);
+    truncateText(description, 240);
   const descriptionHtml = sanitizeWordPressHtml(product.description);
   const shortDescriptionHtml = sanitizeWordPressHtml(
     product.short_description,

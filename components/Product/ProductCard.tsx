@@ -134,6 +134,8 @@ export function ProductCard({
     <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition duration-200 hover:-translate-y-1 hover:shadow-md active:translate-y-0 active:shadow-sm">
       <Link
         href={href}
+        prefetch={true}
+        data-route-transition-skip
         className="product-card-image-link relative block aspect-square overflow-hidden bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
       >
         {badge ? (
@@ -189,6 +191,8 @@ export function ProductCard({
       <div className="flex flex-1 flex-col p-4">
         <Link
           href={href}
+          prefetch={true}
+          data-route-transition-skip
           className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
           <h3 className="line-clamp-2 min-h-9 text-[13px] font-semibold leading-[18px] text-slate-800 transition-colors group-hover:text-secondary md:min-h-10 md:text-sm md:leading-5">

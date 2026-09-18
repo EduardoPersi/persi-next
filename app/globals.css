@@ -107,13 +107,15 @@
 
 html {
   scroll-behavior: smooth;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
   min-height: 100vh;
   margin: 0;
-  overflow-x: hidden;
+  /* Corta o excesso horizontal sem criar um ancestral de rolagem que
+     interrompa position: sticky (por exemplo, a galeria do produto). */
+  overflow-x: clip;
   background: var(--persi-background);
   color: var(--persi-foreground);
   font-family: var(--font-inter), Arial, Helvetica, sans-serif;

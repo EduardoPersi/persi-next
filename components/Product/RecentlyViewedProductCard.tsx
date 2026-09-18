@@ -36,6 +36,8 @@ export function RecentlyViewedProductCard({
   return (
     <Link
       href={getProductHref(product.slug)}
+      prefetch={true}
+      data-route-transition-skip
       className="grid h-full min-h-32 grid-cols-[88px_minmax(0,1fr)] gap-3 rounded-xl border border-slate-200 bg-white p-3 transition-colors hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       aria-label={`Ver ${product.name}`}
     >

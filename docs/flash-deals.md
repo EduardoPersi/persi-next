@@ -58,7 +58,9 @@ próprios.
 - Catálogos cacheados por 300 segundos com o cache do Next.js.
 - Lotes determinados por janelas UTC de 30 minutos.
 - Seleção determinística, sem `random()`, igual para todos os visitantes.
-- O contador roda no navegador e atualiza a página ao trocar de janela.
+- O contador começa com `--:--` no servidor e na primeira hidratação; depois
+  acompanha o relógio do navegador. Ao expirar, usa `router.refresh()` uma
+  única vez por janela, preservando o documento e os chunks carregados.
 
 ## Analytics e performance
 

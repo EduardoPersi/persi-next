@@ -87,8 +87,8 @@ da Home e da página de produto. O acesso ao WooCommerce fica isolado em
 - Exibe 2 cards no celular, 4 no tablet e 6 em telas grandes.
 - Produto simples e comprável usa o carrinho existente; variáveis direcionam
   para a página do produto.
-- O timer no cliente recarrega a página ao encerrar a janela para obter o lote
-  sincronizado seguinte.
+- O timer usa um snapshot inicial estável (`--:--`) e atualiza o lote com
+  `router.refresh()` uma vez por janela vencida, sem recarregar o documento.
 
 ### Dados, cache e rotação
 
