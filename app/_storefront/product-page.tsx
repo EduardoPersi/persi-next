@@ -22,6 +22,7 @@ import {
   SITE_URL,
 } from "@/lib/routing/storefrontUrls";
 import { scheduleProductShadow } from "@/services/catalog/productShadow";
+import { resolveFichaTecnicaSpecifications } from "@/services/catalog/productFichaTecnica";
 import { getBrandBySlug } from "@/services/woocommerce/brands";
 import { getBoughtTogether } from "@/services/woocommerce/boughtTogether";
 import { getAllProductCategories } from "@/services/woocommerce/categories";
@@ -140,7 +141,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
   // critical path of the official response.
   scheduleProductShadow(product);
 
-  const [relatedProducts, brand, boughtTogether, productFamily, categories] = await Promise.all([
+  // A3.7-A-R15: the ONLY place a PIM-published attribute may reach the
+  // public Ficha Técnica. AWAITED (unlike the shadow above) because its
+  // result affects rendering -- but resolveFichaTecnicaSpecifications is
+  // itself mode-gated (canary only), timeout-bounded, and fail-closed, so
+  // this never meaningfully delays or breaks the official response: any
+  // non-canary mode, missing canary membership, ineligibility, or error
+  // resolves to `undefined`, which renders exactly like today (Woo-only).
+  // Run alongside the other secondary fetches below (Promise.all), not
+  // before them, so it never adds sequential latency on top of Woo's own
+  // related-data calls.
+  const [relatedProducts, brand, boughtTogether, productFamily, categories, fichaTecnicaSpecifications] = await Promise.all([
     getRelatedProducts(product),
     product.brands[0]?.slug
       ? getBrandBySlug(product.brands[0].slug).catch(() => undefined)
@@ -156,7 +167,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
       }
       return [];
     }),
+    resolveFichaTecnicaSpecifications(product),
   ]);
+  const displayProduct: Product = fichaTecnicaSpecifications ? { ...product, specifications: fichaTecnicaSpecifications } : product;
   const breadcrumbItems = buildProductCategoryBreadcrumb({
     productName: product.name,
     productCategoryIds: product.categories.map((category) => category.id),
@@ -292,7 +305,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </div>
           </div>
 
-          <ProductDetails product={product} />
+          <ProductDetails product={displayProduct} />
 
           <div className="mt-12">
             <FlashDeals context={{ type: "product", product }} />

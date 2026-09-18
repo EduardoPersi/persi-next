@@ -75,7 +75,11 @@ export function isSampled(key: string, sampleRatePercent: number): boolean {
   return stableHash(key) % 100 < sampleRatePercent;
 }
 
-async function defaultResolvePimProductId(slug: string): Promise<string | null> {
+// A3.7-A-R15: exported (was module-private) so the new Ficha Técnica canary
+// orchestrator (services/catalog/productFichaTecnica.ts) can resolve a
+// slug's PIM product id without duplicating this exact query -- same
+// function, same behavior, just reusable outside this file too.
+export async function defaultResolvePimProductId(slug: string): Promise<string | null> {
   const rows = (await getDatabase().execute(sql`select id::text as id from public.products where slug = ${slug} limit 1`)) as unknown as Array<{ id: string }>;
   return rows[0]?.id ?? null;
 }
