@@ -43,13 +43,22 @@ test("getProductBySlug is wrapped in React's cache()", async () => {
   assert.match(source, /export const getProductBySlug = cache\(async function getProductBySlug\(/);
 });
 
-test("the scheduleProductShadow side effect is still inside the cache()-wrapped function body (deduped together with the data fetch, not bypassed)", async () => {
+// A3.7-A-R14-R2: scheduleProductShadow no longer lives inside
+// getProductBySlug -- it moved to the one call site that knows a product is
+// the route's actual main subject (app/_storefront/product-page.tsx),
+// because getProductBySlug is ALSO called for incidental products (e.g.
+// productNavigation.ts's family-navigation siblings), which used to fire
+// their own spurious shadow events too (see
+// tests/pimA37AR14R2MainPdpOnlyShadowScope.test.mjs for the new
+// invariant). cache() itself is retained and still dedupes repeated
+// same-slug data fetches -- only the side effect moved.
+test("getProductBySlug's cache()-wrapped function body no longer schedules PIM shadow itself (moved to the main-PDP call site by A3.7-A-R14-R2)", async () => {
   const source = await read("services/woocommerce/products.ts");
   const fn = source.slice(
     source.indexOf("export const getProductBySlug = cache("),
     source.indexOf("export async function getProductVariations"),
   );
-  assert.match(fn, /if \(product\) scheduleProductShadow\(product\);/);
+  assert.doesNotMatch(fn, /scheduleProductShadow/);
 });
 
 // ---------- structural proof: the exact call-graph topology that caused the bug ----------
@@ -184,19 +193,14 @@ test("cache() preserves a rejection exactly -- does not swallow, transform, or d
   await assert.rejects(() => fn(), boom);
 });
 
-test("getProductBySlug's function body (product lookup, shadow scheduling, variable-product enrichment) is untouched by this fix -- only the declaration/closing-brace lines differ from before, per source inspection", async () => {
+test("getProductBySlug's function body (product lookup, not-found/non-variable early return, variable-product enrichment) still contains the same data-retrieval statements as when cache() was first added -- only the A3.7-A-R14-R2 shadow-scheduling removal (documented above) changed it since", async () => {
   const source = await read("services/woocommerce/products.ts");
   const fn = source.slice(
     source.indexOf("async function getProductBySlug("),
     source.indexOf("export async function getProductVariations"),
   );
-  // Same statements as before the fix, still present verbatim inside the
-  // now-cache()-wrapped function -- product lookup, the shadow side
-  // effect, the not-found/non-variable early return, and the variable
-  // product enrichment path.
   assert.match(fn, /const products = await getProducts\(\{/);
   assert.match(fn, /const product = products\[0\];/);
-  assert.match(fn, /if \(product\) scheduleProductShadow\(product\);/);
   assert.match(fn, /if \(!product \|\| product\.type !== "variable"\) return product;/);
   assert.match(fn, /variations: await getProductVariations\(product\.id\),/);
 });

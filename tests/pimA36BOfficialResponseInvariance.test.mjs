@@ -15,16 +15,19 @@ test("scheduleProductShadow returns void -- structurally cannot be composed into
   assert.match(source, /export function scheduleProductShadow\(product:Product\):void/);
 });
 
-test("getProductBySlug's call site never awaits or uses scheduleProductShadow's return value (fire-and-forget by construction)", async () => {
-  const source = await read("services/woocommerce/products.ts");
-  // A3.6-D2-C-R1: getProductBySlug is now a cache()-wrapped named function
-  // expression (export const getProductBySlug = cache(async function
-  // getProductBySlug(...) {...})), not a top-level "export async function"
-  // declaration -- located by the inner named function expression instead.
-  const fn = source.slice(source.indexOf("async function getProductBySlug"));
+// A3.7-A-R14-R2: the scheduleProductShadow call site moved out of
+// getProductBySlug (a shared primitive also used for incidental,
+// non-main-PDP lookups) into app/_storefront/product-page.tsx, the one
+// place that knows a product is the route's actual subject -- see
+// tests/pimA37AR14R2MainPdpOnlyShadowScope.test.mjs for the full
+// call-site audit. The invariant this test guards (fire-and-forget, never
+// awaited) still applies, just at the new location.
+test("product-page.tsx's call site never awaits or uses scheduleProductShadow's return value (fire-and-forget by construction)", async () => {
+  const source = await read("app/_storefront/product-page.tsx");
+  const fn = source.slice(source.indexOf("export default async function ProductPage"));
   const callLine = fn.slice(fn.indexOf("scheduleProductShadow(product)") - 40, fn.indexOf("scheduleProductShadow(product)") + 40);
   assert.doesNotMatch(callLine, /await\s+scheduleProductShadow/);
-  assert.match(callLine, /if \(product\) scheduleProductShadow\(product\);/);
+  assert.match(callLine, /^\s*scheduleProductShadow\(product\);/m);
 });
 
 test("runPimCatalogShadow inside scheduleProductShadow is called without await, sharing a single memoized official mapping with the pre-existing Woo/Postgres shadow (lazy, never eager -- a mapping throw must not escape synchronously)", async () => {

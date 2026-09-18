@@ -12,7 +12,6 @@ import {
   mapStoreVariation,
 } from "./mappers";
 import { getFreeShippingProducts } from "./freeShipping.ts";
-import { scheduleProductShadow } from "../catalog/productShadow";
 
 export interface GetProductsOptions {
   page?: number;
@@ -265,18 +264,23 @@ export async function getFeaturedProducts(
 // component (app/_storefront/product-page.tsx), plus the route-type
 // resolution that runs ahead of both of them (app/[...segments]/page.tsx's
 // resolvePublicRoute), all call this function independently for the SAME
-// slug within a single PDP request. Without per-request memoization, each
-// of those (up to 4) call sites re-executed the whole function body,
-// including the scheduleProductShadow(product) side effect -- root cause of
-// four near-simultaneous [pim-catalog-shadow] telemetry events for one
-// logical PDP load, found live during the D2-C 1% shadow activation.
-// cache() is React's own documented solution for exactly this "same data
-// needed by metadata and the page" scenario (see Next.js's own bundled
-// docs, 01-app/01-getting-started/14-metadata-and-og-images.md, "Memoizing
-// data requests"): scoped to a single request/render, never cross-request,
-// never shared between server instances -- it does not change what this
-// function returns to any of its callers, only how many times its body
-// (and scheduleProductShadow with it) actually runs per request.
+// slug within a single PDP request. cache() is React's own documented
+// solution for exactly this "same data needed by metadata and the page"
+// scenario (see Next.js's own bundled docs,
+// 01-app/01-getting-started/14-metadata-and-og-images.md, "Memoizing data
+// requests"): scoped to a single request/render, never cross-request, never
+// shared between server instances.
+//
+// A3.7-A-R14-R2: this function is data retrieval only and must stay that
+// way -- it is also called for products that are NOT the route's own PDP
+// subject (services/woocommerce/productNavigation.ts's family-navigation
+// previous/next lookups use the same function to resolve sibling products).
+// A shadow-scheduling side effect used to live here, which meant every
+// incidental sibling lookup fired its own [pim-catalog-shadow] telemetry
+// event alongside the real one -- found live in A3.7-A-R14-R1 (one PDP
+// access produced 3 events for 3 different products). Scheduling now
+// happens exactly once, explicitly, at the one call site that actually
+// knows a product is the route's main subject (app/_storefront/product-page.tsx).
 export const getProductBySlug = cache(async function getProductBySlug(
   slug: string,
 ): Promise<Product | undefined> {
@@ -286,8 +290,6 @@ export const getProductBySlug = cache(async function getProductBySlug(
   });
 
   const product = products[0];
-
-  if (product) scheduleProductShadow(product);
 
   if (!product || product.type !== "variable") return product;
 

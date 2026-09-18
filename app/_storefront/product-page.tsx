@@ -21,6 +21,7 @@ import {
   getProductHref,
   SITE_URL,
 } from "@/lib/routing/storefrontUrls";
+import { scheduleProductShadow } from "@/services/catalog/productShadow";
 import { getBrandBySlug } from "@/services/woocommerce/brands";
 import { getBoughtTogether } from "@/services/woocommerce/boughtTogether";
 import { getAllProductCategories } from "@/services/woocommerce/categories";
@@ -130,6 +131,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
   if (!product) {
     notFound();
   }
+
+  // A3.7-A-R14-R2: this IS the route's main PDP subject -- the one legitimate
+  // place to schedule the PIM/catalog shadow observation (moved out of the
+  // shared getProductBySlug(), which is also called for incidental products
+  // like family-navigation siblings; see services/woocommerce/products.ts).
+  // Fire-and-forget, exactly as before -- never awaited, never on the
+  // critical path of the official response.
+  scheduleProductShadow(product);
 
   const [relatedProducts, brand, boughtTogether, productFamily, categories] = await Promise.all([
     getRelatedProducts(product),
