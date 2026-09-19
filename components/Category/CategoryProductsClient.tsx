@@ -209,8 +209,18 @@ export function CategoryProductsInteractive({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParamsKey, categorySlug]);
 
-  const products = hasFilters ? (fetched?.products ?? []) : initialProducts;
-  const total = hasFilters ? (fetched?.total ?? 0) : initialTotal;
+  const filtersWithoutPage = new URLSearchParams(searchParams);
+  filtersWithoutPage.delete("pagina");
+  // Preserva a altura da grade na primeira paginação, antes de existir fetched.
+  const preserveInitialProducts =
+    fetched === null &&
+    Number.parseInt(searchParams.get("pagina") ?? "1", 10) > 1 &&
+    !hasActiveFilterParams(filtersWithoutPage);
+  const showFetchedProducts = hasFilters && !preserveInitialProducts;
+  const products = showFetchedProducts
+    ? (fetched?.products ?? [])
+    : initialProducts;
+  const total = showFetchedProducts ? (fetched?.total ?? 0) : initialTotal;
   const brandName = hasFilters ? (fetched?.brandName ?? null) : null;
 
   const currentOrder = searchParams.get("ordem") ?? "recentes";
@@ -289,7 +299,7 @@ export function CategoryProductsInteractive({
         </div>
 
         <div className="mt-6" aria-busy={isLoading}>
-          {isLoading ? (
+          {isLoading && !preserveInitialProducts ? (
             <div
               className="grid grid-cols-2 gap-[10px] md:grid-cols-3 lg:grid-cols-4"
               aria-hidden="true"

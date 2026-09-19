@@ -1,7 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useLayoutEffect, useTransition } from "react";
+
+let pendingScrollPosition: number | null = null;
 
 interface LoadMoreButtonProps {
   pathname: string;
@@ -13,10 +15,20 @@ export function LoadMoreButton({
   searchParams,
 }: LoadMoreButtonProps) {
   const router = useRouter();
+  const currentSearchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+
+  useLayoutEffect(() => {
+    const scrollPosition = pendingScrollPosition;
+    if (scrollPosition === null) return;
+
+    pendingScrollPosition = null;
+    window.scrollTo(window.scrollX, scrollPosition);
+  }, [currentSearchParams]);
 
   function handleLoadMore() {
     const query = new URLSearchParams(searchParams);
+    pendingScrollPosition = window.scrollY;
 
     startTransition(() => {
       router.push(`${pathname}?${query.toString()}`, {
