@@ -10,6 +10,8 @@ import { getDatabase } from "@/lib/db";
 import { buildPimCatalogCandidate } from "@/lib/pim/publication-candidate";
 import { buildFichaTecnicaSpecifications } from "@/lib/pim/publication-ficha-tecnica";
 import { mapWooProductToCatalog } from "./woocommerce";
+import { classifyRawPimModeForDiagnostics, getRawPimPublicationModeForDiagnostics, type FichaTecnicaDiagnosticEvent, type FichaTecnicaDiagnosticReason } from "@/lib/pim/publication-ficha-tecnica-diagnostics";
+import { emitFichaTecnicaDiagnostic, getConfiguredFichaTecnicaTelemetrySink, isFichaTecnicaDiagnosticsEnabled, type FichaTecnicaTelemetrySink } from "@/lib/pim/publication-ficha-tecnica-telemetry";
 
 // A3.7-A-R15: the ONLY integration point where a PIM-published attribute
 // may reach the public Ficha Técnica -- mirrors services/catalog/
@@ -41,7 +43,38 @@ export interface FichaTecnicaDependencies {
   getActiveCanaryMembership?: typeof getActiveCanaryMembership;
   getPublishedAttributesForProduct?: typeof getPublishedAttributesForProduct;
   evaluatePublicationEligibilityBatch?: typeof evaluatePublicationEligibilityBatch;
+  /** A3.7-A-R17-R2A diagnostics -- every field below is purely observational
+   * and injectable ONLY so tests can assert on it without real env/process
+   * access; none of them can change what this function returns publicly. */
+  rawMode?: string | undefined;
+  telemetry?: FichaTecnicaTelemetrySink;
+  diagnosticsEnabled?: boolean;
 }
+
+/** A3.7-A-R17-R2A: internal shape carrying BOTH the public result and the
+ * diagnostic counters, so the outer function can emit exactly one telemetry
+ * event without duplicating any of the gate logic below. Never exported --
+ * the public function's return type is unchanged. */
+interface FichaTecnicaRun {
+  specifications: ProductSpecification[] | undefined;
+  productResolved: boolean;
+  membershipCount: number | null;
+  publishedCount: number | null;
+  intersectionCount: number | null;
+  eligibleCount: number | null;
+  mergeAdditionCount: number | null;
+  reason: FichaTecnicaDiagnosticReason;
+}
+
+const SKIPPED: Omit<FichaTecnicaRun, "reason"> = {
+  specifications: undefined,
+  productResolved: false,
+  membershipCount: null,
+  publishedCount: null,
+  intersectionCount: null,
+  eligibleCount: null,
+  mergeAdditionCount: null,
+};
 
 /**
  * Resolves the final Ficha Técnica specification list for the route's main
@@ -50,15 +83,60 @@ export interface FichaTecnicaDependencies {
  * candidate attribute fails a FRESH eligibility re-check, or any error/
  * timeout occurs). `undefined` means "render Woo-only, exactly as today" --
  * the caller must never treat it as an error to surface.
+ *
+ * A3.7-A-R17-R2A: also emits exactly one [pim-ficha-tecnica-canary]
+ * diagnostic event per call (never per PDP indirectly -- this function
+ * itself is only ever called once per PDP, from product-page.tsx), gated
+ * on PERSI_RUNTIME_ENV=staging and the existing PIM_SHADOW_TELEMETRY_SINK
+ * switch. The event is purely observational: it can never change the value
+ * returned here.
  */
 export async function resolveFichaTecnicaSpecifications(product: Product, deps: FichaTecnicaDependencies = {}): Promise<ProductSpecification[] | undefined> {
+  const startedAt = performance.now();
   const mode = deps.mode ?? getPimPublicationFlags().mode;
+  // Diagnostics are computed unconditionally (pure, zero I/O) so Gate 0
+  // itself is provable even when mode="off" -- but nothing below this line
+  // executes any query unless mode is genuinely "canary", so "off" (and
+  // "shadow") remain exactly as cheap as before this round.
+  const rawMode = deps.rawMode ?? getRawPimPublicationModeForDiagnostics();
+  const modeRawClass = classifyRawPimModeForDiagnostics(rawMode);
+
+  const run = await runFichaTecnicaPipeline(product, mode, deps);
+
+  const event: FichaTecnicaDiagnosticEvent = {
+    resolvedMode: mode,
+    modeRawClass,
+    productResolved: run.productResolved,
+    membershipCount: run.membershipCount,
+    publishedCount: run.publishedCount,
+    intersectionCount: run.intersectionCount,
+    eligibleCount: run.eligibleCount,
+    mergeAdditionCount: run.mergeAdditionCount,
+    result: run.reason === "SUCCESS" ? "SUCCESS" : run.reason === "TIMEOUT" || run.reason === "ERROR" ? "ERROR" : "SKIPPED",
+    reason: run.reason,
+    durationMs: performance.now() - startedAt,
+  };
+  const diagnosticsEnabled = deps.diagnosticsEnabled ?? isFichaTecnicaDiagnosticsEnabled();
+  if (diagnosticsEnabled) {
+    const telemetry = deps.telemetry ?? getConfiguredFichaTecnicaTelemetrySink();
+    emitFichaTecnicaDiagnostic(telemetry, event);
+  }
+
+  return run.specifications;
+}
+
+/** Does the REAL work -- identical decisions/order to the pre-R17-R2A
+ * implementation, just also returning the diagnostic counters alongside
+ * the public result. Every early return here is BEHAVIORALLY unchanged:
+ * still resolves to `specifications: undefined` in exactly the same
+ * conditions as before. */
+async function runFichaTecnicaPipeline(product: Product, mode: ReturnType<typeof getPimPublicationFlags>["mode"], deps: FichaTecnicaDependencies): Promise<FichaTecnicaRun> {
   // off AND shadow both stop here, before any DB access -- identical to
   // today's behavior in both modes. Only "canary" proceeds.
-  if (mode !== "canary") return undefined;
+  if (mode !== "canary") return { ...SKIPPED, reason: "MODE_NOT_CANARY" };
 
   const isSafeToRun = deps.isSafeToRun ?? isPimShadowSafeToRun;
-  if (!isSafeToRun()) return undefined;
+  if (!isSafeToRun()) return { ...SKIPPED, reason: "UNSAFE_DB_BINDING" };
 
   const resolvePimProductId = deps.resolvePimProductId ?? defaultResolvePimProductId;
   const membershipFn = deps.getActiveCanaryMembership ?? getActiveCanaryMembership;
@@ -68,9 +146,9 @@ export async function resolveFichaTecnicaSpecifications(product: Product, deps: 
 
   try {
     return await withTimeout(
-      (async () => {
+      (async (): Promise<FichaTecnicaRun> => {
         const pimProductId = await resolvePimProductId(product.slug);
-        if (!pimProductId) return undefined;
+        if (!pimProductId) return { ...SKIPPED, reason: "PRODUCT_NOT_RESOLVED" };
 
         // Canary allowlist FIRST (cheapest possible short-circuit): a
         // product with zero active-canary-batch membership rows behaves
@@ -79,16 +157,20 @@ export async function resolveFichaTecnicaSpecifications(product: Product, deps: 
         // getActiveCanaryMembership, already existing, already tested,
         // never wired to any route before this round).
         const membership = await membershipFn(pimProductId);
-        if (membership.length === 0) return undefined;
+        if (membership.length === 0) return { ...SKIPPED, productResolved: true, membershipCount: 0, reason: "NO_ACTIVE_CANARY_MEMBERSHIP" };
 
         const canaryCodes = new Set(membership.map((m) => m.attributeCode));
         const published = await publishedFn(pimProductId);
+        if (published.length === 0) return { ...SKIPPED, productResolved: true, membershipCount: membership.length, publishedCount: 0, reason: "NO_PUBLISHED_ATTRIBUTES" };
+
         // getPublishedAttributesForProduct already enforces
         // isPublicationExposable (published + active batch + source PAV
         // still matches + attribute/value still resolve) -- intersecting
         // with the canary allowlist means a row must pass BOTH checks.
         const canaryPublished = published.filter((record) => canaryCodes.has(record.attributeSlug));
-        if (canaryPublished.length === 0) return undefined;
+        if (canaryPublished.length === 0) {
+          return { ...SKIPPED, productResolved: true, membershipCount: membership.length, publishedCount: published.length, intersectionCount: 0, reason: "NO_INTERSECTION" };
+        }
 
         // A3.7-A-R14-R5's residual-risk finding: a review can be recorded
         // AFTER an attribute is published, without automatically
@@ -105,19 +187,24 @@ export async function resolveFichaTecnicaSpecifications(product: Product, deps: 
           const key = `${record.productId}:${record.attributeId}:${record.attributeValueId}`;
           return eligibility.get(key)?.eligible === true;
         });
-        if (stillEligible.length === 0) return undefined;
+        if (stillEligible.length === 0) {
+          return { ...SKIPPED, productResolved: true, membershipCount: membership.length, publishedCount: published.length, intersectionCount: canaryPublished.length, eligibleCount: 0, reason: "NO_CURRENTLY_ELIGIBLE_ATTRIBUTES" };
+        }
 
         const official = mapWooProductToCatalog(product);
         const candidate = buildPimCatalogCandidate(pimProductId, stillEligible);
-        const { specifications } = buildFichaTecnicaSpecifications(official, candidate);
-        return specifications;
+        const { specifications, additionCount } = buildFichaTecnicaSpecifications(official, candidate);
+        const base = { productResolved: true, membershipCount: membership.length, publishedCount: published.length, intersectionCount: canaryPublished.length, eligibleCount: stillEligible.length, mergeAdditionCount: additionCount };
+        if (additionCount === 0) return { ...base, specifications: undefined, reason: "NO_SAFE_MERGE_ADDITIONS" };
+        return { ...base, specifications, reason: "SUCCESS" };
       })(),
       timeoutMs,
     );
-  } catch {
+  } catch (error) {
     // Fail-closed: ANY error (DB, timeout, mapping) falls back to
     // undefined -- today's exact Woo-only rendering, never a partial or
     // broken Ficha Técnica.
-    return undefined;
+    const isTimeout = error instanceof Error && error.message === "PIM_FICHA_TECNICA_TIMEOUT";
+    return { ...SKIPPED, reason: isTimeout ? "TIMEOUT" : "ERROR" };
   }
 }

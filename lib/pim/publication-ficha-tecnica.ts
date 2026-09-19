@@ -21,6 +21,13 @@ export interface FichaTecnicaMergeResult {
    * emit an observability event (e.g. via the existing shadow telemetry
    * sink) without this pure function itself performing any side effect. */
   observableDifferences: readonly AttributeDifference[];
+  /** A3.7-A-R17-R2A: how many entries in `specifications` are PIM_ONLY
+   * additions (i.e. `specifications.length` minus Woo's own count) --
+   * exposed purely so a caller can report it diagnostically (e.g.
+   * mergeAdditionCount in the Ficha Técnica telemetry event) without
+   * re-deriving Woo's own grouping logic itself. Does not change the merge
+   * decision in any way. */
+  additionCount: number;
 }
 
 const normalizeLabelKey = (name: string): string => name.normalize("NFKC").trim().toLowerCase();
@@ -104,5 +111,5 @@ export function buildFichaTecnicaSpecifications(official: CatalogProduct, candid
     specifications.push({ label: addition.label, value: addition.value });
   }
 
-  return { specifications, observableDifferences };
+  return { specifications, observableDifferences, additionCount: pimOnlyAdditions.length };
 }
