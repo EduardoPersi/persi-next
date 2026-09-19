@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 
 // A3.7-A-R17-R2A: PURELY DIAGNOSTIC support for
 // services/catalog/productFichaTecnica.ts. Nothing in this file may ever
@@ -107,12 +108,47 @@ export interface FichaTecnicaStageTimings {
   mergeMs: number | null;
 }
 
-/** Everything this feature is allowed to log. No product slug, no
+// A3.7-A-R17-R2A-D8: found live in staging (D7-R1) that a single manual PDP
+// refresh can produce SEVERAL [pim-ficha-tecnica-canary] events in the same
+// short window -- proven (see the D8 artifact) to be Next.js's own <Link
+// prefetch={true}> behavior on the related-products/recently-viewed/adjacent-
+// navigation cards rendered on that SAME page, each independently
+// server-rendering ITS OWN linked product's page (and therefore independently
+// invoking this orchestrator for THAT product) when not yet cached. Without
+// any way to tell which event belongs to which product, a real cold/warm or
+// success/failure timing observation could not be attributed to the specific
+// product being tested.
+//
+// A per-product correlation tag closes that gap WITHOUT logging anything
+// identifying: it is a short, truncated SHA-256 digest of the resolved PIM
+// product UUID. This is deliberately a PLAIN hash, not an HMAC with a secret
+// salt -- product UUIDs are already unguessable, high-entropy random values
+// (not enumerable public strings the way a slug is), so a bare hash already
+// resists reversal by anyone WITHOUT independent database access; anyone
+// WHO already has database access gains nothing from a rainbow table they
+// could otherwise get by simply querying the database directly, so a salted
+// HMAC would add a secret-management burden (a new env var / server-only
+// value to protect, explicitly discouraged this round when avoidable)
+// without closing a real, distinct threat this diagnostic feature needs to
+// defend against. Truncated to 12 hex characters (48 bits) -- more than
+// enough to distinguish concurrent products in a single log window, while
+// visibly signaling "this is a correlation tag, not a security boundary".
+export function computeProductCorrelationTag(pimProductId: string): string {
+  return createHash("sha256").update(pimProductId).digest("hex").slice(0, 12);
+}
+
+/** Everything this feature is allowed to log. No product slug, no raw
  * productId, no SKU, no attribute values, no env value, no connection
- * string, no session/user identity -- only counts, enums, and timing. */
+ * string, no session/user identity -- only counts, enums, timing, and an
+ * opaque per-product correlation tag (see computeProductCorrelationTag). */
 export interface FichaTecnicaDiagnosticEvent extends FichaTecnicaStageTimings {
   resolvedMode: "off" | "shadow" | "canary";
   modeRawClass: PimModeRawClass;
+  /** null until the product is actually resolved (mirrors productResolved
+   * being false) -- once populated, the SAME product always produces the
+   * SAME tag, letting multiple events in one log window be grouped by
+   * product without ever revealing which product that is. */
+  productCorrelationTag: string | null;
   productResolved: boolean;
   membershipCount: number | null;
   publishedCount: number | null;

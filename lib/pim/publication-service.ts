@@ -2,8 +2,9 @@ import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { getDatabase, type PersiDatabase } from "@/lib/db";
-import { evaluatePublicationEligibility, type PublicationIdentity } from "./publication-eligibility";
+import { evaluatePublicationEligibilityBatch, type PublicationIdentity } from "./publication-eligibility";
 import { CURRENT_PIM_BASELINE_SHA256 } from "./publication-baseline";
+import { revalidateStorefrontProductPaths } from "./storefront-cache-invalidation";
 
 type PimTransaction = Parameters<Parameters<PersiDatabase["transaction"]>[0]>[0];
 
@@ -111,12 +112,14 @@ async function withPublicationLock<T>(tx: PimTransaction, fn: () => Promise<T>):
 export async function preparePublication(members: PublicationBatchMember[], baselineReference: string): Promise<Array<{ identity: PublicationIdentity; eligible: boolean; reasonCodes: string[]; sku: string | null; attributeCode: string | null; value: string | null }>> {
   if (baselineReference !== CURRENT_PIM_BASELINE_SHA256) throw new PimPublicationStaleBaselineError();
   const db = getDatabase();
-  const results = [];
-  for (const identity of members) {
-    const result = await evaluatePublicationEligibility(db, identity);
-    results.push({ identity, eligible: result.eligible, reasonCodes: result.reasonCodes, sku: result.sku, attributeCode: result.attributeCode, value: result.value });
-  }
-  return results;
+  // A3.7-FINAL-A, Workstream D: one round trip for the whole batch instead
+  // of one per member -- evaluatePublicationEligibilityBatch preserves the
+  // per-identity Map ordering members.map() below relies on.
+  const eligibility = await evaluatePublicationEligibilityBatch(db, members);
+  return members.map((identity) => {
+    const result = eligibility.get(`${identity.productId}:${identity.attributeId}:${identity.attributeValueId}`)!;
+    return { identity, eligible: result.eligible, reasonCodes: result.reasonCodes, sku: result.sku, attributeCode: result.attributeCode, value: result.value };
+  });
 }
 
 export async function publishBatch(input: PublishBatchInput, actorReference: string): Promise<PublishBatchResult> {
@@ -132,7 +135,7 @@ export async function publishBatch(input: PublishBatchInput, actorReference: str
   if (input.baselineReference !== CURRENT_PIM_BASELINE_SHA256) throw new PimPublicationStaleBaselineError();
   const fingerprint = computeMemberFingerprint(input.members);
 
-  return getDatabase().transaction(async (tx) => withPublicationLock(tx, async () => {
+  const result = await getDatabase().transaction(async (tx) => withPublicationLock(tx, async () => {
     let batchId = input.batchId;
     if (batchId) {
       const existing = (await tx.execute(sql`select id::text as id, member_fingerprint as "memberFingerprint", status::text as status from public.pim_publication_batches where id=${batchId}::uuid`)) as unknown as Array<{ id: string; memberFingerprint: string; status: PublicationBatchStatus }>;
@@ -154,10 +157,12 @@ export async function publishBatch(input: PublishBatchInput, actorReference: str
 
     // Fresh eligibility check INSIDE the transaction/lock, never trusting a
     // prior preparePublication() call -- closes the prepare/publish drift
-    // window Section 13 asks for explicitly.
+    // window Section 13 asks for explicitly. Batched (Workstream D): one
+    // round trip for the whole batch instead of one per member.
+    const eligibility = await evaluatePublicationEligibilityBatch(tx, input.members);
     const failures: Array<{ identity: PublicationIdentity; reasonCodes: string[] }> = [];
     for (const identity of input.members) {
-      const result = await evaluatePublicationEligibility(tx, identity);
+      const result = eligibility.get(`${identity.productId}:${identity.attributeId}:${identity.attributeValueId}`)!;
       if (!result.eligible) failures.push({ identity, reasonCodes: result.reasonCodes });
     }
     if (failures.length > 0) throw new PimPublicationNotEligibleError(failures);
@@ -211,11 +216,19 @@ export async function publishBatch(input: PublishBatchInput, actorReference: str
 
     return { batchId, status: "active" as const, publishedCount: input.members.length, idempotentReplay: false };
   }));
+
+  // Workstream E: best-effort, outside the transaction -- see
+  // storefront-cache-invalidation.ts for why this never throws and never
+  // blocks the (already-committed) publish result on a cache-bust failing.
+  await revalidateStorefrontProductPaths(input.members.map((member) => member.productId));
+  return result;
 }
 
 export async function unpublishBatch(batchId: string, actorReference: string, reason?: string): Promise<{ batchId: string; status: PublicationBatchStatus; unpublishedCount: number; idempotentReplay: boolean }> {
   const actor = requireActor(actorReference);
-  return getDatabase().transaction(async (tx) => withPublicationLock(tx, async () => {
+  let affectedProductIds: string[] = [];
+
+  const result = await getDatabase().transaction(async (tx) => withPublicationLock(tx, async () => {
     const batchRows = (await tx.execute(sql`select id::text as id, status::text as status from public.pim_publication_batches where id=${batchId}::uuid`)) as unknown as Array<{ id: string; status: PublicationBatchStatus }>;
     if (batchRows.length === 0) throw new PimPublicationBatchNotFoundError();
     if (batchRows[0].status === "rolled_back") {
@@ -229,6 +242,7 @@ export async function unpublishBatch(batchId: string, actorReference: string, re
       where batch_id=${batchId}::uuid and state='published'
       returning product_id::text as "productId", attribute_id::text as "attributeId"
     `)) as unknown as Array<{ productId: string; attributeId: string }>;
+    affectedProductIds = affected.map((row) => row.productId);
 
     for (const row of affected) {
       await tx.execute(sql`
@@ -243,6 +257,12 @@ export async function unpublishBatch(batchId: string, actorReference: string, re
 
     return { batchId, status: "rolled_back" as const, unpublishedCount: affected.length, idempotentReplay: false };
   }));
+
+  // Workstream E: best-effort, outside the transaction -- see
+  // storefront-cache-invalidation.ts. Rollback (unpublish) is exactly the
+  // "value must stop appearing" case Section 12 calls out explicitly.
+  await revalidateStorefrontProductPaths(affectedProductIds);
+  return result;
 }
 
 export async function getPublicationState(batchId: string) {

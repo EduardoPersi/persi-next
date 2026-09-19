@@ -5,7 +5,14 @@ export type AdminPermission=(typeof ADMIN_PERMISSIONS)[number];
 const MATRIX:Readonly<Record<AdminRole,ReadonlySet<AdminPermission>>>={
  ADMIN:new Set(ADMIN_PERMISSIONS),
  PIM_REVIEWER:new Set(["pim.admin.read","pim.draft.edit","pim.workflow.submit","pim.workflow.reopen","pim.workflow.discard","pim.suggestion.review","pim.suggestion.extract_deterministic","pim.attribute.review"]),
- PIM_APPROVER:new Set(["pim.admin.read","pim.workflow.approve","pim.workflow.reject","pim.conflict.resolve"]),
+ // A3.7-FINAL-A: PIM_APPROVER previously could approve/reject the
+ // editorial workflow and resolve conflicts, but could NOT record an
+ // attribute review decision (pim.attribute.review) -- the exact
+ // permission the human-approval-before-publication policy now requires
+ // an approver to exercise. Added explicitly, least-privilege: no other
+ // permission is granted alongside it, and PIM_REVIEWER's own existing
+ // set is untouched.
+ PIM_APPROVER:new Set(["pim.admin.read","pim.workflow.approve","pim.workflow.reject","pim.conflict.resolve","pim.attribute.review"]),
 };
 export function isAdminRole(value:string):value is AdminRole{return (ADMIN_ROLES as readonly string[]).includes(value)}
 export function roleHasPermission(role:string,permission:string):boolean{return isAdminRole(role)&&(ADMIN_PERMISSIONS as readonly string[]).includes(permission)&&MATRIX[role].has(permission as AdminPermission)}

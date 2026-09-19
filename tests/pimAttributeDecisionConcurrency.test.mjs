@@ -83,8 +83,12 @@ test("reviewPimAttribute: decision version increments N -> N+1 via a single atom
 
 test("reviewPimAttribute: whole operation (lock, checks, reviews, version, audit) is one transaction — atomic rollback on any failure", async () => {
   const source = await read("lib/pim/attribute-review.ts");
-  assert.match(source, /return getDatabase\(\)\.transaction\(async \(tx\) => \{/);
-  const fn = source.slice(source.indexOf("return getDatabase().transaction"));
+  // A3.7-FINAL-A, Workstream E: the transaction result is now captured
+  // (`const result = await ...`) so the function can trigger a best-effort
+  // storefront cache invalidation AFTER the transaction commits -- the
+  // transaction itself is unchanged.
+  assert.match(source, /const result = await getDatabase\(\)\.transaction\(async \(tx\) => \{/);
+  const fn = source.slice(source.indexOf("const result = await getDatabase().transaction"), source.indexOf("await revalidateStorefrontProductPaths"));
   assert.doesNotMatch(fn, /getDatabase\(\)\.execute/, "every statement inside must run on tx, not a separate connection, or rollback would not cover it");
 });
 

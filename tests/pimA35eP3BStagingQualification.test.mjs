@@ -203,6 +203,11 @@ test("cross-batch rebind guard: a row that is absent or previously unpublished (
 test("cross-batch rebind guard: any failure inside the per-member loop rolls back the WHOLE batch (all-or-nothing), never a partial publish", async () => {
   const source = await read("lib/pim/publication-service.ts");
   const fn = source.slice(source.indexOf("export async function publishBatch"), source.indexOf("export async function unpublishBatch"));
-  assert.match(fn, /return getDatabase\(\)\.transaction\(async \(tx\) => withPublicationLock\(tx, async \(\) => \{/);
+  // A3.7-FINAL-A, Workstream E: the transaction result is now captured
+  // (`const result = await ...`) so the function can run a best-effort
+  // cache-invalidation AFTER the transaction commits -- the transaction
+  // itself (and everything inside it, including the per-member loop this
+  // test protects) is unchanged.
+  assert.match(fn, /getDatabase\(\)\.transaction\(async \(tx\) => withPublicationLock\(tx, async \(\) => \{/);
   assert.doesNotMatch(fn, /try\s*\{[\s\S]*catch/, "the loop must not swallow the ownership error locally -- it must propagate to abort the whole transaction");
 });

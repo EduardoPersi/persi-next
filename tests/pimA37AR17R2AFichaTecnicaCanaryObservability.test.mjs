@@ -8,7 +8,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { resolveFichaTecnicaSpecifications } from "../services/catalog/productFichaTecnica.ts";
-import { classifyRawPimModeForDiagnostics } from "../lib/pim/publication-ficha-tecnica-diagnostics.ts";
+import { classifyRawPimModeForDiagnostics, computeProductCorrelationTag } from "../lib/pim/publication-ficha-tecnica-diagnostics.ts";
 import { createCollectingFichaTecnicaTelemetrySink } from "../lib/pim/publication-ficha-tecnica-telemetry.ts";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
@@ -276,6 +276,70 @@ test("no writes: stage-timing instrumentation touches no database write statemen
   assert.doesNotMatch(source, /insert into|update public\.|delete from/i);
 });
 
+// ---------- A3.7-A-R17-R2A-D8: per-product correlation tag ----------
+
+test("R. the SAME product produces the SAME correlation tag across independent invocations", async () => {
+  const deps1 = baseDeps({ resolvePimProductId: async () => "pim-prod-XYZ" });
+  const deps2 = baseDeps({ resolvePimProductId: async () => "pim-prod-XYZ" });
+  await resolveFichaTecnicaSpecifications(product(), deps1);
+  await resolveFichaTecnicaSpecifications(product(), deps2);
+  const tag1 = lastEvent(deps1).productCorrelationTag;
+  const tag2 = lastEvent(deps2).productCorrelationTag;
+  assert.ok(tag1 !== null);
+  assert.equal(tag1, tag2);
+});
+
+test("S. DIFFERENT products produce DIFFERENT correlation tags", async () => {
+  const depsA = baseDeps({ resolvePimProductId: async () => "pim-prod-AAA" });
+  const depsB = baseDeps({ resolvePimProductId: async () => "pim-prod-BBB" });
+  await resolveFichaTecnicaSpecifications(product(), depsA);
+  await resolveFichaTecnicaSpecifications(product(), depsB);
+  assert.notEqual(lastEvent(depsA).productCorrelationTag, lastEvent(depsB).productCorrelationTag);
+});
+
+test("T. correlation tag is null whenever the product was never resolved (mode off/shadow, unsafe binding, product-not-found, or a TIMEOUT before resolution completes)", async () => {
+  const scenarios = [
+    baseDeps({ mode: "off", rawMode: "off" }),
+    baseDeps({ mode: "shadow", rawMode: "shadow" }),
+    baseDeps({ isSafeToRun: () => false }),
+    baseDeps({ resolvePimProductId: async () => null }),
+    baseDeps({ timeoutMs: 10, resolvePimProductId: () => new Promise((resolve) => setTimeout(() => resolve("pim-prod-1"), 200)) }),
+  ];
+  for (const deps of scenarios) {
+    await resolveFichaTecnicaSpecifications(product(), deps);
+    assert.equal(lastEvent(deps).productCorrelationTag, null);
+  }
+});
+
+test("U. correlation tag SURVIVES a timeout that occurs AFTER product resolution completes (mirrors the per-stage timing survival guarantee)", async () => {
+  const deps = baseDeps({
+    timeoutMs: 20,
+    resolvePimProductId: () => new Promise((resolve) => setTimeout(() => resolve("pim-prod-late-stage"), 5)),
+    getActiveCanaryMembership: () => new Promise((resolve) => setTimeout(() => resolve([{ productId: "pim-prod-late-stage", attributeCode: "material", batchId: "batch-1" }]), 200)),
+  });
+  const result = await resolveFichaTecnicaSpecifications(product(), deps);
+  assert.equal(result, undefined);
+  const event = lastEvent(deps);
+  assert.equal(event.reason, "TIMEOUT");
+  assert.ok(event.productCorrelationTag !== null, "product resolution DID complete before the timeout, so the tag must be captured even though the overall call timed out");
+});
+
+test("V. the correlation tag never contains the raw product id (or any meaningful substring of it), and is a short, fixed-length hex string", () => {
+  const rawId = "1b26a877-7163-40d6-a4f8-bf4d1ae2eb69";
+  const tag = computeProductCorrelationTag(rawId);
+  assert.equal(typeof tag, "string");
+  assert.match(tag, /^[0-9a-f]{12}$/, "expected a 12-character lowercase hex tag");
+  assert.ok(!tag.includes(rawId));
+  for (let start = 0; start + 8 <= rawId.length; start++) {
+    assert.ok(!tag.includes(rawId.slice(start, start + 8)), `tag must not contain the 8-char raw-id substring "${rawId.slice(start, start + 8)}"`);
+  }
+});
+
+test("W. no request-intent classification field exists in the event -- confirmed unreliable per Next.js's own documented Flight-header stripping, not implemented as a false signal", async () => {
+  const diagSource = await read("lib/pim/publication-ficha-tecnica-diagnostics.ts");
+  assert.doesNotMatch(diagSource, /requestIntent|MAIN_NAVIGATION|isPrefetch/i);
+});
+
 // ---------- Section 11: canary success, fixture fiel ao 0117 ----------
 
 test("full 0117-shaped success: membership=3, published=3, eligible=3, intersection=3, mergeAdditionCount=3, result=SUCCESS/SUCCESS, Cor/Marca preserved plus the 3 PIM additions", async () => {
@@ -438,7 +502,7 @@ test("log safety: the diagnostic event never contains the raw env value, DATABAS
   for (const pattern of forbidden) {
     assert.doesNotMatch(serialized, pattern, `event must not match forbidden pattern ${pattern}`);
   }
-  const allowedKeys = ["resolvedMode", "modeRawClass", "productResolved", "membershipCount", "publishedCount", "intersectionCount", "eligibleCount", "mergeAdditionCount", "result", "reason", "durationMs", "productResolutionMs", "membershipMs", "publicationReadMs", "eligibilityMs", "mergeMs"];
+  const allowedKeys = ["resolvedMode", "modeRawClass", "productCorrelationTag", "productResolved", "membershipCount", "publishedCount", "intersectionCount", "eligibleCount", "mergeAdditionCount", "result", "reason", "durationMs", "productResolutionMs", "membershipMs", "publicationReadMs", "eligibilityMs", "mergeMs"];
   assert.deepEqual(Object.keys(event).sort(), allowedKeys.sort());
   for (const key of ["productResolutionMs", "membershipMs", "publicationReadMs", "eligibilityMs", "mergeMs"]) {
     assert.equal(typeof event[key], "number", `${key} must always be a plain number for this SUCCESS case`);

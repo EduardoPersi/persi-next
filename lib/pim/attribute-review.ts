@@ -4,6 +4,7 @@ import { getDatabase } from "@/lib/db";
 import { pimAttributeDecisionSchema, type PimAttributeDecisionInput } from "@/lib/validation/pimEditorial";
 import { listAttributeCandidates } from "@/lib/pim/attribute-conflict";
 import { requireActor, type PimAdminAuditContext } from "@/lib/pim/workflow";
+import { revalidateStorefrontProductPaths } from "@/lib/pim/storefront-cache-invalidation";
 
 export class PimAttributeNotFoundError extends Error {
   readonly code = "PIM_ATTRIBUTE_NOT_FOUND";
@@ -29,7 +30,7 @@ export class PimAttributeStaleDecisionError extends Error {
 // audit row (ATTRIBUTE_DECISION_CHANGED) on top of the preserved history.
 export async function reviewPimAttribute(raw: PimAttributeDecisionInput, actorReference: string, context?: PimAdminAuditContext) {
   const input = pimAttributeDecisionSchema.parse(raw), actor = requireActor(actorReference);
-  return getDatabase().transaction(async (tx) => {
+  const result = await getDatabase().transaction(async (tx) => {
     // Serializes concurrent decisions on the same (product, attribute) pair —
     // the same advisory-lock pattern already used by the DB trigger that
     // enforces single-cardinality assignment (validate_attribute_assignment).
@@ -79,4 +80,13 @@ export async function reviewPimAttribute(raw: PimAttributeDecisionInput, actorRe
 
     return { productId: input.productId, attributeId: input.attributeId, approvedValues, rejectedValues, changed: alreadyDecided, newDecisionVersion };
   });
+
+  // Workstream E: a review decision (approve, reject, OR flip an existing
+  // approval back to rejected) can change what evaluatePublicationEligibility
+  // returns for a value currently exposed on the storefront -- see
+  // storefront-cache-invalidation.ts for why this is best-effort, never
+  // throws, and never touches any publication table itself (it only
+  // triggers a Next.js route revalidation by product id).
+  await revalidateStorefrontProductPaths([result.productId]);
+  return result;
 }

@@ -71,7 +71,14 @@ test("eligibility: pim_conflicts.attribute_key mapping covers comprimento->lengt
 test("eligibility: conflict check is scoped to c.status = 'open' and the SAME attribute only", async () => {
   const source = await read("lib/pim/publication-eligibility.ts");
   assert.match(source, /c\.status = 'open'/);
-  assert.match(source, /c\.attribute_key = case a\.code/);
+  // A3.7-FINAL-A, Workstream D: the case-mapping expression was extracted
+  // into a shared OPEN_CONFLICT_ATTRIBUTE_KEY_CASE fragment (reused by both
+  // the single-identity and the batched query) instead of being inlined
+  // twice -- the underlying rendered SQL is unchanged (still literally
+  // "case a.code" once the fragment is interpolated), only its source
+  // location moved.
+  assert.match(source, /c\.attribute_key = \$\{OPEN_CONFLICT_ATTRIBUTE_KEY_CASE\}/);
+  assert.match(source, /OPEN_CONFLICT_ATTRIBUTE_KEY_CASE = sql`case a\.code/);
 });
 
 test("eligibility: only material is checked against the placeholder false-positive pattern (scope confirmed in A3.5E-P2)", async () => {
@@ -104,7 +111,10 @@ test("publishBatch: fresh eligibility re-check happens INSIDE the transaction, a
   const source = await read("lib/pim/publication-service.ts");
   const fn = source.slice(source.indexOf("export async function publishBatch"), source.indexOf("export async function unpublishBatch"));
   const replayIdx = fn.indexOf("idempotentReplay: true");
-  const eligibilityIdx = fn.indexOf("evaluatePublicationEligibility(tx, identity)");
+  // A3.7-FINAL-A, Workstream D: batched into one round trip instead of one
+  // evaluatePublicationEligibility() call per member -- see
+  // lib/pim/publication-eligibility.ts's evaluatePublicationEligibilityBatch.
+  const eligibilityIdx = fn.indexOf("evaluatePublicationEligibilityBatch(tx, input.members)");
   const insertBatchIdx = fn.indexOf("insert into public.pim_publication_batches");
   const insertPavIdx = fn.indexOf("insert into public.pim_attribute_publications");
   assert.ok(replayIdx !== -1 && eligibilityIdx !== -1 && insertBatchIdx !== -1 && insertPavIdx !== -1);

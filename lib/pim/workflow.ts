@@ -14,6 +14,7 @@ import {
 } from "@/lib/validation/pimEditorial";
 import {assertProfileApprovalAllowed,assertSuggestionDecisionAllowed} from "@/lib/pim/conflict-policy";
 import {findConflictAttributeCandidates} from "@/lib/pim/attribute-conflict";
+import {revalidateStorefrontProductPaths} from "@/lib/pim/storefront-cache-invalidation";
 
 export type PimDecision = "approved" | "rejected";
 export type PimAdminAuditContext={identityProvider:string;identitySubject:string;adminSessionId:string;membershipId:string;effectiveRole:string;correlationId:string};
@@ -194,7 +195,7 @@ export async function resolvePimConflict(raw:PimConflictResolutionInput,actorRef
 // intact and queryable.
 export async function decidePimConflictAttribute(raw:PimConflictAttributeDecisionInput,actorReference:string,context?:PimAdminAuditContext){
   const input=pimConflictAttributeDecisionSchema.parse(raw),actor=requireActor(actorReference);
-  return getDatabase().transaction(async(tx)=>{
+  const result=await getDatabase().transaction(async(tx)=>{
     const locked=await tx.execute(sql`select id,product_id,attribute_key,status from pim_conflicts where id=${input.conflictId}::uuid for update`);
     const conflict=(locked as unknown as Array<{id:string;product_id:string;attribute_key:string;status:string}>)[0];
     if(!conflict)throw new PimConflictNotFoundError();
@@ -222,4 +223,11 @@ export async function decidePimConflictAttribute(raw:PimConflictAttributeDecisio
 
     return {conflictId:conflict.id,productId:conflict.product_id,attributeId:match.attributeId,chosenAttributeValueId:chosen.attributeValueId,status:"resolved" as const};
   });
+
+  // Workstream E: this records approved/rejected pim_attribute_reviews rows
+  // for every candidate exactly like reviewPimAttribute does -- same
+  // cache-invalidation need, same best-effort contract (see
+  // storefront-cache-invalidation.ts).
+  await revalidateStorefrontProductPaths([result.productId]);
+  return result;
 }

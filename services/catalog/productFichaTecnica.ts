@@ -10,7 +10,7 @@ import { getDatabase } from "@/lib/db";
 import { buildPimCatalogCandidate } from "@/lib/pim/publication-candidate";
 import { buildFichaTecnicaSpecifications } from "@/lib/pim/publication-ficha-tecnica";
 import { mapWooProductToCatalog } from "./woocommerce";
-import { classifyRawPimModeForDiagnostics, getRawPimPublicationModeForDiagnostics, type FichaTecnicaDiagnosticEvent, type FichaTecnicaDiagnosticReason, type FichaTecnicaStageTimings } from "@/lib/pim/publication-ficha-tecnica-diagnostics";
+import { classifyRawPimModeForDiagnostics, computeProductCorrelationTag, getRawPimPublicationModeForDiagnostics, type FichaTecnicaDiagnosticEvent, type FichaTecnicaDiagnosticReason, type FichaTecnicaStageTimings } from "@/lib/pim/publication-ficha-tecnica-diagnostics";
 import { emitFichaTecnicaDiagnostic, getConfiguredFichaTecnicaTelemetrySink, isFichaTecnicaDiagnosticsEnabled, type FichaTecnicaTelemetrySink } from "@/lib/pim/publication-ficha-tecnica-telemetry";
 
 // A3.7-A-R15: the ONLY integration point where a PIM-published attribute
@@ -23,7 +23,23 @@ import { emitFichaTecnicaDiagnostic, getConfiguredFichaTecnicaTelemetrySink, isF
 // with incidental lookups, per the A3.7-A-R14-R1/R14-R2 lesson), never
 // from productNavigation.ts, never from any listing/search/category path.
 
-const DEFAULT_TIMEOUT_MS = 300;
+// A3.7-FINAL-A, Section 9: named separately from SHADOW's own budget
+// (lib/pim/publication-shadow-runtime.ts's SHADOW_TIMEOUT_MS=500) --
+// canary/storefront is on the actual response path (fail-closed here means
+// "render Woo-only", not "silently drop a background comparison"), so it
+// never had to share a number with shadow's, and in fact never did (300 vs
+// 500). This round renames the constant to make that independence explicit
+// per Section 9's request; the VALUE stays 300ms, unchanged, because the
+// only real cold-start evidence available (A3.7-A-R17-R2A-D6/D7: 3 cold
+// observations at ~306/326/306ms) predates this round's own eligibility
+// round-trip reduction (Workstream D: N round trips -> 1 for the
+// eligibility stage) and there is no new real staging measurement yet to
+// justify a specific different number without guessing one -- exactly the
+// case Section 9 itself anticipates ("implementar politica configuravel/
+// constante segura com justificativa e marcar para ajuste apos
+// homologacao"). Revisit with real post-optimization staging timings
+// during FINAL-B.
+const CANARY_STOREFRONT_TIMEOUT_MS = 300;
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -101,26 +117,29 @@ export async function resolveFichaTecnicaSpecifications(product: Product, deps: 
   const rawMode = deps.rawMode ?? getRawPimPublicationModeForDiagnostics();
   const modeRawClass = classifyRawPimModeForDiagnostics(rawMode);
 
-  // A3.7-A-R17-R2A-D6: a mutable, shared timing record -- updated IN PLACE
-  // by runFichaTecnicaPipeline as each stage actually completes. Passed by
+  // A3.7-A-R17-R2A-D6/D8: a mutable, shared record -- updated IN PLACE by
+  // runFichaTecnicaPipeline as each stage actually completes (timings) and
+  // as soon as the product is resolved (correlation tag). Passed by
   // reference (not returned) specifically so a TIMEOUT still leaves behind
-  // whichever stage timings DID complete before the clock ran out; the
-  // pipeline's own return value alone cannot carry that information on the
-  // timeout path, since withTimeout abandons (does not cancel) the inner
-  // work and the outer race settles on the timer, not on the pipeline.
-  const timings: FichaTecnicaStageTimings = {
+  // whichever data DID complete before the clock ran out; the pipeline's
+  // own return value alone cannot carry that information on the timeout
+  // path, since withTimeout abandons (does not cancel) the inner work and
+  // the outer race settles on the timer, not on the pipeline.
+  const mutableState: MutableDiagnosticState = {
     productResolutionMs: null,
     membershipMs: null,
     publicationReadMs: null,
     eligibilityMs: null,
     mergeMs: null,
+    productCorrelationTag: null,
   };
 
-  const run = await runFichaTecnicaPipeline(product, mode, deps, timings);
+  const run = await runFichaTecnicaPipeline(product, mode, deps, mutableState);
 
   const event: FichaTecnicaDiagnosticEvent = {
     resolvedMode: mode,
     modeRawClass,
+    productCorrelationTag: mutableState.productCorrelationTag,
     productResolved: run.productResolved,
     membershipCount: run.membershipCount,
     publishedCount: run.publishedCount,
@@ -130,7 +149,11 @@ export async function resolveFichaTecnicaSpecifications(product: Product, deps: 
     result: run.reason === "SUCCESS" ? "SUCCESS" : run.reason === "TIMEOUT" || run.reason === "ERROR" ? "ERROR" : "SKIPPED",
     reason: run.reason,
     durationMs: performance.now() - startedAt,
-    ...timings,
+    productResolutionMs: mutableState.productResolutionMs,
+    membershipMs: mutableState.membershipMs,
+    publicationReadMs: mutableState.publicationReadMs,
+    eligibilityMs: mutableState.eligibilityMs,
+    mergeMs: mutableState.mergeMs,
   };
   const diagnosticsEnabled = deps.diagnosticsEnabled ?? isFichaTecnicaDiagnosticsEnabled();
   if (diagnosticsEnabled) {
@@ -146,7 +169,14 @@ export async function resolveFichaTecnicaSpecifications(product: Product, deps: 
  * the public result. Every early return here is BEHAVIORALLY unchanged:
  * still resolves to `specifications: undefined` in exactly the same
  * conditions as before. */
-async function runFichaTecnicaPipeline(product: Product, mode: ReturnType<typeof getPimPublicationFlags>["mode"], deps: FichaTecnicaDependencies, timings: FichaTecnicaStageTimings): Promise<FichaTecnicaRun> {
+/** A3.7-A-R17-R2A-D8: the timing record plus an opaque, per-product
+ * correlation tag -- both survive a TIMEOUT via the same by-reference
+ * mutation trick, since withTimeout abandons rather than cancels the inner
+ * work. See computeProductCorrelationTag's own doc comment for why this is
+ * a plain hash, not an HMAC, and why it is safe to include in a log line. */
+type MutableDiagnosticState = FichaTecnicaStageTimings & { productCorrelationTag: string | null };
+
+async function runFichaTecnicaPipeline(product: Product, mode: ReturnType<typeof getPimPublicationFlags>["mode"], deps: FichaTecnicaDependencies, timings: MutableDiagnosticState): Promise<FichaTecnicaRun> {
   // off AND shadow both stop here, before any DB access -- identical to
   // today's behavior in both modes. Only "canary" proceeds.
   if (mode !== "canary") return { ...SKIPPED, reason: "MODE_NOT_CANARY" };
@@ -158,7 +188,7 @@ async function runFichaTecnicaPipeline(product: Product, mode: ReturnType<typeof
   const membershipFn = deps.getActiveCanaryMembership ?? getActiveCanaryMembership;
   const publishedFn = deps.getPublishedAttributesForProduct ?? getPublishedAttributesForProduct;
   const eligibilityBatchFn = deps.evaluatePublicationEligibilityBatch ?? evaluatePublicationEligibilityBatch;
-  const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const timeoutMs = deps.timeoutMs ?? CANARY_STOREFRONT_TIMEOUT_MS;
 
   try {
     return await withTimeout(
@@ -167,6 +197,7 @@ async function runFichaTecnicaPipeline(product: Product, mode: ReturnType<typeof
         const pimProductId = await resolvePimProductId(product.slug);
         timings.productResolutionMs = performance.now() - stageStartedAt;
         if (!pimProductId) return { ...SKIPPED, reason: "PRODUCT_NOT_RESOLVED" };
+        timings.productCorrelationTag = computeProductCorrelationTag(pimProductId);
 
         // Canary allowlist FIRST (cheapest possible short-circuit): a
         // product with zero active-canary-batch membership rows behaves

@@ -23,17 +23,23 @@ test("UI never displays 'Aprovado no PIM' merely from absence of a review row", 
   assert.match(page, /reviewStatus==="approved"\?"Aprovado no PIM":value\.reviewStatus==="rejected"\?"Rejeitado":"Sem revisão"/);
 });
 
-test("RBAC: ADMIN and PIM_REVIEWER can review attributes routinely, PIM_APPROVER cannot", () => {
+// A3.7-FINAL-A, Workstream A: the human-approval-before-publication policy
+// (Section 4/6) requires an approver to be able to exercise
+// pim.attribute.review, not only the editorial workflow.approve/reject
+// permissions -- this was the exact RBAC gap the operator hit as a
+// "missing Approve button" (A3.7-A-R17-R1's finding). PIM_APPROVER now has
+// it too, least-privilege (no other permission changed alongside it).
+test("RBAC: ADMIN, PIM_REVIEWER and PIM_APPROVER can all review attributes", () => {
   assert.equal(roleHasPermission("ADMIN", "pim.attribute.review"), true);
   assert.equal(roleHasPermission("PIM_REVIEWER", "pim.attribute.review"), true);
-  assert.equal(roleHasPermission("PIM_APPROVER", "pim.attribute.review"), false);
+  assert.equal(roleHasPermission("PIM_APPROVER", "pim.attribute.review"), true);
 });
 
-test("policy denies attribute review to an unauthorized or inactive membership, allows verified reviewer", () => {
-  assert.equal(evaluateAdminPolicy({ membership: active("PIM_APPROVER"), permission: "pim.attribute.review", mfa: "verified" }).code, "PERMISSION_DENIED");
+test("policy denies attribute review to an inactive or unverified membership, allows any verified authorized role including PIM_APPROVER", () => {
   assert.equal(evaluateAdminPolicy({ membership: { ...active("PIM_REVIEWER"), status: "inactive" }, permission: "pim.attribute.review", mfa: "verified" }).code, "MEMBERSHIP_INACTIVE");
   assert.equal(evaluateAdminPolicy({ membership: active("PIM_REVIEWER"), permission: "pim.attribute.review", mfa: "not_verified" }).code, "MFA_REQUIRED");
   assert.equal(evaluateAdminPolicy({ membership: active("PIM_REVIEWER"), permission: "pim.attribute.review", mfa: "verified" }).allowed, true);
+  assert.equal(evaluateAdminPolicy({ membership: active("PIM_APPROVER"), permission: "pim.attribute.review", mfa: "verified" }).allowed, true);
 });
 
 test("candidate listing works without any pim_conflicts row and exposes cardinality", async () => {
