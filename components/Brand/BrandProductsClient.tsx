@@ -65,78 +65,57 @@ export function BrandProductsInteractive({
   const searchParamsKey = searchParams.toString();
   const hasFilters = hasActiveFilterParams(searchParams);
 
-  interface FetchedState {
+  interface ListState {
     products: Product[];
     total: number;
+    page: number;
   }
 
-  const [fetched, setFetched] = useState<FetchedState | null>(null);
+  const [state, setState] = useState<ListState>({
+    products: initialProducts,
+    total: initialTotal,
+    page: 1,
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const lastFilterSignatureRef = useRef<string | null>(null);
-  const lastPageRef = useRef(1);
+  // Invalidada a cada troca de filtro, para descartar uma resposta de
+  // "carregar mais" que ainda esteja em voo quando o filtro muda.
+  const requestIdRef = useRef(0);
+
+  // Ajusta o estado durante a renderização (em vez de em um efeito) quando
+  // os filtros são removidos, voltando à listagem inicial vinda do
+  // servidor sem esperar um novo ciclo de efeito.
+  const [wasFiltered, setWasFiltered] = useState(hasFilters);
+  if (hasFilters !== wasFiltered) {
+    setWasFiltered(hasFilters);
+    if (!hasFilters) {
+      setState({ products: initialProducts, total: initialTotal, page: 1 });
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!hasFilters) {
-      lastFilterSignatureRef.current = null;
-      lastPageRef.current = 1;
+      // Invalida qualquer fetch filtrado ainda em voo.
+      requestIdRef.current += 1;
       return;
     }
 
-    const currentPage = Math.max(
-      Number.parseInt(searchParams.get("pagina") ?? "1", 10) || 1,
-      1,
-    );
-    const filterSignature = new URLSearchParams(searchParams);
-    filterSignature.delete("pagina");
-    const signatureKey = filterSignature.toString();
-
-    const isSameFilters = lastFilterSignatureRef.current === signatureKey;
-    const isLoadMore = isSameFilters && currentPage > lastPageRef.current;
-
+    const requestId = (requestIdRef.current += 1);
     let cancelled = false;
 
     async function run() {
-      if (isLoadMore) {
-        setIsLoadingMore(true);
-      } else {
-        setIsLoading(true);
-      }
-
+      setIsLoading(true);
       try {
-        if (isLoadMore) {
-          const result = await fetchBrandProducts(
-            brandSlug,
-            searchParams,
-            currentPage,
-          );
-          if (cancelled) return;
-          setFetched((previous) => ({
-            products: [...(previous?.products ?? []), ...result.products],
-            total: result.total,
-          }));
-        } else {
-          const pages = await Promise.all(
-            Array.from({ length: currentPage }, (_, index) =>
-              fetchBrandProducts(brandSlug, searchParams, index + 1),
-            ),
-          );
-          if (cancelled) return;
-          const last = pages[pages.length - 1];
-          setFetched({
-            products: pages.flatMap((page) => page.products),
-            total: last.total,
-          });
-        }
-        lastFilterSignatureRef.current = signatureKey;
-        lastPageRef.current = currentPage;
+        const result = await fetchBrandProducts(brandSlug, searchParams, 1);
+        if (cancelled || requestIdRef.current !== requestId) return;
+        setState({ products: result.products, total: result.total, page: 1 });
       } catch {
         // Mantém a última lista carregada com sucesso em caso de falha.
       } finally {
-        if (!cancelled) {
+        if (!cancelled && requestIdRef.current === requestId) {
           setIsLoading(false);
-          setIsLoadingMore(false);
         }
       }
     }
@@ -147,24 +126,39 @@ export function BrandProductsInteractive({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParamsKey, brandSlug]);
+  }, [searchParamsKey, brandSlug, hasFilters]);
 
-  const products = hasFilters ? (fetched?.products ?? []) : initialProducts;
-  const total = hasFilters ? (fetched?.total ?? 0) : initialTotal;
+  async function handleLoadMore() {
+    if (isLoadingMore) return;
+
+    const requestId = (requestIdRef.current += 1);
+    const nextPage = state.page + 1;
+    setIsLoadingMore(true);
+
+    try {
+      const result = await fetchBrandProducts(brandSlug, searchParams, nextPage);
+      if (requestIdRef.current !== requestId) return;
+      setState((previous) => ({
+        products: [...previous.products, ...result.products],
+        total: result.total,
+        page: nextPage,
+      }));
+    } catch {
+      // Mantém a última lista carregada com sucesso em caso de falha.
+    } finally {
+      if (requestIdRef.current === requestId) {
+        setIsLoadingMore(false);
+      }
+    }
+  }
+
+  const { products, total } = state;
 
   const currentOrder = searchParams.get("ordem") ?? "recentes";
   const normalizedParams = normalizeSearchParams(searchParams);
   const preservedSortParams = { ...normalizedParams };
   delete preservedSortParams.ordem;
   delete preservedSortParams.pagina;
-  const currentPage = Math.max(
-    Number.parseInt(searchParams.get("pagina") ?? "1", 10) || 1,
-    1,
-  );
-  const loadMoreParams = {
-    ...normalizedParams,
-    pagina: String(currentPage + 1),
-  };
   const hasMoreProducts = products.length < total;
 
   return (
@@ -202,8 +196,8 @@ export function BrandProductsInteractive({
             {hasMoreProducts ? (
               <div className="mt-8 flex justify-center">
                 <LoadMoreButton
-                  pathname={pathname}
-                  searchParams={loadMoreParams}
+                  onClick={handleLoadMore}
+                  isLoading={isLoadingMore}
                 />
               </div>
             ) : null}

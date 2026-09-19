@@ -6,7 +6,7 @@ import {
   type CategoryFilterValues,
 } from "@/components/Category/CategoryFilters";
 import { CategorySort } from "@/components/Category/CategorySort";
-import { LoadMoreButton } from "@/components/Category/LoadMoreButton";
+import { LoadMoreLinkButton } from "@/components/Category/LoadMoreLinkButton";
 import { Header } from "@/components/Header/Header";
 import { ProductCard } from "@/components/Product/ProductCard";
 import { RecentlyViewedProducts } from "@/components/Product/RecentlyViewedProducts";
@@ -272,7 +272,7 @@ export default async function PromotionsPage({
                     </div>
                     {hasMoreProducts ? (
                       <div className="mt-8 flex justify-center">
-                        <LoadMoreButton
+                        <LoadMoreLinkButton
                           pathname={pathname}
                           searchParams={loadMoreParams}
                         />
