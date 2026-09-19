@@ -8,7 +8,7 @@ import {
 } from "@/components/Category/CategoryFilters";
 import { CategorySort } from "@/components/Category/CategorySort";
 import { HomeCategoryCarousel } from "@/components/Category/HomeCategoryCarousel";
-import { LoadMoreButton } from "@/components/Category/LoadMoreButton";
+import { LoadMoreLinkButton } from "@/components/Category/LoadMoreLinkButton";
 import { Header } from "@/components/Header/Header";
 import { ProductCard } from "@/components/Product/ProductCard";
 import { RecentlyViewedProducts } from "@/components/Product/RecentlyViewedProducts";
@@ -412,7 +412,7 @@ export async function ProductListingPage({
                       </div>
                       {products.length < totalProducts ? (
                         <div className="mt-8 flex justify-center">
-                          <LoadMoreButton pathname={pathname} searchParams={loadMoreParams} />
+                          <LoadMoreLinkButton pathname={pathname} searchParams={loadMoreParams} />
                         </div>
                       ) : null}
                     </>
