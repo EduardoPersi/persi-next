@@ -36,14 +36,29 @@ test("dry-run is read-only and reports two intended mutations", async () => inRo
   const dry = await runPersiBootstrap(tx, { config: value, useExistingTransaction: true });
   assert.equal(dry.status, "READY_TO_APPLY"); assert.equal(dry.writes, 0);
   assert.deepEqual(dry.expectedMutations, { stores: 1, assignments: 1 });
-  assert.equal((await tx`select count(*)::int count from stores`)[0].count, 0);
+  // Scoped to this test's own synthetic store code -- a global, unscoped
+  // count here would assume the shared local database starts with zero
+  // stores, an assumption the suite's own concurrency test (which commits
+  // real, permanent stores across runs, by necessity -- see its own
+  // comment below) makes false the moment this file has ever run before.
+  assert.equal((await tx`select count(*)::int count from stores where code=${value.storeCode}`)[0].count, 0);
 }));
 
 test("first apply and exact rerun are safe", async () => inRollback(async (tx) => {
   const value = config("happy"); await fixture(tx, value);
   const first = await runPersiBootstrap(tx, { config: value, apply: true, useExistingTransaction: true });
   assert.equal(first.status, "BOOTSTRAPPED"); assert.equal(first.writes, 2);
-  assert.deepEqual(first.finalCounts, { stores: 1, assignments: 1 });
+  // first.finalCounts is a deliberately GLOBAL snapshot (runPersiBootstrap's
+  // real deployment target is a single-store environment, where "exactly 1
+  // store/assignment in the whole database" is a meaningful post-bootstrap
+  // invariant) -- correct production behaviour, not a bug, but incompatible
+  // with this shared local test database ever having a second synthetic
+  // store in it. Verifying the real thing this test cares about (THIS
+  // bootstrap created exactly one store with this code, and one assignment
+  // for it) via a scoped query, instead of asserting finalCounts' raw
+  // (legitimately global) value.
+  assert.equal((await tx`select count(*)::int count from stores where code=${value.storeCode}`)[0].count, 1);
+  assert.equal((await tx`select count(*)::int count from store_price_list_assignments where store_id=${first.store.id}::uuid`)[0].count, 1);
   assert.equal(first.resolver.price_list_id, value.priceListId); assert.equal(BigInt(first.resolver.assignment_version), 1n);
   const second = await runPersiBootstrap(tx, { config: value, apply: true, useExistingTransaction: true });
   assert.equal(second.status, "ALREADY_BOOTSTRAPPED"); assert.equal(second.writes, 0);
@@ -54,7 +69,7 @@ test("conflicting store fails without repair", async () => inRollback(async (tx)
   const value = config("conflict"); await fixture(tx, value);
   await tx`insert into stores(code,name,status,default_currency,timezone) values(${value.storeCode},'Different name','active','BRL','America/Sao_Paulo')`;
   await assert.rejects(runPersiBootstrap(tx, { config: value, apply: true, useExistingTransaction: true }), /BOOTSTRAP_CONFLICT/);
-  assert.equal((await tx`select count(*)::int count from store_price_list_assignments`)[0].count, 0);
+  assert.equal((await tx`select count(*)::int count from store_price_list_assignments a join stores s on s.id=a.store_id where s.code=${value.storeCode}`)[0].count, 0);
 }));
 
 for (const [label, override, expected] of [
@@ -65,20 +80,20 @@ for (const [label, override, expected] of [
 ]) test(label, async () => inRollback(async (tx) => {
   const value = config(label.replaceAll(" ", "-")); await fixture(tx, value, override);
   await assert.rejects(runPersiBootstrap(tx, { config: value, apply: true, useExistingTransaction: true }), expected);
-  assert.equal((await tx`select count(*)::int count from stores`)[0].count, 0);
+  assert.equal((await tx`select count(*)::int count from stores where code=${value.storeCode}`)[0].count, 0);
 }));
 
 test("wrong UUID fails double identity", async () => inRollback(async (tx) => {
   const value = config("wrong-uuid"), actual = { ...value, priceListId: randomUUID() };
   await fixture(tx, actual, { code: value.priceListCode });
   await assert.rejects(runPersiBootstrap(tx, { config: value, apply: true, useExistingTransaction: true }), /PRICE_LIST_UUID_MISMATCH/);
-  assert.equal((await tx`select count(*)::int count from stores`)[0].count, 0);
+  assert.equal((await tx`select count(*)::int count from stores where code=${value.storeCode}`)[0].count, 0);
 }));
 
 test("missing coverage fails before store insert", async () => inRollback(async (tx) => {
   const value = config("missing"); await fixture(tx, value, { missing: true });
   await assert.rejects(runPersiBootstrap(tx, { config: value, apply: true, useExistingTransaction: true }), /PRICE_COVERAGE_INCOMPLETE/);
-  assert.equal((await tx`select count(*)::int count from stores`)[0].count, 0);
+  assert.equal((await tx`select count(*)::int count from stores where code=${value.storeCode}`)[0].count, 0);
 }));
 
 test("ambiguous coverage fails before store insert", async () => inRollback(async (tx) => {
@@ -86,12 +101,22 @@ test("ambiguous coverage fails before store insert", async () => inRollback(asyn
   await tx`alter table prices disable trigger prices_prevent_overlap`;
   await tx`insert into prices(product_variant_id,price_list_id,list_amount_minor,currency,status) values(${ids.variantId},${value.priceListId},1100,'BRL','active')`;
   await assert.rejects(runPersiBootstrap(tx, { config: value, apply: true, useExistingTransaction: true }), /PRICE_COVERAGE_INCOMPLETE/);
-  assert.equal((await tx`select count(*)::int count from stores`)[0].count, 0);
+  assert.equal((await tx`select count(*)::int count from stores where code=${value.storeCode}`)[0].count, 0);
 }));
 
 test("failure after store insert rolls transaction back", async () => {
   await sql.begin((tx) => deactivateCatalog(tx));
-  const value = config("rollback"); await sql.begin((tx) => fixture(tx, value));
+  // Unlike every sibling test above, this one cannot wrap its fixture in
+  // inRollback(): runPersiBootstrap needs already-COMMITTED catalog/price
+  // data to run its OWN transaction against (it is called with the raw
+  // `sql` client here, not `tx`/`useExistingTransaction`, specifically so
+  // ITS internal rollback-on-injected-failure is what gets exercised).
+  // A fixed label ("rollback") therefore left a permanent price_lists row
+  // behind after every run, colliding on price_lists_code_unique on the
+  // next run against the same database. Following the same
+  // label+random-suffix pattern the concurrency test below already uses
+  // for this exact same "needs a real committed, rerun-safe fixture" case.
+  const value = config(`rollback-${randomUUID().slice(0, 8)}`); await sql.begin((tx) => fixture(tx, value));
   await assert.rejects(runPersiBootstrap(sql, { config: value, apply: true, injectFailureAfterStore: true }), /INJECTED_AFTER_STORE/);
   assert.equal((await sql`select count(*)::int count from stores where code=${value.storeCode}`)[0].count, 0);
   assert.equal((await sql`select count(*)::int count from store_price_list_assignments a join stores s on s.id=a.store_id where s.code=${value.storeCode}`)[0].count, 0);

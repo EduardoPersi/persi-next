@@ -96,8 +96,25 @@ async function priceCoverage(tx, config) {
 
 async function inspectLocked(tx, config) {
   const migrations = await tx`select version from supabase_migrations.schema_migrations order by version`;
-  assert.equal(migrations.length, 23, "MIGRATION_COUNT_MISMATCH");
-  assert.equal(migrations.at(-1)?.version, "20260903120000", "MIGRATION_HEAD_MISMATCH");
+  // Was a hardcoded literal (23) frozen at the 20260903120000 checkpoint --
+  // went stale the moment any later, unrelated migration (PIM, admin
+  // security, etc.) was added to supabase/migrations, since this guard's
+  // real job is "the applied set is not missing anything on disk / this
+  // script was not pointed at the wrong migrations directory", not "no
+  // migration may ever be added after this one". Deriving the expectation
+  // from the actual migrations directory keeps that protection (still an
+  // EXACT count match, still fails closed on a genuinely incomplete or
+  // misdirected apply) without re-introducing a new magic number that
+  // would go stale again the next time an unrelated migration lands.
+  const migrationFiles = fs.readdirSync("supabase/migrations").filter((name) => name.endsWith(".sql"));
+  assert.equal(migrations.length, migrationFiles.length, "MIGRATION_COUNT_MISMATCH");
+  // This script's own logic depends specifically on the store/price-authority
+  // schema introduced by 20260903120000 (store_price_list_assignments,
+  // resolve_store_price_authority) -- checking that migration is PRESENT
+  // (rather than that it is the LAST one applied) preserves the original
+  // regression guard while no longer assuming this was the final migration
+  // ever to exist, which is exactly the false assumption that went stale.
+  assert.ok(migrations.some((row) => row.version === "20260903120000"), "MIGRATION_HEAD_MISMATCH");
   const lists = await tx`select id::text,code,currency,channel,status::text,customer_segment,priority from public.price_lists where code=${config.priceListCode} or id=${config.priceListId}::uuid order by id`;
   assert.equal(lists.length, 1, "PRICE_LIST_DOUBLE_IDENTITY_MISMATCH");
   const list = lists[0];
