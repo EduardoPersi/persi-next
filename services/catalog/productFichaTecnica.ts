@@ -10,7 +10,7 @@ import { getDatabase } from "@/lib/db";
 import { buildPimCatalogCandidate } from "@/lib/pim/publication-candidate";
 import { buildFichaTecnicaSpecifications } from "@/lib/pim/publication-ficha-tecnica";
 import { mapWooProductToCatalog } from "./woocommerce";
-import { classifyRawPimModeForDiagnostics, getRawPimPublicationModeForDiagnostics, type FichaTecnicaDiagnosticEvent, type FichaTecnicaDiagnosticReason } from "@/lib/pim/publication-ficha-tecnica-diagnostics";
+import { classifyRawPimModeForDiagnostics, getRawPimPublicationModeForDiagnostics, type FichaTecnicaDiagnosticEvent, type FichaTecnicaDiagnosticReason, type FichaTecnicaStageTimings } from "@/lib/pim/publication-ficha-tecnica-diagnostics";
 import { emitFichaTecnicaDiagnostic, getConfiguredFichaTecnicaTelemetrySink, isFichaTecnicaDiagnosticsEnabled, type FichaTecnicaTelemetrySink } from "@/lib/pim/publication-ficha-tecnica-telemetry";
 
 // A3.7-A-R15: the ONLY integration point where a PIM-published attribute
@@ -101,7 +101,22 @@ export async function resolveFichaTecnicaSpecifications(product: Product, deps: 
   const rawMode = deps.rawMode ?? getRawPimPublicationModeForDiagnostics();
   const modeRawClass = classifyRawPimModeForDiagnostics(rawMode);
 
-  const run = await runFichaTecnicaPipeline(product, mode, deps);
+  // A3.7-A-R17-R2A-D6: a mutable, shared timing record -- updated IN PLACE
+  // by runFichaTecnicaPipeline as each stage actually completes. Passed by
+  // reference (not returned) specifically so a TIMEOUT still leaves behind
+  // whichever stage timings DID complete before the clock ran out; the
+  // pipeline's own return value alone cannot carry that information on the
+  // timeout path, since withTimeout abandons (does not cancel) the inner
+  // work and the outer race settles on the timer, not on the pipeline.
+  const timings: FichaTecnicaStageTimings = {
+    productResolutionMs: null,
+    membershipMs: null,
+    publicationReadMs: null,
+    eligibilityMs: null,
+    mergeMs: null,
+  };
+
+  const run = await runFichaTecnicaPipeline(product, mode, deps, timings);
 
   const event: FichaTecnicaDiagnosticEvent = {
     resolvedMode: mode,
@@ -115,6 +130,7 @@ export async function resolveFichaTecnicaSpecifications(product: Product, deps: 
     result: run.reason === "SUCCESS" ? "SUCCESS" : run.reason === "TIMEOUT" || run.reason === "ERROR" ? "ERROR" : "SKIPPED",
     reason: run.reason,
     durationMs: performance.now() - startedAt,
+    ...timings,
   };
   const diagnosticsEnabled = deps.diagnosticsEnabled ?? isFichaTecnicaDiagnosticsEnabled();
   if (diagnosticsEnabled) {
@@ -130,7 +146,7 @@ export async function resolveFichaTecnicaSpecifications(product: Product, deps: 
  * the public result. Every early return here is BEHAVIORALLY unchanged:
  * still resolves to `specifications: undefined` in exactly the same
  * conditions as before. */
-async function runFichaTecnicaPipeline(product: Product, mode: ReturnType<typeof getPimPublicationFlags>["mode"], deps: FichaTecnicaDependencies): Promise<FichaTecnicaRun> {
+async function runFichaTecnicaPipeline(product: Product, mode: ReturnType<typeof getPimPublicationFlags>["mode"], deps: FichaTecnicaDependencies, timings: FichaTecnicaStageTimings): Promise<FichaTecnicaRun> {
   // off AND shadow both stop here, before any DB access -- identical to
   // today's behavior in both modes. Only "canary" proceeds.
   if (mode !== "canary") return { ...SKIPPED, reason: "MODE_NOT_CANARY" };
@@ -147,7 +163,9 @@ async function runFichaTecnicaPipeline(product: Product, mode: ReturnType<typeof
   try {
     return await withTimeout(
       (async (): Promise<FichaTecnicaRun> => {
+        let stageStartedAt = performance.now();
         const pimProductId = await resolvePimProductId(product.slug);
+        timings.productResolutionMs = performance.now() - stageStartedAt;
         if (!pimProductId) return { ...SKIPPED, reason: "PRODUCT_NOT_RESOLVED" };
 
         // Canary allowlist FIRST (cheapest possible short-circuit): a
@@ -156,11 +174,15 @@ async function runFichaTecnicaPipeline(product: Product, mode: ReturnType<typeof
         // the REAL, non-hardcoded allowlist (lib/pim/publication-read-model.ts's
         // getActiveCanaryMembership, already existing, already tested,
         // never wired to any route before this round).
+        stageStartedAt = performance.now();
         const membership = await membershipFn(pimProductId);
+        timings.membershipMs = performance.now() - stageStartedAt;
         if (membership.length === 0) return { ...SKIPPED, productResolved: true, membershipCount: 0, reason: "NO_ACTIVE_CANARY_MEMBERSHIP" };
 
         const canaryCodes = new Set(membership.map((m) => m.attributeCode));
+        stageStartedAt = performance.now();
         const published = await publishedFn(pimProductId);
+        timings.publicationReadMs = performance.now() - stageStartedAt;
         if (published.length === 0) return { ...SKIPPED, productResolved: true, membershipCount: membership.length, publishedCount: 0, reason: "NO_PUBLISHED_ATTRIBUTES" };
 
         // getPublishedAttributesForProduct already enforces
@@ -179,10 +201,12 @@ async function runFichaTecnicaPipeline(product: Product, mode: ReturnType<typeof
         // for something as high-stakes as live public exposure (shadow
         // telemetry tolerates this staleness; public rendering must not).
         const db = getDatabase();
+        stageStartedAt = performance.now();
         const eligibility = await eligibilityBatchFn(
           db,
           canaryPublished.map((record) => ({ productId: record.productId, attributeId: record.attributeId, attributeValueId: record.attributeValueId })),
         );
+        timings.eligibilityMs = performance.now() - stageStartedAt;
         const stillEligible: PublishedAttributeRecord[] = canaryPublished.filter((record) => {
           const key = `${record.productId}:${record.attributeId}:${record.attributeValueId}`;
           return eligibility.get(key)?.eligible === true;
@@ -191,9 +215,11 @@ async function runFichaTecnicaPipeline(product: Product, mode: ReturnType<typeof
           return { ...SKIPPED, productResolved: true, membershipCount: membership.length, publishedCount: published.length, intersectionCount: canaryPublished.length, eligibleCount: 0, reason: "NO_CURRENTLY_ELIGIBLE_ATTRIBUTES" };
         }
 
+        stageStartedAt = performance.now();
         const official = mapWooProductToCatalog(product);
         const candidate = buildPimCatalogCandidate(pimProductId, stillEligible);
         const { specifications, additionCount } = buildFichaTecnicaSpecifications(official, candidate);
+        timings.mergeMs = performance.now() - stageStartedAt;
         const base = { productResolved: true, membershipCount: membership.length, publishedCount: published.length, intersectionCount: canaryPublished.length, eligibleCount: stillEligible.length, mergeAdditionCount: additionCount };
         if (additionCount === 0) return { ...base, specifications: undefined, reason: "NO_SAFE_MERGE_ADDITIONS" };
         return { ...base, specifications, reason: "SUCCESS" };

@@ -200,7 +200,20 @@ test("structural: resolveFichaTecnicaSpecifications has exactly one productive c
   const { execSync } = await import("node:child_process");
   const output = execSync('git grep -n "resolveFichaTecnicaSpecifications(" -- "*.ts" "*.tsx"', { cwd: new URL("..", import.meta.url), encoding: "utf8" });
   const lines = output.trim().split("\n").filter(Boolean);
-  const calls = lines.filter((line) => !line.includes("services/catalog/productFichaTecnica.ts:") || !line.includes("export async function resolveFichaTecnicaSpecifications"));
+  // A3.7-A-R17-R2A-D6: the original filter here (`!A || !B`) excluded a
+  // line only when it was BOTH the definition line AND in
+  // productFichaTecnica.ts -- by De Morgan that's equivalent to `!(A && B)`,
+  // which keeps EVERY line outside that one file regardless of content,
+  // silently admitting doc-comment mentions (e.g.
+  // lib/pim/publication-ficha-tecnica-diagnostics.ts's own comments) as if
+  // they were call sites. Fixed to exclude the definition line and any
+  // comment-only mention, keeping only real invocations.
+  const calls = lines.filter((line) => {
+    if (line.includes("export async function resolveFichaTecnicaSpecifications")) return false;
+    const content = line.replace(/^[^:]+:\d+:/, "").trim();
+    if (content.startsWith("//") || content.startsWith("*") || content.startsWith("/*")) return false;
+    return true;
+  });
   assert.equal(calls.length, 1, `expected exactly 1 call site, found: ${JSON.stringify(calls)}`);
   assert.ok(calls[0].startsWith("app/_storefront/product-page.tsx:"), `the one call site must be product-page.tsx, got: ${calls[0]}`);
 });

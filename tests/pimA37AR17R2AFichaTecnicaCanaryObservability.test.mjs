@@ -179,6 +179,103 @@ test("J'. thrown dependency: SKIPPED->ERROR result, reason=ERROR, public result 
   assert.equal(event.reason, "ERROR");
 });
 
+// ---------- A3.7-A-R17-R2A-D6: per-stage timing instrumentation ----------
+
+test("K. product resolution comfortably below budget: productResolutionMs is a small positive number, pipeline proceeds to SUCCESS", async () => {
+  const deps = baseDeps({ timeoutMs: 300, resolvePimProductId: () => new Promise((resolve) => setTimeout(() => resolve("pim-prod-1"), 5)) });
+  const result = await resolveFichaTecnicaSpecifications(product(), deps);
+  assert.ok(Array.isArray(result));
+  const event = lastEvent(deps);
+  assert.ok(event.productResolutionMs !== null && event.productResolutionMs >= 5, `expected productResolutionMs >= 5, got ${event.productResolutionMs}`);
+  assert.equal(event.reason, "SUCCESS");
+});
+
+test("L. product resolution consumes almost the entire budget but still completes: pipeline still reaches SUCCESS, productResolutionMs reflects the near-limit cost", async () => {
+  const deps = baseDeps({ timeoutMs: 60, resolvePimProductId: () => new Promise((resolve) => setTimeout(() => resolve("pim-prod-1"), 40)) });
+  const result = await resolveFichaTecnicaSpecifications(product(), deps);
+  assert.ok(Array.isArray(result));
+  const event = lastEvent(deps);
+  assert.ok(event.productResolutionMs !== null && event.productResolutionMs >= 40);
+  assert.equal(event.reason, "SUCCESS");
+});
+
+test("M. product resolution exceeds the budget: TIMEOUT fires, productResolutionMs stays null (that stage never completed), no later stage timing is populated either, public result stays undefined (Woo fallback)", async () => {
+  const deps = baseDeps({ timeoutMs: 20, resolvePimProductId: () => new Promise((resolve) => setTimeout(() => resolve("pim-prod-1"), 200)) });
+  const result = await resolveFichaTecnicaSpecifications(product(), deps);
+  assert.equal(result, undefined);
+  const event = lastEvent(deps);
+  assert.equal(event.reason, "TIMEOUT");
+  assert.equal(event.productResolutionMs, null, "the stage in flight when the timeout fired must never report a fabricated duration");
+  assert.equal(event.membershipMs, null);
+  assert.equal(event.publicationReadMs, null);
+  assert.equal(event.eligibilityMs, null);
+  assert.equal(event.mergeMs, null);
+});
+
+test("N. timeout occurring AFTER product resolution completes but during membership lookup: productResolutionMs IS populated, membershipMs stays null -- proves per-stage timing correctly localizes which stage was in flight", async () => {
+  const deps = baseDeps({
+    timeoutMs: 30,
+    resolvePimProductId: () => new Promise((resolve) => setTimeout(() => resolve("pim-prod-1"), 5)),
+    getActiveCanaryMembership: () => new Promise((resolve) => setTimeout(() => resolve([{ productId: "pim-prod-1", attributeCode: "material", batchId: "batch-1" }]), 200)),
+  });
+  const result = await resolveFichaTecnicaSpecifications(product(), deps);
+  assert.equal(result, undefined);
+  const event = lastEvent(deps);
+  assert.equal(event.reason, "TIMEOUT");
+  assert.ok(event.productResolutionMs !== null && event.productResolutionMs >= 5, "product resolution DID complete before the timeout fired, so its timing must be captured");
+  assert.equal(event.membershipMs, null, "membership lookup was the stage in flight when the timeout fired");
+});
+
+test("O. late completion after a TIMEOUT never alters the already-returned public result or emits a second telemetry event", async () => {
+  let resolveLate;
+  const latePromise = new Promise((resolve) => { resolveLate = resolve; });
+  const deps = baseDeps({
+    timeoutMs: 15,
+    resolvePimProductId: async () => { await latePromise; return "pim-prod-1"; },
+  });
+  const result = await resolveFichaTecnicaSpecifications(product(), deps);
+  assert.equal(result, undefined);
+  assert.equal(deps.telemetry.events.length, 1);
+  const firstEvent = deps.telemetry.events[0];
+  // Let the abandoned resolvePimProductId call finally settle, well after
+  // the function has already returned to its caller.
+  resolveLate();
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  assert.equal(deps.telemetry.events.length, 1, "a late-completing abandoned stage must never emit a second event");
+  assert.deepEqual(deps.telemetry.events[0], firstEvent);
+});
+
+test("P. warm success under simulated realistic per-stage latency stays within a generous budget and still succeeds", async () => {
+  const deps = baseDeps({
+    timeoutMs: 300,
+    resolvePimProductId: () => new Promise((resolve) => setTimeout(() => resolve("pim-prod-1"), 8)),
+    getActiveCanaryMembership: () => new Promise((resolve) => setTimeout(() => resolve([{ productId: "pim-prod-1", attributeCode: "material", batchId: "batch-1" }]), 6)),
+    getPublishedAttributesForProduct: () => new Promise((resolve) => setTimeout(() => resolve([record()]), 6)),
+    evaluatePublicationEligibilityBatch: (_db, identities) => new Promise((resolve) => setTimeout(() => resolve(new Map(identities.map((id) => [`${id.productId}:${id.attributeId}:${id.attributeValueId}`, { eligible: true, reasonCodes: [], sku: "SKU-1", attributeCode: "material", value: "PVC" }]))), 6)),
+  });
+  const result = await resolveFichaTecnicaSpecifications(product(), deps);
+  assert.ok(Array.isArray(result));
+  const event = lastEvent(deps);
+  assert.equal(event.reason, "SUCCESS");
+  for (const key of ["productResolutionMs", "membershipMs", "publicationReadMs", "eligibilityMs", "mergeMs"]) {
+    assert.equal(typeof event[key], "number");
+  }
+});
+
+test("Q. simulated cold-start latency (a single slow stage close to the real 308ms overrun observed in staging) correctly fails closed via TIMEOUT with the default budget", async () => {
+  const deps = baseDeps({ timeoutMs: 300, resolvePimProductId: () => new Promise((resolve) => setTimeout(() => resolve("pim-prod-1"), 320)) });
+  const result = await resolveFichaTecnicaSpecifications(product(), deps);
+  assert.equal(result, undefined);
+  const event = lastEvent(deps);
+  assert.equal(event.reason, "TIMEOUT");
+  assert.equal(event.productResolutionMs, null);
+});
+
+test("no writes: stage-timing instrumentation touches no database write statement anywhere", async () => {
+  const source = await read("services/catalog/productFichaTecnica.ts");
+  assert.doesNotMatch(source, /insert into|update public\.|delete from/i);
+});
+
 // ---------- Section 11: canary success, fixture fiel ao 0117 ----------
 
 test("full 0117-shaped success: membership=3, published=3, eligible=3, intersection=3, mergeAdditionCount=3, result=SUCCESS/SUCCESS, Cor/Marca preserved plus the 3 PIM additions", async () => {
@@ -247,8 +344,16 @@ test("structural: resolveFichaTecnicaSpecifications remains the ONLY call site (
   const { execSync } = await import("node:child_process");
   const output = execSync('git grep -n "resolveFichaTecnicaSpecifications(" -- "*.ts" "*.tsx"', { cwd: new URL("..", import.meta.url), encoding: "utf8" });
   const lines = output.trim().split("\n").filter(Boolean);
-  const callSites = lines.filter((line) => !line.includes("export async function resolveFichaTecnicaSpecifications"));
-  assert.equal(callSites.length, 1);
+  // Excludes the definition line itself AND doc-comment mentions (lines
+  // whose content, after the "path:lineno:" prefix, starts with a comment
+  // marker) -- only a real invocation counts as a call site.
+  const callSites = lines.filter((line) => {
+    if (line.includes("export async function resolveFichaTecnicaSpecifications")) return false;
+    const content = line.replace(/^[^:]+:\d+:/, "").trim();
+    if (content.startsWith("//") || content.startsWith("*") || content.startsWith("/*")) return false;
+    return true;
+  });
+  assert.equal(callSites.length, 1, `expected exactly 1 real call site, found: ${JSON.stringify(callSites)}`);
   assert.ok(callSites[0].startsWith("app/_storefront/product-page.tsx:"));
 });
 
@@ -333,8 +438,11 @@ test("log safety: the diagnostic event never contains the raw env value, DATABAS
   for (const pattern of forbidden) {
     assert.doesNotMatch(serialized, pattern, `event must not match forbidden pattern ${pattern}`);
   }
-  const allowedKeys = ["resolvedMode", "modeRawClass", "productResolved", "membershipCount", "publishedCount", "intersectionCount", "eligibleCount", "mergeAdditionCount", "result", "reason", "durationMs"];
+  const allowedKeys = ["resolvedMode", "modeRawClass", "productResolved", "membershipCount", "publishedCount", "intersectionCount", "eligibleCount", "mergeAdditionCount", "result", "reason", "durationMs", "productResolutionMs", "membershipMs", "publicationReadMs", "eligibilityMs", "mergeMs"];
   assert.deepEqual(Object.keys(event).sort(), allowedKeys.sort());
+  for (const key of ["productResolutionMs", "membershipMs", "publicationReadMs", "eligibilityMs", "mergeMs"]) {
+    assert.equal(typeof event[key], "number", `${key} must always be a plain number for this SUCCESS case`);
+  }
 });
 
 test("classifyRawPimModeForDiagnostics never returns the raw string itself as part of its output", () => {

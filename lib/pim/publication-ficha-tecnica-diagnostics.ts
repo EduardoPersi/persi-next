@@ -90,10 +90,27 @@ export type FichaTecnicaDiagnosticReason =
  * effect but worth distinguishing from a deliberate gate for diagnosis. */
 export type FichaTecnicaDiagnosticResult = "SKIPPED" | "SUCCESS" | "ERROR";
 
+/** A3.7-A-R17-R2A-D6: per-stage timing, added to localize where the
+ * DEFAULT_TIMEOUT_MS budget is actually being spent (cold-connection setup
+ * vs. query execution vs. later stages) without ever needing to log a
+ * slug/productId/value. Each field is populated ONLY once that stage
+ * actually completes -- on a TIMEOUT, the stage that was in flight when the
+ * clock ran out is identifiable by being the first `null` after the last
+ * non-null field, with no additional data needed to see that. Purely
+ * additive: none of these numbers can change what resolveFichaTecnicaSpecifications
+ * returns. */
+export interface FichaTecnicaStageTimings {
+  productResolutionMs: number | null;
+  membershipMs: number | null;
+  publicationReadMs: number | null;
+  eligibilityMs: number | null;
+  mergeMs: number | null;
+}
+
 /** Everything this feature is allowed to log. No product slug, no
  * productId, no SKU, no attribute values, no env value, no connection
  * string, no session/user identity -- only counts, enums, and timing. */
-export interface FichaTecnicaDiagnosticEvent {
+export interface FichaTecnicaDiagnosticEvent extends FichaTecnicaStageTimings {
   resolvedMode: "off" | "shadow" | "canary";
   modeRawClass: PimModeRawClass;
   productResolved: boolean;
