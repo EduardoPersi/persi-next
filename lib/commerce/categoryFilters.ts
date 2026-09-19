@@ -65,7 +65,6 @@ export function getSelectedAttributeValues(
 
 /** Params that affect which products are shown/how they're ordered. */
 export const FILTER_PARAM_KEYS = [
-  "pagina",
   "ordem",
   "preco_min",
   "preco_max",

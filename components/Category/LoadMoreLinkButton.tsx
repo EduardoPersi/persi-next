@@ -1,20 +1,39 @@
 "use client";
 
-interface LoadMoreButtonProps {
-  onClick: () => void;
-  isLoading: boolean;
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+
+interface LoadMoreLinkButtonProps {
+  pathname: string;
+  searchParams: Record<string, string>;
 }
 
-export function LoadMoreButton({ onClick, isLoading }: LoadMoreButtonProps) {
+export function LoadMoreLinkButton({
+  pathname,
+  searchParams,
+}: LoadMoreLinkButtonProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  function handleLoadMore() {
+    const query = new URLSearchParams(searchParams);
+
+    startTransition(() => {
+      router.push(`${pathname}?${query.toString()}`, {
+        scroll: false,
+      });
+    });
+  }
+
   return (
     <button
       type="button"
-      onClick={onClick}
-      disabled={isLoading}
+      onClick={handleLoadMore}
+      disabled={isPending}
       className="inline-flex h-11 min-w-36 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-white disabled:text-foreground disabled:ring-1 disabled:ring-inset disabled:ring-slate-300"
       aria-live="polite"
     >
-      {isLoading ? (
+      {isPending ? (
         <>
           <span
             className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-primary"
