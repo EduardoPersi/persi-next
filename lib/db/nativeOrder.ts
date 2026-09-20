@@ -3,8 +3,15 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { assertDurableTaxDocumentBundle } from "../commerce/taxDocumentCrypto";
-import { getDatabase } from "./connection";
+import { withPersiRole } from "./nativeCommerceAuthority";
 
+// Role per function (lib/db/nativeCommerceAuthority.ts, docs/database/88):
+// link_inventory_reservation_to_order_item and allocate_native_order_number
+// are persi_app only; transition_native_order is dual-granted (run as
+// persi_worker here, matching how apply_verified_payment_transition itself
+// calls it internally); the orders/order_items/etc. SELECT readNativeOrder
+// uses is dual-granted too (kept on persi_app for locality with the
+// checkout-submission call site immediately before it).
 export type NativeOrderStatus = "pending" | "confirmed" | "cancelled" | "completed";
 export type NativeOrderActorType = "system" | "customer" | "admin" | "worker";
 
@@ -47,7 +54,7 @@ export function mapReservationLinkError(error: unknown): Error {
 
 export async function linkNativeInventoryReservation(reservationId: string,orderItemId: string) {
   try {
-    const rows=await getDatabase().execute(sql`select * from public.link_inventory_reservation_to_order_item(${reservationId}::uuid,${orderItemId}::uuid)`);
+    const rows=await withPersiRole("persi_app", (db) => db.execute(sql`select * from public.link_inventory_reservation_to_order_item(${reservationId}::uuid,${orderItemId}::uuid)`));
     return rows[0];
   } catch(error) { throw mapReservationLinkError(error); }
 }
@@ -92,17 +99,17 @@ export function assertEncryptedTaxIdBundle(input: { type?: "cpf" | "cnpj"; ciphe
 }
 
 export async function allocateNativeOrderNumber(storeId: string) {
-  const rows = await getDatabase().execute<{ order_sequence: bigint; order_number: string }>(sql`select * from public.allocate_native_order_number(${storeId}::uuid)`);
+  const rows = await withPersiRole("persi_app", (db) => db.execute<{ order_sequence: bigint; order_number: string }>(sql`select * from public.allocate_native_order_number(${storeId}::uuid)`));
   return rows[0];
 }
 
 export async function transitionNativeOrder(input: { orderId: string; expected: NativeOrderStatus; target: NativeOrderStatus; expectedVersion: bigint; actorType: NativeOrderActorType; actorId?: string; reasonCode?: string; reason?: string; correlationId: string }) {
-  const rows = await getDatabase().execute(sql`select * from public.transition_native_order(${input.orderId}::uuid,${input.expected}::public.order_status,${input.target}::public.order_status,${input.expectedVersion}::bigint,${input.actorType}::public.order_actor_type,${input.actorId ?? null}::text,${input.reasonCode ?? null}::text,${input.reason ?? null}::text,${input.correlationId}::uuid)`);
+  const rows = await withPersiRole("persi_worker", (db) => db.execute(sql`select * from public.transition_native_order(${input.orderId}::uuid,${input.expected}::public.order_status,${input.target}::public.order_status,${input.expectedVersion}::bigint,${input.actorType}::public.order_actor_type,${input.actorId ?? null}::text,${input.reasonCode ?? null}::text,${input.reason ?? null}::text,${input.correlationId}::uuid)`));
   return rows[0];
 }
 
 export async function readNativeOrder(orderId: string): Promise<NativeOrderReadModel | null> {
-  const rows = await getDatabase().execute<NativeOrderReadModel>(sql`
+  const rows = await withPersiRole("persi_app", (db) => db.execute<NativeOrderReadModel>(sql`
     select o.id::text as "id",o.store_id::text as "storeId",o.customer_id::text as "customerId",
       o.checkout_session_id::text as "checkoutSessionId",o.order_sequence as "orderSequence",o.order_number as "orderNumber",
       o.status,o.currency,o.grand_total_minor as "grandTotalMinor",o.version,
@@ -111,6 +118,6 @@ export async function readNativeOrder(orderId: string): Promise<NativeOrderReadM
       coalesce((select jsonb_agg(to_jsonb(x) order by x.created_at,x.id) from public.order_adjustments x where x.order_id=o.id),'[]') as adjustments,
       coalesce((select jsonb_agg(to_jsonb(e) order by e.created_at,e.id) from public.order_status_events e where e.order_id=o.id),'[]') as events
     from public.orders o where o.id=${orderId}::uuid
-  `);
+  `));
   return rows[0] ?? null;
 }

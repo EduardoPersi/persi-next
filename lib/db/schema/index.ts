@@ -2,6 +2,7 @@ export * from "./catalog";
 export * from "./commerce";
 export * from "./checkout";
 export * from "./orders";
+export * from "./payments";
 export * from "./core";
 export * from "./integrations";
 export * from "./inventory";

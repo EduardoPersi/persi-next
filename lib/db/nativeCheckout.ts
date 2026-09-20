@@ -2,8 +2,15 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { sql } from "drizzle-orm";
-import { getDatabase } from "./connection";
+import { withPersiRole } from "./nativeCommerceAuthority";
 import { hashGuestCartToken } from "./nativeCart";
+
+// Every function below runs as persi_app (lib/db/nativeCommerceAuthority.ts,
+// docs/database/88) -- prepare_native_checkout, mark_native_checkout_ready,
+// submit_native_checkout, canonical_native_submission_request_hash, and the
+// checkout_sessions SELECT policy are all persi_app-only in the final
+// migrated schema (close_native_checkout is dual-granted; kept on persi_app
+// here since checkout abandonment is an app-triggered flow today).
 
 export interface NativeCheckoutIntent {
   storeId: string;
@@ -112,7 +119,7 @@ export async function prepareNativeCheckout(input: PrepareNativeCheckoutInput) {
   });
   const guestFingerprint = input.guestToken ? hashGuestCartToken(input.guestToken) : null;
   const quote = input.quote;
-  const result = await getDatabase().execute(sql`
+  const result = await withPersiRole("persi_app", (db) => db.execute(sql`
     select * from public.prepare_native_checkout(
       ${input.storeId}::uuid, ${input.cartId}::uuid, ${input.customerId}::uuid,
       ${guestFingerprint}::text, ${input.idempotencyKey}::text, ${requestHash}::text,
@@ -126,7 +133,7 @@ export async function prepareNativeCheckout(input: PrepareNativeCheckoutInput) {
       ${quote?.logisticsVersion ?? null}::text, ${quote?.expiresAt.toISOString() ?? null}::timestamptz,
       ${quote?.estimatedDeliveryDays ?? null}::integer, ${quote?.providerQuoteReference ?? null}::text
     )
-  `);
+  `));
   return result[0];
 }
 
@@ -139,21 +146,122 @@ export async function markNativeCheckoutReady(input: {
 }) {
   if (input.customerId && input.guestToken) throw new Error("NATIVE_CHECKOUT_OWNER_CONTEXT_INVALID");
   const guestFingerprint = input.guestToken ? hashGuestCartToken(input.guestToken) : null;
-  const result = await getDatabase().execute(sql`
+  const result = await withPersiRole("persi_app", (db) => db.execute(sql`
     select * from public.mark_native_checkout_ready(
       ${input.checkoutId}::uuid,${input.customerId ?? null}::uuid,${guestFingerprint}::text,
       ${input.expectedVersion}::bigint,${input.expectedPiiFingerprint}::text)
-  `);
+  `));
   return result[0];
 }
 
 export async function closeNativeCheckout(checkoutId: string, target: "cancelled" | "expired") {
-  const result = await getDatabase().execute(sql`select * from public.close_native_checkout(${checkoutId}::uuid,${target}::public.checkout_session_status)`);
+  const result = await withPersiRole("persi_app", (db) => db.execute(sql`select * from public.close_native_checkout(${checkoutId}::uuid,${target}::public.checkout_session_status)`));
+  return result[0];
+}
+
+// B.3-I — native checkout -> order submission boundary. Wraps
+// canonical_native_submission_request_hash + submit_native_checkout
+// (supabase/migrations/20260905180000_native_checkout_atomic_submission.
+// sql) — neither had a TypeScript wrapper before this round. The hash is
+// ALWAYS fetched from the database (never hand-rolled in TS), matching the
+// only prior calling convention for this function
+// (scripts/database/native-checkout-e2-concurrency.mjs): the database is
+// the single source of truth for what the checkout's current authoritative
+// state canonicalizes to.
+export interface NativeOrderAddressInput {
+  recipient: string;
+  company?: string;
+  street: string;
+  number: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country?: string;
+}
+
+function toAddressJson(address: NativeOrderAddressInput) {
+  return {
+    recipient: address.recipient,
+    company: address.company ?? null,
+    street: address.street,
+    number: address.number,
+    complement: address.complement ?? null,
+    neighborhood: address.neighborhood,
+    city: address.city,
+    state: address.state,
+    postal_code: address.postalCode,
+    country: address.country ?? "BR",
+  };
+}
+
+export async function computeNativeCheckoutSubmissionHash(checkoutId: string, expectedVersion: bigint): Promise<string> {
+  // canonical_native_submission_request_hash returns a scalar `text`, not a
+  // table -- `select * from fn(...)` names that column after the function
+  // itself, not "request_hash"; must alias explicitly.
+  const result = await withPersiRole("persi_app", (db) => db.execute<{ requestHash: string }>(sql`
+    select public.canonical_native_submission_request_hash(${checkoutId}::uuid, ${expectedVersion}::bigint) as "requestHash"
+  `));
+  return result[0].requestHash;
+}
+
+export interface SubmitNativeCheckoutInput {
+  checkoutId: string;
+  expectedVersion: bigint;
+  idempotencyKey: string;
+  customerId?: string | null;
+  guestToken?: string;
+  expectedPiiFingerprint: string;
+  expectedDestinationFingerprint: string;
+  orderId: string;
+  correlationId: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone?: string | null;
+  billingAddress: NativeOrderAddressInput;
+  shippingAddress: NativeOrderAddressInput;
+  taxId?: { type: "cpf" | "cnpj"; ciphertext: string; fingerprint: string; masked: string } | null;
+}
+
+export interface SubmitNativeCheckoutResult {
+  [key: string]: unknown;
+  orderId: string;
+  orderNumber: string;
+  orderStatus: "pending" | "confirmed" | "cancelled" | "completed";
+  checkoutStatus: string;
+  checkoutVersion: bigint;
+}
+
+// Idempotent (submit_native_checkout's own contract): the SAME checkoutId +
+// idempotencyKey + submission hash always converges on the SAME native
+// order, never a duplicate. Callers MUST NOT hand-roll the submission hash
+// -- always resolve it via computeNativeCheckoutSubmissionHash immediately
+// before calling this, against the SAME expectedVersion, so the hash
+// reflects the checkout's true current state.
+export async function submitNativeCheckout(input: SubmitNativeCheckoutInput): Promise<SubmitNativeCheckoutResult> {
+  if (input.customerId && input.guestToken) throw new Error("NATIVE_CHECKOUT_OWNER_CONTEXT_INVALID");
+  const guestFingerprint = input.guestToken ? hashGuestCartToken(input.guestToken) : null;
+  const submissionHash = await computeNativeCheckoutSubmissionHash(input.checkoutId, input.expectedVersion);
+  const result = await withPersiRole("persi_app", (db) => db.execute<SubmitNativeCheckoutResult>(sql`
+    select order_id::text as "orderId", order_number as "orderNumber", order_status as "orderStatus",
+      checkout_status as "checkoutStatus", checkout_version as "checkoutVersion"
+    from public.submit_native_checkout(
+      ${input.checkoutId}::uuid, ${input.expectedVersion}::bigint, ${input.idempotencyKey}::text, ${submissionHash}::text,
+      ${input.customerId ?? null}::uuid, ${guestFingerprint}::text,
+      ${input.expectedPiiFingerprint}::text, ${input.expectedDestinationFingerprint}::text,
+      ${input.orderId}::uuid, ${input.correlationId}::uuid,
+      ${input.contactName}::text, ${input.contactEmail}::text, ${input.contactPhone ?? null}::text,
+      ${JSON.stringify(toAddressJson(input.billingAddress))}::jsonb, ${JSON.stringify(toAddressJson(input.shippingAddress))}::jsonb,
+      ${input.taxId?.type ?? null}::text, ${input.taxId?.ciphertext ?? null}::text,
+      ${input.taxId?.fingerprint ?? null}::text, ${input.taxId?.masked ?? null}::text
+    )
+  `));
   return result[0];
 }
 
 export async function readNativeCheckout(checkoutId: string): Promise<NativeCheckoutReadModel | null> {
-  const result = await getDatabase().execute<NativeCheckoutReadModel>(sql`
+  const result = await withPersiRole("persi_app", (db) => db.execute<NativeCheckoutReadModel>(sql`
     select s.id::text as "id",s.store_id::text as "storeId",s.cart_id::text as "cartId",
       s.customer_id::text as "customerId",s.status,s.currency,s.request_hash as "requestHash",
       s.cart_version as "cartVersion",s.expires_at as "expiresAt",s.version,
@@ -165,6 +273,6 @@ export async function readNativeCheckout(checkoutId: string): Promise<NativeChec
       coalesce((select jsonb_agg(jsonb_build_object('id',r.id,'itemId',r.checkout_session_item_id,'status',r.status,'quantity',r.quantity) order by r.id)
         from public.inventory_reservations r join public.checkout_session_items i on i.id=r.checkout_session_item_id where i.checkout_session_id=s.id),'[]') as reservations
     from public.checkout_sessions s where s.id=${checkoutId}::uuid
-  `);
+  `));
   return result[0] ?? null;
 }
