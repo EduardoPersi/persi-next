@@ -2,14 +2,33 @@
   "mcpServers": {
     "hostinger-hosting": {
       "command": "npx",
-      "args": ["-y", "--package=@hostinger/mcp@1.61.1", "hostinger-hosting-mcp"],
+      "args": [
+        "-y",
+        "--package=@hostinger/mcp@1.61.1",
+        "hostinger-hosting-mcp"
+      ],
       "env": {
         "HOSTINGER_API_TOKEN": "${HOSTINGER_API_TOKEN}"
       }
     },
     "hostinger-wordpress": {
       "command": "npx",
-      "args": ["-y", "--package=@hostinger/mcp@1.61.1", "hostinger-wordpress-mcp"],
+      "args": [
+        "-y",
+        "--package=@hostinger/mcp@1.61.1",
+        "hostinger-wordpress-mcp"
+      ],
+      "env": {
+        "HOSTINGER_API_TOKEN": "${HOSTINGER_API_TOKEN}"
+      }
+    },
+    "hostinger-vps": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "--package=@hostinger/mcp@1.61.1",
+        "hostinger-vps-mcp"
+      ],
       "env": {
         "HOSTINGER_API_TOKEN": "${HOSTINGER_API_TOKEN}"
       }
