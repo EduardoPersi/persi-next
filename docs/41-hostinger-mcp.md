@@ -40,6 +40,21 @@ ambiente, expandido por `${HOSTINGER_API_TOKEN}` no `.mcp.json`.
    - Claude Code na web: nas variáveis de ambiente do environment remoto.
 3. A variável precisa existir **antes** de a sessão iniciar.
 
+## Rede
+
+A API não fica em `api.hostinger.com`. O pacote chama
+`https://developers.hostinger.com` (e `https://api.mail.hostinger.com` nas
+ferramentas de e-mail). Em ambiente com egresso restrito — Claude Code na web
+usa allowlist por domínio — é esse host que precisa ser liberado, senão a
+chamada falha com `request blocked: no rule or allowlist entry allows host
+"developers.hostinger.com"` mesmo com o token correto.
+
+Mínimo a liberar:
+
+```text
+developers.hostinger.com
+```
+
 Sem a variável, os servidores sobem mesmo assim e caem no fluxo OAuth do
 navegador na primeira chamada autenticada — o que não funciona em sessão
 remota, sem navegador. Na prática: sem token, sem acesso.
