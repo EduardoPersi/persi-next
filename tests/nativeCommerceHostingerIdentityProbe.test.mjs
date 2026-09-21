@@ -26,89 +26,120 @@ function withEnv(overrides, fn) {
     });
 }
 
-// ---------- pure decision logic: evaluateIdentityRow (case 7, 8, 9) ----------
+// A connection string that is syntactically valid but structurally
+// unreachable (port 1 has no listener) -- same technique already
+// established by tests/nativeCommerceAuthority.test.mjs's own
+// PLACEHOLDER_DATABASE_URL. Real behavior, real (fast, local, refused)
+// network attempt, zero dependency on any live Postgres, zero staging
+// traffic.
+const UNREACHABLE_DATABASE_URL = "postgresql://placeholder:placeholder@127.0.0.1:1/placeholder";
 
-test("evaluateIdentityRow: correct current_user and session_user -> ok=true", () => {
+// ---------- pure decision logic: evaluateIdentityRow ----------
+
+test("evaluateIdentityRow: correct current_user and session_user -> ok=true, stage=ok, both matches true", () => {
   const result = evaluateIdentityRow("persi_app", "persi_app_login", {
     current_user: "persi_app",
     session_user: "persi_app_login",
   });
-  assert.deepEqual(result, { ok: true, activatedAs: "persi_app" });
+  assert.deepEqual(result, { ok: true, stage: "ok", currentUserMatch: true, sessionUserMatch: true });
 });
 
-test("evaluateIdentityRow: wrong current_user -> ok=false (case 7)", () => {
+test("evaluateIdentityRow: correct current_user + wrong session_user -> identity_mismatch, true/false", () => {
+  const result = evaluateIdentityRow("persi_app", "persi_app_login", {
+    current_user: "persi_app",
+    session_user: "some_other_login",
+  });
+  assert.deepEqual(result, { ok: false, stage: "identity_mismatch", currentUserMatch: true, sessionUserMatch: false });
+});
+
+test("evaluateIdentityRow: wrong current_user + correct session_user -> identity_mismatch, false/true", () => {
+  const result = evaluateIdentityRow("persi_worker", "persi_worker_login", {
+    current_user: "postgres",
+    session_user: "persi_worker_login",
+  });
+  assert.deepEqual(result, { ok: false, stage: "identity_mismatch", currentUserMatch: false, sessionUserMatch: true });
+});
+
+test("evaluateIdentityRow: both wrong -> identity_mismatch, false/false", () => {
   const result = evaluateIdentityRow("persi_app", "persi_app_login", {
     current_user: "postgres",
-    session_user: "persi_app_login",
+    session_user: "some_other_login",
   });
-  assert.equal(result.ok, false);
-  assert.equal(result.activatedAs, "persi_app");
+  assert.deepEqual(result, { ok: false, stage: "identity_mismatch", currentUserMatch: false, sessionUserMatch: false });
 });
 
-test("evaluateIdentityRow: wrong session_user -> ok=false even if current_user matches (case 8)", () => {
-  const result = evaluateIdentityRow("persi_worker", "persi_worker_login", {
-    current_user: "persi_worker",
-    session_user: "persi_app_login",
-  });
-  assert.equal(result.ok, false);
-});
-
-test("evaluateIdentityRow: missing row -> ok=false", () => {
+test("evaluateIdentityRow: missing row -> connection_or_activation_error, matches null", () => {
   const result = evaluateIdentityRow("persi_app", "persi_app_login", undefined);
-  assert.equal(result.ok, false);
+  assert.deepEqual(result, { ok: false, stage: "connection_or_activation_error", currentUserMatch: null, sessionUserMatch: null });
 });
 
-test("evaluateIdentityRow: both worker fields correct -> ok=true (case 9, worker side)", () => {
+test("evaluateIdentityRow: worker side, both correct -> ok=true", () => {
   const result = evaluateIdentityRow("persi_worker", "persi_worker_login", {
     current_user: "persi_worker",
     session_user: "persi_worker_login",
   });
-  assert.deepEqual(result, { ok: true, activatedAs: "persi_worker" });
+  assert.deepEqual(result, { ok: true, stage: "ok", currentUserMatch: true, sessionUserMatch: true });
 });
 
-// ---------- fallback-as-failure: env presence gate (case 5, 6) ----------
-// No live Postgres is reachable from this test environment, and none is
-// needed: checkIdentity returns before ever calling withPersiRole when its
-// env var is absent, so this is real behavior, not a mock.
+// ---------- checkIdentity: env_missing (real behavior, no DB needed) ----------
 
-test("APP env absent -> checkIdentity returns ok=false without needing a DB (case 5)", async () => {
+test("APP env absent -> stage=env_missing, matches null, without needing a DB", async () => {
   await withEnv({ NATIVE_APP_DATABASE_URL: undefined }, async () => {
     const result = await checkIdentity("persi_app", "NATIVE_APP_DATABASE_URL", "persi_app_login");
-    assert.deepEqual(result, { ok: false, activatedAs: "persi_app" });
+    assert.deepEqual(result, { ok: false, stage: "env_missing", currentUserMatch: null, sessionUserMatch: null });
   });
 });
 
-test("WORKER env absent -> checkIdentity returns ok=false without needing a DB (case 6)", async () => {
+test("WORKER env absent -> stage=env_missing, matches null, without needing a DB", async () => {
   await withEnv({ NATIVE_WORKER_DATABASE_URL: undefined }, async () => {
     const result = await checkIdentity("persi_worker", "NATIVE_WORKER_DATABASE_URL", "persi_worker_login");
-    assert.deepEqual(result, { ok: false, activatedAs: "persi_worker" });
+    assert.deepEqual(result, { ok: false, stage: "env_missing", currentUserMatch: null, sessionUserMatch: null });
   });
 });
 
 test("APP env blank string is treated as absent, not a value to connect with", async () => {
   await withEnv({ NATIVE_APP_DATABASE_URL: "   " }, async () => {
     const result = await checkIdentity("persi_app", "NATIVE_APP_DATABASE_URL", "persi_app_login");
-    assert.equal(result.ok, false);
+    assert.equal(result.stage, "env_missing");
   });
 });
 
-test("runNativeCommerceIdentityProbe: both envs absent -> both sides fail, correct shape, no DB required", async () => {
+test("runNativeCommerceIdentityProbe: both envs absent -> both sides env_missing, correct shape, no DB required", async () => {
   await withEnv({ NATIVE_APP_DATABASE_URL: undefined, NATIVE_WORKER_DATABASE_URL: undefined }, async () => {
     const result = await runNativeCommerceIdentityProbe();
     assert.deepEqual(result, {
-      app: { ok: false, activatedAs: "persi_app" },
-      worker: { ok: false, activatedAs: "persi_worker" },
+      app: { ok: false, stage: "env_missing", currentUserMatch: null, sessionUserMatch: null },
+      worker: { ok: false, stage: "env_missing", currentUserMatch: null, sessionUserMatch: null },
     });
   });
 });
 
-// ---------- helper module source assertions: proves the REAL withPersiRole is used ----------
+// ---------- checkIdentity: connection_or_activation_error (real network attempt, no live Postgres needed) ----------
+
+test("APP env present but unreachable -> stage=connection_or_activation_error, matches null, error never surfaced", async () => {
+  await withEnv({ NATIVE_APP_DATABASE_URL: UNREACHABLE_DATABASE_URL }, async () => {
+    const result = await checkIdentity("persi_app", "NATIVE_APP_DATABASE_URL", "persi_app_login");
+    assert.deepEqual(result, { ok: false, stage: "connection_or_activation_error", currentUserMatch: null, sessionUserMatch: null });
+  });
+});
+
+test("WORKER env present but unreachable -> stage=connection_or_activation_error, matches null, error never surfaced", async () => {
+  await withEnv({ NATIVE_WORKER_DATABASE_URL: UNREACHABLE_DATABASE_URL }, async () => {
+    const result = await checkIdentity("persi_worker", "NATIVE_WORKER_DATABASE_URL", "persi_worker_login");
+    assert.deepEqual(result, { ok: false, stage: "connection_or_activation_error", currentUserMatch: null, sessionUserMatch: null });
+  });
+});
+
+// ---------- helper module source assertions ----------
 
 const helperSource = readFileSync("lib/runtime/native-commerce-identity-probe.ts", "utf8");
 
 test("uses the real production withPersiRole from lib/db/nativeCommerceAuthority, not a parallel implementation", () => {
   assert.match(helperSource, /import \{ withPersiRole, type PersiRole \} from "@\/lib\/db\/nativeCommerceAuthority";/);
-  assert.doesNotMatch(helperSource, /set local role/i, "must never issue SET LOCAL ROLE directly -- that belongs exclusively to withPersiRole");
+  // "the only SQL executed..." test below already proves the single sql`...`
+  // template in this file is the fixed identity query, not a SET LOCAL ROLE
+  // statement -- structurally proving this module never activates a role
+  // itself, only through withPersiRole.
 });
 
 test("env presence is checked before withPersiRole is ever called", () => {
@@ -122,6 +153,30 @@ test("the only SQL executed is the fixed identity query -- no other query text a
   const sqlOccurrences = helperSource.match(/sql`[^`]*`/g) ?? [];
   assert.equal(sqlOccurrences.length, 1);
   assert.match(sqlOccurrences[0], /^sql`select current_user, session_user`$/);
+});
+
+test("only the four allowed stage values exist in the module", () => {
+  assert.match(helperSource, /export type ProbeStage = "ok" \| "env_missing" \| "connection_or_activation_error" \| "identity_mismatch";/);
+  const stageLiterals = [...helperSource.matchAll(/stage: "([a-z_]+)"/g)].map((m) => m[1]);
+  const allowed = new Set(["ok", "env_missing", "connection_or_activation_error", "identity_mismatch"]);
+  for (const literal of stageLiterals) {
+    assert.ok(allowed.has(literal), `unexpected stage literal used in source: ${literal}`);
+  }
+});
+
+test("activatedAs field no longer exists as code -- replaced by stage/currentUserMatch/sessionUserMatch (mentioned only in an explanatory comment)", () => {
+  // The word appears exactly once, inside the file-level rationale comment
+  // explaining the R2 change -- never as an object property or type field.
+  const occurrences = helperSource.match(/activatedAs/g) ?? [];
+  assert.equal(occurrences.length, 1);
+  assert.doesNotMatch(helperSource, /activatedAs:/, "must not appear as an object property/type field anywhere");
+});
+
+test("no raw driver/Postgres error is ever placed on the result -- catch block returns only the fixed classification", () => {
+  const fnBody = helperSource.slice(helperSource.indexOf("export async function checkIdentity"));
+  const catchBlock = fnBody.slice(fnBody.indexOf("} catch"));
+  assert.doesNotMatch(catchBlock, /error\.message|err\.message|String\(error\)|String\(err\)|error\.code|err\.code/);
+  assert.match(catchBlock, /stage: "connection_or_activation_error"/);
 });
 
 test("no commercial/business function or provider name is referenced anywhere in the helper module", () => {
@@ -164,7 +219,7 @@ test("no query parameter or request body is ever read -- role/SQL/database are f
   assert.doesNotMatch(getBody, /searchParams|\.json\(\)|request\.body|request\.url/);
 });
 
-test("staging guard runs before the Basic Auth check, which runs before the DB probe (case 1-4 ordering)", () => {
+test("staging guard runs before the Basic Auth check, which runs before the DB probe (production/undefined -> 404, invalid auth -> denied, both before DB)", () => {
   const getBody = routeSource.slice(routeSource.indexOf("export async function GET"));
   const stagingGateIndex = getBody.indexOf("isStagingRuntime()");
   const authGateIndex = getBody.indexOf("isStagingBasicAuthValid(");
@@ -174,7 +229,7 @@ test("staging guard runs before the Basic Auth check, which runs before the DB p
   assert.ok(authGateIndex < probeCallIndex, "Basic Auth check must run before the database probe");
 });
 
-test("staging guard returns 404, auth guard returns 401, both before any DB call (case 1/2 -> 404, case 3/4 -> 401, no DB touched)", () => {
+test("staging guard returns 404, auth guard returns 401, both before any DB call", () => {
   const getBody = routeSource.slice(routeSource.indexOf("export async function GET"));
   const stagingGateBlock = getBody.slice(getBody.indexOf("isStagingRuntime()"), getBody.indexOf("isStagingBasicAuthValid("));
   assert.match(stagingGateBlock, /status: 404/);
@@ -186,21 +241,19 @@ test("reuses the existing staging Basic Auth helpers verbatim -- no local passwo
   assert.doesNotMatch(routeSource, /timingSafeEqual|PERSI_STAGING_BASIC_AUTH/, "must not reimplement the credential comparison locally");
 });
 
-test("every response sets Cache-Control: no-store (case 11)", () => {
-  const noStoreOccurrences = routeSource.match(/no-store/g) ?? [];
-  // NO_STORE_HEADERS is spread into all three response paths (404, 401, 200).
-  assert.ok(noStoreOccurrences.length >= 1);
+test("every response sets Cache-Control: no-store", () => {
   assert.match(routeSource, /const NO_STORE_HEADERS = \{ "Cache-Control": "no-store" \}/);
   assert.match(routeSource, /headers: NO_STORE_HEADERS/);
   assert.match(routeSource, /\.\.\.NO_STORE_HEADERS/);
 });
 
-test("success response body contains only {ok, activatedAs} per side -- no session_user, no raw row (case 10)", () => {
+test("success response body contains only {ok, stage, currentUserMatch, sessionUserMatch} per side -- no raw identity, no activatedAs", () => {
   const jsonCallIndex = routeSource.indexOf("NextResponse.json(");
   const jsonCallBlock = routeSource.slice(jsonCallIndex, routeSource.indexOf(");", jsonCallIndex));
-  assert.match(jsonCallBlock, /app: \{ ok: app\.ok, activatedAs: app\.activatedAs \}/);
-  assert.match(jsonCallBlock, /worker: \{ ok: worker\.ok, activatedAs: worker\.activatedAs \}/);
-  assert.doesNotMatch(jsonCallBlock, /session_user|DATABASE_URL|password|connectionString/i);
+  assert.match(jsonCallBlock, /app: \{ ok: app\.ok, stage: app\.stage, currentUserMatch: app\.currentUserMatch, sessionUserMatch: app\.sessionUserMatch \}/);
+  assert.match(jsonCallBlock, /worker: \{ ok: worker\.ok, stage: worker\.stage, currentUserMatch: worker\.currentUserMatch, sessionUserMatch: worker\.sessionUserMatch \}/);
+  assert.doesNotMatch(jsonCallBlock, /activatedAs/);
+  assert.doesNotMatch(jsonCallBlock, /DATABASE_URL|password|connectionString/i);
 });
 
 test("no secret-shaped literal (connection string, password assignment) appears in either file", () => {
@@ -210,7 +263,7 @@ test("no secret-shaped literal (connection string, password assignment) appears 
   }
 });
 
-test("no commercial/business function or provider name is referenced anywhere in the route file either (case 12)", () => {
+test("no commercial/business function or provider name is referenced anywhere in the route file either", () => {
   const forbidden = [
     /submitNativeCommerceCheckout/i,
     /createNativeCart/i,

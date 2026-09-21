@@ -31,8 +31,12 @@ import { isStagingBasicAuthValid } from "@/lib/runtime/staging-access-guard";
 //  - The only query ever executed (in the wrapped helper) is the fixed
 //    `select current_user, session_user` -- no business table, no domain
 //    function, no commerce side effect of any kind.
-//  - Response never contains a URL, password, host, project ref,
-//    session_user value, or raw SQL/driver error.
+//  - Response never contains a URL, password, host, project ref, a raw
+//    current_user/session_user value, or a raw SQL/driver error -- only a
+//    `stage` classification (ok | env_missing | connection_or_activation_error
+//    | identity_mismatch) plus two nullable booleans (see lib/runtime/
+//    native-commerce-identity-probe.ts's file-level comment for why the
+//    original `activatedAs` field was replaced with this).
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -60,8 +64,8 @@ export async function GET(request: Request) {
 
   return NextResponse.json(
     {
-      app: { ok: app.ok, activatedAs: app.activatedAs },
-      worker: { ok: worker.ok, activatedAs: worker.activatedAs },
+      app: { ok: app.ok, stage: app.stage, currentUserMatch: app.currentUserMatch, sessionUserMatch: app.sessionUserMatch },
+      worker: { ok: worker.ok, stage: worker.stage, currentUserMatch: worker.currentUserMatch, sessionUserMatch: worker.sessionUserMatch },
     },
     { status: 200, headers: NO_STORE_HEADERS },
   );
