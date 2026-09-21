@@ -7,14 +7,20 @@ const attributeOptionCollator = new Intl.Collator("pt-BR", {
 });
 
 export function ProductFamilyOptions({ data }: { data: ProductFamilyResponse }) {
-  const attribute = data.family.attributes[0];
-  if (!attribute) return null;
+  // A resposta vem de uma API externa (plugin Persi Headless) e pode chegar
+  // incompleta — por exemplo com cache legado, resposta parcial ou uma
+  // indisponibilidade do WordPress que devolva 200 com corpo inesperado.
+  // Sem estas guardas, um payload fora do formato derruba a página inteira
+  // do produto com HTTP 500 em vez de apenas omitir o seletor de família.
+  const attribute = data?.family?.attributes?.[0];
+  if (!attribute?.taxonomy) return null;
 
-  const items = data.items
-    .filter((item) => item.attributes[attribute.taxonomy])
+  const { taxonomy } = attribute;
+  const items = (Array.isArray(data.items) ? data.items : [])
+    .filter((item) => item?.attributes?.[taxonomy]?.label)
     .sort((first, second) => {
-      const firstLabel = first.attributes[attribute.taxonomy].label;
-      const secondLabel = second.attributes[attribute.taxonomy].label;
+      const firstLabel = first.attributes[taxonomy].label;
+      const secondLabel = second.attributes[taxonomy].label;
 
       return (
         attributeOptionCollator.compare(firstLabel, secondLabel) ||
@@ -36,7 +42,7 @@ export function ProductFamilyOptions({ data }: { data: ProductFamilyResponse }) 
       </h2>
       <div className="flex flex-wrap gap-1.5">
         {items.map((item) => {
-          const label = item.attributes[attribute.taxonomy].label;
+          const label = item.attributes[taxonomy].label;
           const classes =
             "inline-flex min-h-7 min-w-7 items-center justify-center rounded-md border bg-white px-1.5 text-xs font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
 

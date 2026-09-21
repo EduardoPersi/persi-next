@@ -25,7 +25,7 @@ export function CheckoutPasswordStep(props: CheckoutPasswordStepProps) {
   return (
     <div className="w-full max-w-xl text-center">
       <LockKeyhole className="mx-auto h-11 w-11 text-slate-400" aria-hidden="true" />
-      <h1 className="mt-5 text-xl font-bold text-foreground">Agora, sua senha</h1>
+      <h2 className="mt-5 text-xl font-bold text-foreground">Agora, sua senha</h2>
       <p className="mt-2 text-sm text-muted">
         Encontramos uma conta para esse e-mail.
       </p>

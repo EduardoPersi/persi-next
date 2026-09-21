@@ -5,8 +5,13 @@ const SECURITY_HEADERS = [
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
+    // `web-share` foi removido da lista: o Chrome não reconhece esse nome no
+    // cabeçalho Permissions-Policy e registrava "Unrecognized feature:
+    // 'web-share'" no console em toda navegação. A diretiva era inócua — a
+    // política padrão do Web Share já é `self` —, então o botão de
+    // compartilhar da página de produto continua funcionando igual.
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), web-share=(self)",
+    value: "camera=(), microphone=(), geolocation=()",
   },
   // max-age moderado (180 dias), sem includeSubDomains (o subdomínio
   // loja.persimateriais.com.br roda o WordPress/WooCommerce administrativo

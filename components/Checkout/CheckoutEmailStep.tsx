@@ -27,7 +27,7 @@ export function CheckoutEmailStep({
   return (
     <div className="w-full max-w-xl text-center">
       <Mail className="mx-auto h-11 w-11 text-slate-400" aria-hidden="true" />
-      <h1 className="mt-5 text-xl font-bold text-foreground">Informe seu e-mail</h1>
+      <h2 className="mt-5 text-xl font-bold text-foreground">Informe seu e-mail</h2>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">
         Preencha seu e-mail para iniciar. Utilizaremos este endereço para
         acessar sua conta ou criar uma nova.
