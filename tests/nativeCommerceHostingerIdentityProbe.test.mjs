@@ -4,6 +4,9 @@ import test from "node:test";
 import {
   evaluateIdentityRow,
   checkIdentity,
+  evaluateAppBareConnection,
+  evaluateAppRoleActivation,
+  checkAppIdentityDetailed,
   runNativeCommerceIdentityProbe,
 } from "../lib/runtime/native-commerce-identity-probe.ts";
 
@@ -34,19 +37,19 @@ function withEnv(overrides, fn) {
 // traffic.
 const UNREACHABLE_DATABASE_URL = "postgresql://placeholder:placeholder@127.0.0.1:1/placeholder";
 
-// ---------- pure decision logic: evaluateIdentityRow ----------
+// ================== WORKER: unchanged control path (R2) ==================
 
 test("evaluateIdentityRow: correct current_user and session_user -> ok=true, stage=ok, both matches true", () => {
-  const result = evaluateIdentityRow("persi_app", "persi_app_login", {
-    current_user: "persi_app",
-    session_user: "persi_app_login",
+  const result = evaluateIdentityRow("persi_worker", "persi_worker_login", {
+    current_user: "persi_worker",
+    session_user: "persi_worker_login",
   });
   assert.deepEqual(result, { ok: true, stage: "ok", currentUserMatch: true, sessionUserMatch: true });
 });
 
 test("evaluateIdentityRow: correct current_user + wrong session_user -> identity_mismatch, true/false", () => {
-  const result = evaluateIdentityRow("persi_app", "persi_app_login", {
-    current_user: "persi_app",
+  const result = evaluateIdentityRow("persi_worker", "persi_worker_login", {
+    current_user: "persi_worker",
     session_user: "some_other_login",
   });
   assert.deepEqual(result, { ok: false, stage: "identity_mismatch", currentUserMatch: true, sessionUserMatch: false });
@@ -61,7 +64,7 @@ test("evaluateIdentityRow: wrong current_user + correct session_user -> identity
 });
 
 test("evaluateIdentityRow: both wrong -> identity_mismatch, false/false", () => {
-  const result = evaluateIdentityRow("persi_app", "persi_app_login", {
+  const result = evaluateIdentityRow("persi_worker", "persi_worker_login", {
     current_user: "postgres",
     session_user: "some_other_login",
   });
@@ -69,57 +72,14 @@ test("evaluateIdentityRow: both wrong -> identity_mismatch, false/false", () => 
 });
 
 test("evaluateIdentityRow: missing row -> connection_or_activation_error, matches null", () => {
-  const result = evaluateIdentityRow("persi_app", "persi_app_login", undefined);
+  const result = evaluateIdentityRow("persi_worker", "persi_worker_login", undefined);
   assert.deepEqual(result, { ok: false, stage: "connection_or_activation_error", currentUserMatch: null, sessionUserMatch: null });
-});
-
-test("evaluateIdentityRow: worker side, both correct -> ok=true", () => {
-  const result = evaluateIdentityRow("persi_worker", "persi_worker_login", {
-    current_user: "persi_worker",
-    session_user: "persi_worker_login",
-  });
-  assert.deepEqual(result, { ok: true, stage: "ok", currentUserMatch: true, sessionUserMatch: true });
-});
-
-// ---------- checkIdentity: env_missing (real behavior, no DB needed) ----------
-
-test("APP env absent -> stage=env_missing, matches null, without needing a DB", async () => {
-  await withEnv({ NATIVE_APP_DATABASE_URL: undefined }, async () => {
-    const result = await checkIdentity("persi_app", "NATIVE_APP_DATABASE_URL", "persi_app_login");
-    assert.deepEqual(result, { ok: false, stage: "env_missing", currentUserMatch: null, sessionUserMatch: null });
-  });
 });
 
 test("WORKER env absent -> stage=env_missing, matches null, without needing a DB", async () => {
   await withEnv({ NATIVE_WORKER_DATABASE_URL: undefined }, async () => {
     const result = await checkIdentity("persi_worker", "NATIVE_WORKER_DATABASE_URL", "persi_worker_login");
     assert.deepEqual(result, { ok: false, stage: "env_missing", currentUserMatch: null, sessionUserMatch: null });
-  });
-});
-
-test("APP env blank string is treated as absent, not a value to connect with", async () => {
-  await withEnv({ NATIVE_APP_DATABASE_URL: "   " }, async () => {
-    const result = await checkIdentity("persi_app", "NATIVE_APP_DATABASE_URL", "persi_app_login");
-    assert.equal(result.stage, "env_missing");
-  });
-});
-
-test("runNativeCommerceIdentityProbe: both envs absent -> both sides env_missing, correct shape, no DB required", async () => {
-  await withEnv({ NATIVE_APP_DATABASE_URL: undefined, NATIVE_WORKER_DATABASE_URL: undefined }, async () => {
-    const result = await runNativeCommerceIdentityProbe();
-    assert.deepEqual(result, {
-      app: { ok: false, stage: "env_missing", currentUserMatch: null, sessionUserMatch: null },
-      worker: { ok: false, stage: "env_missing", currentUserMatch: null, sessionUserMatch: null },
-    });
-  });
-});
-
-// ---------- checkIdentity: connection_or_activation_error (real network attempt, no live Postgres needed) ----------
-
-test("APP env present but unreachable -> stage=connection_or_activation_error, matches null, error never surfaced", async () => {
-  await withEnv({ NATIVE_APP_DATABASE_URL: UNREACHABLE_DATABASE_URL }, async () => {
-    const result = await checkIdentity("persi_app", "NATIVE_APP_DATABASE_URL", "persi_app_login");
-    assert.deepEqual(result, { ok: false, stage: "connection_or_activation_error", currentUserMatch: null, sessionUserMatch: null });
   });
 });
 
@@ -130,53 +90,162 @@ test("WORKER env present but unreachable -> stage=connection_or_activation_error
   });
 });
 
+// ================== APP: R3 two-step connection/activation isolation ==================
+
+// ---- STEP 1 pure logic: evaluateAppBareConnection ----
+
+test("APP STEP1: correct bare login identity -> proceed=true", () => {
+  const outcome = evaluateAppBareConnection({ current_user: "persi_app_login", session_user: "persi_app_login" });
+  assert.deepEqual(outcome, { proceed: true });
+});
+
+test("APP STEP1: no row (connection/query failed) -> connection_error", () => {
+  const outcome = evaluateAppBareConnection(undefined);
+  assert.deepEqual(outcome, {
+    proceed: false,
+    result: { ok: false, stage: "connection_error", loginIdentityMatch: null, roleActivationMatch: null },
+  });
+});
+
+test("APP STEP1: connected but wrong current_user -> login_identity_mismatch", () => {
+  const outcome = evaluateAppBareConnection({ current_user: "postgres", session_user: "persi_app_login" });
+  assert.deepEqual(outcome, {
+    proceed: false,
+    result: { ok: false, stage: "login_identity_mismatch", loginIdentityMatch: false, roleActivationMatch: null },
+  });
+});
+
+test("APP STEP1: connected but wrong session_user -> login_identity_mismatch", () => {
+  const outcome = evaluateAppBareConnection({ current_user: "persi_app_login", session_user: "some_other_login" });
+  assert.deepEqual(outcome, {
+    proceed: false,
+    result: { ok: false, stage: "login_identity_mismatch", loginIdentityMatch: false, roleActivationMatch: null },
+  });
+});
+
+// ---- STEP 2 pure logic: evaluateAppRoleActivation (only reached after STEP 1 passes) ----
+
+test("APP STEP2: no row (activation/query failed) -> role_activation_error", () => {
+  const result = evaluateAppRoleActivation(undefined);
+  assert.deepEqual(result, { ok: false, stage: "role_activation_error", loginIdentityMatch: true, roleActivationMatch: null });
+});
+
+test("APP STEP2: activated but wrong current_user -> role_identity_mismatch", () => {
+  const result = evaluateAppRoleActivation({ current_user: "persi_app_login", session_user: "persi_app_login" });
+  assert.deepEqual(result, { ok: false, stage: "role_identity_mismatch", loginIdentityMatch: true, roleActivationMatch: false });
+});
+
+test("APP STEP2: activated but wrong session_user -> role_identity_mismatch", () => {
+  const result = evaluateAppRoleActivation({ current_user: "persi_app", session_user: "some_other_login" });
+  assert.deepEqual(result, { ok: false, stage: "role_identity_mismatch", loginIdentityMatch: true, roleActivationMatch: false });
+});
+
+test("APP STEP2: both correct -> ok=true, stage=ok", () => {
+  const result = evaluateAppRoleActivation({ current_user: "persi_app", session_user: "persi_app_login" });
+  assert.deepEqual(result, { ok: true, stage: "ok", loginIdentityMatch: true, roleActivationMatch: true });
+});
+
+// ---- checkAppIdentityDetailed: real behavior, no live Postgres needed ----
+
+test("APP env absent -> stage=env_missing, without needing a DB", async () => {
+  await withEnv({ NATIVE_APP_DATABASE_URL: undefined }, async () => {
+    const result = await checkAppIdentityDetailed();
+    assert.deepEqual(result, { ok: false, stage: "env_missing", loginIdentityMatch: null, roleActivationMatch: null });
+  });
+});
+
+test("APP env blank string is treated as absent, not a value to connect with", async () => {
+  await withEnv({ NATIVE_APP_DATABASE_URL: "   " }, async () => {
+    const result = await checkAppIdentityDetailed();
+    assert.equal(result.stage, "env_missing");
+  });
+});
+
+test("APP env present but unreachable -> STEP1 fails first -> stage=connection_error (not role_activation_error)", async () => {
+  await withEnv({ NATIVE_APP_DATABASE_URL: UNREACHABLE_DATABASE_URL }, async () => {
+    const result = await checkAppIdentityDetailed();
+    assert.deepEqual(result, { ok: false, stage: "connection_error", loginIdentityMatch: null, roleActivationMatch: null });
+  });
+});
+
+test("runNativeCommerceIdentityProbe: both envs absent -> app env_missing, worker env_missing, correct shape, no DB required", async () => {
+  await withEnv({ NATIVE_APP_DATABASE_URL: undefined, NATIVE_WORKER_DATABASE_URL: undefined }, async () => {
+    const result = await runNativeCommerceIdentityProbe();
+    assert.deepEqual(result, {
+      app: { ok: false, stage: "env_missing", loginIdentityMatch: null, roleActivationMatch: null },
+      worker: { ok: false, stage: "env_missing", currentUserMatch: null, sessionUserMatch: null },
+    });
+  });
+});
+
 // ---------- helper module source assertions ----------
 
 const helperSource = readFileSync("lib/runtime/native-commerce-identity-probe.ts", "utf8");
 
-test("uses the real production withPersiRole from lib/db/nativeCommerceAuthority, not a parallel implementation", () => {
-  assert.match(helperSource, /import \{ withPersiRole, type PersiRole \} from "@\/lib\/db\/nativeCommerceAuthority";/);
-  // "the only SQL executed..." test below already proves the single sql`...`
-  // template in this file is the fixed identity query, not a SET LOCAL ROLE
-  // statement -- structurally proving this module never activates a role
-  // itself, only through withPersiRole.
+test("uses the real production withPersiRole and getPersiRolePoolForDiagnostics from lib/db/nativeCommerceAuthority, not a parallel implementation", () => {
+  assert.match(helperSource, /import \{ getPersiRolePoolForDiagnostics, withPersiRole, type PersiRole \} from "@\/lib\/db\/nativeCommerceAuthority";/);
 });
 
-test("env presence is checked before withPersiRole is ever called", () => {
-  const fnBody = helperSource.slice(helperSource.indexOf("export async function checkIdentity"));
-  const presenceCheckIndex = fnBody.indexOf("process.env[envVarName]");
-  const withPersiRoleCallIndex = fnBody.indexOf("withPersiRole(role");
-  assert.ok(presenceCheckIndex > -1 && withPersiRoleCallIndex > presenceCheckIndex, "presence check must run before withPersiRole is invoked");
+test("STEP1 (bare connection) never goes through withPersiRole -- only STEP2 (role activation) does", () => {
+  const fnBody = helperSource.slice(helperSource.indexOf("export async function checkAppIdentityDetailed"));
+  const bareDbCallIndex = fnBody.indexOf("getPersiRolePoolForDiagnostics(APP_ROLE)");
+  const step1EvalIndex = fnBody.indexOf("evaluateAppBareConnection(bareRow)");
+  const withPersiRoleCallIndex = fnBody.indexOf("withPersiRole(APP_ROLE");
+  assert.ok(bareDbCallIndex > -1 && step1EvalIndex > -1 && withPersiRoleCallIndex > -1);
+  assert.ok(bareDbCallIndex < step1EvalIndex, "bare connection must be obtained before STEP1 evaluation");
+  assert.ok(step1EvalIndex < withPersiRoleCallIndex, "STEP1 must be evaluated before STEP2's withPersiRole call");
 });
 
-test("the only SQL executed is the fixed identity query -- no other query text anywhere in the module", () => {
+test("env presence is checked before any connection/pool access, for both APP and WORKER", () => {
+  const appFnBody = helperSource.slice(helperSource.indexOf("export async function checkAppIdentityDetailed"));
+  const appPresenceCheckIndex = appFnBody.indexOf("process.env.NATIVE_APP_DATABASE_URL");
+  const appPoolCallIndex = appFnBody.indexOf("getPersiRolePoolForDiagnostics");
+  assert.ok(appPresenceCheckIndex > -1 && appPoolCallIndex > -1 && appPresenceCheckIndex < appPoolCallIndex);
+
+  const workerFnBody = helperSource.slice(helperSource.indexOf("export async function checkIdentity"));
+  const workerPresenceCheckIndex = workerFnBody.indexOf("process.env[envVarName]");
+  const workerWithPersiRoleIndex = workerFnBody.indexOf("withPersiRole(role");
+  assert.ok(workerPresenceCheckIndex > -1 && workerWithPersiRoleIndex > -1 && workerPresenceCheckIndex < workerWithPersiRoleIndex);
+});
+
+test("the only SQL executed anywhere in the module is the fixed identity query, defined once and reused", () => {
   const sqlOccurrences = helperSource.match(/sql`[^`]*`/g) ?? [];
   assert.equal(sqlOccurrences.length, 1);
   assert.match(sqlOccurrences[0], /^sql`select current_user, session_user`$/);
+  // Reused by reference (IDENTITY_QUERY), not re-templated, at all 3 call sites.
+  const referenceCount = (helperSource.match(/\bIDENTITY_QUERY\b/g) ?? []).length;
+  assert.ok(referenceCount >= 4, "expected 1 definition + at least 3 usages");
 });
 
-test("only the four allowed stage values exist in the module", () => {
+test("only the six allowed APP stage values and four allowed WORKER stage values exist in the module", () => {
+  assert.match(
+    helperSource,
+    /export type AppProbeStage =\s*\|\s*"ok"\s*\|\s*"env_missing"\s*\|\s*"connection_error"\s*\|\s*"login_identity_mismatch"\s*\|\s*"role_activation_error"\s*\|\s*"role_identity_mismatch";/,
+  );
   assert.match(helperSource, /export type ProbeStage = "ok" \| "env_missing" \| "connection_or_activation_error" \| "identity_mismatch";/);
+
   const stageLiterals = [...helperSource.matchAll(/stage: "([a-z_]+)"/g)].map((m) => m[1]);
-  const allowed = new Set(["ok", "env_missing", "connection_or_activation_error", "identity_mismatch"]);
+  const allowed = new Set([
+    "ok",
+    "env_missing",
+    "connection_or_activation_error",
+    "identity_mismatch",
+    "connection_error",
+    "login_identity_mismatch",
+    "role_activation_error",
+    "role_identity_mismatch",
+  ]);
   for (const literal of stageLiterals) {
     assert.ok(allowed.has(literal), `unexpected stage literal used in source: ${literal}`);
   }
 });
 
-test("activatedAs field no longer exists as code -- replaced by stage/currentUserMatch/sessionUserMatch (mentioned only in an explanatory comment)", () => {
-  // The word appears exactly once, inside the file-level rationale comment
-  // explaining the R2 change -- never as an object property or type field.
-  const occurrences = helperSource.match(/activatedAs/g) ?? [];
-  assert.equal(occurrences.length, 1);
-  assert.doesNotMatch(helperSource, /activatedAs:/, "must not appear as an object property/type field anywhere");
-});
-
-test("no raw driver/Postgres error is ever placed on the result -- catch block returns only the fixed classification", () => {
-  const fnBody = helperSource.slice(helperSource.indexOf("export async function checkIdentity"));
-  const catchBlock = fnBody.slice(fnBody.indexOf("} catch"));
-  assert.doesNotMatch(catchBlock, /error\.message|err\.message|String\(error\)|String\(err\)|error\.code|err\.code/);
-  assert.match(catchBlock, /stage: "connection_or_activation_error"/);
+test("no raw driver/Postgres error is ever placed on a result -- every catch block returns only a fixed classification", () => {
+  const catchBlocks = helperSource.match(/catch \{[^}]*\}/g) ?? [];
+  assert.ok(catchBlocks.length >= 3);
+  for (const block of catchBlocks) {
+    assert.doesNotMatch(block, /error\.message|err\.message|String\(error\)|String\(err\)|error\.code|err\.code/);
+  }
 });
 
 test("no commercial/business function or provider name is referenced anywhere in the helper module", () => {
@@ -196,6 +265,27 @@ test("no commercial/business function or provider name is referenced anywhere in
   for (const pattern of forbidden) {
     assert.doesNotMatch(helperSource, pattern);
   }
+});
+
+// ---------- nativeCommerceAuthority.ts: the new diagnostic export ----------
+
+const authoritySource = readFileSync("lib/db/nativeCommerceAuthority.ts", "utf8");
+
+test("getPersiRolePoolForDiagnostics reuses getRolePool exactly -- no parallel connection construction", () => {
+  assert.match(authoritySource, /export function getPersiRolePoolForDiagnostics\(role: PersiRole\): PostgresJsDatabase<typeof schema> \| null \{/);
+  const fnBody = authoritySource.slice(authoritySource.indexOf("export function getPersiRolePoolForDiagnostics"));
+  const firstBraceClose = fnBody.indexOf("\n}");
+  const body = fnBody.slice(0, firstBraceClose);
+  assert.match(body, /getRolePool\(role\)/);
+  assert.doesNotMatch(body, /new postgres\(|drizzle\(/, "must not construct a new client/pool -- only read the existing cached one via getRolePool");
+});
+
+test("getPersiRolePoolForDiagnostics never opens a transaction or activates a role", () => {
+  const fnBody = authoritySource.slice(
+    authoritySource.indexOf("export function getPersiRolePoolForDiagnostics"),
+    authoritySource.indexOf("export async function closeNativeCommerceAuthorityForTests"),
+  );
+  assert.doesNotMatch(fnBody, /\.transaction\(|activationStatement/);
 });
 
 // ---------- route.ts: static source assertions ----------
@@ -247,17 +337,17 @@ test("every response sets Cache-Control: no-store", () => {
   assert.match(routeSource, /\.\.\.NO_STORE_HEADERS/);
 });
 
-test("success response body contains only {ok, stage, currentUserMatch, sessionUserMatch} per side -- no raw identity, no activatedAs", () => {
+test("success response body: app has {ok, stage, loginIdentityMatch, roleActivationMatch}, worker has {ok, stage, currentUserMatch, sessionUserMatch} -- no raw identity", () => {
   const jsonCallIndex = routeSource.indexOf("NextResponse.json(");
   const jsonCallBlock = routeSource.slice(jsonCallIndex, routeSource.indexOf(");", jsonCallIndex));
-  assert.match(jsonCallBlock, /app: \{ ok: app\.ok, stage: app\.stage, currentUserMatch: app\.currentUserMatch, sessionUserMatch: app\.sessionUserMatch \}/);
+  assert.match(jsonCallBlock, /app: \{ ok: app\.ok, stage: app\.stage, loginIdentityMatch: app\.loginIdentityMatch, roleActivationMatch: app\.roleActivationMatch \}/);
   assert.match(jsonCallBlock, /worker: \{ ok: worker\.ok, stage: worker\.stage, currentUserMatch: worker\.currentUserMatch, sessionUserMatch: worker\.sessionUserMatch \}/);
   assert.doesNotMatch(jsonCallBlock, /activatedAs/);
   assert.doesNotMatch(jsonCallBlock, /DATABASE_URL|password|connectionString/i);
 });
 
-test("no secret-shaped literal (connection string, password assignment) appears in either file", () => {
-  for (const source of [routeSource, helperSource]) {
+test("no secret-shaped literal (connection string, password assignment) appears in any of the three files", () => {
+  for (const source of [routeSource, helperSource, authoritySource]) {
     assert.doesNotMatch(source, /postgresql:\/\//);
     assert.doesNotMatch(source, /password\s*[:=]\s*["'][^"']+["']/i);
   }

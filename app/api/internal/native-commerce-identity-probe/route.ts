@@ -33,10 +33,17 @@ import { isStagingBasicAuthValid } from "@/lib/runtime/staging-access-guard";
 //    function, no commerce side effect of any kind.
 //  - Response never contains a URL, password, host, project ref, a raw
 //    current_user/session_user value, or a raw SQL/driver error -- only a
-//    `stage` classification (ok | env_missing | connection_or_activation_error
-//    | identity_mismatch) plus two nullable booleans (see lib/runtime/
-//    native-commerce-identity-probe.ts's file-level comment for why the
-//    original `activatedAs` field was replaced with this).
+//    `stage` classification plus two nullable booleans per side.
+//  - APP (R3): isolates the dedicated NATIVE_APP_DATABASE_URL connection's
+//    own login identity from SET LOCAL ROLE activation -- stages are
+//    ok | env_missing | connection_error | login_identity_mismatch |
+//    role_activation_error | role_identity_mismatch (see lib/runtime/
+//    native-commerce-identity-probe.ts's file-level comment for why R2's
+//    single combined connection_or_activation_error stage wasn't granular
+//    enough).
+//  - WORKER: unchanged control path from R2 (already proven working live),
+//    stages are ok | env_missing | connection_or_activation_error |
+//    identity_mismatch.
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -64,7 +71,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json(
     {
-      app: { ok: app.ok, stage: app.stage, currentUserMatch: app.currentUserMatch, sessionUserMatch: app.sessionUserMatch },
+      app: { ok: app.ok, stage: app.stage, loginIdentityMatch: app.loginIdentityMatch, roleActivationMatch: app.roleActivationMatch },
       worker: { ok: worker.ok, stage: worker.stage, currentUserMatch: worker.currentUserMatch, sessionUserMatch: worker.sessionUserMatch },
     },
     { status: 200, headers: NO_STORE_HEADERS },

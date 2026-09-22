@@ -98,6 +98,20 @@ export async function withPersiRole<T>(role: PersiRole, callback: (db: PersiData
   });
 }
 
+// DIAGNOSTIC USE ONLY -- see lib/runtime/native-commerce-identity-probe.ts
+// (TEMPORARY_STAGING_PROBE=YES). Exposes the exact same lazily-created,
+// cached per-role pool withPersiRole itself uses, WITHOUT opening a
+// transaction or activating any role -- lets a caller prove the dedicated
+// login's own identity (current_user/session_user before SET LOCAL ROLE)
+// separately from role activation. Returns null under the identical
+// condition withPersiRole falls back to getDatabase() (env var unset),
+// never a parallel connection mechanism. Remove this export together with
+// the probe files once the real Hostinger runtime identity qualification
+// is done.
+export function getPersiRolePoolForDiagnostics(role: PersiRole): PostgresJsDatabase<typeof schema> | null {
+  return getRolePool(role)?.db ?? null;
+}
+
 export async function closeNativeCommerceAuthorityForTests(): Promise<void> {
   const state = globalAuthority.__persiCommerceAuthority;
   await Promise.all([
