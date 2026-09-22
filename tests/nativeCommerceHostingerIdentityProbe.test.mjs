@@ -9,6 +9,7 @@ import {
   checkAppIdentityDetailed,
   runNativeCommerceIdentityProbe,
 } from "../lib/runtime/native-commerce-identity-probe.ts";
+import { closeNativeCommerceAuthorityForTests } from "../lib/db/nativeCommerceAuthority.ts";
 
 // ---------- helpers ----------
 
@@ -162,7 +163,25 @@ test("APP env blank string is treated as absent, not a value to connect with", a
 });
 
 test("APP env present but unreachable -> STEP1 fails first -> stage=connection_error (not role_activation_error)", async () => {
+  await closeNativeCommerceAuthorityForTests(); // fresh pool cache -- see the malformed-URL test below for why this matters
   await withEnv({ NATIVE_APP_DATABASE_URL: UNREACHABLE_DATABASE_URL }, async () => {
+    const result = await checkAppIdentityDetailed();
+    assert.deepEqual(result, { ok: false, stage: "connection_error", loginIdentityMatch: null, roleActivationMatch: null });
+  });
+});
+
+// Regression test for a REAL incident: NATIVE_APP_DATABASE_URL was
+// configured with a value that fails `new URL(...)` parsing inside the
+// `postgres` driver's own client constructor. That constructor call sits
+// inside getPersiRolePoolForDiagnostics -> getRolePool, invoked BEFORE the
+// original code's try/catch even started, so the TypeError escaped
+// checkAppIdentityDetailed -> runNativeCommerceIdentityProbe -> the route's
+// GET handler (which also had no try/catch) -> Next.js's own handler,
+// which returned an empty, unsanitized HTTP 500 to the real client. Fixed
+// by moving pool construction inside the same try/catch as the query.
+test("APP env is not a valid URL (driver constructor throws synchronously) -> sanitized connection_error, never an uncaught exception", async () => {
+  await closeNativeCommerceAuthorityForTests(); // must be unset/uncached so construction is actually attempted, not skipped via the cache
+  await withEnv({ NATIVE_APP_DATABASE_URL: "this is not a url at all" }, async () => {
     const result = await checkAppIdentityDetailed();
     assert.deepEqual(result, { ok: false, stage: "connection_error", loginIdentityMatch: null, roleActivationMatch: null });
   });
@@ -177,6 +196,8 @@ test("runNativeCommerceIdentityProbe: both envs absent -> app env_missing, worke
     });
   });
 });
+
+await closeNativeCommerceAuthorityForTests();
 
 // ---------- helper module source assertions ----------
 
@@ -344,6 +365,23 @@ test("success response body: app has {ok, stage, loginIdentityMatch, roleActivat
   assert.match(jsonCallBlock, /worker: \{ ok: worker\.ok, stage: worker\.stage, currentUserMatch: worker\.currentUserMatch, sessionUserMatch: worker\.sessionUserMatch \}/);
   assert.doesNotMatch(jsonCallBlock, /activatedAs/);
   assert.doesNotMatch(jsonCallBlock, /DATABASE_URL|password|connectionString/i);
+});
+
+test("GET has an outer try/catch around the probe call -- an unexpected exception can never escape as a raw HTTP 500 (regression: a malformed NATIVE_APP_DATABASE_URL once did exactly this)", () => {
+  const getBody = routeSource.slice(routeSource.indexOf("export async function GET"));
+  const tryIndex = getBody.indexOf("try {");
+  // Search for the actual call site, not the explanatory comment above it
+  // (which also mentions the function name) -- start searching after tryIndex.
+  const probeCallIndex = getBody.indexOf("runNativeCommerceIdentityProbe()", tryIndex);
+  const catchIndex = getBody.indexOf("} catch {");
+  assert.ok(tryIndex > -1 && probeCallIndex > -1 && catchIndex > -1);
+  assert.ok(tryIndex < probeCallIndex, "the probe call must be inside the try block");
+  assert.ok(probeCallIndex < catchIndex, "the catch must come after the probe call");
+
+  const catchBlock = getBody.slice(catchIndex);
+  assert.match(catchBlock, /stage: "connection_error"/);
+  assert.match(catchBlock, /status: 200/);
+  assert.doesNotMatch(catchBlock, /error\.message|err\.message|String\(error\)|String\(err\)|error\.stack/, "the outer catch must never surface the raw exception");
 });
 
 test("no secret-shaped literal (connection string, password assignment) appears in any of the three files", () => {

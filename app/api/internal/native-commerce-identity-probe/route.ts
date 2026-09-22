@@ -67,13 +67,30 @@ export async function GET(request: Request) {
     return unauthorizedResponse();
   }
 
-  const { app, worker } = await runNativeCommerceIdentityProbe();
-
-  return NextResponse.json(
-    {
-      app: { ok: app.ok, stage: app.stage, loginIdentityMatch: app.loginIdentityMatch, roleActivationMatch: app.roleActivationMatch },
-      worker: { ok: worker.ok, stage: worker.stage, currentUserMatch: worker.currentUserMatch, sessionUserMatch: worker.sessionUserMatch },
-    },
-    { status: 200, headers: NO_STORE_HEADERS },
-  );
+  // Defense in depth: runNativeCommerceIdentityProbe()'s own two check
+  // functions already catch every DB/connection failure they know about
+  // and return a sanitized stage. This outer try/catch exists only so
+  // that a genuinely unexpected exception (a real incident: a malformed
+  // NATIVE_APP_DATABASE_URL once threw synchronously from a call site that
+  // wasn't yet wrapped, escaping as an empty HTTP 500) can never again
+  // reach the client as a raw, unsanitized 500 -- this route must always
+  // answer with the diagnostic JSON shape.
+  try {
+    const { app, worker } = await runNativeCommerceIdentityProbe();
+    return NextResponse.json(
+      {
+        app: { ok: app.ok, stage: app.stage, loginIdentityMatch: app.loginIdentityMatch, roleActivationMatch: app.roleActivationMatch },
+        worker: { ok: worker.ok, stage: worker.stage, currentUserMatch: worker.currentUserMatch, sessionUserMatch: worker.sessionUserMatch },
+      },
+      { status: 200, headers: NO_STORE_HEADERS },
+    );
+  } catch {
+    return NextResponse.json(
+      {
+        app: { ok: false, stage: "connection_error", loginIdentityMatch: null, roleActivationMatch: null },
+        worker: { ok: false, stage: "connection_or_activation_error", currentUserMatch: null, sessionUserMatch: null },
+      },
+      { status: 200, headers: NO_STORE_HEADERS },
+    );
+  }
 }

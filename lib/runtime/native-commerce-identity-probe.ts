@@ -133,17 +133,24 @@ export async function checkAppIdentityDetailed(): Promise<AppIdentityCheckResult
     return { ok: false, stage: "env_missing", loginIdentityMatch: null, roleActivationMatch: null };
   }
 
-  // Same lazily-created, cached pool withPersiRole uses -- never a parallel
-  // connection mechanism. Null here would mean the env var above was
-  // somehow unset by now; treated as env_missing defensively.
-  const bareDb = getPersiRolePoolForDiagnostics(APP_ROLE);
-  if (!bareDb) {
-    return { ok: false, stage: "env_missing", loginIdentityMatch: null, roleActivationMatch: null };
-  }
-
-  // STEP 1: dedicated connection, BEFORE any role activation.
+  // STEP 1: dedicated connection, BEFORE any role activation. Pool
+  // construction (getPersiRolePoolForDiagnostics -> getRolePool -> the
+  // `postgres` driver's own connection-string parsing) and the query
+  // itself are BOTH inside this one try/catch. A malformed
+  // NATIVE_APP_DATABASE_URL value throws synchronously here (a real
+  // incident: the driver's `new URL(...)` raised an uncaught
+  // "TypeError: Invalid URL" that previously escaped all the way to an
+  // empty HTTP 500, before this fix) -- it must be classified as
+  // connection_error, never allowed to escape as an unhandled exception.
   let bareRow: IdentityRow | undefined;
   try {
+    const bareDb = getPersiRolePoolForDiagnostics(APP_ROLE);
+    if (!bareDb) {
+      // Same fallback condition withPersiRole itself uses -- the env var
+      // read as unset by the time the pool is requested (defensive; the
+      // check above should already have caught this).
+      return { ok: false, stage: "env_missing", loginIdentityMatch: null, roleActivationMatch: null };
+    }
     bareRow = (await bareDb.execute<IdentityRow>(IDENTITY_QUERY))[0];
   } catch {
     bareRow = undefined;
