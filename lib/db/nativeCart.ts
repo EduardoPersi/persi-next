@@ -108,3 +108,105 @@ export async function addNativeCartItem(input: {
   `));
   return result[0];
 }
+
+// Gate 3 -- sets the ABSOLUTE quantity for an existing line (unlike
+// addNativeCartItem, which accumulates). Mirrors set_native_cart_item_quantity's
+// own contract exactly (supabase/migrations/20260907120000_native_cart_authority_null_safe.sql):
+// raises CART_ITEM_NOT_FOUND (P0002) if the variant isn't already in the
+// cart -- this is deliberately NOT an upsert, so a PATCH against a variant
+// that was never added fails closed instead of silently creating a line.
+export async function updateNativeCartItemQuantity(input: {
+  cartId: string;
+  customerId?: string | null;
+  guestToken?: string;
+  productVariantId: string;
+  quantity: bigint;
+}): Promise<NativeCartItemRow> {
+  if (input.customerId && input.guestToken) throw new Error("NATIVE_CART_OWNER_CONTEXT_INVALID");
+  const guestFingerprint = input.guestToken ? hashGuestCartToken(input.guestToken) : null;
+  const result = await withPersiRole("persi_app", (db) => db.execute<NativeCartItemRow>(sql`
+    select id::text as "id", cart_id::text as "cartId", product_variant_id::text as "productVariantId", quantity
+    from public.set_native_cart_item_quantity(${input.cartId}::uuid, ${input.customerId ?? null}::uuid, ${guestFingerprint}::text, ${input.productVariantId}::uuid, ${input.quantity}::bigint)
+  `));
+  return result[0];
+}
+
+// Gate 3 -- returns whether a line was actually removed (remove_native_cart_item's
+// own boolean contract). Removing a variant that was never in the cart is
+// NOT an error -- it returns false, matching a DELETE's usual idempotent
+// semantics (calling it twice has the same end state).
+export async function removeNativeCartItem(input: {
+  cartId: string;
+  customerId?: string | null;
+  guestToken?: string;
+  productVariantId: string;
+}): Promise<boolean> {
+  if (input.customerId && input.guestToken) throw new Error("NATIVE_CART_OWNER_CONTEXT_INVALID");
+  const guestFingerprint = input.guestToken ? hashGuestCartToken(input.guestToken) : null;
+  const result = await withPersiRole("persi_app", (db) => db.execute<{ removed: boolean }>(sql`
+    select public.remove_native_cart_item(${input.cartId}::uuid, ${input.customerId ?? null}::uuid, ${guestFingerprint}::text, ${input.productVariantId}::uuid) as removed
+  `));
+  return result[0].removed;
+}
+
+export interface NativeCartReadModel {
+  [key: string]: unknown;
+  id: string;
+  storeId: string;
+  customerId: string | null;
+  guestTokenFingerprint: string | null;
+  currency: string;
+  status: string;
+  version: bigint;
+  items: Array<{ id: string; productVariantId: string; quantity: bigint }>;
+}
+
+// Gate 3 -- plain read via persi_app's own table-level SELECT grant on
+// carts/cart_items (supabase/migrations/20260905180000_native_checkout_atomic_submission.sql:169)
+// -- there is no dedicated read function for carts (unlike readNativeOrder/
+// readNativeCheckout, which read through their own tables the same way).
+// Ownership is NOT checked here -- callers MUST call canAccessNativeCart
+// (already exported by this module) against the result before returning
+// anything to a client, exactly like every route in this file already
+// does its own authorization check against the SQL function's own
+// CART_OWNERSHIP_INVALID error for writes.
+export async function readNativeCartById(cartId: string): Promise<NativeCartReadModel | null> {
+  const result = await withPersiRole("persi_app", (db) => db.execute<NativeCartReadModel>(sql`
+    select c.id::text as "id", c.store_id::text as "storeId", c.customer_id::text as "customerId",
+      c.guest_token_fingerprint as "guestTokenFingerprint", c.currency, c.status, c.version,
+      coalesce((select jsonb_agg(jsonb_build_object('id',i.id,'productVariantId',i.product_variant_id,'quantity',i.quantity) order by i.created_at)
+        from public.cart_items i where i.cart_id=c.id),'[]') as items
+    from public.carts c where c.id=${cartId}::uuid
+  `));
+  return result[0] ?? null;
+}
+
+// Gate 3 -- finds the caller's own ACTIVE cart without creating one (GET
+// must never create state -- see docs/native-commerce/gate3-native-cart-checkout-routes.md).
+// Guest lookup is by fingerprint alone (carts_guest_token_unique is a
+// global unique index, not scoped by store/currency); customer lookup is
+// scoped by (store, currency) matching carts_active_customer_unique.
+export async function findActiveNativeCart(input: {
+  storeId: string;
+  currency: string;
+  customerId?: string | null;
+  guestToken?: string;
+}): Promise<NativeCartReadModel | null> {
+  if (input.customerId && input.guestToken) throw new Error("NATIVE_CART_OWNER_CONTEXT_INVALID");
+  if (input.guestToken) {
+    const guestFingerprint = hashGuestCartToken(input.guestToken);
+    const result = await withPersiRole("persi_app", (db) => db.execute<{ id: string }>(sql`
+      select id::text as "id" from public.carts where guest_token_fingerprint=${guestFingerprint}::text and status='active'
+    `));
+    return result[0] ? readNativeCartById(result[0].id) : null;
+  }
+  if (input.customerId) {
+    const result = await withPersiRole("persi_app", (db) => db.execute<{ id: string }>(sql`
+      select id::text as "id" from public.carts
+      where store_id=${input.storeId}::uuid and customer_id=${input.customerId}::uuid
+        and currency=${input.currency}::char(3) and status='active'
+    `));
+    return result[0] ? readNativeCartById(result[0].id) : null;
+  }
+  return null;
+}

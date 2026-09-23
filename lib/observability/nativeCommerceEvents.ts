@@ -27,10 +27,24 @@ export type NativeCommerceEventName =
   | "native_webhook_received"
   | "native_webhook_reconciliation_applied"
   | "native_webhook_processing_failed"
-  | "native_reconciliation_batch_completed";
+  | "native_reconciliation_batch_completed"
+  // Gate 3 -- new cart/checkout-preparation routes (staging-only, gated by
+  // isNativeCommerceStagingRoutesEnabled()). Failure variants use the
+  // "_rejected_*"/"_failed" suffix so logNativeCommerceEvent's own
+  // isFailure heuristic (name.endsWith) routes them to console.error.
+  | "native_cart_created"
+  | "native_cart_item_added"
+  | "native_cart_item_updated"
+  | "native_cart_item_removed"
+  | "native_cart_request_rejected_product_not_mapped"
+  | "native_checkout_prepared"
+  | "native_checkout_prepare_failed"
+  | "native_checkout_pii_persisted"
+  | "native_checkout_marked_ready";
 
 export interface NativeCommerceEventFields {
   correlationId?: string;
+  cartId?: string;
   checkoutId?: string;
   orderId?: string;
   paymentAttemptId?: string;
