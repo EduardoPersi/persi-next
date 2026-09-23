@@ -15,6 +15,7 @@ import {
 import { resolveNativeVariantByWooProductId, resolveSingleActiveStore } from "./nativeCommerceCatalogResolution";
 import { withIdempotency } from "./nativeCommerceIdempotency";
 import { logNativeCommerceEvent } from "@/lib/observability/nativeCommerceEvents";
+import { extractPostgresErrorCode, extractPostgresErrorMessage } from "@/lib/db/postgresErrorMessage";
 
 // Gate 3 -- all business logic for the new native cart routes, kept in a
 // module that does NOT import "next/server" so it can be unit-tested
@@ -47,13 +48,30 @@ function fail(status: number, code: string, message: string): HandlerFailure {
 
 const GENERIC_ERROR = "Não foi possível atualizar o carrinho agora.";
 
-function mapCartError(error: unknown): HandlerFailure {
-  const message = error instanceof Error ? error.message : "";
+// `route` identifies the call site for the unexpected-error log line only
+// (Seção 9 do design: "rota, error.name/código do Postgres") -- it is
+// never part of the HTTP response.
+function mapCartError(error: unknown, route: string): HandlerFailure {
+  // Gate 3 staging smoke test (2026-09-23): a real Postgres RAISE arrives
+  // wrapped in drizzle's `.cause`, not on `error.message` directly -- see
+  // lib/db/postgresErrorMessage.ts's own comment for the full story. Using
+  // `error.message` here meant NONE of the branches below ever matched a
+  // real database error, only the synthetic ones this file's own unit
+  // tests throw -- every genuine failure fell through to the 502 default.
+  const message = extractPostgresErrorMessage(error);
   if (message === "CART_NOT_FOUND") return fail(404, "CART_NOT_FOUND", "Carrinho não encontrado.");
   if (message === "CART_NOT_MUTABLE") return fail(409, "CART_NOT_MUTABLE", "Este carrinho não está mais ativo.");
-  if (message === "CART_OWNERSHIP_INVALID") return fail(403, "CART_OWNERSHIP_INVALID", "Este carrinho não pertence a você.");
+  // 404, not 403: a wrong/tampered guest-cart cookie must look identical
+  // to "this cart doesn't exist" to whoever is holding it -- fail-closed,
+  // uniform across every Gate 3 route (design point (e), confirmed
+  // 2026-09-23 after the staging smoke test).
+  if (message === "CART_OWNERSHIP_INVALID") return fail(404, "CART_NOT_FOUND", "Carrinho não encontrado.");
   if (message === "CART_ITEM_NOT_FOUND") return fail(404, "CART_ITEM_NOT_FOUND", "Item não encontrado no carrinho.");
   if (message === "CART_QUANTITY_INVALID") return fail(422, "CART_QUANTITY_INVALID", "Quantidade inválida.");
+  // Anything else is genuinely unexpected -- log it (route + a sanitized
+  // code only, never the raw message/payload) so it doesn't disappear
+  // silently the way this exact class of bug did in staging.
+  logNativeCommerceEvent("native_commerce_unexpected_error", { route, code: extractPostgresErrorCode(error) });
   return fail(502, "CART_OPERATION_FAILED", GENERIC_ERROR);
 }
 
@@ -133,7 +151,7 @@ export async function handleCreateOrGetNativeCart(
     if (!full) return fail(502, "CART_OPERATION_FAILED", GENERIC_ERROR);
     return ok(201, sanitizeCart(full), owner.customerId ? undefined : guestToken ?? undefined);
   } catch (error) {
-    return mapCartError(error);
+    return mapCartError(error, "POST /api/cart/native");
   }
 }
 
@@ -177,7 +195,7 @@ export async function handleAddNativeCartItem(
     logNativeCommerceEvent("native_cart_item_added", { cartId });
     return ok(200, { productVariantId: item.productVariantId, quantity: item.quantity.toString() });
   } catch (error) {
-    return mapCartError(error);
+    return mapCartError(error, "POST /api/cart/native/items");
   }
 }
 
@@ -214,7 +232,7 @@ export async function handleUpdateNativeCartItem(
     logNativeCommerceEvent("native_cart_item_updated", { cartId });
     return ok(200, { productVariantId: item.productVariantId, quantity: item.quantity.toString() });
   } catch (error) {
-    return mapCartError(error);
+    return mapCartError(error, "PATCH /api/cart/native/items/[variantId]");
   }
 }
 
@@ -245,7 +263,7 @@ export async function handleRemoveNativeCartItem(
     logNativeCommerceEvent("native_cart_item_removed", { cartId });
     return ok(200, { removed });
   } catch (error) {
-    return mapCartError(error);
+    return mapCartError(error, "DELETE /api/cart/native/items/[variantId]");
   }
 }
 

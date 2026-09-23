@@ -133,7 +133,7 @@ test("handleAddNativeCartItem: idempotencyKey diferente permite uma segunda cham
   assert.equal(callCount, 2);
 });
 
-test("handleAddNativeCartItem mapeia CART_OWNERSHIP_INVALID para 403", async () => {
+test("handleAddNativeCartItem mapeia CART_OWNERSHIP_INVALID para 404 (fail-closed: cookie adulterado deve parecer carrinho inexistente)", async () => {
   const result = await handleAddNativeCartItem(
     "cart-1",
     guestOwner,
@@ -144,7 +144,53 @@ test("handleAddNativeCartItem mapeia CART_OWNERSHIP_INVALID para 403", async () 
     },
   );
   assert.equal(result.ok, false);
-  assert.equal(result.status, 403);
+  assert.equal(result.status, 404);
+  assert.equal(result.code, "CART_NOT_FOUND");
+});
+
+// ---------- extração real de erro do Postgres (achado do smoke test de staging, 2026-09-23) ----------
+
+test("handleAddNativeCartItem reconhece CART_OWNERSHIP_INVALID mesmo quando embrulhado em .cause (forma real do drizzle-orm)", async () => {
+  const wrapped = new Error("Failed query: insert into ...");
+  wrapped.cause = new Error("CART_OWNERSHIP_INVALID");
+  const result = await handleAddNativeCartItem(
+    "cart-1",
+    guestOwner,
+    { wooProductId: 1, quantity: 1, idempotencyKey: "99999999-9999-9999-9999-999999999999" },
+    {
+      resolveNativeVariantByWooProductId: async () => ({ productId: "p-1", productVariantId: "v-1" }),
+      addNativeCartItem: async () => { throw wrapped; },
+    },
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 404);
+});
+
+test("handleAddNativeCartItem: um erro genuinamente desconhecido vira 502 e é logado como native_commerce_unexpected_error, sem PII", async (t) => {
+  t.mock.method(console, "error", () => {});
+  const dbError = new Error("Failed query: insert into ...");
+  dbError.cause = Object.assign(new Error("alguma falha interna do Postgres"), { code: "53300" });
+  const result = await handleAddNativeCartItem(
+    "cart-1",
+    guestOwner,
+    { wooProductId: 1, quantity: 1, idempotencyKey: "88888888-8888-8888-8888-888888888888" },
+    {
+      resolveNativeVariantByWooProductId: async () => ({ productId: "p-1", productVariantId: "v-1" }),
+      addNativeCartItem: async () => { throw dbError; },
+    },
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 502);
+  assert.equal(console.error.mock.calls.length, 1);
+  const [eventName, fields] = console.error.mock.calls[0].arguments;
+  assert.match(eventName, /native_commerce_unexpected_error/);
+  assert.equal(fields.code, "53300");
+  assert.equal(fields.route, "POST /api/cart/native/items");
+  const serialized = JSON.stringify(fields);
+  assert.doesNotMatch(serialized, /alguma falha interna do Postgres/, "a mensagem crua do banco nunca deve ir para o log");
+  for (const forbidden of [/email/i, /phone/i, /cpf/i, /cnpj/i, /endereco/i, /address/i]) {
+    assert.doesNotMatch(serialized, forbidden);
+  }
 });
 
 test("handleUpdateNativeCartItem: quantidade repetida com a mesma idempotencyKey não chama a mutação duas vezes", async () => {

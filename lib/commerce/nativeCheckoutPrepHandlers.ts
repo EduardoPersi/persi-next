@@ -8,6 +8,7 @@ import { resolveStorePriceAuthority } from "@/lib/db/nativePriceAuthority";
 import { resolveSingleActiveInventoryLocation, resolveSingleActiveStore } from "./nativeCommerceCatalogResolution";
 import { withIdempotency } from "./nativeCommerceIdempotency";
 import { logNativeCommerceEvent } from "@/lib/observability/nativeCommerceEvents";
+import { extractPostgresErrorCode, extractPostgresErrorMessage } from "@/lib/db/postgresErrorMessage";
 
 // Gate 3 -- business logic for prepare/pii/ready, kept next/server-free
 // for the same reason as nativeCartHandlers.ts. No import from
@@ -40,13 +41,66 @@ function fail(status: number, code: string, message: string): HandlerFailure {
 }
 
 const GENERIC_ERROR = "Não foi possível preparar o checkout agora.";
+const STALE_MESSAGE = "O checkout foi atualizado. Recarregue a página e tente novamente.";
 
-function mapCheckoutError(error: unknown): HandlerFailure {
-  const message = error instanceof Error ? error.message : "";
-  if (message === "CHECKOUT_NOT_FOUND") return fail(404, "CHECKOUT_NOT_FOUND", "Checkout não encontrado.");
-  if (message === "CHECKOUT_PII_EXPIRED") return fail(422, "CHECKOUT_PII_EXPIRED", "Sessão de checkout expirada. Recomece.");
-  if (message === "CHECKOUT_PII_INVALID") return fail(422, "CHECKOUT_PII_INVALID", "Dados de contato/endereço inválidos.");
-  if (message === "NATIVE_CHECKOUT_OWNER_CONTEXT_INVALID") return fail(422, "OWNER_CONTEXT_INVALID", "Dados de identificação inválidos.");
+// `route` identifies the call site for the unexpected-error log line only
+// (Seção 9 do design: "rota, error.name/código do Postgres") -- it is
+// never part of the HTTP response.
+//
+// Gate 3 staging smoke test (2026-09-23) found two compounding bugs here:
+// 1. `error.message` never carries a real Postgres RAISE's text (it's
+//    wrapped in drizzle's `.cause` -- see lib/db/postgresErrorMessage.ts),
+//    so this function only ever recognized the synthetic errors its own
+//    unit tests throw. Every genuine failure fell through to 502.
+// 2. Several real codes the underlying SQL functions raise
+//    (CHECKOUT_PII_REQUIRED_OR_EXPIRED, CHECKOUT_OWNER_DENIED,
+//    CHECKOUT_VERSION_CONFLICT, CHECKOUT_STATE_INVALID, ...) were never
+//    listed at all. Comparison is uppercase-normalized because the
+//    underlying migrations are inconsistent about casing (some
+//    functions raise `CHECKOUT_OWNER_DENIED`, others `checkout_owner_denied`).
+function mapCheckoutError(error: unknown, route: string): HandlerFailure {
+  const message = extractPostgresErrorMessage(error).toUpperCase();
+
+  if (message === "CHECKOUT_NOT_FOUND" || message === "CART_NOT_FOUND") {
+    return fail(404, "CHECKOUT_NOT_FOUND", "Checkout não encontrado.");
+  }
+  // 404, not 403: a checkout whose owner (customer/guest fingerprint)
+  // doesn't match the caller must look identical to "not found" -- same
+  // fail-closed rule as CART_OWNERSHIP_INVALID in nativeCartHandlers.ts,
+  // uniform across every Gate 3 route (confirmed 2026-09-23).
+  if (message === "CHECKOUT_OWNER_DENIED") {
+    return fail(404, "CHECKOUT_NOT_FOUND", "Checkout não encontrado.");
+  }
+  if (
+    message === "CHECKOUT_PII_EXPIRED" ||
+    message === "CHECKOUT_PII_REQUIRED_OR_EXPIRED" ||
+    message === "CHECKOUT_PII_EXPIRY_INVALID"
+  ) {
+    return fail(422, "CHECKOUT_PII_REQUIRED", "Complete seus dados de contato e endereço antes de prosseguir.");
+  }
+  if (message === "CHECKOUT_PII_INVALID" || message === "INVALID_CHECKOUT_REQUEST" || message === "INVALID_PRICE_LIST_CONTEXT") {
+    return fail(422, "CHECKOUT_PII_INVALID", "Dados de contato/endereço inválidos.");
+  }
+  if (message === "NATIVE_CHECKOUT_OWNER_CONTEXT_INVALID") {
+    return fail(422, "OWNER_CONTEXT_INVALID", "Dados de identificação inválidos.");
+  }
+  if (
+    message === "CHECKOUT_VERSION_CONFLICT" ||
+    message === "CHECKOUT_STATE_INVALID" ||
+    message === "CHECKOUT_EXPIRED" ||
+    message === "CHECKOUT_CART_STATE_INVALID" ||
+    message === "CHECKOUT_NOT_REUSABLE" ||
+    message === "CHECKOUT_PRICE_STALE" ||
+    message === "CHECKOUT_RESERVATION_INVALID" ||
+    message === "CHECKOUT_SHIPPING_QUOTE_INVALID" ||
+    message === "CHECKOUT_IDEMPOTENCY_PAYLOAD_CONFLICT"
+  ) {
+    return fail(409, "CHECKOUT_STALE", STALE_MESSAGE);
+  }
+  // Anything else is genuinely unexpected -- log it (route + a sanitized
+  // code only, never the raw message/payload) so it doesn't disappear
+  // silently the way this exact class of bug did in staging.
+  logNativeCommerceEvent("native_commerce_unexpected_error", { route, code: extractPostgresErrorCode(error) });
   return fail(502, "CHECKOUT_OPERATION_FAILED", GENERIC_ERROR);
 }
 
@@ -97,7 +151,10 @@ export async function handlePrepareNativeCheckout(
       ? { kind: "customer", customerId: owner.customerId }
       : { kind: "guest", token: owner.guestToken ?? "" },
   });
-  if (!authorized) return fail(403, "CART_OWNERSHIP_INVALID", "Este carrinho não pertence a você.");
+  // 404, not 403 -- same fail-closed rule as everywhere else in Gate 3
+  // (confirmed 2026-09-23): a cart that isn't yours must look like it
+  // doesn't exist.
+  if (!authorized) return fail(404, "CART_NOT_FOUND", "Carrinho não encontrado.");
   if (cart.items.length < 1) return fail(422, "CART_EMPTY", "O carrinho está vazio.");
 
   try {
@@ -125,8 +182,8 @@ export async function handlePrepareNativeCheckout(
       version: (result as { version: bigint }).version.toString(),
     });
   } catch (error) {
-    logNativeCommerceEvent("native_checkout_prepare_failed", { cartId: cart.id, code: error instanceof Error ? error.message : "unknown" });
-    return mapCheckoutError(error);
+    logNativeCommerceEvent("native_checkout_prepare_failed", { cartId: cart.id, code: extractPostgresErrorMessage(error) || "unknown" });
+    return mapCheckoutError(error, "POST /api/checkout/native/prepare");
   }
 }
 
@@ -164,7 +221,7 @@ export async function handlePersistNativeCheckoutPii(
     logNativeCommerceEvent("native_checkout_pii_persisted", { checkoutId: result.checkoutId });
     return ok(200, { checkoutId: result.checkoutId, checkoutVersion: result.checkoutVersion.toString() });
   } catch (error) {
-    return mapCheckoutError(error);
+    return mapCheckoutError(error, "POST /api/checkout/native/pii");
   }
 }
 
@@ -204,7 +261,7 @@ export async function handleMarkNativeCheckoutReady(
     logNativeCommerceEvent("native_checkout_marked_ready", { checkoutId: input.checkoutId });
     return ok(200, { checkoutId: input.checkoutId });
   } catch (error) {
-    return mapCheckoutError(error);
+    return mapCheckoutError(error, "POST /api/checkout/native/ready");
   }
 }
 

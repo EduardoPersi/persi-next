@@ -57,7 +57,11 @@ const results = [];
 function record(step, expected, response, note = "") {
   const actual = typeof response === "number" ? response : response?.status ?? "ERR";
   const pass = Array.isArray(expected) ? expected.includes(actual) : actual === expected;
-  results.push({ step, expected: Array.isArray(expected) ? expected.join("|") : expected, actual, pass, note });
+  // response.json?.code is the route's own stable error code (e.g.
+  // CHECKOUT_PII_INVALID, CART_NOT_FOUND) -- never PII, it's a fixed enum
+  // string every route already returns in its body on failure.
+  const errorCode = typeof response === "object" ? response?.json?.code : undefined;
+  results.push({ step, expected: Array.isArray(expected) ? expected.join("|") : expected, actual, pass, note, errorCode });
   return pass;
 }
 
@@ -207,8 +211,14 @@ async function main() {
       expectedVersion: String(prepare.json?.version ?? "0"),
       idempotencyKey: uuid(),
       pii: {
-        contact: { firstName: "TESTE", lastName: "STAGING", email: "teste.staging@example.com", phone: "11999999999", taxDocument: "11144477735" },
+        // inputEnvelopeSchema (lib/commerce/checkoutPii.ts) is .strict() on
+        // every level AND requires personType + a full shipping address
+        // even when shippingSameAsBilling is true -- both were missing
+        // here in the previous run, which is why (f) returned 422
+        // CHECKOUT_PII_INVALID (a genuine script bug, not a route bug).
+        contact: { firstName: "TESTE", lastName: "STAGING", email: "teste.staging@example.com", phone: "11999999999", personType: "fisica", taxDocument: "11144477735" },
         billing: { recipient: "TESTE STAGING", street: "Rua de Teste", number: "100", neighborhood: "Centro", city: "Jundiaí", state: "SP", postalCode: "13201000", country: "BR" },
+        shipping: { recipient: "TESTE STAGING", street: "Rua de Teste", number: "100", neighborhood: "Centro", city: "Jundiaí", state: "SP", postalCode: "13201000", country: "BR" },
         shippingSameAsBilling: true,
       },
     },
@@ -236,7 +246,7 @@ async function main() {
     cookie: tamperedCookie,
     body: { cartId, wooProductId, quantity: 1, idempotencyKey: uuid() },
   });
-  record("neg) cookie adulterado", 403, tampered);
+  record("neg) cookie adulterado", 404, tampered, "fail-closed por desenho: ownership inválida responde igual a carrinho inexistente, em toda rota Gate 3");
 
   const badOrigin = await req("/api/cart/native/items", {
     method: "POST",
@@ -290,7 +300,11 @@ async function main() {
 function printTable() {
   console.log("\n--- Passo 1: resultados HTTP ---");
   for (const row of results) {
-    console.log(`${row.pass ? "PASS" : "FAIL"} | ${row.step} | esperado=${row.expected} obtido=${row.actual}${row.note ? ` | ${row.note}` : ""}`);
+    // O código de erro (body.code) só é impresso em FAILs -- em PASS ele é
+    // redundante (o status já confirma o resultado esperado) e omiti-lo
+    // mantém a saída de sucesso enxuta.
+    const codeSuffix = !row.pass && row.errorCode ? ` | code=${row.errorCode}` : "";
+    console.log(`${row.pass ? "PASS" : "FAIL"} | ${row.step} | esperado=${row.expected} obtido=${row.actual}${codeSuffix}${row.note ? ` | ${row.note}` : ""}`);
   }
 }
 

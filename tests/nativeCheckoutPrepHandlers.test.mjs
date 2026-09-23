@@ -45,14 +45,15 @@ test("handlePrepareNativeCheckout falha fechado (422) para carrinho vazio, sem c
   assert.equal(prepareCalled, false);
 });
 
-test("handlePrepareNativeCheckout falha fechado (403) quando o carrinho não pertence ao dono da requisição", async () => {
+test("handlePrepareNativeCheckout falha fechado (404, não 403) quando o carrinho não pertence ao dono da requisição", async () => {
   const result = await handlePrepareNativeCheckout(
     guestOwner,
     { cartId: "cart-1", idempotencyKey: "22222222-2222-2222-2222-222222222222", shippingRequired: false },
     basePrepareDeps({ canAccessNativeCart: () => false }),
   );
   assert.equal(result.ok, false);
-  assert.equal(result.status, 403);
+  assert.equal(result.status, 404);
+  assert.equal(result.code, "CART_NOT_FOUND");
 });
 
 // ---------- client-supplied price/shipping ignored (mandatory) ----------
@@ -140,4 +141,65 @@ test("handleMarkNativeCheckoutReady mapeia CHECKOUT_PII_EXPIRED para 422", async
   );
   assert.equal(result.ok, false);
   assert.equal(result.status, 422);
+});
+
+// ---------- achados do smoke test de staging, 2026-09-23 ----------
+
+test("handleMarkNativeCheckoutReady: ready sem PII persistida (CHECKOUT_PII_REQUIRED_OR_EXPIRED, o código real do SQL) responde 422, não 502", async () => {
+  // mark_native_checkout_ready_r1d_legacy (supabase/migrations/20260905020000_...)
+  // raises exactamente esta mensagem quando pii_ciphertext/pii_fingerprint
+  // não batem -- faltava no mapeamento antes desta correção, e por isso a
+  // chamada real em staging (sem POST pii antes) caía no default 502.
+  const result = await handleMarkNativeCheckoutReady(
+    guestOwner,
+    { checkoutId: "checkout-1", expectedVersion: "2", expectedPiiFingerprint: "a".repeat(64) },
+    { markNativeCheckoutReady: async () => { throw new Error("CHECKOUT_PII_REQUIRED_OR_EXPIRED"); } },
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 422);
+  assert.equal(result.code, "CHECKOUT_PII_REQUIRED");
+});
+
+test("handleMarkNativeCheckoutReady: cookie adulterado (CHECKOUT_OWNER_DENIED) responde 404, não 403 nem 502", async () => {
+  const result = await handleMarkNativeCheckoutReady(
+    guestOwner,
+    { checkoutId: "checkout-1", expectedVersion: "2", expectedPiiFingerprint: "a".repeat(64) },
+    { markNativeCheckoutReady: async () => { throw new Error("CHECKOUT_OWNER_DENIED"); } },
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 404);
+  assert.equal(result.code, "CHECKOUT_NOT_FOUND");
+});
+
+test("handlePersistNativeCheckoutPii: cookie adulterado (CHECKOUT_OWNER_DENIED) responde 404, não 403 nem 502", async () => {
+  const result = await handlePersistNativeCheckoutPii(
+    guestOwner,
+    { checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", pii: {} },
+    { persistNativeCheckoutPii: async () => { throw new Error("checkout_owner_denied"); } }, // casing real varia entre migrations
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 404);
+});
+
+test("handleMarkNativeCheckoutReady: um erro genuinamente desconhecido vira 502 e é logado como native_commerce_unexpected_error, sem PII", async (t) => {
+  t.mock.method(console, "error", () => {});
+  const dbError = new Error("Failed query: select * from mark_native_checkout_ready(...)");
+  dbError.cause = Object.assign(new Error("deadlock detected"), { code: "40P01" });
+  const result = await handleMarkNativeCheckoutReady(
+    guestOwner,
+    { checkoutId: "checkout-1", expectedVersion: "2", expectedPiiFingerprint: "a".repeat(64) },
+    { markNativeCheckoutReady: async () => { throw dbError; } },
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 502);
+  assert.equal(console.error.mock.calls.length, 1);
+  const [eventName, fields] = console.error.mock.calls[0].arguments;
+  assert.match(eventName, /native_commerce_unexpected_error/);
+  assert.equal(fields.code, "40P01");
+  assert.equal(fields.route, "POST /api/checkout/native/ready");
+  const serialized = JSON.stringify(fields);
+  assert.doesNotMatch(serialized, /deadlock detected/, "a mensagem crua do banco nunca deve ir para o log");
+  for (const forbidden of [/email/i, /phone/i, /cpf/i, /cnpj/i, /endereco/i, /address/i, /\bname\b/i]) {
+    assert.doesNotMatch(serialized, forbidden);
+  }
 });

@@ -40,10 +40,17 @@ export type NativeCommerceEventName =
   | "native_checkout_prepared"
   | "native_checkout_prepare_failed"
   | "native_checkout_pii_persisted"
-  | "native_checkout_marked_ready";
+  | "native_checkout_marked_ready"
+  // Gate 3 staging smoke test (2026-09-23) -- a business error that no
+  // known mapping recognizes (i.e. mapCartError/mapCheckoutError's final
+  // fallback). Always logged as an error (see isFailure below), always
+  // with `route` + a sanitized `code` (Postgres SQLSTATE or Error.name),
+  // never the raw message/payload.
+  | "native_commerce_unexpected_error";
 
 export interface NativeCommerceEventFields {
   correlationId?: string;
+  route?: string;
   cartId?: string;
   checkoutId?: string;
   orderId?: string;
@@ -65,7 +72,7 @@ export interface NativeCommerceEventFields {
 
 export function logNativeCommerceEvent(name: NativeCommerceEventName, fields: NativeCommerceEventFields = {}): void {
   try {
-    const isFailure = name.endsWith("_failed") || name.endsWith("_rejected_runtime_disabled");
+    const isFailure = name.endsWith("_failed") || name.endsWith("_rejected_runtime_disabled") || name.endsWith("_error");
     if (isFailure) {
       console.error(`[native-commerce] ${name}`, fields);
     } else {
