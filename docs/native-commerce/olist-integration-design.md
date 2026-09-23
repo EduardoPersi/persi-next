@@ -119,17 +119,27 @@ cupom nomeado confirmado**, A CONFIRMAR_OLIST), `itens[].produto.id`,
 
 ### 2.4 Quando o pedido baixa o estoque
 
-**Configurável por conta**, não fixo pela API: Olist permite escolher em
-"Configurações → Suprimentos → Lançamento de estoque para saídas" entre
-baixa automática ao salvar o pedido, ao emitir a nota fiscal, ao marcar
-como enviado, ou 100% manual via ação "lançar estoque". A API v3 também
-expõe isso como ações explícitas (`lançar estoque do pedido`,
-`estornar estoque do pedido`, `lançar/estornar estoque da nota fiscal`).
-**A CONFIRMAR COM O DONO**: qual dessas opções está configurada na conta
-Olist da Persi hoje — isso não muda o design (o site sempre lê o saldo via
-webhook/reconciliação, nunca assume o timing), mas muda a **latência**
-esperada entre "pedido pago no site" e "estoque refletido no Olist e
-replicado de volta".
+**CONFIRMADO PELO DONO**: a conta Olist da Persi está configurada para
+baixar estoque **na aprovação do pedido** (uma das opções de
+"Configurações → Suprimentos → Lançamento de estoque para saídas" —
+Seção 2, ver também a ação explícita `lançar estoque do pedido` da API
+v3). Consequência direta para o design (Seção 7):
+
+- O export do pedido site→Olist só deve acontecer **depois** do pagamento
+  aprovado (exatamente o gatilho que 82/Seção 7 já usa — `pending →
+  confirmed`) — nunca antes, e nunca para um pedido ainda `pending`. Isso
+  já era o design; agora está confirmado que é também o momento correto
+  do ponto de vista do Olist (a baixa de estoque do lado Olist só
+  acontece quando o pedido chega lá já aprovado, então exportar mais cedo
+  não adiantaria a baixa, só criaria um pedido "pendente" no Olist sem
+  necessidade).
+- **Entre o pagamento aprovado no site e o pedido efetivamente baixar
+  estoque no Olist** (latência de export + processamento do lado Olist),
+  quem segura o estoque é a **reserva nativa** (`inventory_reservations`,
+  já existente, confirmada por `apply_verified_payment_transition` —
+  Seção 3) — ela só é liberada quando o pedido é confirmado/cancelado no
+  fluxo nativo, não quando o Olist processa o export. Não há uma janela
+  de estoque "sem dono" entre esses dois eventos.
 
 ### 2.5 Reserva de estoque nativa do Olist
 
@@ -280,14 +290,20 @@ autorização de leitura em staging/produção** (a fórmula do dono):
   para produtos internos diferentes — uma tentativa de inserir a segunda
   falha na constraint, então isso é visível como erro, não como corrupção
   silenciosa.
-- **Kit/composição** (endpoint "produto kit" do Olist): tratar como um
-  produto normal para fins de mapeamento (o kit tem seu próprio SKU/ID no
-  Olist e, presumivelmente, no Woo). **Em aberto, A CONFIRMAR COM O
-  DONO**: (a) se existem produtos kit ativos no catálogo hoje; (b) se o
-  webhook de estoque dispara para o SKU do kit ou só para os componentes
-  — se só para os componentes, o estoque do kit no site precisaria ser
-  **calculado** (mínimo da disponibilidade dos componentes ÷ quantidade por
-  kit), o que é trabalho adicional não coberto pela Fase 1 deste design.
+- **Kit/composição** (endpoint "produto kit" do Olist): **CONFIRMADO PELO
+  DONO** — kits têm SKU próprio e são tratados como produto comum para
+  fins de mapeamento (Seção 4 se aplica sem alteração: mesma derivação por
+  SKU, mesma linha `external_mappings`). O **estoque do kit é o que o
+  próprio Olist calcula** (não é recalculado pelo site) — o site só grava
+  o saldo que o webhook/reconciliação do kit devolve, exatamente como para
+  qualquer outro SKU (Seção 5). Consequência a documentar operacionalmente
+  (não é um caso especial de código, é um comportamento a explicar para
+  quem opera): **a venda de um componente avulso reduz o estoque calculado
+  do kit** — se o componente vender (no site, no Woo ou no PDV físico) e
+  isso reduzir a disponibilidade do kit no Olist, o próximo evento de sync
+  (webhook ou reconciliação) já traz o saldo do kit correto; não há uma
+  ação separada do site para isso, mas o runbook (Seção 10) deve mencionar
+  esse comportamento para não ser confundido com uma divergência de sync.
 
 ## 5. Sync Olist → site (catálogo, preço, estoque)
 
@@ -345,16 +361,16 @@ via API REST (não espera pelo webhook) e compara com o que está em
 
 ### 5.4 Preço
 
-**Em aberto, mais do que estoque**: o webhook de preço confirmado
-(`Envio de Preço de Produtos`) traz `preco`/`precoPromocional` por
-produto, sem referência a qual "lista de preço" do site (`price_lists`)
-ele deveria alimentar — o schema `prices`/`price_lists` do Persi é
-agnóstico de fonte (`prices.source` é texto livre, default `'manual'`;
-ver `lib/db/schema/pricing.ts`), então gravar é trivial
-(`prices.source='olist'`), mas a **decisão comercial** de qual
-`price_list` do site deve refletir qual preço do Olist é do dono
-(Seção 8, item i). Doc 07 já registra isto como ponto humano em aberto;
-esta rodada não o fecha, só aponta o mecanismo de gravação já pronto.
+**CONFIRMADO PELO DONO**: existe **uma única lista de preço** — o site usa
+o mesmo preço da loja física. Isso simplifica a gravação: o webhook de
+preço (`Envio de Preço de Produtos`, `preco`/`precoPromocional` por
+produto) alimenta sempre a mesma `price_lists` do site (`prices.source =
+'olist'`, mecanismo de gravação já trivial dado o schema agnóstico de
+fonte — `lib/db/schema/pricing.ts`), sem precisar de nenhuma lógica de
+"qual lista corresponde a qual preço" — não há ambiguidade a resolver.
+`precoPromocional`, quando presente, mapeia para `prices.sale_amount_minor`
+(com `sale_valid_from`/`sale_valid_to` — **A CONFIRMAR_OLIST** se o
+webhook também informa a validade da promoção ou só o valor).
 
 ## 6. Estoque disponível, margem de segurança e oversell
 
@@ -374,19 +390,17 @@ estoque_ofertado_site = quantity_available - margem_de_segurança
 
 ### 6.1 Onde aplicar a margem de segurança
 
-`quantity_available` é uma **coluna gerada pelo Postgres**
-(`generated always as (quantity_on_hand - quantity_reserved) stored`) —
-não tem espaço para um termo de margem sem alterar essa coluna, que outras
-partes do sistema já podem depender do significado exato "on_hand menos
-reservado". Proposta: **não alterar a coluna gerada**; aplicar a margem só
-no ponto onde a disponibilidade é decidida para o comprador (exibição de
-estoque, permitir adicionar ao carrinho, validação de quantidade máxima) —
-uma função pura em `lib/commerce` que faz
-`quantity_available - safetyMargin`, com `safetyMargin` vindo de uma
-constante/variável de ambiente configurável (por padrão 0 até o dono
-decidir um valor — item Seção 8). Isto mantém a garantia forte que já
-existe no banco (reserva nunca passa do saldo real) e usa a margem só como
-política comercial de exibição, não como uma segunda fonte de verdade.
+**CONFIRMADO PELO DONO: margem de segurança = 0** (não zero "por
+enquanto" — é a política aprovada). `estoque_ofertado_site` portanto é
+hoje literalmente igual a `quantity_available`, sem nenhum desconto
+adicional. Mantém-se ainda assim a recomendação de **não alterar a coluna
+gerada** `quantity_available` (`generated always as (quantity_on_hand -
+quantity_reserved) stored`) e de aplicar a margem (mesmo sendo 0) como uma
+função pura de leitura em `lib/commerce`, com o valor vindo de uma
+variável de ambiente/constante — não porque o valor mude hoje, mas porque
+uma mudança futura de política (ex.: um evento de alta demanda em que o
+dono queira reservar uma folga) deve ser um ajuste de configuração, não
+uma migration.
 
 ### 6.2 Oversell — o que já existe e o que falta decidir
 
@@ -409,10 +423,84 @@ carrinhos nativos ainda têm reserva ativa):
    aplicada assim que ele volta a ser ≥ reservado.
 4. Se uma reserva **já virou pedido pago** (caso raro — a venda física
    aconteceu entre a reserva nativa e a confirmação do pagamento no site)
-   e o Olist não tem fisicamente o item, é um esgotamento real que
-   nenhuma sincronização evita sozinha — runbook manual: contato com o
-   cliente, oferta de substituto ou estorno, igual a qualquer ruptura de
-   estoque física. Fora do alcance de automação desta fase.
+   e o Olist não tem fisicamente o item, é um esgotamento real — a
+   política aprovada é **cancelar o pedido** (Seção 6.3, detalhada abaixo
+   porque o dono confirmou que isto é requisito do canário, não um caso
+   raro a tratar manualmente depois).
+
+### 6.3 Cancelamento e estorno pós-pagamento (requisito do canário)
+
+**Política confirmada pelo dono**: se um pedido nativo já pago não pode
+ser atendido por falta real de estoque no Olist (Seção 6.2), o pedido é
+**cancelado e o pagamento estornado** — não há tentativa de substituição
+automática nem contato assíncrono como alternativa a isto (pode
+complementar, mas o cancelamento+estorno é o requisito mínimo).
+
+**O que já existe, reaproveitável**:
+
+- `orders.status` já permite a transição `confirmed → cancelled`
+  (`CURRENT_ORDER_STATE_MACHINE`, ver doc 82 §3).
+- `createNativeRefund`/`transitionNativeRefund`
+  (`lib/db/nativePayment.ts:98,136`) já modelam o **estado** de um
+  reembolso (`refund_status`: `requested → processing → completed |
+  failed | cancelled`) na ledger nativa — dual-granted `persi_app`/
+  `persi_worker`, já prontos para registrar que um reembolso foi pedido e
+  seu resultado.
+
+**O que NÃO existe — gap real, pré-existente, que este requisito torna
+bloqueador (antes era `OPERATIONAL_FOLLOWUP` adiado)**:
+
+1. **Nenhum adapter de pagamento chama a API de estorno do provedor.**
+   Confirmado por grep: `services/payments/{inter,mercadopago,pagbank}/*`
+   só **reconhecem** um status `refunded` quando o provedor já reporta
+   isso (webhook/consulta) — nenhum código **inicia** um estorno.
+   `docs/database/76-native-mercadopago-gateway-reanchoring.md` §9 já
+   documenta isto explicitamente para o Mercado Pago ("no refund
+   implementation, no existing capability to wire"); o mesmo vale, por
+   inspeção, para os adapters do Inter e do PagBank. Isto precisa ser
+   construído para os três, um requisito novo que este design de Olist
+   está expondo, não uma consequência da integração Olist em si.
+   **A CONFIRMAR** (fora do escopo de pesquisa desta rodada, que foi só
+   sobre a API do Olist): a documentação oficial de cada provedor —
+   Banco Inter (devolução de Pix; boleto normalmente não é "estornado", é
+   deixado expirar ou baixado manualmente), Mercado Pago (endpoint de
+   reembolso total/parcial), PagBank (reembolso de cartão/Apple Pay/
+   Google Pay) — prazos, se aceitam estorno parcial, e taxas envolvidas.
+2. **`order.cancel` (Olist) continua não resolvido** — doc 82 §4 já
+   registrava isto como gap adiável (`POST_V1_OPERATIONAL_GAP`). Com a
+   política de cancelamento agora obrigatória, ele deixa de ser adiável
+   **sempre que o pedido já tiver sido exportado ao Olist antes do
+   cancelamento** (cenário plausível: export acontece na aprovação do
+   pagamento — Seção 7 — e a baixa de estoque no Olist também acontece na
+   aprovação — Seção 2.4 — então o pedido pode já existir no Olist no
+   momento em que a divergência de estoque é detectada). Sem um jeito de
+   avisar o Olist, o pedido cancelado no site ficaria "fantasma" do lado
+   do Olist. **A CONFIRMAR_OLIST**: se a API de pedidos do Olist aceita
+   cancelamento pós-criação (a lista de endpoints, Seção 2.1, não
+   confirmou um "cancelar pedido" explícito — só "atualizar situação",
+   que talvez aceite `situacao=2` "Cancelado").
+
+**Runbook proposto** (sequência, não código):
+
+1. Divergência de estoque detectada (Seção 6.2) aponta uma reserva já
+   confirmada como pedido pago sem estoque real correspondente.
+2. Transição `orders.status: confirmed → cancelled` (mecanismo já
+   existente).
+3. `createNativeRefund` registra a intenção de estorno (mecanismo já
+   existente) — valor total do pedido, motivo `stock_unavailable_after_sync`.
+4. **[A CONSTRUIR]** Adapter do provedor correspondente executa o estorno
+   real via API do provedor; `transitionNativeRefund` grava o resultado
+   (`completed`/`failed`).
+5. **[A CONSTRUIR]** Se o pedido já tinha sido exportado ao Olist
+   (existe `external_mappings system='olist' entity_type='order'` para
+   ele), um evento `order.cancel` é enfileirado no mesmo outbox (Seção 7)
+   avisando o Olist.
+6. Cliente é notificado do cancelamento e do estorno (depende de
+   `docs/database/83-transactional-email-v1-design.md`, hoje design-only
+   — Fase 2 original, mas o e-mail de cancelamento especificamente também
+   vira dependência do canário por causa desta política).
+7. Todo o fluxo gera evento de observabilidade (Seção 9) sem PII —
+   identificadores do pedido/reembolso apenas.
 
 ## 7. Export de pedido site → Olist
 
@@ -429,15 +517,112 @@ repete esse conteúdo; a única atualização é de contexto:
   **bloqueador do canário** — atualiza a prioridade, não o design.
 - O payload usa `numeroPedidoEcommerce` (Seção 2.3) para carregar a
   referência do pedido Persi.
-- `order.cancel` pós-confirmação continua um gap não resolvido
-  (`POST_V1_OPERATIONAL_GAP` em 82 §4) — sem mudança.
+- `order.cancel` pós-confirmação **deixou de ser um gap adiável** — a
+  política de oversell do dono (Seção 6.3) exige cancelamento mesmo após
+  export, então este evento entra no escopo da Fase 1 (Seção 11), não mais
+  `POST_V1_OPERATIONAL_GAP`.
+
+### 7.1 Dados fiscais (CPF/CNPJ/IE) — reinvestigação
+
+O dono confirmou que CPF/CNPJ **chega hoje ao Olist** em pedidos do site,
+o que contradiz o achado anterior desta mesma rodada ("Woo não recebe
+CPF/CNPJ na criação do pedido" — Apêndice, tabela Woo). Reinvestigação
+read-only, focada em encontrar o caminho exato:
+
+**Confirmado, com citação exata**:
+
+- `createPendingOrder` (`services/woocommerce/orders.ts:169-228`), o único
+  ponto deste repositório que cria um pedido no Woo, **continua sem nenhum
+  campo de CPF/CNPJ/IE no payload que envia** — `toWooAddress`
+  (orders.ts:153-167) não tem esse campo, e nenhuma outra chave do corpo
+  (`billing`/`shipping`/`meta_data`/`line_items`/etc.) carrega documento
+  fiscal. Isto não mudou com a reinvestigação — é código real, lido de
+  novo linha a linha.
+- Existe, sim, um campo `billing_cpf` neste ecossistema, mas em um lugar
+  diferente do fluxo de checkout: **perfil da conta do cliente**, não o
+  pedido. `wordpress-plugin/persi-headless-account/src/CustomerWorkspace/CustomerWorkspaceService.php:42,54`
+  lê e grava `billing_cpf` como **user-meta do WordPress** (`get_user_meta`/
+  `update_user_meta` na conta do cliente), exposto ao site via
+  `app/(institutional)/minha-conta/perfil/page.tsx` — é lá que o cliente
+  digita o CPF **uma vez, no perfil**, não a cada compra.
+- `getOrderConfirmationDetails` (`services/woocommerce/orders.ts:438-476`)
+  **lê de volta** `billing.cpf`/`billing.cnpj` da resposta do Woo
+  (`GET orders/{id}`) para exibir na confirmação — ou seja, o pedido
+  Woo **acaba tendo** esses campos preenchidos por ocasião da leitura,
+  mesmo sem este app tê-los enviado na criação.
+
+**O elo que falta — não encontrado neste repositório**: entre "o cliente
+salvou o CPF no perfil" e "o pedido Woo tem `billing.cpf` preenchido" não
+existe nenhum código, neste repositório (rastreado ou não), que copie um
+para o outro. `createPendingOrder` envia `customer_id` quando o cliente
+está logado (achado já registrado no Apêndice) — a hipótese mais
+consistente com o que existe é que o **próprio WooCommerce**, ou um plugin
+de campos brasileiros instalado diretamente no WordPress ao vivo (o
+padrão do nome `billing_cpf`/`billing_cnpj` é exatamente o de plugins como
+"WooCommerce Extra Checkout Fields for Brazil", muito comuns em lojas
+brasileiras), copia o `billing_cpf` salvo no perfil do cliente para o novo
+pedido no momento em que o Woo processa um `customer_id` conhecido — mas
+esse plugin/comportamento **não está neste repositório** (nem na parte
+versionada, nem em `wordpress-plugin/`), então não é confirmável por
+leitura de código, só no ambiente WordPress ao vivo.
+
+**Consequência prática, honesta sobre os limites do que foi encontrado**:
+
+- O caminho só cobre **clientes logados que já salvaram CPF no perfil**
+  antes da compra. Uma compra de convidado (guest, sem `customer_id`), ou
+  de um cliente logado que nunca preencheu o perfil, **não teria** CPF no
+  pedido Woo por este caminho — se o dono vê CPF chegando ao Olist para
+  *todo* pedido, incluindo convidados, a origem provavelmente não é este
+  mecanismo, e sim preenchimento manual (equipe) ou o próprio Olist
+  completando o dado a partir do seu próprio cadastro de cliente (casado
+  por e-mail/telefone/CPF já conhecido de uma compra anterior) — nenhuma
+  das duas é verificável por este repositório.
+- **CNPJ, Inscrição Estadual e tipo de pessoa (PF/PJ) não existem em
+  nenhum lugar deste código** — nem no perfil (`CustomerWorkspaceService.php`
+  só tem `billing_cpf`), nem no checkout, nem no pedido. Se a Persi atende
+  cliente pessoa jurídica hoje, o CNPJ/IE desses pedidos não vem de
+  nenhum mecanismo que este repositório construiu.
+
+**O que a exportação nativa (Seção 7) precisa enviar**, dado o que existe:
+
+- O checkout nativo **já captura e criptografa** contato + endereço via
+  `checkoutPii`/`nativeCheckoutPii` (Gate 3) — mas o campo de documento
+  fiscal dentro desse envelope (`contact.taxDocument`, usado hoje só para
+  os provedores de pagamento) **precisa ser propagado para o payload de
+  export ao Olist** (`consumidorFinal.cpfCnpj`, Seção 2.3) — isto ainda
+  não existe, é trabalho novo do outbox (Seção 7/82), não um reaproveitamento.
+- **Tipo de pessoa** (PF/PJ) precisa ser inferido do formato do documento
+  (11 dígitos = CPF, 14 = CNPJ) já que não existe um campo dedicado hoje.
+- **IE**: como não é capturado em lugar nenhum, a exportação nativa não
+  tem de onde tirar esse dado a menos que o dono decida adicionar captura
+  disso ao checkout — não assumido aqui, fica como pergunta em aberto
+  (Seção 12, item 8).
+- Diferente do caminho Woo atual (que depende de perfil salvo + um
+  mecanismo não confirmável), a exportação nativa pode ser **mais
+  completa por padrão**: como o checkout nativo já teria capturado o
+  documento fiscal (obrigatório no formulário de PII, inclusive para
+  convidados — ver Seção 2 do design do Gate 3), toda exportação de
+  pedido pago já carregaria `cpfCnpj`, sem depender de o cliente ter perfil
+  salvo.
 
 ## 8. Convivência com o Woo durante a transição
 
 Confirmado pelo dono nesta rodada: **a integração Olist↔Woo já existe e é
-oficial** — Olist sincroniza produto/preço/estoque para o Woo e recebe os
-pedidos feitos no Woo. Ela **não deve ser alterada, pausada ou desligada**;
-convive até o fim da transição.
+oficial**, e a direção da chamada é **Olist → Woo**: é o Olist quem chama a
+API REST do WooCommerce (não um plugin no WordPress chamando o Olist) para
+sincronizar produto/preço/estoque e para ler os pedidos feitos no Woo. Ela
+**não deve ser alterada, pausada ou desligada**; convive até o fim da
+transição.
+
+Consequência direta para a Seção 2.6: como é o **Olist quem inicia** a
+chamada para o Woo (usando alguma credencial `WOOCOMMERCE_CONSUMER_KEY`/
+`SECRET` configurada **dentro do painel do Olist**, não neste
+repositório), a integração nativa não tem nenhuma credencial existente
+para reaproveitar nessa direção — ela precisa da sua **própria** credencial
+do lado Olist (um "Aplicativo" OAuth v3 dedicado, client_id/client_secret
+gerados na conta Olist — Seção 2.6), e o acesso/plano necessário para isso
+é **A CONFIRMAR PELO DONO no painel do Olist** (item já listado na Seção
+12, agora com a causa exata).
 
 Isso implica um modelo de convivência simples porque os dois caminhos de
 checkout são **estruturalmente exclusivos por sessão**: uma compra passa
@@ -458,13 +643,14 @@ carrinho/checkout nativo do Gate 3 (`/api/cart/native/*`,
   aplicativos por conta"), nunca reaproveitar ou modificar a credencial que
   a integração Olist↔Woo já usa, para não arriscar interferir num canal já
   em produção.
-- **A CONFIRMAR COM O DONO, antes da Fase 1**: confirmar no ambiente
-  WordPress ao vivo se o plugin/config responsável pela integração
-  Olist↔Woo é o mesmo `wordpress-plugin/persi-catalog-engine` (que, por
-  código, hoje só faz catálogo/GTIN — `find_by_sku`/`product_detail`,
-  nenhuma chamada de pedido) ou um plugin/configuração comercial separada,
-  já que não é possível confirmar isso só pelo repositório (ver Seção 10,
-  tabela do Woo, item 3).
+- **Resolvido nesta rodada**: a integração Olist↔Woo **não é**
+  `wordpress-plugin/persi-catalog-engine` (que, por código, só faz
+  catálogo/GTIN via a API do Olist — `find_by_sku`/`product_detail`,
+  nunca chama o Woo) — é o Olist quem chama o Woo diretamente, configurado
+  do lado Olist. Isso também esclarece por que nenhum código deste
+  repositório participa da integração hoje (Seção 10, tabela do Woo, item
+  3): ela nunca precisou de código no WordPress nem no Next.js, só de
+  credenciais Woo configuradas no painel do Olist.
 - O sync Olist→site (Seção 5) **duplica dados** que o Olist já está
   mandando para o Woo, mas por um canal HTTP direto e independente — não
   lê nem escreve na integração Woo↔Olist, só consulta a mesma fonte
@@ -513,10 +699,15 @@ envelhecida), com runbooks específicos:
 
 **Fase 1 (canário)** — bloqueadora para o primeiro pedido nativo real:
 
-- Derivação/verificação do mapeamento SKU (Seção 4).
+- Derivação/verificação do mapeamento SKU (Seção 4, agora por query direta,
+  sem chamada ao Olist para descobrir correspondência).
 - Sync Olist→site de catálogo/preço/estoque, webhook + reconciliação
   (Seção 5).
-- Export de pedido pago site→Olist via outbox (Seção 7, = 82 completo).
+- Export de pedido pago site→Olist via outbox (Seção 7, = 82 completo),
+  **incluindo `order.cancel`** (deixou de ser Fase 2 — Seção 6.3/7).
+- **Cancelamento + estorno pós-pagamento** (Seção 6.3) — inclui construir a
+  chamada real de estorno nos três adapters de pagamento (Inter/Mercado
+  Pago/PagBank), hoje inexistente para qualquer um dos três.
 - Runbook mínimo de falha (Seção 10).
 
 **Fase 2 (pós-canário)** — não bloqueia o primeiro pedido:
@@ -532,28 +723,52 @@ envelhecida), com runbooks específicos:
 
 ## 12. O que depende do dono
 
+**Resolvido nesta rodada** (mantido aqui só como registro, nada a fazer):
+qual `price_list` recebe o preço Olist (única — Seção 5.4); margem de
+segurança (0 — Seção 6.1); política de oversell (cancelar — Seção 6.2/6.3);
+tratamento de kit (Seção 4); timing de baixa de estoque no Olist (na
+aprovação — Seção 2.4); direção da integração Olist↔Woo (Olist chama o Woo
+— Seção 8); mapeamento SKU (Woo SKU = Olist SKU, derivação direta — Seção 4).
+
+**Ainda em aberto**:
+
 1. Acesso real ao Olist: criar um "Aplicativo" OAuth v3 dedicado ao native
-   commerce (não reaproveitar o da integração Woo — Seção 8), com as
-   permissões mínimas (produtos leitura, estoque leitura, pedidos
-   escrita).
+   commerce (nunca reaproveitar a credencial que a integração Olist↔Woo já
+   usa — Seção 8) — **plano/permissões a confirmar no painel do Olist**
+   pelo dono (o dono já confirmou que isso precisa ser verificado, ainda
+   não tem a resposta).
 2. Confirmar o plano contratado (define o rate limit real — Seção 2.6).
 3. Não há sandbox Olist encontrado — confirmar se o dono concorda em
    testar contra a conta real com cuidado, ou se existe algum ambiente de
    teste não documentado publicamente que a Persi já tenha acesso.
-4. Qual `price_list` do site deve refletir qual preço do Olist (Seção 5.4)
-   — decisão comercial, não técnica.
-5. Margem de segurança desejada (Seção 6.1) — um número (ou zero para
-   começar) e se deve variar por categoria/produto.
-6. Confirmar a configuração de "lançamento de estoque" da conta Olist
-   (Seção 2.4) — muda a latência esperada, não o design.
-7. Confirmar se existem produtos kit/composição ativos no catálogo, e se
-   sim, se o webhook de estoque cobre o SKU do kit (Seção 4).
-8. Confirmar no WordPress ao vivo qual plugin/configuração é responsável
-   pela integração Olist↔Woo hoje (Seção 8) — não verificável só pelo
-   repositório.
-9. Confirmar se há campo de código de cupom nomeado na API de pedido do
+4. Confirmar se existem produtos kit/composição ativos no catálogo hoje
+   (a Seção 4/6.3 já cobre como tratá-los quando existirem).
+5. Confirmar se há campo de código de cupom nomeado na API de pedido do
    Olist, ou se descontos de cupom precisam virar `valorDesconto` (valor
-   plano) no export (Seção 2.3, Seção 13 item 6 da tabela Woo).
+   plano) no export (Seção 2.3, Apêndice item "Cupom" da tabela Woo).
+6. **Novo, decorrente da política de cancelamento (Seção 6.3)**: para cada
+   provedor de pagamento (Banco Inter, Mercado Pago, PagBank), confirmar
+   na documentação oficial de cada um: existe endpoint de estorno
+   total/parcial, prazo para executar, e alguma taxa envolvida. Pix/cartão
+   têm estorno real na maioria dos bancos/adquirentes; boleto normalmente
+   não é "estornável" (é apenas baixado/expirado) — como tratar um
+   cancelamento pós-pagamento de boleto Inter especificamente é uma
+   decisão pendente.
+7. **Novo, decorrente da Seção 6.3**: confirmar se a API de pedidos do
+   Olist aceita cancelamento pós-criação (`situacao=2`?) — nenhum endpoint
+   "cancelar pedido" explícito apareceu na pesquisa desta rodada (Seção
+   2.1), só "atualizar situação".
+8. **Novo, decorrente da reinvestigação de CPF/CNPJ** (ver relatório
+   separado desta rodada): confirmar se existe um plugin de campos
+   brasileiros instalado no WordPress ao vivo (não visível neste
+   repositório) que copia `billing_cpf` do perfil do cliente para o
+   pedido — isso determina se a exportação nativa de pedido pode confiar
+   no mesmo mecanismo ou precisa capturar/enviar o documento fiscal por
+   conta própria (o checkout nativo já criptografa isso via
+   `checkoutPii`/`nativeCheckoutPii` — falta só ligar ao payload de
+   export). Também confirmar se CNPJ/Inscrição Estadual são necessários
+   para algum cliente pessoa jurídica (hoje não capturados em lugar
+   nenhum do código).
 
 ## 13. Tamanho estimado e paralelização com o Gate 3
 
@@ -596,10 +811,14 @@ resumo tabulado abaixo.
 | Onde a equipe opera pedidos hoje | Sem UI de pedidos neste app (`app/admin` só tem `pim`/`products`); tudo aponta para o painel Woo/WordPress nativo, não confirmável 100% pelo repo | Nenhum substituto nativo existe ou está planejado nesta rodada | **A CONFIRMAR COM O DONO** |
 | Cupom | Aplicado via Woo Store API (`services/woocommerce/cart.ts:594-608`), enviado ao pedido como `coupon_lines` (`orders.ts:196-198`) | Não existe ainda no native commerce (Gate 3 não trata cupom) | Gap separado, não coberto por Gate 3 nem por este documento |
 | Frete | Enviado como `shipping_lines` (`orders.ts:209-219`) | `shipments`/Melhor Envio já modelados no schema nativo (Seção 3); native checkout hoje só suporta `shippingRequired:false` (Gate 3, gap conhecido) | Gap separado, já documentado no design do Gate 3 |
-| CPF/CNPJ | **Não é enviado ao Woo** — usado só nas chamadas ao provedor de pagamento; o que aparece depois no pedido Woo vem de user-meta do WordPress, não do payload de criação | `checkoutPii`/`nativeCheckoutPii` já capturam e criptografam isso (Gate 3) — falta ligar ao momento de criação do pedido/NF | Fase 2 (nota fiscal) |
-| Inscrição Estadual (IE) | **Não encontrado em nenhum lugar do código** — não existe hoje | Não modelado ainda | **A CONFIRMAR COM O DONO** se é necessário |
+| CPF/CNPJ | **Reinvestigado (Seção 7.1)**: `createPendingOrder` continua sem enviar CPF/CNPJ no payload de criação. O CPF do cliente logado é salvo uma vez no perfil (`billing_cpf`, user-meta do WordPress, `CustomerWorkspaceService.php:42,54`) e aparece depois no pedido Woo (`getOrderConfirmationDetails` lê `billing.cpf` de volta) — o mecanismo exato que copia um para o outro **não está em nenhum código deste repositório**, provavelmente um plugin de campos brasileiros no WordPress ao vivo, não confirmável por leitura de código | `checkoutPii`/`nativeCheckoutPii` já capturam e criptografam o documento fiscal para **todo** checkout nativo, incluindo convidados (Seção 7.1) — falta só propagar para o payload de export ao Olist, trabalho novo do outbox | **Fase 1 (bloqueador do export de pedido, Seção 7.1)** |
+| Inscrição Estadual (IE) / CNPJ | **Não encontrado em nenhum lugar do código** — nem no perfil, nem no checkout, nem no pedido | Não modelado ainda | **A CONFIRMAR COM O DONO** se é necessário (Seção 12, item 8) |
 
-Nota importante: como o Woo hoje **não** envia CPF/CNPJ nem IE no payload
-de criação do pedido, a emissão fiscal (nota fiscal) hoje deve depender de
-dado capturado em outro lugar (WordPress/Olist diretamente) — isto é
-relevante para a Fase 2 (nota fiscal) do Olist, não bloqueia a Fase 1.
+Nota atualizada (substitui a nota anterior desta seção, que presumia CPF/
+CNPJ irrelevante para a Fase 1): como o export de pedido site→Olist
+**precisa** enviar `consumidorFinal.cpfCnpj` (Seção 2.3), e o caminho atual
+do Woo para esse dado depende de um perfil salvo + um mecanismo não
+verificável neste repositório, a exportação nativa via
+`checkoutPii`/`nativeCheckoutPii` (que já captura o documento no checkout,
+para todo pedido, não só clientes com perfil salvo) passa a ser **mais
+completa que o caminho legado**, não apenas um substituto equivalente.
