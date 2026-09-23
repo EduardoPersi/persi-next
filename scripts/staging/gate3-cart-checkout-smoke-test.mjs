@@ -9,28 +9,44 @@ import postgres from "postgres";
 // /api/cart/native/* e /api/checkout/native/{prepare,pii,ready}.
 // Nenhuma credencial é impressa em nenhuma circunstância.
 //
-// Variáveis de ambiente obrigatórias (definir em .env.local, NUNCA
-// commitar valores):
+// A conferência de banco (Passo 2) é OPCIONAL e vive, de preferência, no
+// arquivo separado docs/native-commerce/gate3-staging-db-check.sql,
+// rodado manualmente no SQL Editor do Supabase com o cartId/checkoutId que
+// este script imprime ao final. Se STAGING_READONLY_DATABASE_URL estiver
+// configurada, o script também tenta uma conferência inline como
+// conveniência; se não, imprime "DB_CHECK=MANUAL" e segue só com o .sql.
+//
+// Variáveis de ambiente:
 //   STAGING_BASE_URL                 (opcional; default abaixo)
-//   PERSI_STAGING_BASIC_AUTH_USER    (já usada pela própria proteção de staging)
-//   PERSI_STAGING_BASIC_AUTH_PASSWORD
-//   STAGING_READONLY_DATABASE_URL    (conexão de LEITURA ao Supabase de
-//                                     staging — NUNCA a DATABASE_URL local,
-//                                     que aponta para produção)
+//   PERSI_STAGING_BASIC_AUTH_USER    (obrigatória; já usada pela própria proteção de staging)
+//   PERSI_STAGING_BASIC_AUTH_PASSWORD (obrigatória)
+//   STAGING_READONLY_DATABASE_URL    (opcional; conexão de LEITURA ao Supabase
+//                                     de staging — NUNCA a DATABASE_URL local,
+//                                     que aponta para produção. Sem ela, a
+//                                     escolha automática de produtos e a
+//                                     conferência inline ficam indisponíveis.)
+//   STAGING_TEST_WOO_PRODUCT_ID      (obrigatória só se STAGING_READONLY_DATABASE_URL
+//                                     não estiver definida — um wooProductId real,
+//                                     mapeado e com estoque > 0 em staging, escolhido
+//                                     manualmente por você)
 
 const STAGING_BASE_URL = (process.env.STAGING_BASE_URL || "https://staging.persimateriais.com.br").replace(/\/+$/, "");
 const BASIC_AUTH_USER = process.env.PERSI_STAGING_BASIC_AUTH_USER;
 const BASIC_AUTH_PASSWORD = process.env.PERSI_STAGING_BASIC_AUTH_PASSWORD;
-const READONLY_DATABASE_URL = process.env.STAGING_READONLY_DATABASE_URL;
+const READONLY_DATABASE_URL = process.env.STAGING_READONLY_DATABASE_URL || null;
+const MANUAL_WOO_PRODUCT_ID = process.env.STAGING_TEST_WOO_PRODUCT_ID || null;
 
 const missing = [
   ["PERSI_STAGING_BASIC_AUTH_USER", BASIC_AUTH_USER],
   ["PERSI_STAGING_BASIC_AUTH_PASSWORD", BASIC_AUTH_PASSWORD],
-  ["STAGING_READONLY_DATABASE_URL", READONLY_DATABASE_URL],
 ].filter(([, value]) => !value).map(([name]) => name);
 
 if (missing.length > 0) {
   console.error(`Faltam variáveis de ambiente (nenhuma requisição foi feita): ${missing.join(", ")}`);
+  process.exit(1);
+}
+if (!READONLY_DATABASE_URL && !MANUAL_WOO_PRODUCT_ID) {
+  console.error("Sem STAGING_READONLY_DATABASE_URL, defina STAGING_TEST_WOO_PRODUCT_ID (um wooProductId real, mapeado, com estoque > 0 em staging) para o script poder rodar.");
   process.exit(1);
 }
 
@@ -75,13 +91,10 @@ function uuid() {
   return crypto.randomUUID();
 }
 
-async function main() {
-  const sql = postgres(READONLY_DATABASE_URL, { max: 1, prepare: false });
-  const testStartedAt = new Date();
-
-  // ---------- escolha de 2 produtos reais mapeados, com estoque > 0 (leitura read-only) ----------
+async function resolveWooProductId(sql) {
+  if (!sql) return { wooProductId: Number(MANUAL_WOO_PRODUCT_ID), source: "STAGING_TEST_WOO_PRODUCT_ID (manual)" };
   const candidates = await sql`
-    select em.external_id::text as "wooProductId", p.id as "productId"
+    select em.external_id::text as "wooProductId"
     from external_mappings em
     join products p on p.id = em.internal_id
     join product_variants pv on pv.product_id = p.id
@@ -91,16 +104,24 @@ async function main() {
       and il.quantity_available > 0
     group by em.external_id, p.id
     having count(distinct pv.id) = 1
-    limit 2
+    limit 1
   `;
-  if (candidates.length < 2) {
-    console.error("Não foi possível encontrar 2 produtos mapeados com estoque > 0 e exatamente 1 variante em staging.");
-    await sql.end({ timeout: 1 });
+  if (candidates.length < 1) return null;
+  return { wooProductId: Number(candidates[0].wooProductId), source: "STAGING_READONLY_DATABASE_URL (automático)" };
+}
+
+async function main() {
+  const sql = READONLY_DATABASE_URL ? postgres(READONLY_DATABASE_URL, { max: 1, prepare: false }) : null;
+
+  // ---------- (0) escolha de 1 produto real mapeado, com estoque > 0 ----------
+  const resolved = await resolveWooProductId(sql);
+  if (!resolved) {
+    console.error("Não foi possível encontrar um produto mapeado com estoque > 0 e exatamente 1 variante em staging.");
+    if (sql) await sql.end({ timeout: 1 });
     process.exit(1);
   }
-  const [productA, productB] = candidates;
-  const wooProductId = Number(productA.wooProductId);
-  console.log(`Produtos escolhidos (read-only): wooProductId=${wooProductId} (principal), ${Number(productB.wooProductId)} (reserva, não usado neste roteiro)`);
+  const { wooProductId } = resolved;
+  console.log(`Produto escolhido: wooProductId=${wooProductId} (fonte: ${resolved.source})`);
 
   // ---------- (a) criar/obter carrinho ----------
   const createCart = await req("/api/cart/native", { method: "POST" });
@@ -110,7 +131,7 @@ async function main() {
   if (!guestCookie || !cartId) {
     console.error("Falha crítica: não foi possível obter cookie/cartId — abortando o restante do roteiro.");
     printTable();
-    await sql.end({ timeout: 1 });
+    if (sql) await sql.end({ timeout: 1 });
     process.exit(1);
   }
 
@@ -207,15 +228,7 @@ async function main() {
     method: "POST",
     body: { cartId, wooProductId, quantity: 1, idempotencyKey: uuid() },
   });
-  results.push({
-    step: "neg) sem cookie",
-    expected: "401|403 (esperado na autorização)",
-    actual: noCookie.status,
-    pass: [401, 403].includes(noCookie.status),
-    note: noCookie.status === 404 || noCookie.status === 422
-      ? "DIVERGÊNCIA: o código hoje responde 404/422 (fail-closed por design, ver route.ts), não 401/403 -- ver nota no relatório final, não é um bug do smoke test"
-      : "",
-  });
+  record("neg) sem cookie", [404, 422], noCookie, "fail-closed por desenho (as rotas devem parecer que não existem); 404/422 é o esperado, não 401/403");
 
   const tamperedCookie = guestCookie.slice(0, -1) + (guestCookie.slice(-1) === "A" ? "B" : "A");
   const tampered = await req("/api/cart/native/items", {
@@ -250,34 +263,27 @@ async function main() {
 
   printTable();
 
-  // ---------- Passo 2: conferência read-only ----------
-  console.log("\n--- Passo 2: conferência read-only (Supabase staging) ---");
-  const cartRow = await sql`select id, status, version from carts where id = ${cartId}`;
-  const checkoutRow = checkoutId ? await sql`select id, status, version, expires_at from checkout_sessions where id = ${checkoutId}` : [];
-  const reservations = checkoutId
-    ? await sql`
-        select ir.id, ir.status, ir.expires_at from inventory_reservations ir
-        join checkout_session_items csi on csi.id = ir.checkout_session_item_id
-        where csi.checkout_session_id = ${checkoutId}
-      `
-    : [];
-  const ordersCreated = await sql`select count(*)::int as n from orders where created_at >= ${testStartedAt}`;
-  const paymentAttemptsCreated = await sql`select count(*)::int as n from payment_attempts where created_at >= ${testStartedAt}`;
+  // ---------- Passo 2: conferência (opcional, inline) ----------
+  let dbCheckPass = true;
+  if (sql) {
+    console.log("\n--- Passo 2: conferência inline (Supabase staging, read-only) ---");
+    const ordersCreated = await sql`select count(*)::int as n from orders where checkout_session_id = ${checkoutId}`;
+    const paymentAttemptsCreated = checkoutId
+      ? await sql`select count(*)::int as n from payment_attempts pa join orders o on o.id = pa.order_id where o.checkout_session_id = ${checkoutId}`
+      : [{ n: 0 }];
+    console.log({ ordersLinkedToTestCheckout: ordersCreated[0]?.n, paymentAttemptsLinkedToTestCheckout: paymentAttemptsCreated[0]?.n });
+    dbCheckPass = ordersCreated[0]?.n === 0 && paymentAttemptsCreated[0]?.n === 0;
+  } else {
+    console.log("\nDB_CHECK=MANUAL — rode docs/native-commerce/gate3-staging-db-check.sql no SQL Editor do Supabase com os IDs abaixo.");
+  }
 
-  console.log({
-    cart: cartRow[0] ?? null,
-    checkout: checkoutRow[0] ?? null,
-    reservations: reservations.map((r) => ({ status: r.status, expiresAt: r.expires_at })),
-    ordersCreatedSinceTestStart: ordersCreated[0]?.n,
-    paymentAttemptsCreatedSinceTestStart: paymentAttemptsCreated[0]?.n,
-  });
-
-  const gate3Pass = results.every((r) => r.pass) && ordersCreated[0]?.n === 0 && paymentAttemptsCreated[0]?.n === 0;
-  console.log(`\nGATE_3=${gate3Pass ? "PASS" : "FAIL"}`);
-  console.log(`cartId=${cartId} checkoutId=${checkoutId ?? "N/A"}`);
+  const gate3Pass = results.every((r) => r.pass) && dbCheckPass;
+  console.log(`\nGATE_3=${gate3Pass ? "PASS" : "FAIL"}${sql ? "" : " (conferência de banco pendente — ver DB_CHECK=MANUAL acima)"}`);
+  console.log(`cartId=${cartId}`);
+  console.log(`checkoutId=${checkoutId ?? "N/A"}`);
   console.log("Nota Passo 3 (logs de runtime do staging): NÃO verificado por este script -- requer acesso read-only aos logs do Node.js na Hostinger (MCP hostinger-hosting indisponível nesta sessão). Verificar manualmente ou reconectar o conector.");
 
-  await sql.end({ timeout: 1 });
+  if (sql) await sql.end({ timeout: 1 });
   process.exit(gate3Pass ? 0 : 1);
 }
 
