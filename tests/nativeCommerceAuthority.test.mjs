@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { withPersiRole, getPersiRolePoolForDiagnostics } from "../lib/db/nativeCommerceAuthority.ts";
+import { withPersiRole } from "../lib/db/nativeCommerceAuthority.ts";
 import { closeDatabaseForTests } from "../lib/db/connection.ts";
 
 const source = readFileSync("lib/db/nativeCommerceAuthority.ts", "utf8");
@@ -92,25 +92,4 @@ test("two distinct login credentials are used, never one shared login for both r
 test("pools are lazily created and cached, not reconstructed per call", () => {
   assert.match(source, /function getRolePool/);
   assert.match(source, /if \(state\[key\]\) return state\[key\]!;/);
-});
-
-// ---------- R3 diagnostic export (scratchpad/native_commerce_hostinger_identity_probe.json) ----------
-// getPersiRolePoolForDiagnostics is additive: it exists solely for the
-// temporary staging identity probe (lib/runtime/native-commerce-identity-probe.ts)
-// to test a dedicated role's own connection identity BEFORE role
-// activation. It must reuse getRolePool exactly, never open a transaction,
-// and behave identically-null under the same fallback condition as
-// withPersiRole.
-
-test("getPersiRolePoolForDiagnostics returns null when the role's env var is unset, same fallback condition as withPersiRole", () => {
-  assert.equal(process.env.NATIVE_APP_DATABASE_URL, undefined);
-  assert.equal(process.env.NATIVE_WORKER_DATABASE_URL, undefined);
-  assert.equal(getPersiRolePoolForDiagnostics("persi_app"), null);
-  assert.equal(getPersiRolePoolForDiagnostics("persi_worker"), null);
-});
-
-test("getPersiRolePoolForDiagnostics reuses getRolePool exactly -- no parallel pool/transaction/activation logic", () => {
-  const fnBody = source.slice(source.indexOf("export function getPersiRolePoolForDiagnostics"), source.indexOf("export async function closeNativeCommerceAuthorityForTests"));
-  assert.match(fnBody, /getRolePool\(role\)/);
-  assert.doesNotMatch(fnBody, /new postgres\(|drizzle\(|\.transaction\(|activationStatement/);
 });
