@@ -1203,6 +1203,20 @@ Verificar:
 - comportamento;
 - documentação.
 
+### 25.4 Deploy targets
+
+- `persimateriais.com.br` (produção) tem Git auto-deploy ativo (Hostinger,
+  repositório `EduardoPersi/persi-next`, branch `main`). Um `git push` na
+  `main` publica automaticamente em produção. Nunca fazer push na `main`
+  sem autorização explícita de produção, ainda que o objetivo imediato do
+  push seja outro.
+- `staging.persimateriais.com.br` não tem auto-deploy. O único mecanismo
+  válido é um pacote `.zip`/`.tar` gerado por `git archive` a partir de um
+  commit específico, com Node 22.x explícito no build da Hostinger. Nunca
+  tentar publicar em staging via push ou via qualquer fluxo Git.
+- Nunca desativar, reconfigurar ou alterar o auto-deploy (produção ou
+  staging) sem autorização explícita e específica para essa mudança.
+
 ---
 
 ## 26. Fluxo de trabalho do agente
