@@ -1216,6 +1216,13 @@ Verificar:
   tentar publicar em staging via push ou via qualquer fluxo Git.
 - Nunca desativar, reconfigurar ou alterar o auto-deploy (produção ou
   staging) sem autorização explícita e específica para essa mudança.
+- `WOOCOMMERCE_CONSUMER_KEY`/`WOOCOMMERCE_CONSUMER_SECRET` **nunca** podem
+  ser configuradas no staging: `WORDPRESS_URL` do staging aponta para o
+  WooCommerce de produção (não existe um WooCommerce de staging separado),
+  e o checkout legado (`POST wc/v3/orders`) criaria pedidos reais nesse
+  Woo de produção caso essas credenciais existissem.
+- O staging não pode fazer nenhuma escrita no WooCommerce, em nenhuma
+  circunstância.
 
 ---
 
