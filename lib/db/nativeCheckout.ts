@@ -260,6 +260,32 @@ export async function submitNativeCheckout(input: SubmitNativeCheckoutInput): Pr
   return result[0];
 }
 
+export interface NativeCheckoutOwnershipRow {
+  [key: string]: unknown;
+  id: string;
+  cartId: string;
+  customerId: string | null;
+  status: string;
+}
+
+// Gate 3 staging (2026-09-24): an ownership pre-check that called
+// readNativeCheckout (below) purely to read owner/cartId/status failed
+// closed with an unlogged 42501 -- that query joins inventory_reservations
+// (line ~24 below), and persi_app has NO select grant there
+// (20260902230000_native_checkout_foundation.sql:308 grants only
+// checkout_sessions/checkout_session_items/checkout_shipping_quotes to
+// persi_app/persi_worker). readNativeCheckout had zero real callers before
+// that pre-check was added, so the gap was latent. This function touches
+// only checkout_sessions -- do not widen it to join another table without
+// confirming persi_app's grant first.
+export async function readNativeCheckoutOwnership(checkoutId: string): Promise<NativeCheckoutOwnershipRow | null> {
+  const result = await withPersiRole("persi_app", (db) => db.execute<NativeCheckoutOwnershipRow>(sql`
+    select id::text as "id", cart_id::text as "cartId", customer_id::text as "customerId", status
+    from public.checkout_sessions where id=${checkoutId}::uuid
+  `));
+  return result[0] ?? null;
+}
+
 export async function readNativeCheckout(checkoutId: string): Promise<NativeCheckoutReadModel | null> {
   const result = await withPersiRole("persi_app", (db) => db.execute<NativeCheckoutReadModel>(sql`
     select s.id::text as "id",s.store_id::text as "storeId",s.cart_id::text as "cartId",

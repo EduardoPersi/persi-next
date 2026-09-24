@@ -32,7 +32,7 @@ function baseCheckout(overrides = {}) {
 
 function basePiiDeps(overrides = {}) {
   return {
-    readNativeCheckout: async () => baseCheckout(),
+    readNativeCheckoutOwnership: async () => baseCheckout(),
     readNativeCartById: async () => baseCart(),
     persistNativeCheckoutPii: async () => ({ checkoutId: "checkout-1", checkoutVersion: 2n }),
     ...overrides,
@@ -149,7 +149,7 @@ test("handlePersistNativeCheckoutPii: cookie de outro dono contra checkout ABERT
     otherGuestOwner,
     { checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "60606060-6060-6060-6060-606060606060", pii: {} },
     basePiiDeps({
-      readNativeCheckout: async () => baseCheckout({ status: "validating" }),
+      readNativeCheckoutOwnership: async () => baseCheckout({ status: "validating" }),
       persistNativeCheckoutPii: async () => { persistCalled = true; return { checkoutId: "checkout-1", checkoutVersion: 2n }; },
     }),
   );
@@ -170,7 +170,7 @@ test("handlePersistNativeCheckoutPii: cookie de outro dono contra checkout EM re
     otherGuestOwner,
     { checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "70707070-7070-7070-7070-707070707070", pii: {} },
     basePiiDeps({
-      readNativeCheckout: async () => baseCheckout({ status: "ready" }),
+      readNativeCheckoutOwnership: async () => baseCheckout({ status: "ready" }),
       persistNativeCheckoutPii: async () => { persistCalled = true; return { checkoutId: "checkout-1", checkoutVersion: 2n }; },
     }),
   );
@@ -185,7 +185,7 @@ test("handlePersistNativeCheckoutPii: checkout inexistente responde 404 idêntic
     guestOwner,
     { checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "80808080-8080-8080-8080-808080808080", pii: {} },
     basePiiDeps({
-      readNativeCheckout: async () => null,
+      readNativeCheckoutOwnership: async () => null,
       persistNativeCheckoutPii: async () => { throw new Error("não deveria ser chamado"); },
     }),
   );
@@ -272,6 +272,42 @@ test("handlePersistNativeCheckoutPii mapeia CheckoutPiiValidationError para 422 
   assert.equal(result.field, "billing.postalCode");
   const serialized = JSON.stringify(result);
   assert.doesNotMatch(serialized, /Maria|Silva|maria@example\.com|11987654321|11144477735/, "o campo aponta o NOME, nunca o valor rejeitado");
+});
+
+// ---------- achado do smoke test de staging, 2026-09-24 ----------
+
+test("handlePersistNativeCheckoutPii: um 42501 (permissão negada) durante a pré-checagem de ownership nunca escapa sem tratamento -- vira 502 logado, não um erro cru do Next.js", async (t) => {
+  // Reproduz exatamente o incidente de staging: readNativeCheckoutOwnership
+  // (chamado dentro da pré-checagem de ownership, ANTES de qualquer
+  // try/catch "local" -- ver o comentário de requireOwnedCheckout) falha
+  // com um 42501 real, no formato exato que o drizzle-orm produz (a
+  // mensagem do Postgres embrulhada em .cause, nunca em error.message
+  // diretamente -- lib/db/postgresErrorMessage.ts). O bug original era o
+  // erro escapar inteiro, cru, para o log padrão do Next.js; a correção é
+  // que o try/catch que envolve TODO o corpo do handler (não só a mutação
+  // final) sempre intercepta isso.
+  t.mock.method(console, "error", () => {});
+  const permissionDenied = new Error(
+    'Failed query: select * from public.checkout_sessions s left join lateral (select coalesce(jsonb_agg(...),\'[]\') from public.inventory_reservations r ...) x on true where s.id = $1',
+  );
+  permissionDenied.cause = Object.assign(
+    new Error('permission denied for table inventory_reservations'),
+    { code: "42501" },
+  );
+  const result = await handlePersistNativeCheckoutPii(
+    guestOwner,
+    { checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "dddddddd-dddd-dddd-dddd-dddddddddddd", pii: {} },
+    basePiiDeps({ readNativeCheckoutOwnership: async () => { throw permissionDenied; } }),
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 502);
+  assert.equal(console.error.mock.calls.length, 1);
+  const [eventName, fields] = console.error.mock.calls[0].arguments;
+  assert.match(eventName, /native_commerce_unexpected_error/);
+  assert.equal(fields.code, "42501");
+  assert.equal(fields.route, "POST /api/checkout/native/pii");
+  const serialized = JSON.stringify(fields);
+  assert.doesNotMatch(serialized, /inventory_reservations|checkout_sessions|permission denied|select \*/i, "nenhum SQL cru, nenhum nome de tabela, nenhuma mensagem do Postgres pode ir para o log");
 });
 
 test("handleMarkNativeCheckoutReady: um erro genuinamente desconhecido vira 502 e é logado como native_commerce_unexpected_error, sem PII", async (t) => {

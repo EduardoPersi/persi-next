@@ -87,11 +87,30 @@ export interface NativeCartRow {
   currency: string;
   status: string;
   version: bigint;
+  // A string at runtime (postgres-js's raw execute path never coerces
+  // timestamptz columns to Date, regardless of this type parameter --
+  // same caveat already documented in lib/db/nativeCheckoutPii.ts) --
+  // callers that need a Date must `new Date(row.createdAt)` themselves.
+  createdAt: string;
 }
 
 // Idempotent (create_native_cart's own contract): one active cart per
 // (store, currency, owner) -- a retried call for the same owner returns
 // the SAME cart, never a duplicate.
+//
+// Gate 3 staging (2026-09-24): NOT idempotent once the guest's cart has
+// left 'active' status (locked for checkout, expired, converted, ...).
+// carts_guest_token_unique (20260902190000_native_cart_foundation.sql:31)
+// is a GLOBAL unique index on guest_token_fingerprint with no status
+// filter -- a guest can only ever own one carts row, full stop -- but
+// create_native_cart's own conflict-recovery re-select is scoped to
+// status='active' (matching its initial lookup). Once the guest's one
+// cart is no longer active, a repeat call finds nothing active, tries to
+// insert, hits the unique index, and the function's own recovery select
+// (still status='active') ALSO finds nothing -- so it re-raises the raw
+// 23505 instead of ever getting a chance to return the existing row. This
+// migration is frozen; see findNativeCartByGuestTokenAnyStatus below and
+// its caller (nativeCartHandlers.ts) for the handler-level recovery.
 export async function createNativeCart(input: {
   storeId: string;
   customerId?: string | null;
@@ -102,10 +121,23 @@ export async function createNativeCart(input: {
   if (input.customerId && input.guestToken) throw new Error("NATIVE_CART_OWNER_CONTEXT_INVALID");
   const guestFingerprint = input.guestToken ? hashGuestCartToken(input.guestToken) : null;
   const result = await withPersiRole("persi_app", (db) => db.execute<NativeCartRow>(sql`
-    select id::text as "id", store_id::text as "storeId", customer_id::text as "customerId", currency, status, version
+    select id::text as "id", store_id::text as "storeId", customer_id::text as "customerId", currency, status, version, created_at as "createdAt"
     from public.create_native_cart(${input.storeId}::uuid, ${input.customerId ?? null}::uuid, ${guestFingerprint}::text, ${input.currency}::char(3), ${input.expiresAt.toISOString()}::timestamptz)
   `));
   return result[0];
+}
+
+// Handler-level recovery for the race documented on createNativeCart
+// above: looks up the guest's one-and-only cart regardless of status.
+// Never filters by status on purpose -- the whole point is to find the
+// row that create_native_cart's own recovery query could not.
+export async function findNativeCartByGuestTokenAnyStatus(guestToken: string): Promise<NativeCartRow | null> {
+  const guestFingerprint = hashGuestCartToken(guestToken);
+  const result = await withPersiRole("persi_app", (db) => db.execute<NativeCartRow>(sql`
+    select id::text as "id", store_id::text as "storeId", customer_id::text as "customerId", currency, status, version, created_at as "createdAt"
+    from public.carts where guest_token_fingerprint=${guestFingerprint}::text
+  `));
+  return result[0] ?? null;
 }
 
 export interface NativeCartItemRow {

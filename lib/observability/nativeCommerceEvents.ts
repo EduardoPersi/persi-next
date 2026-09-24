@@ -33,6 +33,12 @@ export type NativeCommerceEventName =
   // "_rejected_*"/"_failed" suffix so logNativeCommerceEvent's own
   // isFailure heuristic (name.endsWith) routes them to console.error.
   | "native_cart_created"
+  // Emitted instead of native_cart_created whenever POST /api/cart/native
+  // returns a pre-existing cart -- either create_native_cart's own first
+  // idempotency check found one, or the 2026-09-24 guest-race recovery
+  // (findNativeCartByGuestTokenAnyStatus) did. Closes the backlog item
+  // from the Gate 3 staging round: "separar created/reused".
+  | "native_cart_reused"
   | "native_cart_item_added"
   | "native_cart_item_updated"
   | "native_cart_item_removed"

@@ -6,12 +6,14 @@ import {
   canAccessNativeCart,
   createNativeCart,
   findActiveNativeCart,
+  findNativeCartByGuestTokenAnyStatus,
   generateGuestCartToken,
   ownsCart,
   readNativeCartById,
   removeNativeCartItem,
   updateNativeCartItemQuantity,
   type NativeCartReadModel,
+  type NativeCartRow,
 } from "@/lib/db/nativeCart";
 import { resolveNativeVariantByWooProductId, resolveSingleActiveStore } from "./nativeCommerceCatalogResolution";
 import { withIdempotency } from "./nativeCommerceIdempotency";
@@ -33,6 +35,14 @@ import { extractPostgresErrorCode, extractPostgresErrorMessage } from "@/lib/db/
 // mocks? pattern -- this is what lets the mandatory Gate 3 test matrix
 // (unmapped product fails closed, idempotency-key replay, etc.) exercise
 // real business logic without a live Postgres connection.
+//
+// Gate 3 staging (2026-09-23/24): every handler's ENTIRE body (from its
+// first DB call to its last) runs inside one try/catch that funnels into
+// mapCartError. Earlier drafts wrapped only the final mutation, leaving
+// the ownership pre-check's own DB read outside any catch -- a real
+// permission/connection error there escaped uncaught, past this module,
+// past the route.ts wrapper (which has no try/catch of its own), all the
+// way to Next.js's own generic error page. There must be no gap.
 
 export type CartOwner = { customerId: string | null; guestToken: string | null };
 
@@ -99,27 +109,33 @@ export async function handleGetNativeCart(
   owner: CartOwner,
   deps: GetCartDeps = defaultGetCartDeps,
 ): Promise<HandlerResult<ReturnType<typeof sanitizeCart> | null>> {
-  const store = await deps.resolveSingleActiveStore();
-  if (!store) return fail(503, "STORE_CONTEXT_UNAVAILABLE", GENERIC_ERROR);
-  const cart = await deps.findActiveNativeCart({
-    storeId: store.storeId,
-    currency: store.currency,
-    customerId: owner.customerId,
-    guestToken: owner.guestToken ?? undefined,
-  });
-  if (!cart) return ok(200, null);
-  return ok(200, sanitizeCart(cart));
+  try {
+    const store = await deps.resolveSingleActiveStore();
+    if (!store) return fail(503, "STORE_CONTEXT_UNAVAILABLE", GENERIC_ERROR);
+    const cart = await deps.findActiveNativeCart({
+      storeId: store.storeId,
+      currency: store.currency,
+      customerId: owner.customerId,
+      guestToken: owner.guestToken ?? undefined,
+    });
+    if (!cart) return ok(200, null);
+    return ok(200, sanitizeCart(cart));
+  } catch (error) {
+    return mapCartError(error, "GET /api/cart/native");
+  }
 }
 
 export interface CreateOrGetCartDeps {
   resolveSingleActiveStore: typeof resolveSingleActiveStore;
   createNativeCart: typeof createNativeCart;
+  findNativeCartByGuestTokenAnyStatus: typeof findNativeCartByGuestTokenAnyStatus;
   readNativeCartById: typeof readNativeCartById;
   generateGuestCartToken: typeof generateGuestCartToken;
 }
 const defaultCreateOrGetCartDeps: CreateOrGetCartDeps = {
   resolveSingleActiveStore,
   createNativeCart,
+  findNativeCartByGuestTokenAnyStatus,
   readNativeCartById,
   generateGuestCartToken,
 };
@@ -128,29 +144,51 @@ export async function handleCreateOrGetNativeCart(
   owner: CartOwner,
   deps: CreateOrGetCartDeps = defaultCreateOrGetCartDeps,
 ): Promise<HandlerResult<ReturnType<typeof sanitizeCart>>> {
-  const store = await deps.resolveSingleActiveStore();
-  if (!store) return fail(503, "STORE_CONTEXT_UNAVAILABLE", GENERIC_ERROR);
-
-  let guestToken = owner.guestToken;
-  if (!owner.customerId && !guestToken) guestToken = deps.generateGuestCartToken();
-
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   try {
-    // create_native_cart is idempotent by (store, currency, owner) on its
-    // own -- a repeated call for the same owner always returns the SAME
-    // cart, so no extra idempotency-key wrapper is needed here (unlike
-    // add/update/remove item below).
-    const cart = await deps.createNativeCart({
-      storeId: store.storeId,
-      customerId: owner.customerId,
-      guestToken: guestToken ?? undefined,
-      currency: store.currency,
-      expiresAt,
-    });
-    logNativeCommerceEvent("native_cart_created", { cartId: cart.id });
+    const store = await deps.resolveSingleActiveStore();
+    if (!store) return fail(503, "STORE_CONTEXT_UNAVAILABLE", GENERIC_ERROR);
+
+    let guestToken = owner.guestToken;
+    if (!owner.customerId && !guestToken) guestToken = deps.generateGuestCartToken();
+
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    // create_native_cart is idempotent by (store, currency, owner) ONLY
+    // while that owner's cart is still 'active' -- see the long comment on
+    // createNativeCart (lib/db/nativeCart.ts) for why a guest cart that
+    // already moved on (locked for checkout, expired, ...) makes the SQL
+    // function's own conflict recovery fail closed with a raw 23505
+    // instead of returning the existing row (a double-click/second-tab
+    // against a cart already in checkout, found in staging 2026-09-24).
+    // Recovered here, at the handler level, with a read-only retry --
+    // never by relaxing the frozen migration's own recovery query.
+    const callStartedAt = Date.now();
+    let cart: NativeCartRow;
+    try {
+      cart = await deps.createNativeCart({
+        storeId: store.storeId,
+        customerId: owner.customerId,
+        guestToken: guestToken ?? undefined,
+        currency: store.currency,
+        expiresAt,
+      });
+    } catch (error) {
+      if (owner.customerId || !guestToken || extractPostgresErrorCode(error) !== "23505") throw error;
+      const existing = await deps.findNativeCartByGuestTokenAnyStatus(guestToken);
+      if (!existing) throw error; // genuinely unexpected -- let the outer catch log it
+      cart = existing;
+    }
+
+    // Only a real read-only-retry recovery is unambiguously "reused" --
+    // create_native_cart itself may also have silently returned a
+    // pre-existing active cart (its own first idempotency check), which
+    // this timestamp comparison also catches: a freshly INSERTed row's
+    // created_at is set by the same statement's `now()`, always at or
+    // after callStartedAt; an older, reused row's created_at predates it.
+    const wasReused = new Date(cart.createdAt).getTime() < callStartedAt;
+    logNativeCommerceEvent(wasReused ? "native_cart_reused" : "native_cart_created", { cartId: cart.id });
     const full = await deps.readNativeCartById(cart.id);
     if (!full) return fail(502, "CART_OPERATION_FAILED", GENERIC_ERROR);
-    return ok(201, sanitizeCart(full), owner.customerId ? undefined : guestToken ?? undefined);
+    return ok(wasReused ? 200 : 201, sanitizeCart(full), owner.customerId ? undefined : guestToken ?? undefined);
   } catch (error) {
     return mapCartError(error, "POST /api/cart/native");
   }
@@ -176,7 +214,9 @@ const defaultAddCartItemDeps: AddCartItemDeps = { readNativeCartById, resolveNat
 // in TypeScript, BEFORE any mutating SQL function is called -- see
 // ownsCart's own comment in lib/db/nativeCart.ts for why (the frozen
 // migrations check cart STATE before OWNERSHIP, which leaked whether a
-// cart existed/was mid-checkout to a caller holding a wrong cookie).
+// cart existed/was mid-checkout to a caller holding a wrong cookie). Not
+// wrapped in its own try/catch -- every caller below wraps this call
+// together with everything else in one handler-wide try/catch instead.
 async function requireOwnedCart(cartId: string, owner: CartOwner, readCart: typeof readNativeCartById): Promise<HandlerFailure | null> {
   const cart = await readCart(cartId);
   if (!cart || !ownsCart(cart, owner)) return fail(404, "CART_NOT_FOUND", "Carrinho não encontrado.");
@@ -189,16 +229,16 @@ export async function handleAddNativeCartItem(
   input: AddCartItemInput,
   deps: AddCartItemDeps = defaultAddCartItemDeps,
 ): Promise<HandlerResult<{ productVariantId: string; quantity: string }>> {
-  const ownershipError = await requireOwnedCart(cartId, owner, deps.readNativeCartById);
-  if (ownershipError) return ownershipError;
-
-  const resolved = await deps.resolveNativeVariantByWooProductId(input.wooProductId);
-  if (!resolved) {
-    logNativeCommerceEvent("native_cart_request_rejected_product_not_mapped", { cartId });
-    return fail(404, "PRODUCT_NOT_MAPPED", "Este produto não está disponível no momento.");
-  }
-
   try {
+    const ownershipError = await requireOwnedCart(cartId, owner, deps.readNativeCartById);
+    if (ownershipError) return ownershipError;
+
+    const resolved = await deps.resolveNativeVariantByWooProductId(input.wooProductId);
+    if (!resolved) {
+      logNativeCommerceEvent("native_cart_request_rejected_product_not_mapped", { cartId });
+      return fail(404, "PRODUCT_NOT_MAPPED", "Este produto não está disponível no momento.");
+    }
+
     const item = await withIdempotency("cart:add-item", input.idempotencyKey, () =>
       deps.addNativeCartItem({
         cartId,
@@ -236,10 +276,10 @@ export async function handleUpdateNativeCartItem(
   input: UpdateCartItemInput,
   deps: UpdateCartItemDeps = defaultUpdateCartItemDeps,
 ): Promise<HandlerResult<{ productVariantId: string; quantity: string }>> {
-  const ownershipError = await requireOwnedCart(cartId, owner, deps.readNativeCartById);
-  if (ownershipError) return ownershipError;
-
   try {
+    const ownershipError = await requireOwnedCart(cartId, owner, deps.readNativeCartById);
+    if (ownershipError) return ownershipError;
+
     const item = await withIdempotency("cart:update-item", input.idempotencyKey, () =>
       deps.updateNativeCartItemQuantity({
         cartId,
@@ -272,10 +312,10 @@ export async function handleRemoveNativeCartItem(
   input: RemoveCartItemInput,
   deps: RemoveCartItemDeps = defaultRemoveCartItemDeps,
 ): Promise<HandlerResult<{ removed: boolean }>> {
-  const ownershipError = await requireOwnedCart(cartId, owner, deps.readNativeCartById);
-  if (ownershipError) return ownershipError;
-
   try {
+    const ownershipError = await requireOwnedCart(cartId, owner, deps.readNativeCartById);
+    if (ownershipError) return ownershipError;
+
     const removed = await withIdempotency("cart:remove-item", input.idempotencyKey, () =>
       deps.removeNativeCartItem({
         cartId,

@@ -89,6 +89,112 @@ test("handleCreateOrGetNativeCart reafirma (não regenera) o guestToken existent
   assert.equal(result.setGuestToken, guestOwner.guestToken);
 });
 
+// ---------- achados do smoke test de staging, 2026-09-24 ----------
+
+test("handleCreateOrGetNativeCart: 10 chamadas concorrentes com o mesmo cookie resultam em 1 carrinho, 0 erros", async () => {
+  // Simula o próprio contrato idempotente do create_native_cart real
+  // (SELECT ... FOR UPDATE antes do INSERT): enquanto o carrinho do dono
+  // continuar 'active', toda chamada concorrente recebe a MESMA linha,
+  // nunca uma exceção -- reproduz "duplo clique/duas abas" contra um
+  // carrinho ainda aberto (o caso que já funcionava) para servir de linha
+  // de base ao teste de recuperação de conflito logo abaixo.
+  let created = false;
+  let sharedCart;
+  const deps = {
+    resolveSingleActiveStore: async () => store,
+    generateGuestCartToken: () => { throw new Error("não deveria gerar um novo token -- o cookie já existe"); },
+    createNativeCart: async () => {
+      if (!created) {
+        created = true;
+        sharedCart = { id: "cart-shared", storeId: store.storeId, customerId: null, currency: "BRL", status: "active", version: 0n, createdAt: new Date().toISOString() };
+      }
+      return sharedCart;
+    },
+    findNativeCartByGuestTokenAnyStatus: async () => { throw new Error("não deveria ser chamado -- não há conflito neste cenário"); },
+    readNativeCartById: async (id) => ({ id, storeId: store.storeId, customerId: null, guestTokenFingerprint: "fp", currency: "BRL", status: "active", version: 0n, items: [] }),
+  };
+  const results = await Promise.all(Array.from({ length: 10 }, () => handleCreateOrGetNativeCart(guestOwner, deps)));
+  assert.ok(results.every((r) => r.ok), "todas as 10 chamadas devem ter sucesso, nenhum erro");
+  const cartIds = new Set(results.map((r) => r.data.id));
+  assert.equal(cartIds.size, 1, "todas as chamadas devem apontar para o MESMO carrinho");
+});
+
+test("handleCreateOrGetNativeCart: 23505 (guest já ligado a um carrinho não mais ativo) é recuperado por leitura -- devolve o carrinho existente com 200, nunca um erro cru", async () => {
+  // Reproduz o incidente de staging: o carrinho do convidado já está
+  // 'locked' (checkout em andamento) quando um duplo clique/segunda aba
+  // chama "obter ou criar" de novo. create_native_cart não encontra um
+  // carrinho ATIVO, tenta inserir, e colide com carts_guest_token_unique
+  // (índice único global, sem filtro de status) -- ver o comentário em
+  // createNativeCart (lib/db/nativeCart.ts) para a causa raiz completa.
+  const lockedCart = { id: "cart-locked", storeId: store.storeId, customerId: null, currency: "BRL", status: "locked", version: 1n, createdAt: new Date(Date.now() - 60_000).toISOString() };
+  const conflict = new Error("Failed query: insert into carts ...");
+  conflict.cause = Object.assign(new Error('duplicate key value violates unique constraint "carts_guest_token_unique"'), { code: "23505" });
+  let findCalled = false;
+  const deps = {
+    resolveSingleActiveStore: async () => store,
+    generateGuestCartToken: () => { throw new Error("não deveria ser chamado -- o cookie já existe"); },
+    createNativeCart: async () => { throw conflict; },
+    findNativeCartByGuestTokenAnyStatus: async () => { findCalled = true; return lockedCart; },
+    readNativeCartById: async (id) => ({ id, storeId: store.storeId, customerId: null, guestTokenFingerprint: "fp", currency: "BRL", status: "locked", version: 1n, items: [] }),
+  };
+  const result = await handleCreateOrGetNativeCart(guestOwner, deps);
+  assert.equal(result.ok, true);
+  assert.equal(result.status, 200, "carrinho reaproveitado responde 200, não 201 (esse não é um recurso recém-criado)");
+  assert.equal(result.data.id, "cart-locked");
+  assert.ok(findCalled);
+});
+
+test("handleCreateOrGetNativeCart: um 23505 sem carrinho correspondente (conflito genuinamente inesperado) ainda vira 502 logado, nunca escapa cru", async (t) => {
+  t.mock.method(console, "error", () => {});
+  const conflict = new Error("Failed query: insert into carts ...");
+  conflict.cause = Object.assign(new Error("duplicate key value violates unique constraint"), { code: "23505" });
+  const deps = {
+    resolveSingleActiveStore: async () => store,
+    generateGuestCartToken: () => { throw new Error("não deveria ser chamado"); },
+    createNativeCart: async () => { throw conflict; },
+    findNativeCartByGuestTokenAnyStatus: async () => null,
+    readNativeCartById: async () => { throw new Error("não deveria ser chamado"); },
+  };
+  const result = await handleCreateOrGetNativeCart(guestOwner, deps);
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 502);
+  assert.equal(console.error.mock.calls.length, 1);
+});
+
+test("handleCreateOrGetNativeCart: cart.createdAt no passado (create_native_cart's própria idempotência encontrou uma linha pré-existente) responde 200, não 201", async () => {
+  // Mesmo sem nenhum conflito/exceção, create_native_cart pode devolver uma
+  // linha que já existia (seu próprio "SELECT ... FOR UPDATE" antes do
+  // INSERT) -- o status HTTP (200 vs 201) é o sinal observável ao cliente
+  // de created-vs-reused; o nome do evento de log (native_cart_created vs
+  // native_cart_reused) é derivado do mesmo booleano internamente e não
+  // teve um jeito confiável de ser verificado via mock de console neste
+  // test runner, então esta asserção fica no contrato observável (status).
+  const reusedCart = { id: "cart-1", storeId: store.storeId, customerId: null, currency: "BRL", status: "active", version: 0n, createdAt: new Date(Date.now() - 60_000).toISOString() };
+  const deps = {
+    resolveSingleActiveStore: async () => store,
+    generateGuestCartToken: () => { throw new Error("não deveria ser chamado"); },
+    createNativeCart: async () => reusedCart,
+    findNativeCartByGuestTokenAnyStatus: async () => { throw new Error("não deveria ser chamado"); },
+    readNativeCartById: async (id) => ({ id, storeId: store.storeId, customerId: null, guestTokenFingerprint: "fp", currency: "BRL", status: "active", version: 0n, items: [] }),
+  };
+  const result = await handleCreateOrGetNativeCart(guestOwner, deps);
+  assert.equal(result.ok, true);
+  assert.equal(result.status, 200, "carrinho com createdAt no passado deve ser tratado como reaproveitado (200), não recém-criado (201)");
+});
+
+test("handleCreateOrGetNativeCart: cart.createdAt no momento da chamada (recém-inserido) responde 201", async () => {
+  const deps = {
+    resolveSingleActiveStore: async () => store,
+    generateGuestCartToken: () => { throw new Error("não deveria ser chamado"); },
+    createNativeCart: async () => ({ id: "cart-1", storeId: store.storeId, customerId: null, currency: "BRL", status: "active", version: 0n, createdAt: new Date().toISOString() }),
+    findNativeCartByGuestTokenAnyStatus: async () => { throw new Error("não deveria ser chamado"); },
+    readNativeCartById: async (id) => ({ id, storeId: store.storeId, customerId: null, guestTokenFingerprint: "fp", currency: "BRL", status: "active", version: 0n, items: [] }),
+  };
+  const result = await handleCreateOrGetNativeCart(guestOwner, deps);
+  assert.equal(result.ok, true);
+  assert.equal(result.status, 201, "carrinho recém-inserido deve responder 201");
+});
+
 // ---------- unmapped product fails closed (mandatory) ----------
 
 test("handleAddNativeCartItem falha fechado (404) para um produto Woo sem mapeamento nativo, sem tentar mutar o carrinho", async () => {

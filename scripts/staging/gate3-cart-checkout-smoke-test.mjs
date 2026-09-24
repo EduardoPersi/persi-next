@@ -142,144 +142,163 @@ async function main() {
     process.exit(1);
   }
 
-  // ---------- (b) adicionar 1 produto mapeado ----------
-  const addIdempotencyKey = uuid();
-  const addItem1 = await req("/api/cart/native/items", {
-    method: "POST",
-    cookie: guestCookie,
-    body: { cartId, wooProductId, quantity: 1, idempotencyKey: addIdempotencyKey },
-  });
-  record("b) POST items (adicionar produto mapeado)", 200, addItem1);
+  // Passos b–g e os negativos rodam dentro de try/finally: uma exceção
+  // inesperada em qualquer chamada (ex.: um 500 cru que quebre alguma
+  // suposição do script) não pode impedir o restante das linhas já
+  // registradas de aparecer no resumo -- printTable() SEMPRE roda.
+  let checkoutId;
+  try {
+    // ---------- (b) adicionar 1 produto mapeado ----------
+    const addIdempotencyKey = uuid();
+    const addItem1 = await req("/api/cart/native/items", {
+      method: "POST",
+      cookie: guestCookie,
+      body: { cartId, wooProductId, quantity: 1, idempotencyKey: addIdempotencyKey },
+    });
+    record("b) POST items (adicionar produto mapeado)", 200, addItem1);
 
-  // ---------- (c) repetir com a MESMA idempotencyKey ----------
-  const addItem2 = await req("/api/cart/native/items", {
-    method: "POST",
-    cookie: guestCookie,
-    body: { cartId, wooProductId, quantity: 1, idempotencyKey: addIdempotencyKey },
-  });
-  const noDuplicate = addItem2.json?.quantity === addItem1.json?.quantity;
-  results.push({ step: "c) repetir POST items (mesma idempotencyKey)", expected: "sem duplicar", actual: noDuplicate ? "sem duplicar" : `quantidade mudou (${addItem1.json?.quantity} -> ${addItem2.json?.quantity})`, pass: noDuplicate, note: "" });
+    // ---------- (c) repetir com a MESMA idempotencyKey ----------
+    const addItem2 = await req("/api/cart/native/items", {
+      method: "POST",
+      cookie: guestCookie,
+      body: { cartId, wooProductId, quantity: 1, idempotencyKey: addIdempotencyKey },
+    });
+    const noDuplicate = addItem2.json?.quantity === addItem1.json?.quantity;
+    results.push({ step: "c) repetir POST items (mesma idempotencyKey)", expected: "sem duplicar", actual: noDuplicate ? "sem duplicar" : `quantidade mudou (${addItem1.json?.quantity} -> ${addItem2.json?.quantity})`, pass: noDuplicate, note: "" });
 
-  // ---------- (d) PATCH quantidade; DELETE do item ----------
-  const productVariantId = addItem1.json?.productVariantId;
-  const patchQty = await req(`/api/cart/native/items/${productVariantId}`, {
-    method: "PATCH",
-    cookie: guestCookie,
-    body: { cartId, quantity: 3, idempotencyKey: uuid() },
-  });
-  record("d.1) PATCH quantidade", 200, patchQty);
+    // ---------- (d) PATCH quantidade; DELETE do item ----------
+    const productVariantId = addItem1.json?.productVariantId;
+    const patchQty = await req(`/api/cart/native/items/${productVariantId}`, {
+      method: "PATCH",
+      cookie: guestCookie,
+      body: { cartId, quantity: 3, idempotencyKey: uuid() },
+    });
+    record("d.1) PATCH quantidade", 200, patchQty);
 
-  const deleteItem = await req(`/api/cart/native/items/${productVariantId}`, {
-    method: "DELETE",
-    cookie: guestCookie,
-    body: { cartId, idempotencyKey: uuid() },
-  });
-  record("d.2) DELETE item", 200, deleteItem);
+    const deleteItem = await req(`/api/cart/native/items/${productVariantId}`, {
+      method: "DELETE",
+      cookie: guestCookie,
+      body: { cartId, idempotencyKey: uuid() },
+    });
+    record("d.2) DELETE item", 200, deleteItem);
 
-  // Recoloca 1 unidade para poder seguir para o checkout.
-  const reAdd = await req("/api/cart/native/items", {
-    method: "POST",
-    cookie: guestCookie,
-    body: { cartId, wooProductId, quantity: 1, idempotencyKey: uuid() },
-  });
-  record("(recolocar item para prosseguir ao checkout)", 200, reAdd);
+    // Recoloca 1 unidade para poder seguir para o checkout.
+    const reAdd = await req("/api/cart/native/items", {
+      method: "POST",
+      cookie: guestCookie,
+      body: { cartId, wooProductId, quantity: 1, idempotencyKey: uuid() },
+    });
+    record("(recolocar item para prosseguir ao checkout)", 200, reAdd);
 
-  // ---------- (e) prepare (shippingRequired:false) ----------
-  const prepareKey = uuid();
-  const prepare = await req("/api/checkout/native/prepare", {
-    method: "POST",
-    cookie: guestCookie,
-    body: { cartId, idempotencyKey: prepareKey, shippingRequired: false },
-  });
-  record("e) POST prepare", 201, prepare);
-  const checkoutId = prepare.json?.checkoutId;
+    // ---------- (e) prepare (shippingRequired:false) ----------
+    const prepareKey = uuid();
+    const prepare = await req("/api/checkout/native/prepare", {
+      method: "POST",
+      cookie: guestCookie,
+      body: { cartId, idempotencyKey: prepareKey, shippingRequired: false },
+    });
+    record("e) POST prepare", 201, prepare);
+    checkoutId = prepare.json?.checkoutId;
 
-  // "preço enviado pelo cliente -> ignorado": o schema é .strict() e não
-  // tem NENHUM campo de preço/frete -- um totalMinor extra faz o schema
-  // rejeitar a requisição inteira (o valor nunca chega a ser lido, é mais
-  // forte que "ignorado silenciosamente").
-  const priceInjection = await req("/api/checkout/native/prepare", {
-    method: "POST",
-    cookie: guestCookie,
-    body: { cartId, idempotencyKey: uuid(), shippingRequired: false, totalMinor: 1 },
-  });
-  record("neg) preço enviado pelo cliente (campo extra)", 400, priceInjection, "schema .strict() rejeita a requisição inteira -- o preço vem sempre de resolveStorePriceAuthority no servidor, nunca do body");
+    // "preço enviado pelo cliente -> ignorado": o schema é .strict() e não
+    // tem NENHUM campo de preço/frete -- um totalMinor extra faz o schema
+    // rejeitar a requisição inteira (o valor nunca chega a ser lido, é mais
+    // forte que "ignorado silenciosamente").
+    const priceInjection = await req("/api/checkout/native/prepare", {
+      method: "POST",
+      cookie: guestCookie,
+      body: { cartId, idempotencyKey: uuid(), shippingRequired: false, totalMinor: 1 },
+    });
+    record("neg) preço enviado pelo cliente (campo extra)", 400, priceInjection, "schema .strict() rejeita a requisição inteira -- o preço vem sempre de resolveStorePriceAuthority no servidor, nunca do body");
 
-  // ---------- (f) pii com dados fictícios ----------
-  const pii = await req("/api/checkout/native/pii", {
-    method: "POST",
-    cookie: guestCookie,
-    body: {
-      checkoutId,
-      expectedVersion: String(prepare.json?.version ?? "0"),
-      idempotencyKey: uuid(),
-      pii: {
-        // inputEnvelopeSchema (lib/commerce/checkoutPii.ts) is .strict() on
-        // every level AND requires personType + a full shipping address
-        // even when shippingSameAsBilling is true -- both were missing
-        // here in the previous run, which is why (f) returned 422
-        // CHECKOUT_PII_INVALID (a genuine script bug, not a route bug).
-        // "11999999999" (repeated-digit subscriber) is rejected by
-        // validateBrazilianPhone's anti-fraud check -- lib/account/phoneValidation.ts
-        // explicitly treats a fully repeated subscriber number as invalid,
-        // mobile or not. "11987654321" is a normal-shaped, non-repeated,
-        // still-obviously-fake test number.
-        contact: { firstName: "TESTE", lastName: "STAGING", email: "teste.staging@example.com", phone: "11987654321", personType: "fisica", taxDocument: "11144477735" },
-        billing: { recipient: "TESTE STAGING", street: "Rua de Teste", number: "100", neighborhood: "Centro", city: "Jundiaí", state: "SP", postalCode: "13201000", country: "BR" },
-        shipping: { recipient: "TESTE STAGING", street: "Rua de Teste", number: "100", neighborhood: "Centro", city: "Jundiaí", state: "SP", postalCode: "13201000", country: "BR" },
-        shippingSameAsBilling: true,
+    // ---------- (f) pii com dados fictícios ----------
+    const pii = await req("/api/checkout/native/pii", {
+      method: "POST",
+      cookie: guestCookie,
+      body: {
+        checkoutId,
+        expectedVersion: String(prepare.json?.version ?? "0"),
+        idempotencyKey: uuid(),
+        pii: {
+          // inputEnvelopeSchema (lib/commerce/checkoutPii.ts) is .strict()
+          // on every level AND requires personType + a full shipping
+          // address even when shippingSameAsBilling is true. "11987654321"
+          // is used instead of a repeated-digit number (validateBrazilianPhone
+          // explicitly rejects those as an anti-fraud check) -- both bugs
+          // found and fixed in earlier rounds of this same script.
+          contact: { firstName: "TESTE", lastName: "STAGING", email: "teste.staging@example.com", phone: "11987654321", personType: "fisica", taxDocument: "11144477735" },
+          billing: { recipient: "TESTE STAGING", street: "Rua de Teste", number: "100", neighborhood: "Centro", city: "Jundiaí", state: "SP", postalCode: "13201000", country: "BR" },
+          shipping: { recipient: "TESTE STAGING", street: "Rua de Teste", number: "100", neighborhood: "Centro", city: "Jundiaí", state: "SP", postalCode: "13201000", country: "BR" },
+          shippingSameAsBilling: true,
+        },
       },
-    },
-  });
-  record("f) POST pii (dados fictícios)", 200, pii);
+    });
+    record("f) POST pii (dados fictícios)", 200, pii);
 
-  // ---------- (g) ready ----------
-  const ready = await req("/api/checkout/native/ready", {
-    method: "POST",
-    cookie: guestCookie,
-    body: { checkoutId, expectedVersion: String(pii.json?.checkoutVersion ?? "0"), expectedPiiFingerprint: pii.json?.fingerprint ?? "0".repeat(64) },
-  });
-  record("g) POST ready", 200, ready);
+    // ---------- (g) ready ----------
+    const ready = await req("/api/checkout/native/ready", {
+      method: "POST",
+      cookie: guestCookie,
+      body: { checkoutId, expectedVersion: String(pii.json?.checkoutVersion ?? "0"), expectedPiiFingerprint: pii.json?.fingerprint ?? "0".repeat(64) },
+    });
+    record("g) POST ready", 200, ready);
 
-  // ---------- negativos ----------
-  const noCookie = await req("/api/cart/native/items", {
-    method: "POST",
-    body: { cartId, wooProductId, quantity: 1, idempotencyKey: uuid() },
-  });
-  record("neg) sem cookie", [404, 422], noCookie, "fail-closed por desenho (as rotas devem parecer que não existem); 404/422 é o esperado, não 401/403");
+    // ---------- negativos ----------
+    const noCookie = await req("/api/cart/native/items", {
+      method: "POST",
+      body: { cartId, wooProductId, quantity: 1, idempotencyKey: uuid() },
+    });
+    record("neg) sem cookie", [404, 422], noCookie, "fail-closed por desenho (as rotas devem parecer que não existem); 404/422 é o esperado, não 401/403");
 
-  const tamperedCookie = guestCookie.slice(0, -1) + (guestCookie.slice(-1) === "A" ? "B" : "A");
-  const tampered = await req("/api/cart/native/items", {
-    method: "POST",
-    cookie: tamperedCookie,
-    body: { cartId, wooProductId, quantity: 1, idempotencyKey: uuid() },
-  });
-  record("neg) cookie adulterado", 404, tampered, "fail-closed por desenho: ownership inválida responde igual a carrinho inexistente, em toda rota Gate 3");
+    const tamperedCookie = guestCookie.slice(0, -1) + (guestCookie.slice(-1) === "A" ? "B" : "A");
+    const tampered = await req("/api/cart/native/items", {
+      method: "POST",
+      cookie: tamperedCookie,
+      body: { cartId, wooProductId, quantity: 1, idempotencyKey: uuid() },
+    });
+    record("neg) cookie adulterado", 404, tampered, "fail-closed por desenho: ownership inválida responde igual a carrinho inexistente, em toda rota Gate 3");
 
-  const badOrigin = await req("/api/cart/native/items", {
-    method: "POST",
-    cookie: guestCookie,
-    origin: "https://evil.example.invalid",
-    body: { cartId, wooProductId, quantity: 1, idempotencyKey: uuid() },
-  });
-  record("neg) Origin errado", 403, badOrigin);
+    const badOrigin = await req("/api/cart/native/items", {
+      method: "POST",
+      cookie: guestCookie,
+      origin: "https://evil.example.invalid",
+      body: { cartId, wooProductId, quantity: 1, idempotencyKey: uuid() },
+    });
+    record("neg) Origin errado", 403, badOrigin);
 
-  const unmapped = await req("/api/cart/native/items", {
-    method: "POST",
-    cookie: guestCookie,
-    body: { cartId, wooProductId: 999999999, quantity: 1, idempotencyKey: uuid() },
-  });
-  record("neg) produto sem mapping/inexistente", 404, unmapped, "falha fechada (PRODUCT_NOT_MAPPED)");
+    const unmapped = await req("/api/cart/native/items", {
+      method: "POST",
+      cookie: guestCookie,
+      body: { cartId, wooProductId: 999999999, quantity: 1, idempotencyKey: uuid() },
+    });
+    record("neg) produto sem mapping/inexistente", 404, unmapped, "falha fechada (PRODUCT_NOT_MAPPED)");
 
-  // ---------- rate limit (POST /api/cart/native, create-or-get é idempotente e barato) ----------
-  let rateLimited = false;
-  for (let i = 0; i < 65 && !rateLimited; i += 1) {
-    const response = await req("/api/cart/native", { method: "POST", cookie: guestCookie });
-    if (response.status === 429) rateLimited = true;
+    // ---------- rate limit (POST /api/cart/native, create-or-get é idempotente e barato) ----------
+    // Chamado repetidamente com o MESMO cookie -- exercita também o fix de
+    // 2026-09-24 para o "obter ou criar": a essa altura o carrinho já está
+    // 'locked' (prepare rodou em (e)), então cada chamada aqui deve
+    // devolver o carrinho existente (200, native_cart_reused), nunca um
+    // 23505 cru.
+    let rateLimited = false;
+    let unexpectedDuringRateLimit = 0;
+    for (let i = 0; i < 65 && !rateLimited; i += 1) {
+      const response = await req("/api/cart/native", { method: "POST", cookie: guestCookie });
+      if (response.status === 429) rateLimited = true;
+      else if (response.status >= 500) unexpectedDuringRateLimit += 1;
+    }
+    results.push({ step: "neg) rate limit (>60 POST /api/cart/native em 1 min)", expected: 429, actual: rateLimited ? 429 : "nunca ocorreu em 65 tentativas", pass: rateLimited, note: "" });
+    results.push({
+      step: "obter-ou-criar repetido (carrinho já em checkout) nunca retorna 5xx",
+      expected: 0,
+      actual: unexpectedDuringRateLimit,
+      pass: unexpectedDuringRateLimit === 0,
+      note: unexpectedDuringRateLimit > 0 ? "23505 cru (ou outro 5xx) durante chamadas repetidas -- ver fix de create_native_cart/findNativeCartByGuestTokenAnyStatus" : "",
+    });
+  } catch (error) {
+    console.error("Falha inesperada durante o roteiro (as linhas já registradas abaixo ainda são exibidas):", error instanceof Error ? error.message : error);
+  } finally {
+    printTable();
   }
-  results.push({ step: "neg) rate limit (>60 POST /api/cart/native em 1 min)", expected: 429, actual: rateLimited ? 429 : "nunca ocorreu em 65 tentativas", pass: rateLimited, note: "" });
-
-  printTable();
 
   // ---------- Passo 2: conferência (opcional, inline) ----------
   let dbCheckPass = true;

@@ -3,7 +3,7 @@ import "server-only";
 import { z } from "zod";
 import { CheckoutPiiValidationError } from "./checkoutPii";
 import { canAccessNativeCart, generateGuestCartToken, readNativeCartById, verifyGuestCartToken } from "@/lib/db/nativeCart";
-import { markNativeCheckoutReady, prepareNativeCheckout, readNativeCheckout } from "@/lib/db/nativeCheckout";
+import { markNativeCheckoutReady, prepareNativeCheckout, readNativeCheckoutOwnership } from "@/lib/db/nativeCheckout";
 import { persistNativeCheckoutPii } from "@/lib/db/nativeCheckoutPii";
 import { resolveStorePriceAuthority } from "@/lib/db/nativePriceAuthority";
 import { resolveSingleActiveInventoryLocation, resolveSingleActiveStore } from "./nativeCommerceCatalogResolution";
@@ -147,29 +147,37 @@ export async function handlePrepareNativeCheckout(
   input: PrepareCheckoutInput,
   deps: PrepareCheckoutDeps = defaultPrepareCheckoutDeps,
 ): Promise<HandlerResult<{ checkoutId: string; status: string; version: string }>> {
-  const store = await deps.resolveSingleActiveStore();
-  if (!store) return fail(503, "STORE_CONTEXT_UNAVAILABLE", GENERIC_ERROR);
-  const inventoryLocationId = await deps.resolveSingleActiveInventoryLocation();
-  if (!inventoryLocationId) return fail(503, "INVENTORY_LOCATION_UNAVAILABLE", GENERIC_ERROR);
-
-  const cart = await deps.readNativeCartById(input.cartId);
-  if (!cart) return fail(404, "CART_NOT_FOUND", "Carrinho não encontrado.");
-  const authorized = deps.canAccessNativeCart({
-    requestedStoreId: store.storeId,
-    cartStoreId: cart.storeId,
-    cartCustomerId: cart.customerId,
-    guestTokenFingerprint: cart.guestTokenFingerprint,
-    owner: owner.customerId
-      ? { kind: "customer", customerId: owner.customerId }
-      : { kind: "guest", token: owner.guestToken ?? "" },
-  });
-  // 404, not 403 -- same fail-closed rule as everywhere else in Gate 3
-  // (confirmed 2026-09-23): a cart that isn't yours must look like it
-  // doesn't exist.
-  if (!authorized) return fail(404, "CART_NOT_FOUND", "Carrinho não encontrado.");
-  if (cart.items.length < 1) return fail(422, "CART_EMPTY", "O carrinho está vazio.");
-
+  // Gate 3 staging (2026-09-24): the whole body runs in one try/catch, not
+  // just the final prepareNativeCheckout call -- resolveSingleActiveStore/
+  // readNativeCartById/etc. are real DB calls too, and a permission or
+  // connection error from any of them must never escape uncaught (see
+  // nativeCartHandlers.ts's file-level comment for the staging incident
+  // this generalizes from).
+  let cartId: string | undefined;
   try {
+    const store = await deps.resolveSingleActiveStore();
+    if (!store) return fail(503, "STORE_CONTEXT_UNAVAILABLE", GENERIC_ERROR);
+    const inventoryLocationId = await deps.resolveSingleActiveInventoryLocation();
+    if (!inventoryLocationId) return fail(503, "INVENTORY_LOCATION_UNAVAILABLE", GENERIC_ERROR);
+
+    const cart = await deps.readNativeCartById(input.cartId);
+    if (!cart) return fail(404, "CART_NOT_FOUND", "Carrinho não encontrado.");
+    cartId = cart.id;
+    const authorized = deps.canAccessNativeCart({
+      requestedStoreId: store.storeId,
+      cartStoreId: cart.storeId,
+      cartCustomerId: cart.customerId,
+      guestTokenFingerprint: cart.guestTokenFingerprint,
+      owner: owner.customerId
+        ? { kind: "customer", customerId: owner.customerId }
+        : { kind: "guest", token: owner.guestToken ?? "" },
+    });
+    // 404, not 403 -- same fail-closed rule as everywhere else in Gate 3
+    // (confirmed 2026-09-23): a cart that isn't yours must look like it
+    // doesn't exist.
+    if (!authorized) return fail(404, "CART_NOT_FOUND", "Carrinho não encontrado.");
+    if (cart.items.length < 1) return fail(422, "CART_EMPTY", "O carrinho está vazio.");
+
     const result = await withIdempotency("checkout:prepare", input.idempotencyKey, async () => {
       const priceAuthority = await deps.resolveStorePriceAuthority({ storeId: store.storeId, currency: store.currency, asOf: new Date() });
       return deps.prepareNativeCheckout({
@@ -194,7 +202,7 @@ export async function handlePrepareNativeCheckout(
       version: (result as { version: bigint }).version.toString(),
     });
   } catch (error) {
-    logNativeCommerceEvent("native_checkout_prepare_failed", { cartId: cart.id, code: extractPostgresErrorMessage(error) || "unknown" });
+    logNativeCommerceEvent("native_checkout_prepare_failed", { cartId, code: extractPostgresErrorMessage(error) || "unknown" });
     return mapCheckoutError(error, "POST /api/checkout/native/prepare");
   }
 }
@@ -210,14 +218,14 @@ export const persistPiiInputSchema = z
 export type PersistPiiInput = z.infer<typeof persistPiiInputSchema>;
 
 export interface PersistPiiDeps {
-  readNativeCheckout: typeof readNativeCheckout;
+  readNativeCheckoutOwnership: typeof readNativeCheckoutOwnership;
   readNativeCartById: typeof readNativeCartById;
   persistNativeCheckoutPii: typeof persistNativeCheckoutPii;
 }
-const defaultPersistPiiDeps: PersistPiiDeps = { readNativeCheckout, readNativeCartById, persistNativeCheckoutPii };
+const defaultPersistPiiDeps: PersistPiiDeps = { readNativeCheckoutOwnership, readNativeCartById, persistNativeCheckoutPii };
 
-// Gate 3 staging smoke test (2026-09-23): same ownership-before-state rule
-// as requireOwnedCart in nativeCartHandlers.ts -- persist_checkout_pii
+// Gate 3 staging smoke test (2026-09-23/24): same ownership-before-state
+// rule as requireOwnedCart in nativeCartHandlers.ts -- persist_checkout_pii
 // (supabase/migrations/20260904010000_secure_checkout_pii_foundation.sql)
 // checks CHECKOUT_STATE_INVALID/CHECKOUT_EXPIRED before CHECKOUT_OWNER_DENIED,
 // so a wrong/tampered cookie against a checkout that's already `ready` (or
@@ -227,9 +235,18 @@ const defaultPersistPiiDeps: PersistPiiDeps = { readNativeCheckout, readNativeCa
 // Checkout ownership for a guest is derived from the checkout's own cart
 // (checkout_sessions has no guest fingerprint column of its own; the cart
 // it was created from does) -- the exact same derivation
-// prepare_native_checkout's own SQL uses.
+// prepare_native_checkout's own SQL uses. Uses readNativeCheckoutOwnership
+// (a minimal checkout_sessions-only query), never the wider readNativeCheckout
+// -- see that function's own comment for why (a real 42501 in staging).
+//
+// Not wrapped in its own try/catch -- handlePersistNativeCheckoutPii below
+// wraps this call together with everything else in one handler-wide
+// try/catch instead (same shape as requireOwnedCart in
+// nativeCartHandlers.ts). A DB error during ownership verification must
+// never escape uncaught the way it did in staging (an unhandled exception
+// with a raw "Failed query: ..." Next.js error page).
 async function requireOwnedCheckout(checkoutId: string, owner: CheckoutOwner, deps: PersistPiiDeps): Promise<HandlerFailure | null> {
-  const checkout = await deps.readNativeCheckout(checkoutId);
+  const checkout = await deps.readNativeCheckoutOwnership(checkoutId);
   if (!checkout) return fail(404, "CHECKOUT_NOT_FOUND", "Checkout não encontrado.");
   if (owner.customerId) {
     if (checkout.customerId !== owner.customerId) return fail(404, "CHECKOUT_NOT_FOUND", "Checkout não encontrado.");
@@ -248,9 +265,10 @@ export async function handlePersistNativeCheckoutPii(
   deps: PersistPiiDeps = defaultPersistPiiDeps,
 ): Promise<HandlerResult<{ checkoutId: string; checkoutVersion: string }>> {
   if (!owner.customerId && !owner.guestToken) return fail(422, "OWNER_CONTEXT_INVALID", "Dados de identificação inválidos.");
-  const ownershipError = await requireOwnedCheckout(input.checkoutId, owner, deps);
-  if (ownershipError) return ownershipError;
   try {
+    const ownershipError = await requireOwnedCheckout(input.checkoutId, owner, deps);
+    if (ownershipError) return ownershipError;
+
     const result = await withIdempotency("checkout:pii", input.idempotencyKey, () =>
       deps.persistNativeCheckoutPii({
         checkoutId: input.checkoutId,
