@@ -5,16 +5,36 @@ import {
   handlePersistNativeCheckoutPii,
   handlePrepareNativeCheckout,
 } from "../lib/commerce/nativeCheckoutPrepHandlers.ts";
+import { CheckoutPiiValidationError } from "../lib/commerce/checkoutPii.ts";
+import { hashGuestCartToken } from "../lib/db/nativeCart.ts";
 import { clearIdempotencyCacheForTests } from "../lib/commerce/nativeCommerceIdempotency.ts";
 
 const store = { storeId: "store-1", currency: "BRL" };
 const guestOwner = { customerId: null, guestToken: "guest-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" };
+const otherGuestOwner = { customerId: null, guestToken: "guest-token-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" };
 
+// guestTokenFingerprint must be the REAL hash of guestOwner.guestToken --
+// ownsCart/canAccessNativeCart/requireOwnedCheckout run a real
+// timingSafeEqual comparison against it, so a fake placeholder string
+// would make even the legitimate owner fail ownership.
 function baseCart(overrides = {}) {
   return {
-    id: "cart-1", storeId: store.storeId, customerId: null, guestTokenFingerprint: "fp",
+    id: "cart-1", storeId: store.storeId, customerId: null, guestTokenFingerprint: hashGuestCartToken(guestOwner.guestToken),
     currency: "BRL", status: "active", version: 3n,
     items: [{ id: "item-1", productVariantId: "v-1", quantity: 2n }],
+    ...overrides,
+  };
+}
+
+function baseCheckout(overrides = {}) {
+  return { id: "checkout-1", storeId: store.storeId, cartId: "cart-1", customerId: null, status: "validating", currency: "BRL", version: 1n, ...overrides };
+}
+
+function basePiiDeps(overrides = {}) {
+  return {
+    readNativeCheckout: async () => baseCheckout(),
+    readNativeCartById: async () => baseCart(),
+    persistNativeCheckoutPii: async () => ({ checkoutId: "checkout-1", checkoutVersion: 2n }),
     ...overrides,
   };
 }
@@ -104,7 +124,7 @@ test("handlePrepareNativeCheckout falha fechado (503) quando não há exatamente
 
 test("handlePersistNativeCheckoutPii: chave repetida não chama persistNativeCheckoutPii duas vezes", async () => {
   let callCount = 0;
-  const deps = { persistNativeCheckoutPii: async () => { callCount += 1; return { checkoutId: "checkout-1", checkoutVersion: 2n }; } };
+  const deps = basePiiDeps({ persistNativeCheckoutPii: async () => { callCount += 1; return { checkoutId: "checkout-1", checkoutVersion: 2n }; } });
   const input = { checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "66666666-6666-6666-6666-666666666666", pii: { any: "shape" } };
   await handlePersistNativeCheckoutPii(guestOwner, input, deps);
   await handlePersistNativeCheckoutPii(guestOwner, input, deps);
@@ -115,10 +135,63 @@ test("handlePersistNativeCheckoutPii falha fechado (422) sem customerId nem gues
   const result = await handlePersistNativeCheckoutPii(
     { customerId: null, guestToken: null },
     { checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "77777777-7777-7777-7777-777777777777", pii: {} },
-    { persistNativeCheckoutPii: async () => { throw new Error("não deveria ser chamado"); } },
+    basePiiDeps({ persistNativeCheckoutPii: async () => { throw new Error("não deveria ser chamado"); } }),
   );
   assert.equal(result.ok, false);
   assert.equal(result.status, 422);
+});
+
+// ---------- ownership antes de estado (achado do smoke test de staging, 2026-09-23) ----------
+
+test("handlePersistNativeCheckoutPii: cookie de outro dono contra checkout ABERTO (validating) responde 404, sem chamar persistNativeCheckoutPii", async () => {
+  let persistCalled = false;
+  const result = await handlePersistNativeCheckoutPii(
+    otherGuestOwner,
+    { checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "60606060-6060-6060-6060-606060606060", pii: {} },
+    basePiiDeps({
+      readNativeCheckout: async () => baseCheckout({ status: "validating" }),
+      persistNativeCheckoutPii: async () => { persistCalled = true; return { checkoutId: "checkout-1", checkoutVersion: 2n }; },
+    }),
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 404);
+  assert.equal(result.code, "CHECKOUT_NOT_FOUND");
+  assert.equal(persistCalled, false, "a mutação nunca deve ser chamada quando o ownership falha na pré-checagem");
+});
+
+test("handlePersistNativeCheckoutPii: cookie de outro dono contra checkout EM ready (equivalente a 'locked') também responde 404, não um código de estado", async () => {
+  // persist_checkout_pii (20260904010000_secure_checkout_pii_foundation.sql)
+  // checa CHECKOUT_STATE_INVALID antes de CHECKOUT_OWNER_DENIED -- um
+  // checkout já 'ready' com cookie errado vazaria um 409/422 de estado em
+  // vez de 404. A pré-checagem de ownership em TypeScript intercepta isso
+  // antes de a função SQL ser sequer chamada.
+  let persistCalled = false;
+  const result = await handlePersistNativeCheckoutPii(
+    otherGuestOwner,
+    { checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "70707070-7070-7070-7070-707070707070", pii: {} },
+    basePiiDeps({
+      readNativeCheckout: async () => baseCheckout({ status: "ready" }),
+      persistNativeCheckoutPii: async () => { persistCalled = true; return { checkoutId: "checkout-1", checkoutVersion: 2n }; },
+    }),
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 404);
+  assert.equal(result.code, "CHECKOUT_NOT_FOUND");
+  assert.equal(persistCalled, false);
+});
+
+test("handlePersistNativeCheckoutPii: checkout inexistente responde 404 idêntico ao de ownership inválida", async () => {
+  const result = await handlePersistNativeCheckoutPii(
+    guestOwner,
+    { checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "80808080-8080-8080-8080-808080808080", pii: {} },
+    basePiiDeps({
+      readNativeCheckout: async () => null,
+      persistNativeCheckoutPii: async () => { throw new Error("não deveria ser chamado"); },
+    }),
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 404);
+  assert.equal(result.code, "CHECKOUT_NOT_FOUND");
 });
 
 test("handleMarkNativeCheckoutReady retorna o checkoutId de entrada (já validado) em caso de sucesso", async () => {
@@ -171,14 +244,34 @@ test("handleMarkNativeCheckoutReady: cookie adulterado (CHECKOUT_OWNER_DENIED) r
   assert.equal(result.code, "CHECKOUT_NOT_FOUND");
 });
 
-test("handlePersistNativeCheckoutPii: cookie adulterado (CHECKOUT_OWNER_DENIED) responde 404, não 403 nem 502", async () => {
+test("handlePersistNativeCheckoutPii mapeia CHECKOUT_OWNER_DENIED (vindo da SQL) para 404 -- defesa em profundidade", async () => {
+  // A pré-checagem de ownership em TS já deveria interceptar isso antes de
+  // chegar aqui (testes acima); este cobre o caso em que a própria SQL
+  // ainda assim relata ownership inválido.
   const result = await handlePersistNativeCheckoutPii(
     guestOwner,
     { checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", pii: {} },
-    { persistNativeCheckoutPii: async () => { throw new Error("checkout_owner_denied"); } }, // casing real varia entre migrations
+    basePiiDeps({ persistNativeCheckoutPii: async () => { throw new Error("checkout_owner_denied"); } }), // casing real varia entre migrations
   );
   assert.equal(result.ok, false);
   assert.equal(result.status, 404);
+});
+
+test("handlePersistNativeCheckoutPii mapeia CheckoutPiiValidationError para 422 com o nome do campo, nunca o valor", async () => {
+  const result = await handlePersistNativeCheckoutPii(
+    guestOwner,
+    {
+      checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "cccccccc-cccc-cccc-cccc-cccccccccccc",
+      pii: { contact: { firstName: "Maria", lastName: "Silva", email: "maria@example.com", phone: "11987654321", personType: "fisica", taxDocument: "11144477735" } },
+    },
+    basePiiDeps({ persistNativeCheckoutPii: async () => { throw new CheckoutPiiValidationError("billing.postalCode"); } }),
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 422);
+  assert.equal(result.code, "CHECKOUT_PII_INVALID");
+  assert.equal(result.field, "billing.postalCode");
+  const serialized = JSON.stringify(result);
+  assert.doesNotMatch(serialized, /Maria|Silva|maria@example\.com|11987654321|11144477735/, "o campo aponta o NOME, nunca o valor rejeitado");
 });
 
 test("handleMarkNativeCheckoutReady: um erro genuinamente desconhecido vira 502 e é logado como native_commerce_unexpected_error, sem PII", async (t) => {

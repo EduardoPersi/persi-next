@@ -1,8 +1,9 @@
 import "server-only";
 
 import { z } from "zod";
-import { canAccessNativeCart, generateGuestCartToken, readNativeCartById } from "@/lib/db/nativeCart";
-import { markNativeCheckoutReady, prepareNativeCheckout } from "@/lib/db/nativeCheckout";
+import { CheckoutPiiValidationError } from "./checkoutPii";
+import { canAccessNativeCart, generateGuestCartToken, readNativeCartById, verifyGuestCartToken } from "@/lib/db/nativeCart";
+import { markNativeCheckoutReady, prepareNativeCheckout, readNativeCheckout } from "@/lib/db/nativeCheckout";
 import { persistNativeCheckoutPii } from "@/lib/db/nativeCheckoutPii";
 import { resolveStorePriceAuthority } from "@/lib/db/nativePriceAuthority";
 import { resolveSingleActiveInventoryLocation, resolveSingleActiveStore } from "./nativeCommerceCatalogResolution";
@@ -29,15 +30,18 @@ import { extractPostgresErrorCode, extractPostgresErrorMessage } from "@/lib/db/
 
 export type CheckoutOwner = { customerId: string | null; guestToken: string | null };
 
-export type HandlerFailure = { ok: false; status: number; code: string; message: string };
+// `field`: a fixed dot-path ("contact.phone", "billing.postalCode") naming
+// which input field failed validation -- present only for
+// CHECKOUT_PII_INVALID, never a value, safe to return to the client.
+export type HandlerFailure = { ok: false; status: number; code: string; message: string; field?: string };
 export type HandlerSuccess<T> = { ok: true; status: number; data: T };
 export type HandlerResult<T> = HandlerSuccess<T> | HandlerFailure;
 
 function ok<T>(status: number, data: T): HandlerSuccess<T> {
   return { ok: true, status, data };
 }
-function fail(status: number, code: string, message: string): HandlerFailure {
-  return { ok: false, status, code, message };
+function fail(status: number, code: string, message: string, field?: string): HandlerFailure {
+  return { ok: false, status, code, message, field };
 }
 
 const GENERIC_ERROR = "Não foi possível preparar o checkout agora.";
@@ -59,6 +63,14 @@ const STALE_MESSAGE = "O checkout foi atualizado. Recarregue a página e tente n
 //    underlying migrations are inconsistent about casing (some
 //    functions raise `CHECKOUT_OWNER_DENIED`, others `checkout_owner_denied`).
 function mapCheckoutError(error: unknown, route: string): HandlerFailure {
+  // CheckoutPiiValidationError comes from canonicalizeCheckoutPii
+  // (lib/commerce/checkoutPii.ts) -- a pure, in-process validation
+  // failure, never a Postgres RAISE, so it's checked before (and instead
+  // of) the .cause-unwrapping message extraction below.
+  if (error instanceof CheckoutPiiValidationError) {
+    return fail(422, "CHECKOUT_PII_INVALID", "Dados de contato/endereço inválidos.", error.field);
+  }
+
   const message = extractPostgresErrorMessage(error).toUpperCase();
 
   if (message === "CHECKOUT_NOT_FOUND" || message === "CART_NOT_FOUND") {
@@ -198,9 +210,37 @@ export const persistPiiInputSchema = z
 export type PersistPiiInput = z.infer<typeof persistPiiInputSchema>;
 
 export interface PersistPiiDeps {
+  readNativeCheckout: typeof readNativeCheckout;
+  readNativeCartById: typeof readNativeCartById;
   persistNativeCheckoutPii: typeof persistNativeCheckoutPii;
 }
-const defaultPersistPiiDeps: PersistPiiDeps = { persistNativeCheckoutPii };
+const defaultPersistPiiDeps: PersistPiiDeps = { readNativeCheckout, readNativeCartById, persistNativeCheckoutPii };
+
+// Gate 3 staging smoke test (2026-09-23): same ownership-before-state rule
+// as requireOwnedCart in nativeCartHandlers.ts -- persist_checkout_pii
+// (supabase/migrations/20260904010000_secure_checkout_pii_foundation.sql)
+// checks CHECKOUT_STATE_INVALID/CHECKOUT_EXPIRED before CHECKOUT_OWNER_DENIED,
+// so a wrong/tampered cookie against a checkout that's already `ready` (or
+// expired) would get a different status than against one that doesn't
+// exist -- checked here, in TypeScript, before that SQL function is ever
+// called, so ownership failure always looks identical to "not found".
+// Checkout ownership for a guest is derived from the checkout's own cart
+// (checkout_sessions has no guest fingerprint column of its own; the cart
+// it was created from does) -- the exact same derivation
+// prepare_native_checkout's own SQL uses.
+async function requireOwnedCheckout(checkoutId: string, owner: CheckoutOwner, deps: PersistPiiDeps): Promise<HandlerFailure | null> {
+  const checkout = await deps.readNativeCheckout(checkoutId);
+  if (!checkout) return fail(404, "CHECKOUT_NOT_FOUND", "Checkout não encontrado.");
+  if (owner.customerId) {
+    if (checkout.customerId !== owner.customerId) return fail(404, "CHECKOUT_NOT_FOUND", "Checkout não encontrado.");
+    return null;
+  }
+  const cart = await deps.readNativeCartById(checkout.cartId);
+  if (!cart || cart.guestTokenFingerprint === null || !verifyGuestCartToken(owner.guestToken ?? "", cart.guestTokenFingerprint)) {
+    return fail(404, "CHECKOUT_NOT_FOUND", "Checkout não encontrado.");
+  }
+  return null;
+}
 
 export async function handlePersistNativeCheckoutPii(
   owner: CheckoutOwner,
@@ -208,6 +248,8 @@ export async function handlePersistNativeCheckoutPii(
   deps: PersistPiiDeps = defaultPersistPiiDeps,
 ): Promise<HandlerResult<{ checkoutId: string; checkoutVersion: string }>> {
   if (!owner.customerId && !owner.guestToken) return fail(422, "OWNER_CONTEXT_INVALID", "Dados de identificação inválidos.");
+  const ownershipError = await requireOwnedCheckout(input.checkoutId, owner, deps);
+  if (ownershipError) return ownershipError;
   try {
     const result = await withIdempotency("checkout:pii", input.idempotencyKey, () =>
       deps.persistNativeCheckoutPii({

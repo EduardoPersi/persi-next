@@ -73,7 +73,7 @@ export function toCartRouteResponse<T>(result: CartHandlerResult<T>): NextRespon
 
 export function toCheckoutRouteResponse<T>(result: CheckoutHandlerResult<T>): NextResponse {
   if (!result.ok) {
-    return NextResponse.json({ code: result.code, message: result.message }, { status: result.status });
+    return NextResponse.json({ code: result.code, message: result.message, field: result.field }, { status: result.status });
   }
   return NextResponse.json(result.data, { status: result.status });
 }

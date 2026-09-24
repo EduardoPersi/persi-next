@@ -18,6 +18,20 @@ export const CHECKOUT_PII_PURPOSE = "persi.checkout.pii";
 const PII_FINGERPRINT_PURPOSE = "persi.checkout.pii-fingerprint";
 const DESTINATION_FINGERPRINT_PURPOSE = "persi.checkout.shipping-destination";
 
+// Gate 3 staging smoke test (2026-09-23): CHECKOUT_PII_INVALID alone gave
+// no way to tell which of ~15 fields failed without guessing. `field` is
+// always a fixed dot-path like "contact.phone" or "billing.postalCode" --
+// never the rejected value itself, so it's safe to return to the client
+// and to log.
+export class CheckoutPiiValidationError extends Error {
+  readonly field: string;
+  constructor(field: string) {
+    super("CHECKOUT_PII_INVALID");
+    this.name = "CheckoutPiiValidationError";
+    this.field = field;
+  }
+}
+
 export type CanonicalCheckoutContact = {
   firstName: string;
   lastName: string;
@@ -108,7 +122,7 @@ export const canonicalCheckoutPiiSchema = z.object({
   shippingSameAsBilling: z.boolean(),
 }).strict();
 
-function canonicalAddress(input: z.infer<typeof inputAddressSchema>): CanonicalCheckoutAddress {
+function canonicalAddress(input: z.infer<typeof inputAddressSchema>, prefix: "billing" | "shipping"): CanonicalCheckoutAddress {
   const state = input.state.trim().toUpperCase();
   const country = input.country.trim().toUpperCase();
   const address = {
@@ -117,7 +131,9 @@ function canonicalAddress(input: z.infer<typeof inputAddressSchema>): CanonicalC
     complement: optionalText(input.complement), neighborhood: compactText(input.neighborhood),
     city: compactText(input.city), state, postalCode: input.postalCode.replace(/\D/g, ""), country,
   };
-  return canonicalAddressSchema.parse(address) as CanonicalCheckoutAddress;
+  const result = canonicalAddressSchema.safeParse(address);
+  if (!result.success) throw new CheckoutPiiValidationError(`${prefix}.${result.error.issues[0]?.path.join(".") || "unknown"}`);
+  return result.data as CanonicalCheckoutAddress;
 }
 
 function canonicalPhone(value: string): string {
@@ -125,19 +141,20 @@ function canonicalPhone(value: string): string {
   const brazilianDigits = rawDigits.startsWith("55") && rawDigits.length >= 12
     ? rawDigits.slice(2)
     : rawDigits;
-  if (validateBrazilianPhone(brazilianDigits)) throw new Error("CHECKOUT_PII_INVALID");
+  if (validateBrazilianPhone(brazilianDigits)) throw new CheckoutPiiValidationError("contact.phone");
   return `+55${brazilianDigits}`;
 }
 
 export function canonicalizeCheckoutPii(input: unknown): CanonicalCheckoutPIIEnvelope {
   const parsed = inputEnvelopeSchema.safeParse(input);
-  if (!parsed.success) throw new Error("CHECKOUT_PII_INVALID");
+  if (!parsed.success) throw new CheckoutPiiValidationError(parsed.error.issues[0]?.path.join(".") || "unknown");
   const taxDocument = parsed.data.contact.taxDocument.replace(/\D/g, "");
   const detected = detectBrazilianDocumentType(taxDocument);
   const expected = parsed.data.contact.personType === "fisica" ? "cpf" : "cnpj";
-  if (!isValidBrazilianDocument(taxDocument) || detected !== expected) throw new Error("CHECKOUT_PII_INVALID");
-  const billing = canonicalAddress(parsed.data.billing);
-  const shipping = parsed.data.shippingSameAsBilling ? { ...billing } : canonicalAddress(parsed.data.shipping);
+  if (detected !== expected) throw new CheckoutPiiValidationError("contact.personType");
+  if (!isValidBrazilianDocument(taxDocument)) throw new CheckoutPiiValidationError("contact.taxDocument");
+  const billing = canonicalAddress(parsed.data.billing, "billing");
+  const shipping = parsed.data.shippingSameAsBilling ? { ...billing } : canonicalAddress(parsed.data.shipping, "shipping");
   const envelope = {
     schemaVersion: CHECKOUT_PII_SCHEMA_VERSION,
     contact: {
@@ -154,7 +171,7 @@ export function canonicalizeCheckoutPii(input: unknown): CanonicalCheckoutPIIEnv
     shippingSameAsBilling: parsed.data.shippingSameAsBilling,
   };
   const result = canonicalCheckoutPiiSchema.safeParse(envelope);
-  if (!result.success) throw new Error("CHECKOUT_PII_INVALID");
+  if (!result.success) throw new CheckoutPiiValidationError(result.error.issues[0]?.path.join(".") || "unknown");
   return result.data;
 }
 

@@ -7,6 +7,7 @@ import {
   createNativeCart,
   findActiveNativeCart,
   generateGuestCartToken,
+  ownsCart,
   readNativeCartById,
   removeNativeCartItem,
   updateNativeCartItemQuantity,
@@ -165,10 +166,22 @@ export const addCartItemInputSchema = z
 export type AddCartItemInput = z.infer<typeof addCartItemInputSchema>;
 
 export interface AddCartItemDeps {
+  readNativeCartById: typeof readNativeCartById;
   resolveNativeVariantByWooProductId: typeof resolveNativeVariantByWooProductId;
   addNativeCartItem: typeof addNativeCartItem;
 }
-const defaultAddCartItemDeps: AddCartItemDeps = { resolveNativeVariantByWooProductId, addNativeCartItem };
+const defaultAddCartItemDeps: AddCartItemDeps = { readNativeCartById, resolveNativeVariantByWooProductId, addNativeCartItem };
+
+// Gate 3 staging smoke test (2026-09-23): ownership must be checked here,
+// in TypeScript, BEFORE any mutating SQL function is called -- see
+// ownsCart's own comment in lib/db/nativeCart.ts for why (the frozen
+// migrations check cart STATE before OWNERSHIP, which leaked whether a
+// cart existed/was mid-checkout to a caller holding a wrong cookie).
+async function requireOwnedCart(cartId: string, owner: CartOwner, readCart: typeof readNativeCartById): Promise<HandlerFailure | null> {
+  const cart = await readCart(cartId);
+  if (!cart || !ownsCart(cart, owner)) return fail(404, "CART_NOT_FOUND", "Carrinho não encontrado.");
+  return null;
+}
 
 export async function handleAddNativeCartItem(
   cartId: string,
@@ -176,6 +189,9 @@ export async function handleAddNativeCartItem(
   input: AddCartItemInput,
   deps: AddCartItemDeps = defaultAddCartItemDeps,
 ): Promise<HandlerResult<{ productVariantId: string; quantity: string }>> {
+  const ownershipError = await requireOwnedCart(cartId, owner, deps.readNativeCartById);
+  if (ownershipError) return ownershipError;
+
   const resolved = await deps.resolveNativeVariantByWooProductId(input.wooProductId);
   if (!resolved) {
     logNativeCommerceEvent("native_cart_request_rejected_product_not_mapped", { cartId });
@@ -208,9 +224,10 @@ export const updateCartItemInputSchema = z
 export type UpdateCartItemInput = z.infer<typeof updateCartItemInputSchema>;
 
 export interface UpdateCartItemDeps {
+  readNativeCartById: typeof readNativeCartById;
   updateNativeCartItemQuantity: typeof updateNativeCartItemQuantity;
 }
-const defaultUpdateCartItemDeps: UpdateCartItemDeps = { updateNativeCartItemQuantity };
+const defaultUpdateCartItemDeps: UpdateCartItemDeps = { readNativeCartById, updateNativeCartItemQuantity };
 
 export async function handleUpdateNativeCartItem(
   cartId: string,
@@ -219,6 +236,9 @@ export async function handleUpdateNativeCartItem(
   input: UpdateCartItemInput,
   deps: UpdateCartItemDeps = defaultUpdateCartItemDeps,
 ): Promise<HandlerResult<{ productVariantId: string; quantity: string }>> {
+  const ownershipError = await requireOwnedCart(cartId, owner, deps.readNativeCartById);
+  if (ownershipError) return ownershipError;
+
   try {
     const item = await withIdempotency("cart:update-item", input.idempotencyKey, () =>
       deps.updateNativeCartItemQuantity({
@@ -240,9 +260,10 @@ export const removeCartItemInputSchema = z.object({ idempotencyKey: z.uuid() }).
 export type RemoveCartItemInput = z.infer<typeof removeCartItemInputSchema>;
 
 export interface RemoveCartItemDeps {
+  readNativeCartById: typeof readNativeCartById;
   removeNativeCartItem: typeof removeNativeCartItem;
 }
-const defaultRemoveCartItemDeps: RemoveCartItemDeps = { removeNativeCartItem };
+const defaultRemoveCartItemDeps: RemoveCartItemDeps = { readNativeCartById, removeNativeCartItem };
 
 export async function handleRemoveNativeCartItem(
   cartId: string,
@@ -251,6 +272,9 @@ export async function handleRemoveNativeCartItem(
   input: RemoveCartItemInput,
   deps: RemoveCartItemDeps = defaultRemoveCartItemDeps,
 ): Promise<HandlerResult<{ removed: boolean }>> {
+  const ownershipError = await requireOwnedCart(cartId, owner, deps.readNativeCartById);
+  if (ownershipError) return ownershipError;
+
   try {
     const removed = await withIdempotency("cart:remove-item", input.idempotencyKey, () =>
       deps.removeNativeCartItem({

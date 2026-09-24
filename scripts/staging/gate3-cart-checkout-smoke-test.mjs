@@ -60,8 +60,11 @@ function record(step, expected, response, note = "") {
   // response.json?.code is the route's own stable error code (e.g.
   // CHECKOUT_PII_INVALID, CART_NOT_FOUND) -- never PII, it's a fixed enum
   // string every route already returns in its body on failure.
+  // response.json?.field (only present for CHECKOUT_PII_INVALID) names
+  // the rejected field ("contact.phone") -- never its value.
   const errorCode = typeof response === "object" ? response?.json?.code : undefined;
-  results.push({ step, expected: Array.isArray(expected) ? expected.join("|") : expected, actual, pass, note, errorCode });
+  const errorField = typeof response === "object" ? response?.json?.field : undefined;
+  results.push({ step, expected: Array.isArray(expected) ? expected.join("|") : expected, actual, pass, note, errorCode, errorField });
   return pass;
 }
 
@@ -216,7 +219,12 @@ async function main() {
         // even when shippingSameAsBilling is true -- both were missing
         // here in the previous run, which is why (f) returned 422
         // CHECKOUT_PII_INVALID (a genuine script bug, not a route bug).
-        contact: { firstName: "TESTE", lastName: "STAGING", email: "teste.staging@example.com", phone: "11999999999", personType: "fisica", taxDocument: "11144477735" },
+        // "11999999999" (repeated-digit subscriber) is rejected by
+        // validateBrazilianPhone's anti-fraud check -- lib/account/phoneValidation.ts
+        // explicitly treats a fully repeated subscriber number as invalid,
+        // mobile or not. "11987654321" is a normal-shaped, non-repeated,
+        // still-obviously-fake test number.
+        contact: { firstName: "TESTE", lastName: "STAGING", email: "teste.staging@example.com", phone: "11987654321", personType: "fisica", taxDocument: "11144477735" },
         billing: { recipient: "TESTE STAGING", street: "Rua de Teste", number: "100", neighborhood: "Centro", city: "Jundiaí", state: "SP", postalCode: "13201000", country: "BR" },
         shipping: { recipient: "TESTE STAGING", street: "Rua de Teste", number: "100", neighborhood: "Centro", city: "Jundiaí", state: "SP", postalCode: "13201000", country: "BR" },
         shippingSameAsBilling: true,
@@ -304,7 +312,8 @@ function printTable() {
     // redundante (o status já confirma o resultado esperado) e omiti-lo
     // mantém a saída de sucesso enxuta.
     const codeSuffix = !row.pass && row.errorCode ? ` | code=${row.errorCode}` : "";
-    console.log(`${row.pass ? "PASS" : "FAIL"} | ${row.step} | esperado=${row.expected} obtido=${row.actual}${codeSuffix}${row.note ? ` | ${row.note}` : ""}`);
+    const fieldSuffix = !row.pass && row.errorField ? ` | field=${row.errorField}` : "";
+    console.log(`${row.pass ? "PASS" : "FAIL"} | ${row.step} | esperado=${row.expected} obtido=${row.actual}${codeSuffix}${fieldSuffix}${row.note ? ` | ${row.note}` : ""}`);
   }
 }
 

@@ -44,6 +44,32 @@ export function canAccessNativeCart(input: {
     && verifyGuestCartToken(input.owner.token, input.guestTokenFingerprint);
 }
 
+// Gate 3 staging smoke test (2026-09-23): several SQL mutation functions
+// (add/set/remove_native_cart_item) check the cart's STATE (active vs
+// locked/expired -> CART_NOT_MUTABLE) before they check ownership -- so a
+// tampered/wrong guest cookie against a cart that is mid-checkout (locked)
+// got a *different*, more informative status (409) than the same tampered
+// cookie against an open cart (which reaches CART_OWNERSHIP_INVALID),
+// leaking "this cart exists and is in checkout" to whoever holds a wrong
+// cookie. The migrations that encode that ordering are frozen (already
+// shipped, already exercised by other tests/scripts) and are not touched
+// here. Instead, every handler that mutates an existing cart by id must
+// call this BEFORE calling the mutating SQL function at all, so a
+// wrong/tampered owner never reaches the SQL layer and therefore can never
+// observe its internal check ordering.
+export function ownsCart(
+  cart: { storeId: string; customerId: string | null; guestTokenFingerprint: string | null },
+  owner: { customerId: string | null; guestToken: string | null },
+): boolean {
+  return canAccessNativeCart({
+    requestedStoreId: cart.storeId,
+    cartStoreId: cart.storeId,
+    cartCustomerId: cart.customerId,
+    guestTokenFingerprint: cart.guestTokenFingerprint,
+    owner: owner.customerId ? { kind: "customer", customerId: owner.customerId } : { kind: "guest", token: owner.guestToken ?? "" },
+  });
+}
+
 // B.3-I — minimal cart-mutation wrappers. Neither create_native_cart nor
 // add_native_cart_item had a TypeScript wrapper before this round (only
 // exercised via raw SQL in scripts/database/native-cart-*-concurrency.mjs)
