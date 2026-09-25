@@ -256,7 +256,48 @@ nova), e se `apply_verified_payment_transition` deve ganhar um novo
 `p_event_type` para este caso ou se uma função nova, dedicada a
 cancelamento admin-side, é mais clara.
 
-## 6. Referências
+## 6. Placar de validação em staging (2026-09-25)
+
+Registro do resultado final da bateria de smoke tests do Gate 3 em staging,
+após as quatro rodadas de correção descritas nos documentos referenciados
+abaixo, na última execução (commit `6af7b54`). Este placar é um registro de
+status, não uma autorização para ativar submissão nativa em produção — isso
+continua exigindo decisão explícita do dono, independente deste resultado.
+
+| Gate | Escopo | Resultado |
+| --- | --- | --- |
+| GATE_1 | Identidades de banco na Hostinger (`persi_app`/`persi_worker` via `withPersiRole`) | **PASS** |
+| GATE_2 | Endpoint de probe removido; Basic Auth rotacionado | **PASS** |
+| GATE_3 | Rotas nativas de carrinho/checkout (`/api/cart/native`, `/api/checkout/native/*`) | **PASS** em staging, commit `6af7b54` |
+
+Detalhe do que o GATE_3 cobriu nesta execução:
+
+- **Carrinho**: criação, leitura, alteração de item, sem duplicar carrinho
+  para o mesmo `guest_token` (nem em concorrência).
+- **Checkout**: fluxo completo `prepare` → `pii` (PII persistido
+  cifrado, com fingerprint HMAC) → `ready`.
+- **Segurança**: cookie ausente ou adulterado → 404 (nunca vaza estado);
+  `Origin` incorreto → 403; preço enviado pelo cliente é ignorado (preço
+  vem sempre do servidor); produto sem mapeamento Woo→nativo é rejeitado;
+  limite de taxa aplicado (429) sem gerar 5xx em repetição da mesma
+  chamada idempotente.
+- **Estado no banco** (conferido via
+  [`scripts/staging/gate3-db-check-preenchido.sql`](../../scripts/staging/gate3-db-check-preenchido.sql)):
+  carrinho travado (`locked`) ao final do fluxo, reserva de estoque ativa,
+  PII gravado e válido, **0 pedidos e 0 tentativas de pagamento criados**
+  (esperado — o roteiro do smoke test não submete nem paga).
+- **Logs**: sem erros inesperados; nenhum dado pessoal (nome/e-mail/
+  telefone/endereço/documento) aparece nas linhas de observabilidade.
+
+**Estado dos flags de ativação, inalterado por este placar**:
+
+- `NATIVE_CHECKOUT_RUNTIME_ENABLED = NO` — submissão final continua
+  bloqueada; nenhuma mudança neste placar altera este flag.
+- `SAFE_TO_PRODUCTION = NO` — validação em staging não equivale a
+  autorização de produção; ver [§5](#5-backlog-obrigatório-antes-do-canário)
+  para os itens de backlog ainda pendentes antes de qualquer ativação.
+
+## 7. Referências
 
 - [`gate3-native-cart-checkout-routes.md`](gate3-native-cart-checkout-routes.md)
 - [`olist-integration-design.md`](olist-integration-design.md)
