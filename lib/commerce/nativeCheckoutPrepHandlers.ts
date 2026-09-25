@@ -73,6 +73,34 @@ function mapCheckoutError(error: unknown, route: string): HandlerFailure {
 
   const message = extractPostgresErrorMessage(error).toUpperCase();
 
+  // Gate 3 staging (2026-09-24): environmentCheckoutPiiKeys()
+  // (lib/commerce/checkoutPii.ts, called from inside persistNativeCheckoutPii
+  // -- lib/db/nativeCheckoutPii.ts) throws a PLAIN `new Error("CHECKOUT_PII_..._INVALID")`
+  // when CHECKOUT_PII_KEY_ID/CHECKOUT_PII_ENCRYPTION_KEYS_JSON/CHECKOUT_PII_HMAC_KEY
+  // are missing or malformed -- never a Postgres RAISE, so it happens
+  // before any database call. Left unmapped, it fell into the generic
+  // "unexpected" branch below, whose log line only ever captures
+  // extractPostgresErrorCode's fallback (Error.prototype.name, which is
+  // the literal string "Error" for every plain Error -- the actual
+  // message, the one piece of information that would have named the
+  // missing variable, was discarded). Mapped explicitly here into a
+  // stable, non-PII code instead -- this is a server misconfiguration
+  // (503), never something the client can fix by resubmitting, and never
+  // safe to proceed past: no PII is ever persisted without working crypto.
+  if (message === "CHECKOUT_PII_KEY_ID_INVALID" || message === "CHECKOUT_PII_KEYS_INVALID") {
+    logNativeCommerceEvent("native_commerce_unexpected_error", { route, code: "PII_ENCRYPTION_KEY_MISSING" });
+    return fail(503, "PII_ENCRYPTION_KEY_MISSING", GENERIC_ERROR);
+  }
+  if (
+    message === "CHECKOUT_PII_KEY_INVALID" ||
+    message === "CHECKOUT_PII_HMAC_KEY_INVALID" ||
+    message === "CHECKOUT_PII_IV_INVALID" ||
+    message === "CHECKOUT_PII_UNKNOWN_KEY"
+  ) {
+    logNativeCommerceEvent("native_commerce_unexpected_error", { route, code: "PII_ENCRYPTION_KEY_INVALID" });
+    return fail(503, "PII_ENCRYPTION_KEY_INVALID", GENERIC_ERROR);
+  }
+
   if (message === "CHECKOUT_NOT_FOUND" || message === "CART_NOT_FOUND") {
     return fail(404, "CHECKOUT_NOT_FOUND", "Checkout não encontrado.");
   }

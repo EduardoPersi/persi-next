@@ -310,6 +310,44 @@ test("handlePersistNativeCheckoutPii: um 42501 (permissão negada) durante a pr�
   assert.doesNotMatch(serialized, /inventory_reservations|checkout_sessions|permission denied|select \*/i, "nenhum SQL cru, nenhum nome de tabela, nenhuma mensagem do Postgres pode ir para o log");
 });
 
+test("handlePersistNativeCheckoutPii: chave de criptografia de PII ausente (CHECKOUT_PII_KEY_ID_INVALID) responde 503 PII_ENCRYPTION_KEY_MISSING, não 502 genérico -- e nunca grava PII", async (t) => {
+  // environmentCheckoutPiiKeys() (lib/commerce/checkoutPii.ts), chamada de
+  // dentro de persistNativeCheckoutPii (lib/db/nativeCheckoutPii.ts),
+  // lança exatamente este Error puro (sem .cause -- não é uma falha de
+  // banco) quando CHECKOUT_PII_KEY_ID/CHECKOUT_PII_ENCRYPTION_KEYS_JSON
+  // não estão configuradas em staging. É lançada ANTES de qualquer escrita
+  // -- "nunca gravar PII sem cripto" é garantido pela própria ordem do
+  // código (a criptografia acontece antes do insert), não por uma
+  // checagem extra aqui.
+  t.mock.method(console, "error", () => {});
+  const result = await handlePersistNativeCheckoutPii(
+    guestOwner,
+    { checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee", pii: {} },
+    basePiiDeps({ persistNativeCheckoutPii: async () => { throw new Error("CHECKOUT_PII_KEY_ID_INVALID"); } }),
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 503);
+  assert.equal(result.code, "PII_ENCRYPTION_KEY_MISSING");
+  assert.equal(console.error.mock.calls.length, 1);
+  const [eventName, fields] = console.error.mock.calls[0].arguments;
+  assert.match(eventName, /native_commerce_unexpected_error/);
+  assert.equal(fields.code, "PII_ENCRYPTION_KEY_MISSING", "o log deve ter o código estável, não Error.prototype.name genérico (\"Error\")");
+});
+
+test("handlePersistNativeCheckoutPii: chave de PII malformada (CHECKOUT_PII_HMAC_KEY_INVALID) responde 503 PII_ENCRYPTION_KEY_INVALID", async (t) => {
+  t.mock.method(console, "error", () => {});
+  const result = await handlePersistNativeCheckoutPii(
+    guestOwner,
+    { checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "ffffffff-ffff-ffff-ffff-ffffffffffff", pii: {} },
+    basePiiDeps({ persistNativeCheckoutPii: async () => { throw new Error("CHECKOUT_PII_HMAC_KEY_INVALID"); } }),
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 503);
+  assert.equal(result.code, "PII_ENCRYPTION_KEY_INVALID");
+  const [, fields] = console.error.mock.calls[0].arguments;
+  assert.equal(fields.code, "PII_ENCRYPTION_KEY_INVALID");
+});
+
 test("handleMarkNativeCheckoutReady: um erro genuinamente desconhecido vira 502 e é logado como native_commerce_unexpected_error, sem PII", async (t) => {
   t.mock.method(console, "error", () => {});
   const dbError = new Error("Failed query: select * from mark_native_checkout_ready(...)");
