@@ -428,79 +428,27 @@ carrinhos nativos ainda têm reserva ativa):
    porque o dono confirmou que isto é requisito do canário, não um caso
    raro a tratar manualmente depois).
 
-### 6.3 Cancelamento e estorno pós-pagamento (requisito do canário)
+### 6.3 Cancelamento e estorno pós-pagamento
 
-**Política confirmada pelo dono**: se um pedido nativo já pago não pode
-ser atendido por falta real de estoque no Olist (Seção 6.2), o pedido é
-**cancelado e o pagamento estornado** — não há tentativa de substituição
-automática nem contato assíncrono como alternativa a isto (pode
-complementar, mas o cancelamento+estorno é o requisito mínimo).
+**Atualizado em 2026-09-25 — ver [`order-cancellation-and-returns.md`](order-cancellation-and-returns.md)
+para a política completa e atual.** Esta seção ficava desatualizada em
+relação à decisão mais recente do dono e foi substituída por aquele
+documento; mantida aqui só como ponteiro, não repete o conteúdo.
 
-**O que já existe, reaproveitável**:
+Resumo do que mudou desde a versão original desta seção: o estorno é
+**sempre manual** nesta fase (painel do provedor, SLA 24h úteis) — a
+chamada real de estorno em cada adapter de pagamento **não é** mais
+bloqueadora do canário, é fase futura. O cancelamento do canário também é
+manual (WhatsApp + painel do Olist) — o evento `order.cancel` automatizado
+ao outbox (Seção 7 abaixo) também **não é** mais bloqueador do canário,
+vira Fase 1+. Ver `canary-minimum-scope.md` §3 para o registro formal
+dessa reclassificação.
 
-- `orders.status` já permite a transição `confirmed → cancelled`
-  (`CURRENT_ORDER_STATE_MACHINE`, ver doc 82 §3).
-- `createNativeRefund`/`transitionNativeRefund`
-  (`lib/db/nativePayment.ts:98,136`) já modelam o **estado** de um
-  reembolso (`refund_status`: `requested → processing → completed |
-  failed | cancelled`) na ledger nativa — dual-granted `persi_app`/
-  `persi_worker`, já prontos para registrar que um reembolso foi pedido e
-  seu resultado.
-
-**O que NÃO existe — gap real, pré-existente, que este requisito torna
-bloqueador (antes era `OPERATIONAL_FOLLOWUP` adiado)**:
-
-1. **Nenhum adapter de pagamento chama a API de estorno do provedor.**
-   Confirmado por grep: `services/payments/{inter,mercadopago,pagbank}/*`
-   só **reconhecem** um status `refunded` quando o provedor já reporta
-   isso (webhook/consulta) — nenhum código **inicia** um estorno.
-   `docs/database/76-native-mercadopago-gateway-reanchoring.md` §9 já
-   documenta isto explicitamente para o Mercado Pago ("no refund
-   implementation, no existing capability to wire"); o mesmo vale, por
-   inspeção, para os adapters do Inter e do PagBank. Isto precisa ser
-   construído para os três, um requisito novo que este design de Olist
-   está expondo, não uma consequência da integração Olist em si.
-   **A CONFIRMAR** (fora do escopo de pesquisa desta rodada, que foi só
-   sobre a API do Olist): a documentação oficial de cada provedor —
-   Banco Inter (devolução de Pix; boleto normalmente não é "estornado", é
-   deixado expirar ou baixado manualmente), Mercado Pago (endpoint de
-   reembolso total/parcial), PagBank (reembolso de cartão/Apple Pay/
-   Google Pay) — prazos, se aceitam estorno parcial, e taxas envolvidas.
-2. **`order.cancel` (Olist) continua não resolvido** — doc 82 §4 já
-   registrava isto como gap adiável (`POST_V1_OPERATIONAL_GAP`). Com a
-   política de cancelamento agora obrigatória, ele deixa de ser adiável
-   **sempre que o pedido já tiver sido exportado ao Olist antes do
-   cancelamento** (cenário plausível: export acontece na aprovação do
-   pagamento — Seção 7 — e a baixa de estoque no Olist também acontece na
-   aprovação — Seção 2.4 — então o pedido pode já existir no Olist no
-   momento em que a divergência de estoque é detectada). Sem um jeito de
-   avisar o Olist, o pedido cancelado no site ficaria "fantasma" do lado
-   do Olist. **A CONFIRMAR_OLIST**: se a API de pedidos do Olist aceita
-   cancelamento pós-criação (a lista de endpoints, Seção 2.1, não
-   confirmou um "cancelar pedido" explícito — só "atualizar situação",
-   que talvez aceite `situacao=2` "Cancelado").
-
-**Runbook proposto** (sequência, não código):
-
-1. Divergência de estoque detectada (Seção 6.2) aponta uma reserva já
-   confirmada como pedido pago sem estoque real correspondente.
-2. Transição `orders.status: confirmed → cancelled` (mecanismo já
-   existente).
-3. `createNativeRefund` registra a intenção de estorno (mecanismo já
-   existente) — valor total do pedido, motivo `stock_unavailable_after_sync`.
-4. **[A CONSTRUIR]** Adapter do provedor correspondente executa o estorno
-   real via API do provedor; `transitionNativeRefund` grava o resultado
-   (`completed`/`failed`).
-5. **[A CONSTRUIR]** Se o pedido já tinha sido exportado ao Olist
-   (existe `external_mappings system='olist' entity_type='order'` para
-   ele), um evento `order.cancel` é enfileirado no mesmo outbox (Seção 7)
-   avisando o Olist.
-6. Cliente é notificado do cancelamento e do estorno (depende de
-   `docs/database/83-transactional-email-v1-design.md`, hoje design-only
-   — Fase 2 original, mas o e-mail de cancelamento especificamente também
-   vira dependência do canário por causa desta política).
-7. Todo o fluxo gera evento de observabilidade (Seção 9) sem PII —
-   identificadores do pedido/reembolso apenas.
+O que continua válido e reaproveitável sem mudança: `orders.status`
+permite `confirmed → cancelled` (doc 82 §3); `createNativeRefund`/
+`transitionNativeRefund` (`lib/db/nativePayment.ts:98,136`) continuam o
+mecanismo certo para registrar o estorno manual na ledger nativa, mesmo
+sem uma chamada de API automática por trás dele.
 
 ## 7. Export de pedido site → Olist
 
@@ -517,10 +465,11 @@ repete esse conteúdo; a única atualização é de contexto:
   **bloqueador do canário** — atualiza a prioridade, não o design.
 - O payload usa `numeroPedidoEcommerce` (Seção 2.3) para carregar a
   referência do pedido Persi.
-- `order.cancel` pós-confirmação **deixou de ser um gap adiável** — a
-  política de oversell do dono (Seção 6.3) exige cancelamento mesmo após
-  export, então este evento entra no escopo da Fase 1 (Seção 11), não mais
-  `POST_V1_OPERATIONAL_GAP`.
+- `order.cancel` pós-confirmação **volta a ser `POST_V1_OPERATIONAL_GAP`**
+  (atualizado em 2026-09-25 — ver Seção 6.3 e
+  [`order-cancellation-and-returns.md`](order-cancellation-and-returns.md)):
+  o cancelamento do canário é manual no painel do Olist, então nenhum
+  evento automatizado ao outbox é necessário até a Fase 1+.
 
 ### 7.1 Dados fiscais (CPF/CNPJ/IE) — reinvestigação
 
@@ -697,18 +646,36 @@ envelhecida), com runbooks específicos:
 
 ## 11. Fases
 
+**Atualizado em 2026-09-25**: ver
+[`canary-minimum-scope.md`](canary-minimum-scope.md) para a lista
+consolidada e atual do que bloqueia o canário e do que foi adiado — a
+divisão abaixo ficou desatualizada em dois pontos específicos (cancelamento
+e estorno, ver nota) e não deve ser lida isoladamente.
+
 **Fase 1 (canário)** — bloqueadora para o primeiro pedido nativo real:
 
 - Derivação/verificação do mapeamento SKU (Seção 4, agora por query direta,
   sem chamada ao Olist para descobrir correspondência).
 - Sync Olist→site de catálogo/preço/estoque, webhook + reconciliação
   (Seção 5).
-- Export de pedido pago site→Olist via outbox (Seção 7, = 82 completo),
-  **incluindo `order.cancel`** (deixou de ser Fase 2 — Seção 6.3/7).
-- **Cancelamento + estorno pós-pagamento** (Seção 6.3) — inclui construir a
-  chamada real de estorno nos três adapters de pagamento (Inter/Mercado
-  Pago/PagBank), hoje inexistente para qualquer um dos três.
+- Export de pedido pago site→Olist via outbox (Seção 7, = 82 completo).
+  `order.cancel` **não** faz parte disto — ver nota abaixo.
 - Runbook mínimo de falha (Seção 10).
+
+**Nota (substitui o que esta seção dizia antes sobre cancelamento/estorno)**:
+o cancelamento e o estorno do canário são **manuais** (WhatsApp + painel do
+Olist + painel do provedor de pagamento) — ver
+[`order-cancellation-and-returns.md`](order-cancellation-and-returns.md).
+Não há trabalho de código bloqueando o canário por causa disso; o que
+antes estava listado aqui (`order.cancel` automatizado, chamada real de
+estorno nos três adapters de pagamento) passa para a Fase 1+ e para uma
+fase futura, respectivamente.
+
+**Fase 1+ (logo após o canário, antes de ampliar tráfego)**:
+
+- Botão de cancelamento no painel do cliente e página "Acompanhar pedido"
+  para convidados (`order-cancellation-and-returns.md` §4, §6).
+- Evento `order.cancel` automatizado ao outbox (Seção 7).
 
 **Fase 2 (pós-canário)** — não bloqueia o primeiro pedido:
 
@@ -720,6 +687,10 @@ envelhecida), com runbooks específicos:
 - Notificações transacionais nativas ligadas a esses eventos (depende
   também de `docs/database/83-transactional-email-v1-design.md`, hoje
   design-only).
+
+**Fase seguinte** — devolução por arrependimento pelo site
+(`order-cancellation-and-returns.md` §3, §6) e estorno automático via API
+de cada provedor (fase futura, sem prazo definido).
 
 ## 12. O que depende do dono
 
