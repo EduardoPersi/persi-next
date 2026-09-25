@@ -19,6 +19,7 @@ detalhados — cada seção aponta para onde o detalhe técnico vive.
 | Cancelamento pelo cliente (só até faturar) | `order-cancellation-and-returns.md` | Decisão registrada, canal = WhatsApp nesta fase |
 | Estorno financeiro (manual, painel do provedor, ≤24h úteis) | `order-cancellation-and-returns.md` §1 | Decisão registrada |
 | Cancelamento vindo do Olist → reflete no site | `order-cancellation-and-returns.md` §5 | Decisão registrada, depende do sync acima |
+| Ação administrativa auditada para cancelar pedido nativo + registrar estorno manual no ledger | §5.3 abaixo | **Bloqueador, nada construído** — janela de inconsistência sem isso |
 
 ## 2. O que o canário explicitamente NÃO precisa (adiado, não esquecido)
 
@@ -180,6 +181,80 @@ PII original (HMAC é unidirecional). Devolver esse valor ao cliente que
 acabou de enviar o mesmo PII é seguro — ele não aprende nada que não
 soubesse, e o valor não é PII em si. Nenhuma mudança de código necessária;
 item fechado por esta confirmação.
+
+### 5.3 Cancelamento admin-side pós-pagamento — bloqueador do canário
+
+Registrado em 2026-09-25. Diferente de 5.1/5.2 (verificar/confirmar), este
+item é um **bloqueador real**: sem ele, existe uma janela de inconsistência
+inevitável entre o cancelamento no Olist e o reflexo no site.
+
+**O problema exato**: enquanto o sync Olist→site de cancelamento
+(`order-cancellation-and-returns.md` §5) não existir, um pedido cancelado
+no Olist continua **"pago" no lado nativo** — reserva de estoque
+(`inventory_reservations.status='confirmed'`), a página do pedido para o
+cliente, e a ledger de pagamento (`payment_attempts`/`orders`) todos
+continuam mostrando o estado antigo. Não há nenhum mecanismo hoje que
+detecte ou corrija isso automaticamente.
+
+**Requisito mínimo**: uma ação administrativa **auditada** (quem, quando,
+motivo) que:
+
+1. Transiciona `orders.status: confirmed → cancelled`.
+2. Registra o estorno manual na ledger nativa (`createNativeRefund`/
+   `transitionNativeRefund`, `lib/db/nativePayment.ts:98,136`) — valor,
+   provedor, id da devolução no provedor.
+3. Usa a orquestração já existente, **sem SQL manual em produção**.
+
+**Confirmado nesta rodada (read-only) sobre a "orquestração existente"**:
+`apply_verified_payment_transition`
+(`supabase/migrations/20260921000000_shared_payment_order_inventory_orchestration.sql:94`)
+é a função que hoje transiciona pedido+estoque de forma atômica — mas ela
+**não serve para este caso sem extensão**. O próprio comentário da
+migration já documenta isso como gap conhecido, não um bug silencioso
+(linhas 85-93): *"refunded/partially_refunded are deliberately NOT handled
+here at all... orders.status has no 'refunded' state... A resulting_status
+of refunded/partially_refunded still updates the payment ledger... but
+leaves order and inventory untouched — documented as a POST_V1 gap"*. Ou
+seja: mesmo que a ledger de pagamento seja atualizada para `refunded`
+(quando o provedor reporta isso — ver item seguinte), `orders.status` e a
+reserva de estoque **não** mudam sozinhos hoje. A ação administrativa
+precisa cobrir exatamente essa lacuna já identificada, não inventar uma
+nova.
+
+Nota sobre estoque: como o Olist é a autoridade de saldo físico
+(`olist-integration-design.md` §6), a correção do `quantity_on_hand` após
+um cancelamento pós-confirmação **não** deveria ser responsabilidade desta
+ação administrativa — uma vez que o pedido seja cancelado no Olist, o
+próprio sync Olist→site (quando existir) corrige o saldo. A ação
+administrativa nativa cobre pedido + ledger de pagamento; reservas
+`confirmed` não têm hoje uma função de reversão (`release_inventory_reservation`
+só age sobre reservas `active`, `20260823110400_inventory.sql:174` —
+confirmado nesta rodada) e não deveriam precisar de uma, se o sync Olist
+for a fonte de verdade do saldo. Ponto a validar quando esta ação for
+desenhada em detalhe, não resolvido aqui.
+
+**Confirmado nesta rodada, provedor por provedor, sobre a terceira
+pergunta (o estorno manual gera um webhook que o adapter já reconhece?)**:
+
+| Provedor | O adapter reconhece um status de estorno hoje? |
+| --- | --- |
+| Banco Inter (Pix/boleto) | **Não** — nenhuma menção a estorno/devolução em `services/payments/inter/nativeAdapter.ts` ou no webhook nativo (`app/api/webhooks/native/inter/route.ts`). Se a devolução manual de Pix gera algum aviso do lado do Banco Inter, este código não o processa. |
+| Mercado Pago | **Parcialmente** — `services/payments/mercadopago/nativeAdapter.ts:85,92` já normaliza um status `refunded` reportado pelo provedor (webhook/consulta) para o valor correspondente da ledger. Mas, por causa do gap acima, isso atualiza só `payment_attempts` — pedido e estoque continuam intocados de qualquer forma. |
+| PagBank | **Não, por desenho** — `services/payments/pagbank/nativeAdapter.ts:74-84` documenta explicitamente que um valor de estorno/chargeback nunca apareceu no conjunto de status já validado; se aparecer, o código **lança erro** em vez de classificar errado (decisão deliberada, `docs/database/77` §6, não um gap a fechar).
+
+**Conclusão para o requisito mínimo**: independentemente do que cada
+provedor eventualmente reportar, a ação administrativa **precisa ser a via
+principal de registro** — nenhum dos três fecha o ciclo pedido+estoque
+sozinho hoje, e dois dos três (Inter, PagBank) não atualizam nem a ledger
+de pagamento automaticamente.
+
+**Não decidido aqui** (fica para quando esta ação for desenhada): a
+interface exata (rota admin? script assinado? tela?), o schema exato de
+auditoria (reaproveitar `order_status_events` — já existe e já grava
+`actor_type`/`actor_id`/`reason`, `lib/db/schema/orders.ts` — ou uma tabela
+nova), e se `apply_verified_payment_transition` deve ganhar um novo
+`p_event_type` para este caso ou se uma função nova, dedicada a
+cancelamento admin-side, é mais clara.
 
 ## 6. Referências
 
