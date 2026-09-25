@@ -37,6 +37,27 @@ from params, checkout_sessions cs
 where cs.id = params.checkout_id
 group by cs.status, cs.version, cs.expires_at;
 
+-- 2b) Estado do PII deste checkout: se foi gravado, se ainda está dentro
+--     da validade, e em que versão do checkout isso aconteceu (compare
+--     com o "version" do item 2 -- persist_checkout_pii sempre incrementa
+--     a versão, então version_apos_pii deve ser > a versão antes do pii).
+--     Nenhum valor de PII, cifra ou fingerprint é retornado -- só flags
+--     booleanas e timestamps (achado do smoke test de staging, 2026-09-25:
+--     "ready" falhando com CHECKOUT_PII_REQUIRED_OR_EXPIRED mesmo com
+--     "pii" respondendo 200 -- esta consulta confirma que o PII FOI
+--     gravado, isolando o problema para o fingerprint enviado a "ready",
+--     não para a gravação em si).
+select
+  'checkout_pii' as verificacao,
+  (pii_ciphertext is not null) as tem_pii_gravado,
+  (pii_fingerprint is not null) as tem_fingerprint,
+  (pii_destination_fingerprint is not null) as tem_destination_fingerprint,
+  (pii_expires_at is not null and pii_expires_at > now()) as pii_ainda_valido,
+  pii_updated_at,
+  version as version_apos_pii
+from params, checkout_sessions cs
+where cs.id = params.checkout_id;
+
 -- 3) Reservas de estoque ligadas a este checkout: quantas ativas, quantas
 --    já expiradas/liberadas/confirmadas — agrupado por status, sem listar
 --    reserva por reserva.

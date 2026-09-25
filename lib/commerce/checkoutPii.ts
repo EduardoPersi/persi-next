@@ -270,18 +270,45 @@ function decodeSecret(value: string | undefined, error: string): Buffer {
   return decoded;
 }
 
+// Staging (2026-09-25): a hosting panel's env-var editor mangled the
+// leading `{"` off a pasted CHECKOUT_PII_ENCRYPTION_KEYS_JSON value, so
+// this also accepts one plain variable per key -- no JSON, no characters
+// a panel's editor might choke on. `<KEYID>` is `keyId` upper-cased with
+// every character outside [A-Z0-9_] replaced by "_" (matches the already
+// broader CHECKOUT_PII_KEY_ID format, which allows "." and "-").
+function perKeyEnvVarName(keyId: string): string {
+  return `CHECKOUT_PII_ENCRYPTION_KEY_${keyId.toUpperCase().replace(/[^A-Z0-9_]/g, "_")}`;
+}
+
 export function environmentCheckoutPiiKeys(environment: NodeJS.ProcessEnv = process.env): CheckoutPiiKeyProvider {
   const keyId = environment.CHECKOUT_PII_KEY_ID?.trim();
   if (!keyId || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$/.test(keyId)) throw new Error("CHECKOUT_PII_KEY_ID_INVALID");
-  let configured: unknown;
-  try { configured = JSON.parse(environment.CHECKOUT_PII_ENCRYPTION_KEYS_JSON ?? ""); } catch { throw new Error("CHECKOUT_PII_KEYS_INVALID"); }
-  if (!configured || typeof configured !== "object" || Array.isArray(configured)) throw new Error("CHECKOUT_PII_KEYS_INVALID");
+
+  // CHECKOUT_PII_ENCRYPTION_KEYS_JSON is the primary format (one variable,
+  // any number of keyIds) -- tried first, but a missing or unparseable
+  // value falls through to the per-key variable below instead of throwing
+  // immediately, so a mangled JSON paste doesn't block the fallback from
+  // working. A JSON value that DOES parse but simply lacks the requested
+  // keyId also falls through per-key, in encryptionKey() below.
+  let jsonKeys: Record<string, unknown> | null = null;
+  const rawJson = environment.CHECKOUT_PII_ENCRYPTION_KEYS_JSON?.trim();
+  if (rawJson) {
+    try {
+      const parsed: unknown = JSON.parse(rawJson);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) jsonKeys = parsed as Record<string, unknown>;
+    } catch {
+      // Deliberately swallowed -- see comment above.
+    }
+  }
+
   return {
     currentKeyId: () => keyId,
     encryptionKey: (requested) => {
-      const encoded = (configured as Record<string, unknown>)[requested];
-      if (typeof encoded !== "string") throw new Error("CHECKOUT_PII_UNKNOWN_KEY");
-      return decodeSecret(encoded, "CHECKOUT_PII_KEY_INVALID");
+      const fromJson = jsonKeys?.[requested];
+      if (typeof fromJson === "string") return decodeSecret(fromJson, "CHECKOUT_PII_KEY_INVALID");
+      const fromPerKeyVar = environment[perKeyEnvVarName(requested)];
+      if (typeof fromPerKeyVar === "string" && fromPerKeyVar.trim()) return decodeSecret(fromPerKeyVar, "CHECKOUT_PII_KEY_INVALID");
+      throw new Error("CHECKOUT_PII_UNKNOWN_KEY");
     },
     fingerprintKey: () => decodeSecret(environment.CHECKOUT_PII_HMAC_KEY, "CHECKOUT_PII_HMAC_KEY_INVALID"),
   };

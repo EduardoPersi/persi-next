@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CheckoutPiiValidationError, canonicalizeCheckoutPii } from "../lib/commerce/checkoutPii.ts";
+import { CheckoutPiiValidationError, canonicalizeCheckoutPii, environmentCheckoutPiiKeys } from "../lib/commerce/checkoutPii.ts";
 
 // Direct unit coverage for canonicalizeCheckoutPii -- until now this
 // function had NO test calling it directly (only indirectly, through
@@ -94,4 +94,68 @@ test("canonicalizeCheckoutPii: a mensagem de erro nunca contém o valor rejeitad
   const error = captureThrow(() => canonicalizeCheckoutPii(validEnvelope({ contact: { phone: "11999999999" } })));
   assert.ok(error instanceof CheckoutPiiValidationError);
   assert.doesNotMatch(JSON.stringify({ message: error.message, field: error.field }), /11999999999/);
+});
+
+// ---------- environmentCheckoutPiiKeys (achado do smoke test de staging, 2026-09-25) ----------
+
+const SAMPLE_KEY_A = Buffer.alloc(32, 0xaa).toString("base64url");
+const SAMPLE_KEY_B = Buffer.alloc(32, 0xbb).toString("base64url");
+const SAMPLE_HMAC_KEY = Buffer.alloc(32, 0xcc).toString("base64url");
+
+test("environmentCheckoutPiiKeys: formato JSON (CHECKOUT_PII_ENCRYPTION_KEYS_JSON) continua funcionando -- comportamento pré-existente", () => {
+  const provider = environmentCheckoutPiiKeys({
+    CHECKOUT_PII_KEY_ID: "v1",
+    CHECKOUT_PII_ENCRYPTION_KEYS_JSON: JSON.stringify({ v1: SAMPLE_KEY_A }),
+    CHECKOUT_PII_HMAC_KEY: SAMPLE_HMAC_KEY,
+  });
+  assert.equal(provider.currentKeyId(), "v1");
+  assert.deepEqual(provider.encryptionKey("v1"), Buffer.from(SAMPLE_KEY_A, "base64url"));
+});
+
+test("environmentCheckoutPiiKeys: aceita CHECKOUT_PII_ENCRYPTION_KEY_<KEYID> quando CHECKOUT_PII_ENCRYPTION_KEYS_JSON não está definida", () => {
+  const provider = environmentCheckoutPiiKeys({
+    CHECKOUT_PII_KEY_ID: "v1",
+    CHECKOUT_PII_ENCRYPTION_KEY_V1: SAMPLE_KEY_A,
+    CHECKOUT_PII_HMAC_KEY: SAMPLE_HMAC_KEY,
+  });
+  assert.deepEqual(provider.encryptionKey("v1"), Buffer.from(SAMPLE_KEY_A, "base64url"));
+});
+
+test("environmentCheckoutPiiKeys: cai para CHECKOUT_PII_ENCRYPTION_KEY_<KEYID> quando o JSON está malformado (o cenário real: um painel cortou o `{\" inicial)", () => {
+  const provider = environmentCheckoutPiiKeys({
+    CHECKOUT_PII_KEY_ID: "v1",
+    CHECKOUT_PII_ENCRYPTION_KEYS_JSON: `v1":"${SAMPLE_KEY_A}"}`, // `{"` cortado -- JSON.parse falha
+    CHECKOUT_PII_ENCRYPTION_KEY_V1: SAMPLE_KEY_A,
+    CHECKOUT_PII_HMAC_KEY: SAMPLE_HMAC_KEY,
+  });
+  assert.deepEqual(provider.encryptionKey("v1"), Buffer.from(SAMPLE_KEY_A, "base64url"));
+});
+
+test("environmentCheckoutPiiKeys: keyId com caracteres não alfanuméricos (ex.: \"2026.09\") vira sufixo de variável seguro (pontos/traços -> _)", () => {
+  const provider = environmentCheckoutPiiKeys({
+    CHECKOUT_PII_KEY_ID: "2026.09-a",
+    CHECKOUT_PII_ENCRYPTION_KEY_2026_09_A: SAMPLE_KEY_A,
+    CHECKOUT_PII_HMAC_KEY: SAMPLE_HMAC_KEY,
+  });
+  assert.deepEqual(provider.encryptionKey("2026.09-a"), Buffer.from(SAMPLE_KEY_A, "base64url"));
+});
+
+test("environmentCheckoutPiiKeys: nenhum dos dois formatos presente -> CHECKOUT_PII_UNKNOWN_KEY ao tentar usar a chave", () => {
+  const provider = environmentCheckoutPiiKeys({
+    CHECKOUT_PII_KEY_ID: "v1",
+    CHECKOUT_PII_HMAC_KEY: SAMPLE_HMAC_KEY,
+  });
+  const error = captureThrow(() => provider.encryptionKey("v1"));
+  assert.ok(error instanceof Error);
+  assert.equal(error.message, "CHECKOUT_PII_UNKNOWN_KEY");
+});
+
+test("environmentCheckoutPiiKeys: JSON presente mas sem a keyId pedida cai para a variável por chave (não falha só porque o JSON existe)", () => {
+  const provider = environmentCheckoutPiiKeys({
+    CHECKOUT_PII_KEY_ID: "v2",
+    CHECKOUT_PII_ENCRYPTION_KEYS_JSON: JSON.stringify({ v1: SAMPLE_KEY_A }), // não tem "v2"
+    CHECKOUT_PII_ENCRYPTION_KEY_V2: SAMPLE_KEY_B,
+    CHECKOUT_PII_HMAC_KEY: SAMPLE_HMAC_KEY,
+  });
+  assert.deepEqual(provider.encryptionKey("v2"), Buffer.from(SAMPLE_KEY_B, "base64url"));
 });

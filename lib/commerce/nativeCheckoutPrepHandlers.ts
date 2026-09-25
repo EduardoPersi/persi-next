@@ -291,7 +291,7 @@ export async function handlePersistNativeCheckoutPii(
   owner: CheckoutOwner,
   input: PersistPiiInput,
   deps: PersistPiiDeps = defaultPersistPiiDeps,
-): Promise<HandlerResult<{ checkoutId: string; checkoutVersion: string }>> {
+): Promise<HandlerResult<{ checkoutId: string; checkoutVersion: string; fingerprint: string; destinationFingerprint: string }>> {
   if (!owner.customerId && !owner.guestToken) return fail(422, "OWNER_CONTEXT_INVALID", "Dados de identificação inválidos.");
   try {
     const ownershipError = await requireOwnedCheckout(input.checkoutId, owner, deps);
@@ -307,7 +307,21 @@ export async function handlePersistNativeCheckoutPii(
     );
     // Never log input.pii or the envelope -- only identifiers (design point h).
     logNativeCommerceEvent("native_checkout_pii_persisted", { checkoutId: result.checkoutId });
-    return ok(200, { checkoutId: result.checkoutId, checkoutVersion: result.checkoutVersion.toString() });
+    // Staging (2026-09-25): `fingerprint` was missing here entirely, so the
+    // client had no legitimate way to learn the value mark-ready requires
+    // as expectedPiiFingerprint -- it's a one-way HMAC of PII the caller
+    // already submitted (never the PII itself, never reversible), computed
+    // server-side with a secret key the client never has, so returning it
+    // is the only way this two-step flow can work at all. Every pii->ready
+    // call in staging failed with CHECKOUT_PII_REQUIRED_OR_EXPIRED (a wrong-
+    // fingerprint mismatch, not actually "missing/expired") until this was
+    // added.
+    return ok(200, {
+      checkoutId: result.checkoutId,
+      checkoutVersion: result.checkoutVersion.toString(),
+      fingerprint: result.fingerprint,
+      destinationFingerprint: result.destinationFingerprint,
+    });
   } catch (error) {
     return mapCheckoutError(error, "POST /api/checkout/native/pii");
   }

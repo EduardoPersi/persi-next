@@ -34,7 +34,7 @@ function basePiiDeps(overrides = {}) {
   return {
     readNativeCheckoutOwnership: async () => baseCheckout(),
     readNativeCartById: async () => baseCart(),
-    persistNativeCheckoutPii: async () => ({ checkoutId: "checkout-1", checkoutVersion: 2n }),
+    persistNativeCheckoutPii: async () => ({ checkoutId: "checkout-1", checkoutVersion: 2n, fingerprint: "a".repeat(64), destinationFingerprint: "b".repeat(64) }),
     ...overrides,
   };
 }
@@ -124,11 +124,49 @@ test("handlePrepareNativeCheckout falha fechado (503) quando não há exatamente
 
 test("handlePersistNativeCheckoutPii: chave repetida não chama persistNativeCheckoutPii duas vezes", async () => {
   let callCount = 0;
-  const deps = basePiiDeps({ persistNativeCheckoutPii: async () => { callCount += 1; return { checkoutId: "checkout-1", checkoutVersion: 2n }; } });
+  const deps = basePiiDeps({ persistNativeCheckoutPii: async () => { callCount += 1; return { checkoutId: "checkout-1", checkoutVersion: 2n, fingerprint: "a".repeat(64), destinationFingerprint: "b".repeat(64) }; } });
   const input = { checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "66666666-6666-6666-6666-666666666666", pii: { any: "shape" } };
   await handlePersistNativeCheckoutPii(guestOwner, input, deps);
   await handlePersistNativeCheckoutPii(guestOwner, input, deps);
   assert.equal(callCount, 1);
+});
+
+// ---------- achado do smoke test de staging, 2026-09-25 ----------
+
+test("handlePersistNativeCheckoutPii: a resposta de sucesso inclui fingerprint e destinationFingerprint (sem eles, ready nunca pode ser chamado com sucesso)", async () => {
+  const result = await handlePersistNativeCheckoutPii(
+    guestOwner,
+    { checkoutId: "checkout-1", expectedVersion: "1", idempotencyKey: "12121212-1212-1212-1212-121212121212", pii: {} },
+    basePiiDeps({ persistNativeCheckoutPii: async () => ({ checkoutId: "checkout-1", checkoutVersion: 7n, fingerprint: "c".repeat(64), destinationFingerprint: "d".repeat(64) }) }),
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.data.fingerprint, "c".repeat(64));
+  assert.equal(result.data.destinationFingerprint, "d".repeat(64));
+});
+
+test("fluxo pii -> ready: o fingerprint que a resposta de pii devolve é exatamente o que precisa ser repassado a ready (reproduz o bug de staging)", async () => {
+  // Antes desta correção, handlePersistNativeCheckoutPii não devolvia
+  // `fingerprint` -- um script/cliente correto (que só pode conhecer o
+  // fingerprint através dessa resposta, já que é um HMAC calculado no
+  // servidor com uma chave que o cliente nunca tem) só conseguia enviar um
+  // valor inventado a ready, que a SQL de mark_native_checkout_ready
+  // rejeitava com CHECKOUT_PII_REQUIRED_OR_EXPIRED (mismatch de
+  // fingerprint, não PII de fato ausente/expirado).
+  const piiResult = await handlePersistNativeCheckoutPii(
+    guestOwner,
+    { checkoutId: "checkout-1", expectedVersion: "3", idempotencyKey: "13131313-1313-1313-1313-131313131313", pii: {} },
+    basePiiDeps({ persistNativeCheckoutPii: async () => ({ checkoutId: "checkout-1", checkoutVersion: 4n, fingerprint: "e".repeat(64), destinationFingerprint: "f".repeat(64) }) }),
+  );
+  assert.equal(piiResult.ok, true);
+
+  let capturedExpectedFingerprint;
+  const readyResult = await handleMarkNativeCheckoutReady(
+    guestOwner,
+    { checkoutId: "checkout-1", expectedVersion: piiResult.data.checkoutVersion, expectedPiiFingerprint: piiResult.data.fingerprint },
+    { markNativeCheckoutReady: async (input) => { capturedExpectedFingerprint = input.expectedPiiFingerprint; return { id: "checkout-1" }; } },
+  );
+  assert.equal(readyResult.ok, true);
+  assert.equal(capturedExpectedFingerprint, "e".repeat(64), "ready deve receber exatamente o fingerprint que pii devolveu, não um placeholder");
 });
 
 test("handlePersistNativeCheckoutPii falha fechado (422) sem customerId nem guestToken", async () => {
