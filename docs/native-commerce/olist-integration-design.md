@@ -114,15 +114,35 @@ obrigatória por causa disso). Decimais usam `.` como separador.
 
 ### 2.3 Campo de referência externa / idempotência no pedido
 
-`POST` de pedido de venda aceita **`numeroPedidoEcommerce`** (string,
-identificador externo) — é o campo natural para carregar o `orders.id`/
-`order_number` do Persi, e é exatamente o campo que o webhook de situação
-de pedido devolve (`idPedidoEcommerce`) para correlacionar de volta.
-**A CONFIRMAR_OLIST**: se esse campo também funciona como chave de
-idempotência no servidor (rejeita/retorna o mesmo pedido em um reenvio) ou
-é apenas um campo de referência sem enforcement — Seção 7/82 §7 já tratam
-essa incerteza com duas camadas de idempotência independentes do
-comportamento do Olist.
+**Estrutura exata confirmada nesta rodada**
+([Criar pedido — Olist ERP API v3](https://api-docs.erp.olist.com/api-reference/pedidos/criar-pedido)):
+`numeroPedidoEcommerce` **não é um campo plano** — vive dentro de um objeto
+`ecommerce` no corpo da requisição: `ecommerce: { id, numeroPedidoEcommerce
+}`. `id` (inteiro, nullable) é o identificador do **canal/integração
+e-commerce** que originou o pedido — a mesma peça que aparece como
+`dados.idEcommerce` no payload de webhook (Seção 2.2) e como
+`ecommerce.id`/`ecommerce.canalVenda` na resposta de `GET /pedidos`
+(também confirmado nesta rodada, com o filtro
+**`numeroPedidoEcommerce`** disponível diretamente em `GET /pedidos`, ao
+lado de `situacao`, `dataInicial`/`dataFinal`, `dataAtualizacao`, `cpfCnpj`,
+entre outros). **Isto responde a pergunta da Seção 14.7** sobre indicar o
+canal na criação do pedido — ver aquela seção para a decisão completa.
+`numeroPedidoEcommerce` continua sendo o campo natural para carregar o
+`orders.id`/`order_number` do Persi.
+
+**Confirmado pelo suporte Olist em 2026-09-25 (fecha o que antes era
+`A CONFIRMAR_OLIST`): o Olist NÃO bloqueia nem deduplica um pedido repetido
+com o mesmo `numeroPedidoEcommerce`** — enviar duas vezes cria dois pedidos
+reais. Consequência direta para 82 §7 (Camada 2 de idempotência): antes de
+**qualquer** (re)envio — inclusive depois de um timeout ou erro ambíguo —
+o adapter deve primeiro consultar `GET /pedidos?numeroPedidoEcommerce=...`
+e só criar um pedido novo se a consulta não retornar nada. Isto é mais
+forte que a checagem original de 82 §7 (que consultava só
+`external_mappings`, local): agora a consulta precisa ser feita **contra o
+próprio Olist**, porque um pedido pode ter sido criado do lado Olist sem a
+escrita local em `external_mappings` ter chegado a confirmar (exatamente o
+cenário "ambíguo" que 82 §7 já previa, agora com o mecanismo de resolução
+confirmado). Nunca reenviar em timeout sem essa consulta prévia.
 
 Outros campos confirmados no payload de criação de pedido: `consumidorFinal.cpfCnpj`,
 `valorFrete`, `valorDesconto` (valor plano — **não há campo de código de
@@ -184,11 +204,25 @@ mesma reserva duas vezes.
   permissões por módulo (leitura/gravação/exclusão).
 - Rate limit **por conta**, não por aplicativo (aplicativos da mesma conta
   dividem o limite): 30/30 a 140/100 requisições por minuto
-  (leitura/escrita) dependendo do plano contratado — **A CONFIRMAR COM O
-  DONO** qual plano a Persi tem.
-- **Nenhum ambiente de sandbox/teste foi encontrado** na documentação
-  pública. Testes de integração precisarão ser feitos contra a conta real
-  (com cuidado: qualquer escrita cria um produto/pedido real).
+  (leitura/escrita) dependendo do plano contratado. **Confirmado pelo
+  suporte Olist em 2026-09-25: plano da Persi é "Impulsione", 60
+  requisições/min por conta** (leitura e escrita), compartilhado com a
+  integração oficial Olist↔Woo — ver Seção 14.4 para o orçamento
+  recalculado com este número real.
+- **Nenhum ambiente de sandbox/teste foi encontrado para os "Aplicativos"
+  OAuth v3** — testes de integração via v3 precisam ser feitos contra a
+  conta real (com cuidado: qualquer escrita cria um produto/pedido real).
+  **Achado novo, mecanismo diferente**: a integração legada "Token API"/
+  "Ecommerce da Olist" (Menu → Configurações → Aba E-commerce → Token API,
+  ou Menu → Início → Loja de extensões) **permite gerar um token separado
+  por ambiente, incluindo um ambiente de Staging**, segundo a Central de
+  Ajuda ([Gestão Ecommerce - API - Configurações](https://ajuda.olist.com/hubs-e-plataformas-via-api/gestao-ecommerce-api-configuracoes)).
+  Isto é uma integração diferente da usada pelos "Aplicativos" OAuth v3
+  (Seção 14.7) — não resolve a falta de sandbox para pedidos via v3, e não
+  foi adotado neste plano (manteria uma segunda forma de autenticação só
+  para um ambiente de teste, complexidade não pedida agora); registrado
+  aqui para o dono avaliar depois, se o modo `dry_run` (Seção 14.1) não for
+  suficiente.
 - Vida útil de token de acesso/refresh: só encontrada em uma fonte
   não-oficial (PR de terceiro no GitHub, access token ~4h / refresh ~1
   dia) — **A CONFIRMAR_OLIST**, não tratar como garantido.
@@ -897,27 +931,35 @@ aprovação — Seção 2.4); direção da integração Olist↔Woo (Olist chama
 **Resolvido em 2026-09-25** (rodada de pesquisa pública, sem chamada à API
 do Olist): cancelamento é `situacao=2` via atualizar situação, não um
 endpoint dedicado (Seção 2.3); contagem de tentativas/backoff de webhook
-(Seção 2.2); estrutura de permissões por módulo dos "Aplicativos" e nomes
-de plano com limites de rate limit (Seção 14.3/14.4) — o número exato do
-plano da Persi continua em aberto, ver item 2 abaixo.
+(Seção 2.2); estrutura de permissões por módulo dos "Aplicativos" (Seção
+14.3); estrutura do objeto `ecommerce`/canal na criação de pedido (Seção
+2.3/14.7); confirmação do Olist de que não há dedupe server-side por
+`numeroPedidoEcommerce` (Seção 2.3).
+
+**Resolvido em 2026-09-25 (respostas diretas do suporte Olist, plano
+"Impulsione")**: rate limit real = 60 req/min por conta, compartilhado com
+o Woo (Seção 14.4); teto do site definido pelo dono em ~25–30/min (Seção
+14.4); decisão de não usar o token da integração "API do ERP" em nenhum
+ambiente, usando `ecommerce.id` no payload do pedido em vez disso (Seção
+14.7); ordem de configuração no painel (Seção 14.8).
 
 **Ainda em aberto**:
 
 1. Acesso real ao Olist: criar os dois "Aplicativos" OAuth v3 dedicados ao
-   native commerce, com as permissões exatas da Seção 14.3 (nunca
-   reaproveitar a credencial que a integração Olist↔Woo já usa — Seção 8).
-2. Confirmar o **plano contratado** (Build & Grow / Evolve & Boost / Master
-   / Lead & Maximize — Seção 14.4) — define o rate limit real e, por
-   consequência, o orçamento de requisições da Seção 14.4.
-3. Não há sandbox Olist encontrado — confirmar se o dono concorda em
-   testar contra a conta real com cuidado, ou se existe algum ambiente de
-   teste não documentado publicamente que a Persi já tenha acesso.
-4. Confirmar se existem produtos kit/composição ativos no catálogo hoje
+   native commerce, com as permissões exatas da Seção 14.3, e a integração
+   "Ecommerce da Olist" para obter o `idEcommerce` (Seção 14.7/14.8) — nunca
+   reaproveitar a credencial que a integração Olist↔Woo já usa (Seção 8).
+2. Não há sandbox Olist encontrado para os "Aplicativos" OAuth v3 —
+   confirmar se o dono concorda em testar contra a conta real com cuidado
+   (mitigado pelo modo `dry_run` para pedidos, Seção 14.1; sem mitigação
+   equivalente para o polling de leitura, que já é seguro por natureza —
+   leitura não cria efeito colateral).
+3. Confirmar se existem produtos kit/composição ativos no catálogo hoje
    (a Seção 4/6.3 já cobre como tratá-los quando existirem).
-5. Confirmar se há campo de código de cupom nomeado na API de pedido do
+4. Confirmar se há campo de código de cupom nomeado na API de pedido do
    Olist, ou se descontos de cupom precisam virar `valorDesconto` (valor
    plano) no export (Seção 2.3, Apêndice item "Cupom" da tabela Woo).
-6. **Novo, decorrente da política de cancelamento (Seção 6.3)**: para cada
+5. **Decorrente da política de cancelamento (Seção 6.3)**: para cada
    provedor de pagamento (Banco Inter, Mercado Pago, PagBank), confirmar
    na documentação oficial de cada um: existe endpoint de estorno
    total/parcial, prazo para executar, e alguma taxa envolvida. Pix/cartão
@@ -925,14 +967,21 @@ plano da Persi continua em aberto, ver item 2 abaixo.
    não é "estornável" (é apenas baixado/expirado) — como tratar um
    cancelamento pós-pagamento de boleto Inter especificamente é uma
    decisão pendente.
-7. **Alta prioridade, novo em 2026-09-25 — ver Seção 14.6**: confirmar com
-   o suporte Olist (não encontrado em documentação pública) se cadastrar as
-   URLs de webhook deste projeto (estoque, preço, situação de pedido)
-   substitui ou conflita com a URL de notificação já configurada pela
-   integração oficial Olist↔Woo. A tela de configuração documentada
-   publicamente usa singular ("a URL da notificação de pedidos"), o que
-   sugere um único slot por tipo de evento por conta — risco real de
-   sobrescrever a integração Woo em produção, não uma formalidade.
+6. **Alta prioridade, ver Seção 14.6/14.8 item 1**: confirmar com o
+   suporte Olist (ou inspecionando o painel `Aba E-commerce` sem alterar
+   nada) se cadastrar as URLs de webhook deste projeto (estoque, preço,
+   situação de pedido) substitui ou conflita com a URL de notificação já
+   configurada pela integração oficial Olist↔Woo, e se essa configuração
+   vive na mesma tela da integração "Ecommerce da Olist"/"Token API"
+   (Seção 14.7). A tela de configuração documentada publicamente usa
+   singular ("a URL da notificação de pedidos"), o que sugere um único
+   slot por tipo de evento por conta — risco real de sobrescrever a
+   integração Woo em produção, não uma formalidade.
+7. **Novo, decorrente da Seção 14.7**: confirmar na implementação se o
+   `ecommerce.id`/canal precisa estar "ativo" do lado Olist (vinculado a um
+   token válido da integração "Ecommerce da Olist") para que a reserva de
+   estoque automática do Olist (Seção 2.5) funcione, ou se basta o campo
+   estar preenchido no pedido — só verificável com um pedido de teste real.
 8. **Novo, decorrente da reinvestigação de CPF/CNPJ** (ver relatório
    separado desta rodada): confirmar se existe um plugin de campos
    brasileiros instalado no WordPress ao vivo (não visível neste
@@ -1018,73 +1067,109 @@ Camada 2 de idempotência), o adapter precisa **consultar** por
 `numeroPedidoEcommerce` para checar se o pedido já existe no Olist antes de
 criar de novo. Escrita sem leitura tornaria essa checagem impossível.
 
-Variável adicional, não ligada a nenhum app específico (é escolhida pelo
-site, não pelo Olist): `OLIST_WEBHOOK_SECRET` — token usado para validar as
-três rotas de webhook (Seção 5.2/14.2). Mais `OLIST_ORDER_EXPORT_MODE`
-(Seção 14.1/7.0).
+Variáveis adicionais, não ligadas a nenhum app OAuth específico:
+`OLIST_WEBHOOK_SECRET` — token usado para validar as três rotas de webhook
+(Seção 5.2/14.2, Fase futura); `OLIST_ORDER_EXPORT_MODE` (Seção 14.1/7.0);
+`OLIST_ECOMMERCE_CHANNEL_ID` — o `idEcommerce` numérico obtido ao criar a
+integração "Ecommerce da Olist" (Seção 14.7/14.8) uma única vez; **não é um
+segredo** (é um identificador de canal, não uma credencial), mas listado
+aqui por ser uma variável nova que o dono precisa cadastrar.
 
-Nenhuma dessas seis variáveis tem valor definido por este documento — são
-os **nomes** que o dono cadastra no hPanel do staging (e, depois, em
-produção) quando os apps forem criados no painel Olist.
+Nenhuma dessas sete variáveis tem valor secreto definido por este
+documento — são os **nomes** que o dono cadastra no hPanel do staging (e,
+depois, em produção) conforme os apps/integração forem criados no painel
+Olist (Seção 14.8 dá a ordem exata).
 
-### 14.4 Orçamento de rate limit — compartilhado com a integração Woo
+### 14.4 Orçamento de rate limit — recalculado com o plano real, token bucket em Postgres
 
-Confirmado nesta rodada: o limite é **por conta**, dividido entre **todos**
-os aplicativos dela — incluindo a integração oficial Olist↔Woo, que já
-consome parte desse limite hoje, em produção, de forma contínua. Nomes e
-limites de plano confirmados
-([mesma fonte da Seção 14.3](https://ajuda.olist.com/hubs-e-plataformas-via-api/aplicativos-api-v3-configuracoes-e-utilizacao)):
+**Confirmado pelo suporte Olist em 2026-09-25**: plano da Persi é
+**"Impulsione", 60 requisições/min por conta** (leitura e escrita juntas,
+não dois baldes separados — o suporte não distinguiu leitura de escrita ao
+confirmar este número, diferente da tabela de referência pública da Seção
+2.6, que separa os dois; tratar como **um único limite de 60/min
+compartilhado entre leitura e escrita** até um teste real dizer o
+contrário). Compartilhado com **todos** os aplicativos da conta, incluindo
+a integração oficial Olist↔Woo, que já consome parte dele hoje, em
+produção, de forma contínua e não medível por leitura de código.
 
-| Plano | Leitura/min | Escrita/min |
-| --- | --- | --- |
-| Build & Grow / Partner Plans | 30 | 30 |
-| Evolve & Boost | 60 | 60 |
-| Master | 120 | 100 |
-| Lead & Maximize | 140 | 100 |
+**Decisão do dono**: teto do site = **~25–30 requisições/min**, reserva de
+**≥50% para o Woo** (30/60 = exatamente 50%; a faixa 25–30 dá uma margem
+extra abaixo da metade, não exatamente no limite). Baseline adotado neste
+documento: **28/min**, meio da faixa.
 
-**Plano contratado pela Persi: A CONFIRMAR (dono)** — sem isso não é
-possível transformar a estrutura abaixo em números finais; a estrutura do
-orçamento (o que consome requisição, e o cálculo por plano) já pode ser
-fixada, com o catálogo mapeado hoje como base real: **3.080 produtos**
-(Gate 3 Passo 2, mapeamento Woo↔nativo 100% validado, reaproveitado por SKU
-para o mapeamento Olist — Seção 4).
+**Consumidores do orçamento, recalculados** (base real: **3.080 SKUs**
+mapeados, Gate 3 Passo 2, mapeamento Woo↔nativo 100% validado, reaproveitado
+por SKU para Olist — Seção 4):
 
-| Consumidor | Quando | Consome |
-| --- | --- | --- |
-| Integração oficial Olist↔Woo | Contínuo, hoje, em produção | Desconhecido a partir daqui — não é código deste repositório, não é medível por leitura de código |
-| Carga inicial (Seção 5.1) | Uma vez, execução manual | 1 leitura por SKU mapeado (estoque) + 1 leitura por SKU (preço), salvo confirmação de endpoint em lote na implementação |
-| **Polling de estoque (Seção 5.2)** | A cada ciclo, por fatia | **1 leitura por SKU da fatia** — nenhum endpoint v3 de estoque em lote/incremental foi confirmado (Seção 5.2); é o custo dominante do orçamento |
-| **Polling de preço (Seção 5.2/5.4)** | A cada ciclo, por fatia | 1 leitura por SKU da fatia (mesma ressalva — nenhum `GET` de lista de preços em lote confirmado nesta rodada) |
-| **Polling de situação/cancelamento (Seção 7.2)** | A cada ciclo, só pedidos `confirmed` já exportados | 1 leitura por pedido no universo (volume baixo — só pedidos pagos ainda não finalizados, não o catálogo inteiro) |
-| Export de pedido (Seção 7) | A cada pedido pago (fora de `dry_run`) | 1 leitura (checar duplicata, Camada 2) + 1 escrita (criar pedido) |
-
-**Cálculo de varredura completa do catálogo (3.080 SKUs), cenário
-conservador (1 leitura por SKU, sem endpoint em lote)**, reservando ~50% do
-limite de leitura da conta para o native commerce (o resto fica de margem
-para a integração Woo, ver abaixo):
-
-| Plano | Leitura/min (conta) | Reservado p/ native (50%) | Tempo para varrer os 3.080 SKUs uma vez |
+| Consumidor | Quando | Consome | Status |
 | --- | --- | --- | --- |
-| Build & Grow / Partner Plans | 30 | 15/min | ≈ 205 min (~3h25) |
-| Evolve & Boost | 60 | 30/min | ≈ 103 min (~1h43) |
-| Master | 120 | 60/min | ≈ 51 min |
-| Lead & Maximize | 140 | 70/min | ≈ 44 min |
+| Integração oficial Olist↔Woo | Contínuo, hoje, em produção | Desconhecido — fora deste repositório | Fixo, fora do controle do site |
+| Carga inicial (Seção 5.1) | Uma vez, execução manual | 1 leitura por SKU mapeado × 2 (estoque + preço), salvo endpoint em lote confirmado na implementação | Fase 1 |
+| **Polling de estoque (Seção 5.2)** | A cada ciclo, por fatia | 1 leitura por SKU da fatia — sem endpoint v3 em lote/incremental confirmado | Fase 1, custo dominante |
+| **Polling de preço (Seção 5.2/5.4)** | A cada ciclo, por fatia | 1 leitura por SKU da fatia — mesma ressalva | Fase 1 |
+| **Polling de situação/cancelamento (Seção 7.2)** | A cada ciclo, só pedidos `confirmed` já exportados | 1 leitura por pedido no universo (volume baixo) | Fase 1 |
+| Export de pedido (Seção 7) | A cada pedido pago (fora de `dry_run`) | 1 leitura (checar duplicata por `numeroPedidoEcommerce`, Seção 2.3) + 1 escrita (criar pedido) | Fase 1 |
+| **Checagem de estoque no carrinho/checkout** | Por ação de carrinho/checkout, se implementada | 1 leitura por chamada | **Não existe no desenho atual** — o Gate 3 usa `inventory_levels` local (já sincronizado por polling), nunca chama o Olist ao vivo por ação de carrinho. Incluído aqui só porque foi pedido explicitamente; se o dono quiser essa checagem ao vivo como camada extra de segurança, é trabalho novo, não coberto por este documento, e o custo por requisição competiria diretamente com o polling pelo mesmo teto de 28/min — o volume dependeria do tráfego do site, não do tamanho do catálogo, e por isso não é dimensionável aqui sem uma estimativa de tráfego |
+| Webhook → re-query | Por evento recebido | 1 leitura por evento | **Fase futura (Seção 14.6/5.5)** — zero nesta fase, nenhum webhook cadastrado |
 
-Isto é o piso de cadência possível **por tipo de dado** (estoque OU preço
-isoladamente) em cada plano, assumindo que os dois dividem a mesma reserva
-de 50%. Se um `GET` em lote paginado existir para preço (o `GET /produtos`
-de catálogo já pagina 100/página — Seção 5.2; se "obter lista de preços"
-também paginar em lote, o custo de preço cairia para `3080/100 ≈ 31`
-requisições por varredura completa, uma fração do custo de estoque) — **a
-confirmar na implementação**, não assumido aqui.
+**Cálculo de varredura completa do catálogo (3.080 SKUs), com o teto real
+de 28/min dividido entre estoque e preço**:
 
-**Reserva de margem para a integração Woo**: como o limite é compartilhado
-e a integração Woo não pode ser degradada (AGENTS.md §3, "não quebrar o que
-já funciona"), a implementação reserva ~50% do limite de leitura da conta
-para o native commerce, deixando o resto de folga para picos da integração
-Woo — o percentual exato é uma sugestão inicial, a revisar quando o plano
-real for confirmado e houver visibilidade de quanto a integração Woo
-consome hoje (não medível por leitura de código, Seção 12 item 2).
+| Divisão do teto (28/min) | Estoque | Preço | Tempo por varredura completa (3.080 SKUs) |
+| --- | --- | --- | --- |
+| Metade para cada | 14/min | 14/min | ≈ 220 min (~3h40) cada |
+| 2/3 estoque, 1/3 preço | ~19/min | ~9/min | Estoque ≈ 162 min (~2h42); Preço ≈ 342 min (~5h42) |
+| 1/3 estoque, 2/3 preço (preço mais frequente, Seção 5.2) | ~9/min | ~19/min | Estoque ≈ 342 min; **Preço ≈ 162 min (~2h42)** |
+
+A terceira linha é a que melhor reflete a decisão já registrada (preço mais
+frequente que estoque, Seção 5.2) — uma varredura completa de preço a cada
+~2h42, de estoque a cada ~5h42, com 28 req/min. Isto é significativamente
+mais lento do que o cenário especulativo anterior desta seção (baseado em
+planos maiores não confirmados); **se este ritmo for insuficiente na
+prática** (ex.: promoções que mudam de preço várias vezes ao dia), as
+opções são: aumentar o plano contratado, usar o endpoint incremental v2
+legado (Seção 5.2, custo por chamada menor se cobrir múltiplos SKUs por
+request), ou aceitar essa latência como a troca pelo modelo "sem webhook"
+desta fase (Seção 14.6). Nenhuma destas é decidida aqui.
+
+**Mecanismo: token bucket compartilhado entre processos, em Postgres**
+(decisão do dono — não fixed-window, e não em memória). Motivo: o achado
+de `canary-minimum-scope.md` §5.1 (possíveis 2 processos Node na Hostinger)
+se aplica igualmente aqui — um limitador em memória por processo permitiria
+até 2× o teto real se os dois processos não compartilharem contador. Nova
+função `SECURITY DEFINER`, mesmo espírito de `consume_admin_rate_limit`
+(`supabase/migrations/20260912040000_distributed_admin_rate_limit.sql`) mas
+com **algoritmo diferente** (token bucket com reposição contínua, não
+janela fixa — token bucket absorve rajadas curtas sem permitir exceder a
+taxa média, mais adequado a um limite externo real do que janela fixa, que
+pode permitir um pico de 2× no limite entre duas janelas adjacentes):
+
+```
+consume_olist_rate_limit(p_bucket text, p_tokens_requested int, p_capacity int, p_refill_per_minute numeric)
+  returns boolean  -- true = concedido, false = negado (chamador deve esperar/recusar)
+```
+
+Uma linha por `p_bucket` (ex.: `'olist_account'`, um único bucket para todo
+o tráfego do site, já que o limite é por conta) em uma tabela nova,
+guardando `tokens_available numeric` e `last_refill_at timestamptz`; a
+função calcula a reposição desde `last_refill_at` (`elapsed_minutes *
+p_refill_per_minute`, capado em `p_capacity`) antes de decidir conceder.
+`persi_worker` como único grantee (mesmo padrão de `consume_admin_rate_limit`,
+`persi_app` sem acesso). Migration listada, não aplicada.
+
+**Backoff exponencial em 429**: se o Olist ainda assim devolver 429 (rate
+limit oficial dele, não o nosso bucket local — os dois são independentes;
+nosso bucket é preventivo, o 429 é o limite real do Olist), backoff
+exponencial com jitter, mesmo esquema já usado em 82 §8, respeitando
+`Retry-After` se o Olist enviar.
+
+**Circuit breaker**: após N `429`/`5xx` consecutivos (número exato a
+definir na implementação, sugestão inicial: 5), o worker para de tentar
+por um período de resfriamento (ex.: 5 minutos) antes de tentar de novo —
+estado também em Postgres (não em memória, mesmo motivo do bucket), para
+que todos os processos parem juntos, não só o que detectou a falha.
+Nenhuma venda é bloqueada por isso (Seção 10) — só o sync com o Olist pausa
+temporariamente, o site continua com o último dado conhecido.
 
 ### 14.5 Reconciliação de preço — frequência obrigatória, mais curta que estoque
 
@@ -1140,6 +1225,84 @@ portanto não tem esse risco. Consequências diretas:
   webhook, nenhuma chamada ao endpoint de criação de pedido (que
   continua coberto pelo modo `dry_run`, Seção 14.1, quando essa parte for
   implementada em rodada separada).
+
+### 14.7 "API do ERP" / Token API não é usada pelo código — apps OAuth v3 fazem as chamadas, canal identificado pelo `ecommerce.id`
+
+**Problema identificado pelo dono**: a integração legada "API do ERP"
+("Token API"/"Ecommerce da Olist", Seção 2.6) usa um único token que dá
+acesso à **conta inteira** — o oposto do modelo de permissão mínima por
+módulo dos "Aplicativos" OAuth v3 (Seção 14.3). Colocar esse token em
+qualquer `.env` (mesmo só em produção) reintroduziria exatamente o padrão
+que este projeto evita para todo outro provedor (AGENTS.md §19.3/§23):
+uma credencial "senha-mestra" em vez de uma credencial escopada.
+
+**Pergunta respondida nesta rodada** (Seção 2.3, já incorporada):
+`POST /pedidos` aceita `ecommerce: { id, numeroPedidoEcommerce }` no corpo
+da requisição — **sim, o canal/integração pode ser indicado diretamente na
+criação do pedido**, sem precisar autenticar essa chamada com o token da
+integração "API do ERP". `ecommerce.id` é o identificador do canal (a
+mesma peça vista como `dados.idEcommerce` no webhook de situação, Seção
+2.2, e como `ecommerce.id`/`ecommerce.canalVenda` em `GET /pedidos`).
+
+**Decisão adotada — mais forte que a proposta original do dono** (que já
+prevendo o token só em produção como fallback): **o token da integração
+"API do ERP" nunca precisa entrar no código, em nenhum ambiente**,
+inclusive produção. Ele é necessário só **uma vez**, para criar/vincular a
+integração "Ecommerce da Olist" no painel (Menu → Configurações → Aba
+E-commerce, ou Loja de extensões — Seção 2.6) e obter o `idEcommerce`
+resultante — depois disso, esse `idEcommerce` é um **identificador
+numérico, não um segredo** (equivalente a um id de loja/canal), e pode
+viver como configuração comum (`OLIST_ECOMMERCE_CHANNEL_ID`, Seção 14.3,
+adicionada à lista de variáveis) usada por toda chamada `POST /pedidos`
+feita pelo app OAuth v3 **Persi Native Sync — Pedidos** (Seção 14.3, já
+com permissão de leitura+escrita em Pedidos de venda).
+
+**Consequência para staging**: staging não precisa de nenhuma credencial
+da integração "API do ERP" — só do app **Catálogo** (leitura) para as
+rotinas de polling. Se a Fase de export de pedido (`dry_run`, Seção 14.1)
+for testada em staging, ela usaria o app **Pedidos** e o mesmo
+`OLIST_ECOMMERCE_CHANNEL_ID` de produção (o id do canal não é sensível e
+não muda por ambiente) — mas, em modo `dry_run`, a chamada nunca
+efetivamente sai para a API, então nem isso é estritamente necessário até
+o dia de testar `live` (que, pela Seção 14.1, só acontece em produção).
+
+**Não confirmado, honesto sobre o limite desta pesquisa**: se o
+`idEcommerce`/canal também precisa estar "ativo"/vinculado a um token
+válido do lado Olist para que a reserva de estoque automática do Olist
+(Seção 2.5, "Pedido criado: estoque reservado") funcione corretamente, ou
+se basta o pedido existir com aquele `ecommerce.id` preenchido — **a
+confirmar na implementação**, com um pedido de teste real (a única forma
+de verificar isto, já que não há sandbox — Seção 2.6).
+
+### 14.8 Ordem segura de configuração no painel Olist
+
+Sequência recomendada para o dono, cada passo depende do anterior:
+
+1. **Criar/confirmar a integração "Ecommerce da Olist" / "Token API"**
+   (Menu → Configurações → Aba E-commerce → Token API, ou Menu → Início →
+   Loja de extensões — Seção 2.6/14.7) — só para obter o `idEcommerce` do
+   canal. **O token gerado aqui não precisa ser copiado para nenhum lugar
+   do site** (Seção 14.7) — só o id numérico do canal resultante.
+   **Atenção**: como esta mesma tela (`Aba E-commerce`) é onde a Central de
+   Ajuda também documenta configuração de notificações/webhook (achado da
+   Seção 14.6), **conferir neste mesmo passo, com o suporte ou olhando o
+   painel sem alterar nada, se a integração oficial Olist↔Woo já ocupa
+   este mesmo espaço** — se ocupar, isto pode reforçar (não resolver
+   sozinho) a cautela da Seção 14.6 sobre webhooks.
+2. **Criar os dois "Aplicativos" OAuth v3** (Seção 14.3): **Persi Native
+   Sync — Catálogo** (Produtos/Estoque/Listas de preço: Leitura) e **Persi
+   Native Sync — Pedidos** (Pedidos de venda: Leitura + Incluir e editar,
+   nunca Excluir). Guardar `client_id`/`client_secret` de cada um — vão
+   para `OLIST_SYNC_CLIENT_ID`/`SECRET` e `OLIST_ORDERS_CLIENT_ID`/`SECRET`
+   (nomes já registrados na Seção 14.3), cadastrados no hPanel pelo dono.
+3. **Vínculo de produtos** (Seção 4) — só depois que o app Catálogo existir
+   e suas credenciais estiverem configuradas: a implementação (rodada
+   separada, já autorizada como só-leitura, Seção 14.6) faz a derivação do
+   mapeamento SKU e a chamada em lote para obter `idProduto` por SKU.
+4. **Webhooks — por último, e só quando as rotas existirem no
+   staging/produção** — e, mesmo assim, só depois da confirmação do
+   suporte exigida pela Seção 14.6. Não cadastrar nenhuma URL de webhook
+   antes disso, mesmo que o código das rotas já esteja pronto (Seção 5.5).
 
 ## Apêndice — Papel atual do Woo pós-pedido → substituto nativo → fase
 
