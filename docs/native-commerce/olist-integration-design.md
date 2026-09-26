@@ -97,8 +97,12 @@ Fontes: [Central de Ajuda — Aplicativos API V3](https://ajuda.olist.com/hubs-e
 | Envio de Produtos, Envio de Nota Fiscal, Envio de Código de Rastreio, Cotação de Fretes | existem, payload não detalhado nesta pesquisa (não necessários para a Fase 1) |
 
 Confirmado: um retorno diferente de HTTP 200 faz o Olist **reenviar** o
-webhook (contagem de tentativas/backoff exatos **A CONFIRMAR** — não
-publicados). Decimais usam `.` como separador.
+webhook. **Contagem de tentativas/backoff, confirmado nesta rodada**
+([Webhooks — Atualização de Situação de Pedido](https://tiny.com.br/api-docs/api2-webhooks-atualizacao-situacao-pedido)):
+**Estoque e Situação de Pedido**: até **15 tentativas**, atraso progressivo
+de **+5 minutos a cada tentativa**. **Produto, Nota Fiscal e Preço**: só
+**2 tentativas** — bem mais frágil, ver Seção 14.5 (reconciliação de preço
+obrigatória por causa disso). Decimais usam `.` como separador.
 
 ### 2.3 Campo de referência externa / idempotência no pedido
 
@@ -116,6 +120,21 @@ Outros campos confirmados no payload de criação de pedido: `consumidorFinal.cp
 `valorFrete`, `valorDesconto` (valor plano — **não há campo de código de
 cupom nomeado confirmado**, A CONFIRMAR_OLIST), `itens[].produto.id`,
 `itens[].quantidade`, `itens[].valorUnitario`, `situacao` (enum 0–9).
+
+**Valores do enum `situacao`, confirmados nesta rodada**
+([Listar pedidos — Olist ERP API v3](https://api-docs.erp.olist.com/api-reference/pedidos/listar-pedidos),
+usado como filtro de listagem, mesmo enum do campo do pedido): `0` Aberta,
+`1` Faturada, `2` **Cancelada**, `3` Aprovada, `4` Preparando Envio, `5`
+Enviada, `6` Entregue, `7` Pronto Envio, `8` Dados Incompletos, `9` Não
+Entregue. Isto **fecha** o item que estava em aberto na Seção 12 ("a API de
+pedidos aceita cancelamento pós-criação?"): não há um endpoint dedicado
+"cancelar pedido" — cancelar é **atualizar `situacao` para `2`**, a mesma
+operação de mudança de situação já mapeada nesta seção. Fonte indireta (a
+página pública da operação de escrita `alterar situação` não foi
+encontrada com o enum documentado) — o valor `2 = Cancelada` vem do enum
+usado pelo filtro de leitura, que é a mesma enumeração; tratar como
+confirmado com alta confiança, não como 100% oficial até uma chamada real
+de teste confirmar.
 
 ### 2.4 Quando o pedido baixa o estoque
 
@@ -320,36 +339,65 @@ falharam — não é um cron.
 
 ### 5.2 Incremental (webhook)
 
+**Atualizado em 2026-09-25 (Seção 14.2): o webhook nunca é usado como fonte
+do valor gravado — só como gatilho de um re-query à API.** Descrição
+original do fluxo abaixo, já corrigida com esta regra:
+
 Uma nova rota, seguindo o padrão de todo webhook já existente neste
 projeto (`app/api/webhooks/{inter,mercadopago,pagbank}/route.ts`):
-`app/api/webhooks/olist/estoque/route.ts` (e um par `.../preco/route.ts`
-para a Fase 1, se o preço também vier por webhook — Seção 5.4). Cada rota:
+`app/api/webhooks/olist/{estoque,preco,situacao-pedido}/route.ts`. Cada
+rota:
 
-1. Valida a origem/assinatura do webhook (**A CONFIRMAR_OLIST**: o Olist
-   assina o payload? Se não houver assinatura, validar por IP de origem
-   documentado pelo Olist, se existir, e tratar o corpo como não confiável
-   até prova em contrário — mesma cautela já aplicada aos webhooks de
-   pagamento).
-2. Resolve `idProduto`/`sku` → `product_variant_id` via `external_mappings
-   (system='olist')`; se não mapeado, grava em `integration_inbox` como
-   evento não processável e retorna 200 (não deixar o Olist reenviar
-   infinitamente um produto que nunca vai mapear) — mesmo padrão de
-   `integration_inbox` já usado para o sync de catálogo do Woo.
-3. Chama `adjust_inventory` (ou o `preço`-equivalente) via
-   `withPersiRole("persi_worker", ...)`, usando o id do evento do webhook
-   (ou `idProduto + saldo + timestamp` se o Olist não expuser um id de
-   evento estável) como `source_reference` para deduplicar automaticamente
-   por reenvio.
-4. Responde 200 sempre que o payload foi processado (mesmo se o resultado
-   foi "produto não mapeado, ignorado") — só responde erro por
-   indisponibilidade real do banco, para não acionar o reenvio do Olist
-   por um caso que reenviar não resolve.
+1. Valida um **segredo próprio do site** na URL ou em um header — não uma
+   assinatura do Olist (a existência de assinatura do lado Olist continua
+   **A CONFIRMAR_OLIST**, não publicada). Como o Olist não documenta
+   assinatura de payload, a rota exige um token de alta entropia
+   (`OLIST_WEBHOOK_SECRET`, Seção 14.3) embutido na URL cadastrada no
+   painel Olist (`.../webhooks/olist/estoque/<token>`) ou em um header
+   customizado; requisição sem o token correto é rejeitada com 401 antes de
+   ler o corpo. Isto é uma decisão do site, não depende de nenhuma
+   capacidade do Olist — mesmo padrão de "não confiar no corpo até prova em
+   contrário" já aplicado aos webhooks de pagamento, adaptado ao que é
+   realmente verificável aqui.
+2. Resolve `idProduto`/`idPedidoEcommerce` → `product_variant_id`/`order.id`
+   via `external_mappings (system='olist')`; se não mapeado, grava em
+   `integration_inbox` como evento não processável e retorna 200 (não
+   deixar o Olist reenviar infinitamente um produto/pedido que nunca vai
+   mapear) — mesmo padrão de `integration_inbox` já usado para o sync de
+   catálogo do Woo.
+3. **Nunca usa o valor do payload do webhook para gravar nada.** O payload
+   serve só para identificar *o quê* mudou (`idProduto`/`idPedidoEcommerce`)
+   e disparar uma consulta síncrona à API do Olist ("obter estoque de um
+   produto" / "obter lista de preços" / `GET /pedidos?id=...`) pelo mesmo
+   worker; a decisão de gravação usa **sempre o dado re-consultado**, nunca
+   `dados.saldo`/`dados.preco`/`dados.situacao` do corpo do webhook
+   diretamente. Isto fecha uma classe de risco que a Seção 2.2 original não
+   tratava: um webhook é HTTP não autenticado do lado do remetente (Seção
+   14.2) — tratar seu conteúdo como comando de escrita seria confiar
+   cegamente num payload que ninguém consegue provar que veio do Olist,
+   mesmo com o token de URL (o token prova que quem chamou conhece o
+   segredo, não que o *conteúdo* é verdadeiro). Re-consultar a API com a
+   credencial OAuth do site elimina essa lacuna: a escrita só reflete o que
+   a própria API do Olist, autenticada, confirma.
+4. Chama `adjust_inventory` (ou o `preço`-equivalente, Seção 2.2.3 do
+   plano de implementação) via `withPersiRole("persi_worker", ...)`, usando
+   um identificador do re-query (ex.: `idProduto + saldo lido + timestamp
+   do re-query`) como `source_reference` para deduplicar automaticamente
+   chamadas repetidas do mesmo webhook.
+5. Responde 200 sempre que o webhook foi processado (mesmo se o resultado
+   foi "produto não mapeado, ignorado", ou "re-query não mudou nada") — só
+   responde erro por indisponibilidade real do banco ou da API do Olist,
+   para não acionar reenvio do Olist por um caso que reenviar não resolve.
+
+Consequência de custo: cada webhook agora gasta **uma chamada de API
+adicional** (o re-query) em vez de zero — isto entra no orçamento de rate
+limit da Seção 14.4, não é gratuito.
 
 ### 5.3 Reconciliação periódica
 
 Job cron (padrão `expire-pending-payments`, Seção 3), rodando a cada N
 minutos: para uma fatia dos produtos mapeados (não todos de uma vez, por
-causa do rate limit por conta — Seção 2.6), busca o estoque/preço atual
+causa do rate limit por conta — Seção 2.6/14.4), busca o estoque/preço atual
 via API REST (não espera pelo webhook) e compara com o que está em
 `inventory_levels`/`prices`. Detecta:
 
@@ -358,6 +406,12 @@ via API REST (não espera pelo webhook) e compara com o que está em
 - Divergência persistente (a mesma comparação falha repetidamente) — não
   auto-corrige silenciosamente uma segunda vez sem alertar; loga como
   evento de observabilidade (Seção 9) e segue para o próximo lote.
+
+**Preço tem uma frequência própria, mais curta que estoque — ver Seção
+14.5**: como o webhook de preço só tenta reenviar **2 vezes** (Seção 2.2,
+contra 15 do webhook de estoque/situação), a reconciliação periódica de
+preço não é um reforço opcional, é a rede de segurança **primária** contra
+webhook perdido nesse caso específico.
 
 ### 5.4 Preço
 
@@ -470,6 +524,45 @@ repete esse conteúdo; a única atualização é de contexto:
   [`order-cancellation-and-returns.md`](order-cancellation-and-returns.md)):
   o cancelamento do canário é manual no painel do Olist, então nenhum
   evento automatizado ao outbox é necessário até a Fase 1+.
+
+### 7.0 Modo dry-run obrigatório fora de produção (2026-09-25, Seção 14.1)
+
+**Não há sandbox Olist (Seção 2.6)** — qualquer chamada real de criação de
+pedido, em qualquer ambiente que não seja produção, criaria um pedido real
+na conta Olist da Persi. Isto muda o design do worker de drenagem do
+outbox (82 §8): ele precisa checar um modo de operação **antes** de chamar
+o adapter HTTP, não depois.
+
+- Variável `OLIST_ORDER_EXPORT_MODE`, valores `dry_run` (default) ou
+  `live`. Lida uma vez pelo worker, nunca pelo browser (só server-side,
+  mesmo padrão de toda credencial deste documento).
+- **`dry_run`** (default, obrigatório em qualquer ambiente que não seja
+  produção): o worker monta o payload completo (Seção 2.3, snapshot
+  congelado de `order_items`/`order_addresses`, exatamente como 82 §3
+  especifica), grava a linha em `integration_outbox` com `status='sent'` e
+  um `external_reference` sintético (ex.: `'DRY_RUN:' || outbox.id`) — mas
+  **nunca chama a API do Olist**. O resultado fica indistinguível de um
+  envio real para efeito de auditoria/consulta (a linha existe, tem
+  payload, tem timestamp), exceto pelo prefixo `DRY_RUN:` no
+  `external_reference`, que também impede a escrita de criar uma linha
+  colidente em `external_mappings` (Seção 6) com um `external_id` real.
+- **`live`**: comportamento pleno de 82 — chama a API do Olist de verdade.
+  **Proibido fora de produção** salvo override explícito e documentado por
+  pedido específico (ex.: um teste controlado único, decidido e registrado
+  pelo dono antes de rodar, nunca uma configuração de ambiente permanente
+  em staging). O worker deve checar `isProductionRuntime()`
+  (`lib/runtime/runtime-environment.ts:25`, já existente — autoridade única
+  de ambiente do projeto, não `NODE_ENV`) antes de aceitar `live`: se
+  `isProductionRuntime()` for `false`, `live` é recusado
+  incondicionalmente, mesmo com `OLIST_ORDER_EXPORT_MODE=live` configurado
+  — as duas condições (`live` + `isProductionRuntime() === true`) precisam
+  ser verdadeiras juntas. Isto reaproveita um mecanismo já existente e já
+  testado, sem inventar uma segunda forma de detectar ambiente.
+- Consequência para o Passo seguinte (implementação): staging pode e deve
+  continuar **lendo** o Olist real (catálogo/estoque/preço, Seção 5 — não
+  há dado sensível nem efeito colateral numa leitura), mas o export de
+  pedido em staging roda sempre em `dry_run` até decisão explícita em
+  contrário.
 
 ### 7.1 Dados fiscais (CPF/CNPJ/IE) — reinvestigação
 
@@ -701,14 +794,21 @@ tratamento de kit (Seção 4); timing de baixa de estoque no Olist (na
 aprovação — Seção 2.4); direção da integração Olist↔Woo (Olist chama o Woo
 — Seção 8); mapeamento SKU (Woo SKU = Olist SKU, derivação direta — Seção 4).
 
+**Resolvido em 2026-09-25** (rodada de pesquisa pública, sem chamada à API
+do Olist): cancelamento é `situacao=2` via atualizar situação, não um
+endpoint dedicado (Seção 2.3); contagem de tentativas/backoff de webhook
+(Seção 2.2); estrutura de permissões por módulo dos "Aplicativos" e nomes
+de plano com limites de rate limit (Seção 14.3/14.4) — o número exato do
+plano da Persi continua em aberto, ver item 2 abaixo.
+
 **Ainda em aberto**:
 
-1. Acesso real ao Olist: criar um "Aplicativo" OAuth v3 dedicado ao native
-   commerce (nunca reaproveitar a credencial que a integração Olist↔Woo já
-   usa — Seção 8) — **plano/permissões a confirmar no painel do Olist**
-   pelo dono (o dono já confirmou que isso precisa ser verificado, ainda
-   não tem a resposta).
-2. Confirmar o plano contratado (define o rate limit real — Seção 2.6).
+1. Acesso real ao Olist: criar os dois "Aplicativos" OAuth v3 dedicados ao
+   native commerce, com as permissões exatas da Seção 14.3 (nunca
+   reaproveitar a credencial que a integração Olist↔Woo já usa — Seção 8).
+2. Confirmar o **plano contratado** (Build & Grow / Evolve & Boost / Master
+   / Lead & Maximize — Seção 14.4) — define o rate limit real e, por
+   consequência, o orçamento de requisições da Seção 14.4.
 3. Não há sandbox Olist encontrado — confirmar se o dono concorda em
    testar contra a conta real com cuidado, ou se existe algum ambiente de
    teste não documentado publicamente que a Persi já tenha acesso.
@@ -725,10 +825,14 @@ aprovação — Seção 2.4); direção da integração Olist↔Woo (Olist chama
    não é "estornável" (é apenas baixado/expirado) — como tratar um
    cancelamento pós-pagamento de boleto Inter especificamente é uma
    decisão pendente.
-7. **Novo, decorrente da Seção 6.3**: confirmar se a API de pedidos do
-   Olist aceita cancelamento pós-criação (`situacao=2`?) — nenhum endpoint
-   "cancelar pedido" explícito apareceu na pesquisa desta rodada (Seção
-   2.1), só "atualizar situação".
+7. **Alta prioridade, novo em 2026-09-25 — ver Seção 14.6**: confirmar com
+   o suporte Olist (não encontrado em documentação pública) se cadastrar as
+   URLs de webhook deste projeto (estoque, preço, situação de pedido)
+   substitui ou conflita com a URL de notificação já configurada pela
+   integração oficial Olist↔Woo. A tela de configuração documentada
+   publicamente usa singular ("a URL da notificação de pedidos"), o que
+   sugere um único slot por tipo de evento por conta — risco real de
+   sobrescrever a integração Woo em produção, não uma formalidade.
 8. **Novo, decorrente da reinvestigação de CPF/CNPJ** (ver relatório
    separado desta rodada): confirmar se existe um plugin de campos
    brasileiros instalado no WordPress ao vivo (não visível neste
@@ -762,6 +866,139 @@ não uma reescrita).
 | Wrapper `SECURITY DEFINER` + grant para `adjust_inventory`/preço via `persi_worker` | Pequeno (migration aditiva) | Sim |
 | Cálculo de margem de segurança em leitura (Seção 6.1) | Pequeno | Sim, mas só faz sentido depois que o Gate 3 tiver um ponto de checagem de estoque no carrinho (hoje não existe — gap separado, fora deste documento) |
 | Decisão de qual `price_list` recebe o preço Olist (Seção 5.4) | Depende do dono, não de código | N/A |
+
+## 14. Ajustes obrigatórios antes da implementação (2026-09-25)
+
+Revisão do plano acima, feita antes de qualquer código ser escrito. Os
+itens abaixo **alteram** o design de §5/§7 (já refletido nas seções
+correspondentes, citadas em cada item) e **adicionam** o que faltava
+(apps/permissões, orçamento de rate limit). Nenhuma migration foi aplicada;
+nenhuma chamada à API do Olist foi feita além de leitura de documentação
+pública.
+
+### 14.1 Export de pedido — dry-run obrigatório fora de produção
+
+Ver Seção 7.0 (texto completo do mecanismo, já incorporado ao design do
+worker de drenagem). Resumo: `OLIST_ORDER_EXPORT_MODE=dry_run|live`,
+default `dry_run`; `live` exige `isProductionRuntime() === true`
+(`lib/runtime/runtime-environment.ts`) **e** a variável configurada como
+`live` — as duas juntas, nunca uma sozinha.
+
+### 14.2 Webhook nunca é autoridade
+
+Ver Seção 5.2 (texto completo, já incorporado). Resumo: todo webhook
+(estoque, preço, situação de pedido) só identifica *o quê* mudou; a
+gravação usa sempre um re-query síncrono à API do Olist, nunca o valor do
+corpo do webhook. A rota exige um segredo próprio do site
+(`OLIST_WEBHOOK_SECRET`, Seção 14.3) na URL ou em header — não uma
+assinatura do Olist, que não é documentada publicamente.
+
+### 14.3 Apps Olist — permissões exatas e variáveis de ambiente
+
+Confirmado nesta rodada ([Aplicativos API V3 — Configurações e
+Utilização](https://ajuda.olist.com/hubs-e-plataformas-via-api/aplicativos-api-v3-configuracoes-e-utilizacao)):
+permissão é granular por módulo, 3 níveis (**Leitura** / **Incluir e
+editar** / **Excluir**), máximo 5 aplicativos por conta. Dois apps
+dedicados ao native commerce, nenhum reaproveitando a credencial da
+integração oficial Olist↔Woo (Seção 8):
+
+| App | Permissões a marcar no painel Olist | Variáveis de ambiente (nomes só — sem valor) |
+| --- | --- | --- |
+| **Persi Native Sync — Catálogo** | Produtos: Leitura · Estoque: Leitura · Listas de preço: Leitura | `OLIST_SYNC_CLIENT_ID`, `OLIST_SYNC_CLIENT_SECRET` |
+| **Persi Native Sync — Pedidos** | Pedidos de venda: **Leitura + Incluir e editar** (nunca Excluir) | `OLIST_ORDERS_CLIENT_ID`, `OLIST_ORDERS_CLIENT_SECRET` |
+
+**Correção em relação à recomendação anterior desta mesma rodada**: o app
+de Pedidos precisa também de **Leitura**, não só escrita — antes de
+(re)enviar um pedido depois de um timeout/erro ambíguo (Seção 7 / 82 §7,
+Camada 2 de idempotência), o adapter precisa **consultar** por
+`numeroPedidoEcommerce` para checar se o pedido já existe no Olist antes de
+criar de novo. Escrita sem leitura tornaria essa checagem impossível.
+
+Variável adicional, não ligada a nenhum app específico (é escolhida pelo
+site, não pelo Olist): `OLIST_WEBHOOK_SECRET` — token usado para validar as
+três rotas de webhook (Seção 5.2/14.2). Mais `OLIST_ORDER_EXPORT_MODE`
+(Seção 14.1/7.0).
+
+Nenhuma dessas seis variáveis tem valor definido por este documento — são
+os **nomes** que o dono cadastra no hPanel do staging (e, depois, em
+produção) quando os apps forem criados no painel Olist.
+
+### 14.4 Orçamento de rate limit — compartilhado com a integração Woo
+
+Confirmado nesta rodada: o limite é **por conta**, dividido entre **todos**
+os aplicativos dela — incluindo a integração oficial Olist↔Woo, que já
+consome parte desse limite hoje, em produção, de forma contínua. Nomes e
+limites de plano confirmados
+([mesma fonte da Seção 14.3](https://ajuda.olist.com/hubs-e-plataformas-via-api/aplicativos-api-v3-configuracoes-e-utilizacao)):
+
+| Plano | Leitura/min | Escrita/min |
+| --- | --- | --- |
+| Build & Grow / Partner Plans | 30 | 30 |
+| Evolve & Boost | 60 | 60 |
+| Master | 120 | 100 |
+| Lead & Maximize | 140 | 100 |
+
+**Plano contratado pela Persi: A CONFIRMAR (dono)** — sem isso não é
+possível dimensionar o orçamento abaixo com números reais; a estrutura do
+orçamento (o que consome requisição) já pode ser fixada:
+
+| Consumidor | Quando | Consome |
+| --- | --- | --- |
+| Integração oficial Olist↔Woo | Contínuo, hoje, em produção | Desconhecido a partir daqui — não é código deste repositório, não é medível por leitura de código |
+| Carga inicial (Seção 5.1) | Uma vez, execução manual | 1 leitura por produto mapeado (estoque + preço podem vir do mesmo request se a API permitir, a confirmar na implementação) |
+| Webhook → re-query (Seção 14.2) | A cada evento recebido | 1 leitura por webhook processado (estoque, preço ou situação) — este é o custo **novo** que a regra 14.2 introduz, não existia no design original |
+| Reconciliação periódica (Seção 5.3/14.5) | A cada execução do cron, por fatia | 1 leitura por produto da fatia da vez |
+| Export de pedido (Seção 7) | A cada pedido pago (fora de `dry_run`) | 1 leitura (checar duplicata, Camada 2) + 1 escrita (criar pedido) |
+
+**Reserva de margem para a integração Woo**: como o limite é compartilhado
+e a integração Woo não pode ser degradada (AGENTS.md §3, "não quebrar o que
+já funciona"), a implementação deve reservar uma fração do limite do plano
+(sugestão a validar quando o plano for confirmado: não consumir mais que
+~50% do limite de leitura da conta com o tráfego native commerce, com
+folga para picos da integração Woo) — dimensionamento exato fica para a
+rodada de implementação, com o plano real em mãos.
+
+### 14.5 Reconciliação de preço — frequência obrigatória
+
+Ver Seção 5.3 (texto já incorporado). Como o webhook de preço só tenta 2
+vezes (Seção 2.2), a reconciliação periódica de preço não pode ter a mesma
+cadência "best effort" que estoque/situação (15 tentativas) — precisa
+rodar com frequência própria, mais curta. **Frequência exata: A CONFIRMAR
+na implementação**, dependente do orçamento de rate limit real (Seção
+14.4) — a estrutura (job cron dedicado ou uma fatia priorizada do mesmo job
+de estoque) fica para quando o plano contratado for conhecido.
+
+### 14.6 Risco: conflito de URL de webhook com a integração Woo
+
+**Não encontrado em documentação pública** se webhooks são configurados
+por conta (uma única URL por tipo de evento, compartilhada por todas as
+integrações) ou por aplicativo/integração. A evidência encontrada aponta
+para configuração **por conta**: a tela documentada
+([Webhooks — Central de Ajuda](https://ajuda.olist.com/ecommerce-erps/webhooks);
+comportamento de "Configurações → Webhooks" descrito em
+[Webhooks do Tiny](https://tiny.com.br/api-docs/api2-webhooks-tiny)) usa
+linguagem no singular ("a URL da notificação de pedidos"), sugerindo **um
+único slot ativo por tipo de evento, por conta** — não uma lista de
+assinantes.
+
+**Risco concreto, não teórico**: se a integração oficial Olist↔Woo já
+usa esse mesmo slot de conta para receber notificações de pedido/estoque, e
+cadastrar as URLs de webhook deste projeto (`app/api/webhooks/olist/*`)
+sobrescrever esse slot, o **sync Woo pararia de funcionar em produção** no
+momento em que o native commerce fosse configurado — uma regressão grave em
+algo que "já funciona" (AGENTS.md §3).
+
+**Ação obrigatória antes de cadastrar qualquer webhook Olist deste
+projeto**: confirmar com o suporte Olist (ou inspecionando diretamente o
+painel `Configurações → Webhooks` da conta, sem alterar nada) se (a) é
+realmente um slot único por conta, e (b) a integração oficial Olist↔Woo
+usa esse mesmo mecanismo ou um canal próprio de app-integração que não
+conflita. Até essa confirmação, nenhuma rota de webhook deste projeto deve
+ser cadastrada no painel Olist — a implementação da Fase 1 deste round
+(Seção 2.3 da mensagem que autorizou isto: mapeamento SKU, grants/função de
+preço, webhooks, reconciliação) pode escrever o **código** das rotas e
+deixá-las prontas, mas **não pode pedir ao dono para cadastrar a URL no
+painel Olist** até este item ser resolvido.
 
 ## Apêndice — Papel atual do Woo pós-pedido → substituto nativo → fase
 
