@@ -52,7 +52,13 @@ export type NativeCommerceEventName =
   // fallback). Always logged as an error (see isFailure below), always
   // with `route` + a sanitized `code` (Postgres SQLSTATE or Error.name),
   // never the raw message/payload.
-  | "native_commerce_unexpected_error";
+  | "native_commerce_unexpected_error"
+  // Olist Fase 1 (read-only) -- cart/checkout live stock check fell back
+  // to local inventory_levels data because the live call failed (Olist
+  // unreachable, rate-limited, or circuit open). Not itself a failure --
+  // logged as info unless the fallback also determines the sale must be
+  // blocked, which the caller logs separately via its own failure path.
+  | "native_olist_stock_check_fallback_used";
 
 export interface NativeCommerceEventFields {
   correlationId?: string;

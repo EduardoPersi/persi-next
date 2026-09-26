@@ -8,6 +8,7 @@ import { persistNativeCheckoutPii } from "@/lib/db/nativeCheckoutPii";
 import { resolveStorePriceAuthority } from "@/lib/db/nativePriceAuthority";
 import { resolveSingleActiveInventoryLocation, resolveSingleActiveStore } from "./nativeCommerceCatalogResolution";
 import { withIdempotency } from "./nativeCommerceIdempotency";
+import { checkCartStockAvailability } from "./olistStockFreshness";
 import { logNativeCommerceEvent } from "@/lib/observability/nativeCommerceEvents";
 import { extractPostgresErrorCode, extractPostgresErrorMessage } from "@/lib/db/postgresErrorMessage";
 
@@ -205,6 +206,23 @@ export async function handlePrepareNativeCheckout(
     // doesn't exist.
     if (!authorized) return fail(404, "CART_NOT_FOUND", "Carrinho não encontrado.");
     if (cart.items.length < 1) return fail(422, "CART_EMPTY", "O carrinho está vazio.");
+
+    // Olist Fase 1 (olist-integration-design.md Section 5.7): live stock
+    // check happens here, in application code, BEFORE prepare_native_checkout
+    // is ever called -- never inside its transaction. A no-op unless
+    // OLIST_LIVE_STOCK_CHECK_ENABLED is explicitly "true" (kept off for the
+    // whole of this round).
+    const stockCheck = await checkCartStockAvailability(
+      cart.items.map((item) => ({ productVariantId: item.productVariantId, quantity: item.quantity })),
+      { stage: "prepare", cartId: cart.id, role: "persi_app" },
+    );
+    if (!stockCheck.ok) {
+      return fail(
+        409,
+        stockCheck.reason === "insufficient_stock" ? "CART_ITEM_INSUFFICIENT_STOCK" : "CART_STOCK_DATA_STALE",
+        "Não foi possível confirmar o estoque de um item do carrinho agora. Tente novamente em instantes.",
+      );
+    }
 
     const result = await withIdempotency("checkout:prepare", input.idempotencyKey, async () => {
       const priceAuthority = await deps.resolveStorePriceAuthority({ storeId: store.storeId, currency: store.currency, asOf: new Date() });
