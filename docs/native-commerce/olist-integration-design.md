@@ -1324,6 +1324,13 @@ como camada adicional de segurança nos dois pontos de maior risco de venda
 
 ### 14.7 "API do ERP" / Token API não é usada pelo código — apps OAuth v3 fazem as chamadas, canal identificado pelo `ecommerce.id`
 
+**O fluxo completo de autorização/renovação/revogação dos dois apps OAuth
+v3 citados nesta seção está desenhado em
+[`olist-oauth-flow-design.md`](olist-oauth-flow-design.md)** (grant type,
+callback de staging/produção, armazenamento criptografado do refresh
+token, renovação automática, fail-closed em expiração) — não repetido
+aqui.
+
 **Problema identificado pelo dono**: a integração legada "API do ERP"
 ("Token API"/"Ecommerce da Olist", Seção 2.6) usa um único token que dá
 acesso à **conta inteira** — o oposto do modelo de permissão mínima por
