@@ -89,6 +89,14 @@ Fontes: [Central de Ajuda — Aplicativos API V3](https://ajuda.olist.com/hubs-e
 
 ### 2.2 Webhooks confirmados
 
+**Decisão do dono, 2026-09-25 (Seção 14.6): nenhum destes webhooks é
+cadastrado no painel Olist na Fase 1.** Enquanto o suporte Olist não
+confirmar que múltiplos webhooks por tipo/conta são possíveis sem
+sobrescrever a integração oficial Olist↔Woo, a Fase 1 usa **polling**
+(Seção 5.2/7.2) como estratégia primária. Esta seção fica mantida como
+referência técnica confirmada, para quando o webhook virar otimização
+futura (Seção 14.6) — não descreve o que a Fase 1 implementa.
+
 | Webhook | Payload (campos confirmados) |
 | --- | --- |
 | Atualização de Estoque | `dados.idProduto`, `dados.sku`, `dados.skuMapeamento`, `dados.saldo`, `dados.tipoEstoque` (`F`=físico, `D`=disponível) |
@@ -337,81 +345,105 @@ equivalente em `prices`/`price_lists` (ver 5.4 sobre preço). Roda uma vez,
 manualmente disparado, com relatório de quantos produtos foram carregados/
 falharam — não é um cron.
 
-### 5.2 Incremental (webhook)
+### 5.2 Polling incremental — estratégia primária da Fase 1 (2026-09-25)
 
-**Atualizado em 2026-09-25 (Seção 14.2): o webhook nunca é usado como fonte
-do valor gravado — só como gatilho de um re-query à API.** Descrição
-original do fluxo abaixo, já corrigida com esta regra:
+**Decisão do dono (Seção 14.6): a Fase 1 não usa webhook.** Nenhuma URL de
+webhook deste projeto é cadastrada no painel Olist enquanto o suporte não
+confirmar que isso não sobrescreve a integração oficial Olist↔Woo. A
+estratégia primária passa a ser **polling** — o mesmo job cron (padrão
+`expire-pending-payments`, Seção 3) que fazia só reconciliação (antiga
+Seção 5.3, incorporada aqui) agora é a **única** via de sync de
+catálogo/preço/estoque na Fase 1. A Seção 5.5 abaixo mantém o desenho de
+webhook como referência para quando virar otimização futura.
 
-Uma nova rota, seguindo o padrão de todo webhook já existente neste
-projeto (`app/api/webhooks/{inter,mercadopago,pagbank}/route.ts`):
-`app/api/webhooks/olist/{estoque,preco,situacao-pedido}/route.ts`. Cada
-rota:
+**Duas cadências, preço mais frequente que estoque** — porque o SLA de
+correção depende de quanto custa um dado desatualizado em cada caso: um
+preço errado no site é visível ao cliente imediatamente (risco comercial/
+jurídico, ex. Lei do Desconto); um estoque levemente atrasado é absorvido
+pela reserva nativa (`inventory_reservations`) e pelo guard-rail de
+`adjust_inventory` (Seção 6.2) até o próximo ciclo. Frequência exata de
+cada cadência **depende do plano confirmado (Seção 14.4)** — a estrutura
+abaixo já pode ser fixada.
 
-1. Valida um **segredo próprio do site** na URL ou em um header — não uma
-   assinatura do Olist (a existência de assinatura do lado Olist continua
-   **A CONFIRMAR_OLIST**, não publicada). Como o Olist não documenta
-   assinatura de payload, a rota exige um token de alta entropia
-   (`OLIST_WEBHOOK_SECRET`, Seção 14.3) embutido na URL cadastrada no
-   painel Olist (`.../webhooks/olist/estoque/<token>`) ou em um header
-   customizado; requisição sem o token correto é rejeitada com 401 antes de
-   ler o corpo. Isto é uma decisão do site, não depende de nenhuma
-   capacidade do Olist — mesmo padrão de "não confiar no corpo até prova em
-   contrário" já aplicado aos webhooks de pagamento, adaptado ao que é
-   realmente verificável aqui.
-2. Resolve `idProduto`/`idPedidoEcommerce` → `product_variant_id`/`order.id`
-   via `external_mappings (system='olist')`; se não mapeado, grava em
-   `integration_inbox` como evento não processável e retorna 200 (não
-   deixar o Olist reenviar infinitamente um produto/pedido que nunca vai
-   mapear) — mesmo padrão de `integration_inbox` já usado para o sync de
-   catálogo do Woo.
-3. **Nunca usa o valor do payload do webhook para gravar nada.** O payload
-   serve só para identificar *o quê* mudou (`idProduto`/`idPedidoEcommerce`)
-   e disparar uma consulta síncrona à API do Olist ("obter estoque de um
-   produto" / "obter lista de preços" / `GET /pedidos?id=...`) pelo mesmo
-   worker; a decisão de gravação usa **sempre o dado re-consultado**, nunca
-   `dados.saldo`/`dados.preco`/`dados.situacao` do corpo do webhook
-   diretamente. Isto fecha uma classe de risco que a Seção 2.2 original não
-   tratava: um webhook é HTTP não autenticado do lado do remetente (Seção
-   14.2) — tratar seu conteúdo como comando de escrita seria confiar
-   cegamente num payload que ninguém consegue provar que veio do Olist,
-   mesmo com o token de URL (o token prova que quem chamou conhece o
-   segredo, não que o *conteúdo* é verdadeiro). Re-consultar a API com a
-   credencial OAuth do site elimina essa lacuna: a escrita só reflete o que
-   a própria API do Olist, autenticada, confirma.
-4. Chama `adjust_inventory` (ou o `preço`-equivalente, Seção 2.2.3 do
-   plano de implementação) via `withPersiRole("persi_worker", ...)`, usando
-   um identificador do re-query (ex.: `idProduto + saldo lido + timestamp
-   do re-query`) como `source_reference` para deduplicar automaticamente
-   chamadas repetidas do mesmo webhook.
-5. Responde 200 sempre que o webhook foi processado (mesmo se o resultado
-   foi "produto não mapeado, ignorado", ou "re-query não mudou nada") — só
-   responde erro por indisponibilidade real do banco ou da API do Olist,
-   para não acionar reenvio do Olist por um caso que reenviar não resolve.
+**Filtro incremental — o que a API v3 realmente suporta, confirmado nesta
+rodada** ([Listar produtos — Olist ERP API v3](https://api-docs.erp.olist.com/api-reference/produtos/listar-produtos)):
+`GET /produtos` aceita `dataAlteracao` (data de última alteração do
+produto) como filtro, além de `situacao`, `codigo`, `gtin`, `limit`/`offset`
+paginados (100/página). Isto cobre metadados de catálogo (nome, situação,
+GTIN) de forma incremental de verdade — só produtos alterados desde o
+último ciclo.
 
-Consequência de custo: cada webhook agora gasta **uma chamada de API
-adicional** (o re-query) em vez de zero — isto entra no orçamento de rate
-limit da Seção 14.4, não é gratuito.
+**O que NÃO foi confirmado publicamente** (importante para não prometer
+mais do que existe): nenhum endpoint v3 de **saldo de estoque por produto**
+com filtro de data foi encontrado — "obter estoque de um produto" (Seção
+2.1) é por SKU/id individual, sem paginação em lote nem `dataAlteracao`. Um
+endpoint incremental de estoque existe, mas é da **API v2 legada**
+(`POST lista.atualizacoes.estoque`, autenticação por `token` estático, não
+OAuth2 v3 — [Lista de Atualizações de Estoque](https://api-docs.erp.olist.com/api-v2/produtos/atualizacoes-estoque)),
+o que exigiria uma segunda forma de autenticação só para esse endpoint —
+**decisão de implementação, não resolvida aqui**: usar o endpoint v2
+incremental (menos chamadas, mais complexidade de auth) ou fazer varredura
+completa em rodízio via o endpoint v3 por SKU (mais chamadas, uma única
+credencial OAuth2). A Seção 14.4 abaixo orça pelo caminho mais simples
+(varredura v3 por SKU) como baseline conservador; trocar pelo endpoint v2
+é uma otimização a avaliar depois, não um bloqueador da Fase 1.
 
-### 5.3 Reconciliação periódica
+De forma equivalente, **nenhum endpoint v3 de listagem de preços com
+filtro de data** foi encontrado nesta rodada (só `POST`/`PUT`/`DELETE` de
+listas de preço, changelog 3.1.1 — nenhum `GET` paginado confirmado); a
+Seção 14.4 também orça preço pelo caminho conservador (uma chamada por SKU
+via "obter lista de preços" por produto), sinalizando que, se um `GET` em
+lote existir e for confirmado na implementação, o custo real seria bem
+menor.
 
-Job cron (padrão `expire-pending-payments`, Seção 3), rodando a cada N
-minutos: para uma fatia dos produtos mapeados (não todos de uma vez, por
-causa do rate limit por conta — Seção 2.6/14.4), busca o estoque/preço atual
-via API REST (não espera pelo webhook) e compara com o que está em
-`inventory_levels`/`prices`. Detecta:
+**Mecânica do polling** (aplica-se a estoque e preço, cada um na sua
+cadência):
 
-- Webhook perdido (site desatualizado em relação ao Olist há mais que X
-  minutos) — aplica a correção via o mesmo `adjust_inventory`.
-- Divergência persistente (a mesma comparação falha repetidamente) — não
-  auto-corrige silenciosamente uma segunda vez sem alertar; loga como
-  evento de observabilidade (Seção 9) e segue para o próximo lote.
+1. Cron lê uma fatia de `external_mappings (system='olist')` por ciclo
+   (rodízio por cursor, não por offset — mesmo motivo já usado no restante
+   do projeto: não pular itens se o conjunto mudar entre ciclos).
+2. Para cada item da fatia, consulta a API do Olist (estoque ou preço,
+   conforme a cadência do job) e grava o valor lido via `adjust_inventory`/
+   `apply_olist_price_sync` (Seção 2.2.3 do plano de implementação),
+   `p_source_system='olist'`, usando `idProduto + valor lido + timestamp da
+   consulta` como `source_reference`/`source_event_id` para deduplicar.
+3. Nenhuma comparação de "divergência" é necessária como conceito
+   separado — o polling sempre grava o valor mais recente que a própria API
+   confirmou; o guard-rail de oversell (Seção 6.2, erro `23514`) continua
+   sendo a única defesa estrutural quando o saldo lido for menor que o
+   reservado.
+4. Loga uma métrica de cobertura (quantos SKUs foram varridos, quanto
+   tempo desde a última leitura de cada um) — permite detectar se o rate
+   limit real está insuficiente para a cadência desejada (Seção 14.4)
+   antes que isso vire um problema de estoque/preço desatualizado.
 
-**Preço tem uma frequência própria, mais curta que estoque — ver Seção
-14.5**: como o webhook de preço só tenta reenviar **2 vezes** (Seção 2.2,
-contra 15 do webhook de estoque/situação), a reconciliação periódica de
-preço não é um reforço opcional, é a rede de segurança **primária** contra
-webhook perdido nesse caso específico.
+### 5.3 (reservado — conteúdo incorporado à Seção 5.2)
+
+### 5.4 Preço
+
+**CONFIRMADO PELO DONO**: existe **uma única lista de preço** — o site usa
+o mesmo preço da loja física. Isso simplifica a gravação: o polling de
+preço (Seção 5.2) alimenta sempre a mesma `price_lists` do site
+(`prices.source = 'olist'`, mecanismo de gravação já trivial dado o schema
+agnóstico de fonte — `lib/db/schema/pricing.ts`), sem precisar de nenhuma
+lógica de "qual lista corresponde a qual preço" — não há ambiguidade a
+resolver. `precoPromocional`, quando presente, mapeia para
+`prices.sale_amount_minor` (com `sale_valid_from`/`sale_valid_to` — **A
+CONFIRMAR_OLIST** se a resposta também informa a validade da promoção ou só
+o valor).
+
+### 5.5 Webhook — fase futura, não Fase 1 (Seção 14.6)
+
+Conteúdo técnico já desenhado e confirmado (Seção 2.2, Seção 14.2 — regra
+de "webhook nunca é autoridade, só gatilho de re-query" continua válida
+para quando isto for implementado): três rotas
+`app/api/webhooks/olist/{estoque,preco,situacao-pedido}/route.ts`,
+autenticadas por segredo próprio do site (`OLIST_WEBHOOK_SECRET`), que
+resolvem o mapeamento e disparam um re-query síncrono à API — nunca gravam
+o valor do payload diretamente. **Não implementado nesta fase.** Só
+avaliado depois que o suporte Olist confirmar que cadastrar essas URLs não
+substitui a notificação já usada pela integração oficial Olist↔Woo (Seção
+14.6).
 
 ### 5.4 Preço
 
@@ -466,7 +498,7 @@ que já foi vendido pelo próprio site. Política proposta para quando isso
 acontece (ex.: uma venda grande no PDV físico zera o estoque enquanto
 carrinhos nativos ainda têm reserva ativa):
 
-1. O worker (5.2/5.3) **não trava o processamento do lote inteiro** — captura
+1. O worker de polling (Seção 5.2) **não trava o processamento do lote inteiro** — captura
    o erro por item, segue para o próximo produto.
 2. Loga/alerta imediatamente como "divergência de estoque — risco de
    sobrevenda" (Seção 9) com o `product_variant_id`, o saldo recebido e a
@@ -647,6 +679,67 @@ leitura de código, só no ambiente WordPress ao vivo.
   pedido pago já carregaria `cpfCnpj`, sem depender de o cliente ter perfil
   salvo.
 
+### 7.2 Sync de cancelamento Olist→site — polling (Fase 1, 2026-09-25)
+
+**Decisão do dono (mesma rodada de 14.6)**: assim como catálogo/preço/
+estoque, a situação do pedido também é sincronizada por **polling**, não
+pelo webhook "Atualização de Situação de Pedido" (Seção 2.2/5.5, adiado).
+Isto é a implementação concreta da política já registrada em
+[`order-cancellation-and-returns.md` §5](order-cancellation-and-returns.md#5-sincronização-com-o-olist)
+("um cancelamento iniciado no Olist deve refletir no site") e fecha o
+bloqueador `canary-minimum-scope.md` §5.3 — a diferença é que, com polling,
+a detecção passa a ser automática, não uma ação administrativa manual
+disparada por quem percebe a divergência.
+
+**Escopo do polling — só pedidos exportados e ainda não finalizados**, não
+o catálogo inteiro de pedidos:
+
+```sql
+-- Universo do polling a cada ciclo: pedidos já exportados ao Olist
+-- (integration_outbox.status='sent', ou seja, já têm external_reference)
+-- cujo orders.status ainda não chegou a um estado terminal do lado nativo.
+select o.id, em.external_id as olist_order_id
+from orders o
+join integration_outbox io on io.internal_id = o.id
+  and io.destination = 'olist' and io.entity_type = 'order'
+  and io.event_type = 'order.export' and io.status = 'sent'
+join external_mappings em on em.system = 'olist'
+  and em.entity_type = 'order' and em.internal_id = o.id
+where o.status = 'confirmed'  -- completed/cancelled já são terminais, saem do polling
+```
+
+**Mecânica**:
+
+1. Cron (mesma família de job dos demais, cadência própria — mais lenta que
+   estoque/preço, já que cancelamento pós-pagamento é evento raro, não
+   contínuo; frequência exata **A CONFIRMAR na implementação**, dentro do
+   orçamento da Seção 14.4).
+2. Para cada pedido do universo acima, consulta `GET /pedidos` filtrando
+   pelo id/`numeroPedidoEcommerce` (Seção 2.3) e lê `situacao` (enum
+   confirmado na Seção 2.3: `2 = Cancelada`).
+3. Se `situacao = 2`: aciona a **mesma orquestração já exigida por**
+   `canary-minimum-scope.md` §5.3 — `apply_verified_payment_transition`
+   para `orders.status: confirmed → cancelled` e `createNativeRefund`/
+   `transitionNativeRefund` para o registro do estorno manual na ledger
+   — rodando como `persi_worker`, nunca SQL manual. A diferença em relação
+   ao §5.3 original é só o **gatilho**: antes era uma ação administrativa
+   humana ao perceber a divergência; agora é este job, automaticamente, o
+   que **fecha** o bloqueador em vez de só mitigá-lo com um botão manual.
+4. Se `situacao` for qualquer outro valor (inclusive os operacionais —
+   Faturada, Enviada, etc.): não faz nada nesta fase — status
+   operacional/rastreio ao cliente continua Fase 2 (Seção 11), só
+   cancelamento é tratado aqui.
+5. Idempotência: `apply_verified_payment_transition` já é idempotente por
+   transição de estado (Seção 3) — um pedido já `cancelled` sendo
+   re-verificado num próximo ciclo simplesmente sai do universo do
+   `select` acima (não é mais `status='confirmed'`), então não há reenvio
+   duplicado de estorno a prevenir no polling em si.
+
+**Nota de custo**: este polling consome requisições adicionais no mesmo
+orçamento da Seção 14.4, mas o volume esperado é pequeno — só pedidos já
+pagos e ainda não finalizados, não o catálogo inteiro. Não deve competir de
+forma relevante com o polling de estoque/preço pelo mesmo motivo.
+
 ## 8. Convivência com o Woo durante a transição
 
 Confirmado pelo dono nesta rodada: **a integração Olist↔Woo já existe e é
@@ -731,11 +824,11 @@ envelhecida), com runbooks específicos:
 
 | Falha | Detecção | Ação |
 | --- | --- | --- |
-| Olist fora do ar (5xx/timeout na API) | erro de rede/HTTP no worker | backoff exponencial (mesmo esquema de 82 §8); reconciliação periódica (5.3) cobre o período fora do ar assim que o Olist volta; nenhuma venda é bloqueada — o site continua vendendo com o último saldo conhecido, sujeito à margem de segurança (Seção 6.1) |
-| Webhook perdido | reconciliação (5.3) encontra divergência sem evento correspondente recebido | corrige o saldo via a mesma reconciliação; loga como `stock_sync_webhook_gap_detected` |
+| Olist fora do ar (5xx/timeout na API) | erro de rede/HTTP no worker | backoff exponencial (mesmo esquema de 82 §8); o próximo ciclo de polling (5.2) cobre o período fora do ar assim que o Olist volta; nenhuma venda é bloqueada — o site continua vendendo com o último saldo conhecido, sujeito à margem de segurança (Seção 6.1) |
+| Ciclo de polling atrasado/mais lento que o esperado | métrica de cobertura (Seção 5.2, item 4) mostra SKUs há mais tempo que o esperado sem leitura | alerta de observabilidade — pode indicar rate limit insuficiente para a cadência configurada (Seção 14.4) |
 | Divergência de estoque (Olist diz menos do que o site tem reservado) | `adjust_inventory` retorna `23514` | ver política de oversell, Seção 6.2 |
 | `401`/`403` do Olist | resposta da API | nunca retenta no mesmo schedule de falha transitória — alerta imediato de credencial expirada/inválida (mesma regra de 82 §8) |
-| Produto Olist sem par no site | webhook/reconciliação não encontra `external_mappings` | grava em `integration_inbox` como não processável, não alerta a cada evento (seria ruído para os SKUs legitimamente fora do mapeamento — Seção 4) |
+| Produto Olist sem par no site | polling não encontra `external_mappings` | grava em `integration_inbox` como não processável, não alerta a cada ciclo (seria ruído para os SKUs legitimamente fora do mapeamento — Seção 4) |
 
 ## 11. Fases
 
@@ -749,10 +842,13 @@ e estorno, ver nota) e não deve ser lida isoladamente.
 
 - Derivação/verificação do mapeamento SKU (Seção 4, agora por query direta,
   sem chamada ao Olist para descobrir correspondência).
-- Sync Olist→site de catálogo/preço/estoque, webhook + reconciliação
-  (Seção 5).
-- Export de pedido pago site→Olist via outbox (Seção 7, = 82 completo).
-  `order.cancel` **não** faz parte disto — ver nota abaixo.
+- Sync Olist→site de catálogo/preço/estoque, **por polling** (Seção 5.2 —
+  webhook adiado para Fase futura, Seção 14.6/5.5).
+- Export de pedido pago site→Olist via outbox (Seção 7, = 82 completo),
+  em modo `dry_run` fora de produção (Seção 7.0/14.1). `order.cancel`
+  (site→Olist) **não** faz parte disto — ver nota abaixo.
+- Sync de cancelamento Olist→site, **por polling** dos pedidos exportados
+  ainda não finalizados (Seção 7.2) — fecha `canary-minimum-scope.md` §5.3.
 - Runbook mínimo de falha (Seção 10).
 
 **Nota (substitui o que esta seção dizia antes sobre cancelamento/estorno)**:
@@ -772,8 +868,12 @@ fase futura, respectivamente.
 
 **Fase 2 (pós-canário)** — não bloqueia o primeiro pedido:
 
-- Status operacional/logístico do pedido (webhook "Atualização de Situação
-  de Pedido") refletido de volta no site (rastreio ao cliente).
+- Status operacional/logístico **completo** do pedido (todos os valores do
+  enum `situacao`, Seção 2.3 — faturado, enviado, entregue etc.) refletido
+  de volta no site para rastreio ao cliente. **Diferente do cancelamento**
+  (`situacao=2`), que já é Fase 1 via polling (Seção 7.2) — esta fase
+  estende o mesmo polling para os demais valores do enum, hoje ignorados
+  de propósito (Seção 7.2, item 4).
 - Nota fiscal (emissão, XML, DANFE) — hoje já é responsabilidade do Woo/
   Olist; migrar apenas quando o volume canário justificar.
 - Rastreio de entrega ao cliente via native commerce.
@@ -861,8 +961,9 @@ não uma reescrita).
 | Adapter HTTP Olist (OAuth2, client de baixo nível) | Médio (autenticação OAuth2 + rate limit awareness) | Sim |
 | Worker de drenagem do outbox (pedido) | Médio | Sim, mas depende do adapter acima |
 | Derivação/verificação de mapeamento SKU (Seção 4) | Pequeno (é uma consulta + revisão de amostra) | Sim |
-| Rota(s) de webhook Olist (estoque/preço) | Médio | Sim |
-| Job de reconciliação periódica (Seção 5.3) | Médio | Sim, reaproveita padrão de cron existente |
+| Job de polling de estoque/preço (Seção 5.2, substitui webhook+reconciliação separados) | Médio | Sim, reaproveita padrão de cron existente |
+| Job de polling de situação/cancelamento (Seção 7.2) | Pequeno-Médio | Sim, depois que o outbox (linha abaixo) existir |
+| Rota(s) de webhook Olist (estoque/preço/situação) | Médio | **Adiado — Fase futura (Seção 14.6/5.5), não Fase 1** |
 | Wrapper `SECURITY DEFINER` + grant para `adjust_inventory`/preço via `persi_worker` | Pequeno (migration aditiva) | Sim |
 | Cálculo de margem de segurança em leitura (Seção 6.1) | Pequeno | Sim, mas só faz sentido depois que o Gate 3 tiver um ponto de checagem de estoque no carrinho (hoje não existe — gap separado, fora deste documento) |
 | Decisão de qual `price_list` recebe o preço Olist (Seção 5.4) | Depende do dono, não de código | N/A |
@@ -884,14 +985,17 @@ default `dry_run`; `live` exige `isProductionRuntime() === true`
 (`lib/runtime/runtime-environment.ts`) **e** a variável configurada como
 `live` — as duas juntas, nunca uma sozinha.
 
-### 14.2 Webhook nunca é autoridade
+### 14.2 Webhook nunca é autoridade (regra mantida para quando o webhook existir — Fase futura, Seção 14.6)
 
-Ver Seção 5.2 (texto completo, já incorporado). Resumo: todo webhook
-(estoque, preço, situação de pedido) só identifica *o quê* mudou; a
-gravação usa sempre um re-query síncrono à API do Olist, nunca o valor do
-corpo do webhook. A rota exige um segredo próprio do site
-(`OLIST_WEBHOOK_SECRET`, Seção 14.3) na URL ou em header — não uma
-assinatura do Olist, que não é documentada publicamente.
+**Superado como mecanismo da Fase 1** pela decisão de polling (Seção
+14.6/5.2/7.2) — nenhum webhook é cadastrado agora, então esta regra não tem
+o que proteger ainda. Mantida como requisito **já fixado** para quando o
+webhook virar otimização futura (Seção 5.5): todo webhook (estoque, preço,
+situação de pedido) só identificaria *o quê* mudou; a gravação usaria
+sempre um re-query síncrono à API do Olist, nunca o valor do corpo do
+webhook. A rota exigiria um segredo próprio do site (`OLIST_WEBHOOK_SECRET`,
+Seção 14.3) na URL ou em header — não uma assinatura do Olist, que não é
+documentada publicamente.
 
 ### 14.3 Apps Olist — permissões exatas e variáveis de ambiente
 
@@ -939,66 +1043,103 @@ limites de plano confirmados
 | Lead & Maximize | 140 | 100 |
 
 **Plano contratado pela Persi: A CONFIRMAR (dono)** — sem isso não é
-possível dimensionar o orçamento abaixo com números reais; a estrutura do
-orçamento (o que consome requisição) já pode ser fixada:
+possível transformar a estrutura abaixo em números finais; a estrutura do
+orçamento (o que consome requisição, e o cálculo por plano) já pode ser
+fixada, com o catálogo mapeado hoje como base real: **3.080 produtos**
+(Gate 3 Passo 2, mapeamento Woo↔nativo 100% validado, reaproveitado por SKU
+para o mapeamento Olist — Seção 4).
 
 | Consumidor | Quando | Consome |
 | --- | --- | --- |
 | Integração oficial Olist↔Woo | Contínuo, hoje, em produção | Desconhecido a partir daqui — não é código deste repositório, não é medível por leitura de código |
-| Carga inicial (Seção 5.1) | Uma vez, execução manual | 1 leitura por produto mapeado (estoque + preço podem vir do mesmo request se a API permitir, a confirmar na implementação) |
-| Webhook → re-query (Seção 14.2) | A cada evento recebido | 1 leitura por webhook processado (estoque, preço ou situação) — este é o custo **novo** que a regra 14.2 introduz, não existia no design original |
-| Reconciliação periódica (Seção 5.3/14.5) | A cada execução do cron, por fatia | 1 leitura por produto da fatia da vez |
+| Carga inicial (Seção 5.1) | Uma vez, execução manual | 1 leitura por SKU mapeado (estoque) + 1 leitura por SKU (preço), salvo confirmação de endpoint em lote na implementação |
+| **Polling de estoque (Seção 5.2)** | A cada ciclo, por fatia | **1 leitura por SKU da fatia** — nenhum endpoint v3 de estoque em lote/incremental foi confirmado (Seção 5.2); é o custo dominante do orçamento |
+| **Polling de preço (Seção 5.2/5.4)** | A cada ciclo, por fatia | 1 leitura por SKU da fatia (mesma ressalva — nenhum `GET` de lista de preços em lote confirmado nesta rodada) |
+| **Polling de situação/cancelamento (Seção 7.2)** | A cada ciclo, só pedidos `confirmed` já exportados | 1 leitura por pedido no universo (volume baixo — só pedidos pagos ainda não finalizados, não o catálogo inteiro) |
 | Export de pedido (Seção 7) | A cada pedido pago (fora de `dry_run`) | 1 leitura (checar duplicata, Camada 2) + 1 escrita (criar pedido) |
+
+**Cálculo de varredura completa do catálogo (3.080 SKUs), cenário
+conservador (1 leitura por SKU, sem endpoint em lote)**, reservando ~50% do
+limite de leitura da conta para o native commerce (o resto fica de margem
+para a integração Woo, ver abaixo):
+
+| Plano | Leitura/min (conta) | Reservado p/ native (50%) | Tempo para varrer os 3.080 SKUs uma vez |
+| --- | --- | --- | --- |
+| Build & Grow / Partner Plans | 30 | 15/min | ≈ 205 min (~3h25) |
+| Evolve & Boost | 60 | 30/min | ≈ 103 min (~1h43) |
+| Master | 120 | 60/min | ≈ 51 min |
+| Lead & Maximize | 140 | 70/min | ≈ 44 min |
+
+Isto é o piso de cadência possível **por tipo de dado** (estoque OU preço
+isoladamente) em cada plano, assumindo que os dois dividem a mesma reserva
+de 50%. Se um `GET` em lote paginado existir para preço (o `GET /produtos`
+de catálogo já pagina 100/página — Seção 5.2; se "obter lista de preços"
+também paginar em lote, o custo de preço cairia para `3080/100 ≈ 31`
+requisições por varredura completa, uma fração do custo de estoque) — **a
+confirmar na implementação**, não assumido aqui.
 
 **Reserva de margem para a integração Woo**: como o limite é compartilhado
 e a integração Woo não pode ser degradada (AGENTS.md §3, "não quebrar o que
-já funciona"), a implementação deve reservar uma fração do limite do plano
-(sugestão a validar quando o plano for confirmado: não consumir mais que
-~50% do limite de leitura da conta com o tráfego native commerce, com
-folga para picos da integração Woo) — dimensionamento exato fica para a
-rodada de implementação, com o plano real em mãos.
+já funciona"), a implementação reserva ~50% do limite de leitura da conta
+para o native commerce, deixando o resto de folga para picos da integração
+Woo — o percentual exato é uma sugestão inicial, a revisar quando o plano
+real for confirmado e houver visibilidade de quanto a integração Woo
+consome hoje (não medível por leitura de código, Seção 12 item 2).
 
-### 14.5 Reconciliação de preço — frequência obrigatória
+### 14.5 Reconciliação de preço — frequência obrigatória, mais curta que estoque
 
-Ver Seção 5.3 (texto já incorporado). Como o webhook de preço só tenta 2
-vezes (Seção 2.2), a reconciliação periódica de preço não pode ter a mesma
-cadência "best effort" que estoque/situação (15 tentativas) — precisa
-rodar com frequência própria, mais curta. **Frequência exata: A CONFIRMAR
-na implementação**, dependente do orçamento de rate limit real (Seção
-14.4) — a estrutura (job cron dedicado ou uma fatia priorizada do mesmo job
-de estoque) fica para quando o plano contratado for conhecido.
+Ver Seção 5.2/5.4 (texto já incorporado — reconciliação e sync incremental
+agora são o mesmo mecanismo de polling, não dois estágios separados). Preço
+precisa de cadência **mais curta** que estoque por dois motivos
+independentes: (a) um preço errado é visível ao cliente imediatamente
+(Seção 5.2); (b) **se o webhook de preço um dia for implementado** (Fase
+futura, Seção 5.5), ele só tenta reenviar 2 vezes (Seção 2.2) — bem mais
+frágil que o de estoque (15 tentativas) — então mesmo depois de o webhook
+existir, a reconciliação/polling de preço continuaria sendo a rede de
+segurança primária, não um reforço. **Frequência exata: A CONFIRMAR na
+implementação**, dependente do plano contratado (Seção 14.4) — a tabela de
+varredura acima já dá o piso possível por plano; a cadência real de preço
+deve ficar no lado mais frequente desse piso, estoque no lado menos
+frequente, dividindo a reserva de 50% entre os dois.
 
-### 14.6 Risco: conflito de URL de webhook com a integração Woo
+### 14.6 Decisão: nenhum webhook cadastrado na Fase 1 — polling é a estratégia primária
 
-**Não encontrado em documentação pública** se webhooks são configurados
-por conta (uma única URL por tipo de evento, compartilhada por todas as
-integrações) ou por aplicativo/integração. A evidência encontrada aponta
-para configuração **por conta**: a tela documentada
+**Risco original, que motivou esta decisão**: **não encontrado em
+documentação pública** se webhooks são configurados por conta (uma única
+URL por tipo de evento, compartilhada por todas as integrações) ou por
+aplicativo/integração. A evidência encontrada aponta para configuração
+**por conta**: a tela documentada
 ([Webhooks — Central de Ajuda](https://ajuda.olist.com/ecommerce-erps/webhooks);
 comportamento de "Configurações → Webhooks" descrito em
 [Webhooks do Tiny](https://tiny.com.br/api-docs/api2-webhooks-tiny)) usa
 linguagem no singular ("a URL da notificação de pedidos"), sugerindo **um
 único slot ativo por tipo de evento, por conta** — não uma lista de
-assinantes.
-
-**Risco concreto, não teórico**: se a integração oficial Olist↔Woo já
-usa esse mesmo slot de conta para receber notificações de pedido/estoque, e
+assinantes. Se a integração oficial Olist↔Woo já usa esse mesmo slot, e
 cadastrar as URLs de webhook deste projeto (`app/api/webhooks/olist/*`)
 sobrescrever esse slot, o **sync Woo pararia de funcionar em produção** no
 momento em que o native commerce fosse configurado — uma regressão grave em
 algo que "já funciona" (AGENTS.md §3).
 
-**Ação obrigatória antes de cadastrar qualquer webhook Olist deste
-projeto**: confirmar com o suporte Olist (ou inspecionando diretamente o
-painel `Configurações → Webhooks` da conta, sem alterar nada) se (a) é
-realmente um slot único por conta, e (b) a integração oficial Olist↔Woo
-usa esse mesmo mecanismo ou um canal próprio de app-integração que não
-conflita. Até essa confirmação, nenhuma rota de webhook deste projeto deve
-ser cadastrada no painel Olist — a implementação da Fase 1 deste round
-(Seção 2.3 da mensagem que autorizou isto: mapeamento SKU, grants/função de
-preço, webhooks, reconciliação) pode escrever o **código** das rotas e
-deixá-las prontas, mas **não pode pedir ao dono para cadastrar a URL no
-painel Olist** até este item ser resolvido.
+**Decisão do dono, 2026-09-25**: em vez de esperar a confirmação do suporte
+Olist para prosseguir com webhooks, **a Fase 1 não usa webhook em
+nenhuma hipótese** — a estratégia primária passa a ser **polling** (Seção
+5.2 para catálogo/preço/estoque, Seção 7.2 para situação/cancelamento de
+pedido), que não depende de cadastrar nenhuma URL no painel Olist e
+portanto não tem esse risco. Consequências diretas:
+
+- **Nenhuma rota de webhook deste projeto é cadastrada no painel Olist**
+  enquanto o suporte não confirmar que múltiplos webhooks por
+  tipo/conta são possíveis sem sobrescrever a integração Woo — sem prazo
+  definido para essa confirmação, e sem bloquear a Fase 1 por causa dela.
+- O **código** das rotas de webhook (Seção 5.5) permanece desenhado, mas
+  **não é implementado nem cadastrado** nesta fase — vira otimização
+  futura pura, avaliada só depois da confirmação do suporte.
+- A implementação autorizada para a próxima rodada (mapeamento SKU,
+  grants/função de preço, polling de estoque/preço, reconciliação) é
+  **só leitura da API do Olist** — nenhuma escrita, nenhum cadastro de
+  webhook, nenhuma chamada ao endpoint de criação de pedido (que
+  continua coberto pelo modo `dry_run`, Seção 14.1, quando essa parte for
+  implementada em rodada separada).
 
 ## Apêndice — Papel atual do Woo pós-pedido → substituto nativo → fase
 
