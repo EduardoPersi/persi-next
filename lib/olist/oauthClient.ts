@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import type { PersiRole } from "@/lib/db/nativeCommerceAuthority";
+import { logNativeCommerceEvent } from "@/lib/observability/nativeCommerceEvents";
 import {
   claimOlistOAuthTokenRefresh,
   readOlistOAuthToken,
@@ -101,19 +102,43 @@ function isOlistTokenResponse(value: unknown): value is OlistTokenResponse {
   );
 }
 
+// Standard OAuth2 error response shape (RFC 6749 Section 5.2) -- these two
+// fields are error CODES/descriptions from the provider, never a secret or
+// a token, so they are the only part of a failed response ever logged.
+function extractOlistOAuthErrorFields(body: unknown): { error?: string; errorDescription?: string } {
+  if (!body || typeof body !== "object") return {};
+  const record = body as Record<string, unknown>;
+  return {
+    error: typeof record.error === "string" ? record.error.slice(0, 100) : undefined,
+    errorDescription: typeof record.error_description === "string" ? record.error_description.slice(0, 300) : undefined,
+  };
+}
+
 async function requestOlistToken(
   body: Record<string, string>,
   fetchImplementation: typeof fetch,
 ): Promise<OlistTokenResponse> {
-  const response = await fetchImplementation(OLIST_OAUTH_TOKEN_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams(body),
-    cache: "no-store",
-    signal: AbortSignal.timeout(15_000),
-  });
+  let response: Response;
+  try {
+    response = await fetchImplementation(OLIST_OAUTH_TOKEN_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(body),
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (error) {
+    logNativeCommerceEvent("native_olist_oauth_token_exchange_failed", {
+      code: error instanceof Error ? `NETWORK_${error.name}` : "NETWORK_UNKNOWN",
+    });
+    throw new Error("OLIST_OAUTH_TOKEN_EXCHANGE_FAILED");
+  }
   const json: unknown = await response.json().catch(() => null);
   if (!response.ok || !isOlistTokenResponse(json)) {
+    const { error, errorDescription } = extractOlistOAuthErrorFields(json);
+    logNativeCommerceEvent("native_olist_oauth_token_exchange_failed", {
+      code: `HTTP_${response.status}${error ? `:${error}` : ""}${errorDescription ? ` (${errorDescription})` : ""}`,
+    });
     throw new Error("OLIST_OAUTH_TOKEN_EXCHANGE_FAILED");
   }
   return json;

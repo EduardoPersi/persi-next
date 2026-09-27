@@ -58,7 +58,12 @@ export type NativeCommerceEventName =
   // unreachable, rate-limited, or circuit open). Not itself a failure --
   // logged as info unless the fallback also determines the sale must be
   // blocked, which the caller logs separately via its own failure path.
-  | "native_olist_stock_check_fallback_used";
+  | "native_olist_stock_check_fallback_used"
+  // Olist OAuth token exchange (authorization_code or refresh_token grant)
+  // failed. `code` carries only the HTTP status and, when Olist's response
+  // is the standard OAuth2 error shape ({error, error_description}), those
+  // two fields -- never the request body, never client_secret/code/tokens.
+  | "native_olist_oauth_token_exchange_failed";
 
 export interface NativeCommerceEventFields {
   correlationId?: string;
