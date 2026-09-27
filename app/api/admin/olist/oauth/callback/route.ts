@@ -4,7 +4,7 @@ import { AdminAuthorizationError, requireAdminPermission } from "@/lib/admin/aut
 import { safeOAuthEqual } from "@/lib/account/oauth/state";
 import { completeOlistOAuthAuthorization } from "@/lib/olist/oauthClient";
 import { isProductionRuntime } from "@/lib/runtime/runtime-environment";
-import { OLIST_OAUTH_APP_COOKIE, OLIST_OAUTH_STATE_COOKIE, isValidOlistOAuthApp } from "@/lib/olist/oauthRouteShared";
+import { OLIST_OAUTH_APP_COOKIE, OLIST_OAUTH_STATE_COOKIE, getOlistAdminOrigin, isValidOlistOAuthApp } from "@/lib/olist/oauthRouteShared";
 
 // Completes the flow started by ../authorize/route.ts. This is the ONLY
 // place in this round's code where OLIST_API_CALLS actually happens for
@@ -30,14 +30,14 @@ function statusPage(message: string, ok: boolean): NextResponse {
   return new NextResponse(html, { status: ok ? 200 : 400, headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
 
-function redirectForAuthError(request: Request, error: AdminAuthorizationError): NextResponse {
+function redirectForAuthError(origin: string, error: AdminAuthorizationError): NextResponse {
   if (error.code === "IDENTITY_REQUIRED" || error.code === "SESSION_REQUIRED") {
-    return NextResponse.redirect(new URL("/admin/login", request.url));
+    return NextResponse.redirect(new URL("/admin/login", origin));
   }
   if (error.code === "MFA_REQUIRED") {
-    return NextResponse.redirect(new URL("/admin/mfa", request.url));
+    return NextResponse.redirect(new URL("/admin/mfa", origin));
   }
-  return NextResponse.redirect(new URL("/admin/access-denied", request.url));
+  return NextResponse.redirect(new URL("/admin/access-denied", origin));
 }
 
 function clearOlistOAuthCookies(response: NextResponse, isProduction: boolean): void {
@@ -47,14 +47,16 @@ function clearOlistOAuthCookies(response: NextResponse, isProduction: boolean): 
 }
 
 export async function GET(request: Request): Promise<Response> {
+  const isProduction = isProductionRuntime();
+  const siteOrigin = getOlistAdminOrigin(isProduction ? "production" : "staging");
+
   try {
     await requireAdminPermission("olist.oauth.manage");
   } catch (error) {
-    if (error instanceof AdminAuthorizationError) return redirectForAuthError(request, error);
+    if (error instanceof AdminAuthorizationError) return redirectForAuthError(siteOrigin, error);
     throw error;
   }
 
-  const isProduction = isProductionRuntime();
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const returnedState = searchParams.get("state");

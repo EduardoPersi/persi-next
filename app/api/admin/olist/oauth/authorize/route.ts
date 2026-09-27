@@ -3,7 +3,7 @@ import { AdminAuthorizationError, requireAdminPermission } from "@/lib/admin/aut
 import { generateOAuthValue } from "@/lib/account/oauth/state";
 import { buildOlistAuthorizationUrl, getOlistOAuthAppConfig } from "@/lib/olist/oauthClient";
 import { isProductionRuntime } from "@/lib/runtime/runtime-environment";
-import { OLIST_OAUTH_APP_COOKIE, OLIST_OAUTH_COOKIE_MAX_AGE, OLIST_OAUTH_STATE_COOKIE, isValidOlistOAuthApp } from "@/lib/olist/oauthRouteShared";
+import { OLIST_OAUTH_APP_COOKIE, OLIST_OAUTH_COOKIE_MAX_AGE, OLIST_OAUTH_STATE_COOKIE, getOlistAdminOrigin, isValidOlistOAuthApp } from "@/lib/olist/oauthRouteShared";
 
 // Admin-gated, one-time browser authorization flow
 // (docs/native-commerce/olist-oauth-flow-design.md Section 2-3). No Olist
@@ -15,21 +15,25 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const runtime = "nodejs";
 
-function redirectForAuthError(request: Request, error: AdminAuthorizationError): NextResponse {
+function redirectForAuthError(origin: string, error: AdminAuthorizationError): NextResponse {
   if (error.code === "IDENTITY_REQUIRED" || error.code === "SESSION_REQUIRED") {
-    return NextResponse.redirect(new URL("/admin/login", request.url));
+    return NextResponse.redirect(new URL("/admin/login", origin));
   }
   if (error.code === "MFA_REQUIRED") {
-    return NextResponse.redirect(new URL("/admin/mfa", request.url));
+    return NextResponse.redirect(new URL("/admin/mfa", origin));
   }
-  return NextResponse.redirect(new URL("/admin/access-denied", request.url));
+  return NextResponse.redirect(new URL("/admin/access-denied", origin));
 }
 
 export async function GET(request: Request): Promise<Response> {
+  const isProduction = isProductionRuntime();
+  const environment = isProduction ? "production" : "staging";
+  const siteOrigin = getOlistAdminOrigin(environment);
+
   try {
     await requireAdminPermission("olist.oauth.manage");
   } catch (error) {
-    if (error instanceof AdminAuthorizationError) return redirectForAuthError(request, error);
+    if (error instanceof AdminAuthorizationError) return redirectForAuthError(siteOrigin, error);
     throw error;
   }
 
@@ -39,8 +43,6 @@ export async function GET(request: Request): Promise<Response> {
     return NextResponse.json({ message: "Parâmetro app inválido (esperado catalogo|pedidos)." }, { status: 400 });
   }
 
-  const isProduction = isProductionRuntime();
-  const environment = isProduction ? "production" : "staging";
   // Pedidos nunca deve ser autorizado fora de produção -- o export de
   // pedido em staging é sempre dry_run e não precisa (nem deve ter) essa
   // credencial (olist-integration-design.md Seção 14.1/14.3).
