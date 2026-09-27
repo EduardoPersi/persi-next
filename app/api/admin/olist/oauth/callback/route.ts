@@ -5,6 +5,8 @@ import { safeOAuthEqual } from "@/lib/account/oauth/state";
 import { completeOlistOAuthAuthorization } from "@/lib/olist/oauthClient";
 import { isProductionRuntime } from "@/lib/runtime/runtime-environment";
 import { OLIST_OAUTH_APP_COOKIE, OLIST_OAUTH_STATE_COOKIE, getOlistAdminOrigin, isValidOlistOAuthApp } from "@/lib/olist/oauthRouteShared";
+import { logNativeCommerceEvent } from "@/lib/observability/nativeCommerceEvents";
+import { extractPostgresErrorMessage } from "@/lib/db/postgresErrorMessage";
 
 // Completes the flow started by ../authorize/route.ts. This is the ONLY
 // place in this round's code where OLIST_API_CALLS actually happens for
@@ -83,8 +85,19 @@ export async function GET(request: Request): Promise<Response> {
 
   try {
     await completeOlistOAuthAuthorization({ role, app, environment, code });
-  } catch {
-    return failure("A troca do código de autorização pelo token falhou (OLIST_OAUTH_TOKEN_EXCHANGE_FAILED). Confirme o client_id/secret salvos e tente de novo.");
+  } catch (error) {
+    // Staging (2026-09-27): this used to collapse every possible failure
+    // into the same generic "token exchange failed" message, which hid
+    // that the real failure was somewhere else in the chain entirely
+    // (key config, encryption, or the DB write) -- extractPostgresErrorMessage
+    // unwraps drizzle's `.cause` wrapping the same way the Gate 3 handlers
+    // already learned to (lib/db/postgresErrorMessage.ts). Every error this
+    // chain can throw is either a fixed short code with no secret in it, or
+    // a Postgres message/SQLSTATE -- safe to log and to show directly, and
+    // far faster to diagnose than requiring a runtime-log lookup each time.
+    const detail = extractPostgresErrorMessage(error) || (error instanceof Error ? error.message : "UNKNOWN");
+    logNativeCommerceEvent("native_olist_oauth_token_exchange_failed", { code: detail });
+    return failure(`A autorização falhou: ${detail}. Confirme a configuração e tente de novo.`);
   }
 
   const response = statusPage(`App "${app}" conectado com sucesso ao ambiente ${environment}.`, true);
