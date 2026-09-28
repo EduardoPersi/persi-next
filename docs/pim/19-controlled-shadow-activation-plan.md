@@ -403,3 +403,115 @@ D2C_R1_PASS=YES
 SAFE_TO_REACTIVATE_SHADOW=NO
 ```
 Próximo passo: uma rodada futura, separadamente autorizada, deve reativar brevemente o shadow a 1% em staging e confirmar ao vivo que agora aparece exatamente 1 evento `[pim-catalog-shadow]` por requisição real de PDP, antes de qualquer ativação mais ampla/duradoura. Artefato: `scratchpad/a36d2c_r1_duplicate_shadow_root_cause.json`, SHA256 `41ef3fccbbacd3ecbf5981bfe606705018901ca1ff30c2f5d3ecb4a4b0f5d4c6`.
+
+---
+
+## A3.6-D2-C-R2 — Checkpoint seletivo da correção + pacote de deploy preparado (nenhum deploy)
+
+### Auditoria semântica da correção (Seção 4)
+`git diff` confirma que a correção altera **somente** a linha de declaração (`export async function` → `export const ... = cache(async function`) e a chave de fechamento — todo o corpo da função permanece byte-a-byte idêntico. Chave de cache é a `slug` (string primitiva, determinística); nenhum `Map`/`Set` global de processo; contrato público preservado (mesmo nome/assinatura). Nota (não é regressão, é benefício colateral): dentro de UMA mesma requisição, as 4 chamadas agora compartilham o mesmo resultado resolvido/rejeitado (`cache()` também memoiza rejeições) em vez de potencialmente obter resultados inconsistentes entre si. `R1_FIX_SEMANTIC_AUDIT_PASS=YES`.
+
+### Qualificação de `React.cache()` (Seção 5)
+Confirmado na documentação REAL instalada (Next.js 16.3.1, React 19.2.4): `01-app/01-getting-started/14-metadata-and-og-images.md` ("Memoizing data requests") e `01-app/02-guides/caching-without-cache-components.md` ("Deduplicating requests... within a single render pass") — este segundo trecho usa um exemplo estruturalmente idêntico ao desta correção. Distinguido explicitamente da diretiva `"use cache"` do Next 16 (feature de Cache Components, cross-request, opt-in via `cacheComponents: true` — **não habilitada neste projeto**, confirmado por grep — seria a escolha ERRADA aqui). Nenhum risco de persistência cross-request: confirmado tanto pela documentação ("um único render pass") quanto empiricamente (fora de um render RSC real, `cache()` não memoiza nada). `REACT_CACHE_APPROPRIATE_FOR_RSC_REQUEST_DEDUP=YES`.
+
+### Invariância da resposta oficial (Seção 6) e semântica do efeito colateral (Seção 7)
+Prova estrutural (diff) + testes novos isolados do wrapper `cache()` (preserva valor resolvido; preserva rejeição sem engolir/transformar). `SHADOW_SIDE_EFFECT_DEDUP_SEMANTICS_CORRECT=YES` (memoização cobre a invocação inteira, incluindo `scheduleProductShadow`, por construção — não por guard adicional). `SEPARATE_REQUESTS_NOT_SUPPRESSED_BY_CACHE=YES` (escopo documentado como "um único render pass"; uma nova requisição real sempre tem escopo de cache limpo). `OFFICIAL_RESPONSE_INVARIANCE_PASS=YES`.
+
+### Testes (Seção 8)
+`tests/pimA36D2CR1DuplicateShadowExecutionFix.test.mjs` expandido para 12/12 (3 novos: preserva resolvido, preserva rejeição, corpo da função intocado). Conjunto diretamente relacionado: 135/135. `npm run test:pim`: 659/659 (656 + 3 novos). `tsc --noEmit`: limpo. `npm run build`: exit 0 — observado o mesmo `StoreApiError`/`WooCommerceRestError` 500 pré-existente já relatado pelo operador (chamadas reais de rede a produção durante o warm-up de cache do build, característica inerente e já existente deste projeto, não relacionada a esta correção, não investigada). `tests/instagramFeed.test.mjs`: única falha histórica confirmada, intocada.
+
+### Checkpoint seletivo (Seção 9)
+```
+FILES_STAGED=[services/woocommerce/products.ts, tests/pimA36BOfficialResponseInvariance.test.mjs, tests/pimA36D2CR1DuplicateShadowExecutionFix.test.mjs, docs/pim/19-controlled-shadow-activation-plan.md]
+UNRELATED_FILES_STAGED=0
+```
+`docs/pim/18` (linhagem D1.8, já fechada) deliberadamente excluído deste commit. Commit local:
+```
+COMMIT_SHA=3aa3a9bb26e9da263c63213e842e0f131fdfb163
+```
+Sem push.
+
+### Archive e build isolado (Seções 10-11)
+```
+ARCHIVE_FILENAME=persi-next-3aa3a9b-a36d2cr2-node22.tar
+ARCHIVE_SHA256=730734134e8cbe1aff9091a397f2cb4ecdac6c340233cdb49a90b6fcf92d3dd6
+ARCHIVE_REPRO_BUILD_PASS=YES
+```
+1625 arquivos, via `git archive` exclusivamente do commit acima. Build isolado (extração limpa + `npm ci` do zero + `npm run build`): exit 0. Nota honesta: verificação local usou Node v24.18.0 (não há Node 22 nem gerenciador de versão disponível nesta máquina) — limitação pré-existente e inalterada em toda esta série de rodadas, não nova. Confirmado: build não depende de nenhum arquivo untracked/local.
+
+### Auditoria de segurança do archive (Seção 12)
+Rota de diagnóstico temporária ausente; nenhum `.env`/segredo; nenhum scratchpad; arquivos com "credential" no nome são código de implementação legítimo (mesmo achado do audit original de D1.8); os 5 arquivos de safety gates presentes; Basic Auth conectado em `proxy.ts`; correção `React.cache()` presente e confirmada no archive extraído. `ARCHIVE_SECURITY_AUDIT_PASS=YES`.
+
+### Plano de deploy futuro (Seção 13, não executado)
+Implantar `persi-next-3aa3a9b-a36d2cr2-node22.tar` **somente** em `staging.persimateriais.com.br`, preservando todas as envs existentes (`PERSI_RUNTIME_ENV=staging`, `PIM_PUBLICATION_MODE=off`, `PIM_SHADOW_SAMPLE_RATE=0`, `PIM_SHADOW_TELEMETRY_SINK=noop`) — shadow permanece OFF durante e após este deploy. Validação pós-deploy: Basic Auth, Home, PDP canário abrindo normalmente, **zero** evento `[pim-catalog-shadow]` (porque `mode=off`), zero regressão oficial. Somente depois disso uma nova autorização separada poderá reativar `shadow/1/console`.
+
+### Transparência sobre acesso a produção
+`npm run build` fez chamadas de rede reais e somente-leitura à API pública de produção do Woo durante o aquecimento de cache (característica inerente e pré-existente deste projeto, não introduzida por esta correção) — reportado honestamente como `PRODUCTION_ACCESSED=YES (read-only, incidental, build autorizado)`, não `NO`.
+
+### Gate final
+```
+D2C_R2_PASS=YES
+SAFE_TO_REQUEST_MANUAL_STAGING_DEPLOY_WITH_SHADOW_OFF=YES
+SAFE_TO_REACTIVATE_SHADOW=NO
+SAFE_TO_PUBLISH=NO
+SAFE_TO_CONNECT_PIM_AS_STOREFRONT_SOURCE=NO
+SAFE_TO_PRODUCTION=NO
+SAFE_TO_EXECUTE_ANY_STAGING_DB_WRITE=NO
+```
+Artefato: `scratchpad/a36d2c_r2_request_scoped_dedup_checkpoint.json`, SHA256 `61cdc3f089b108aa9c6cb61cfdbc792c2762a9cc1b019f7365892acc02a8af80`.
+
+---
+
+## A3.6-D2-D — Reconciliação final: prova ao vivo do dedup e fechamento de A3.6-D2
+
+### Prova de dedup no runtime real (não no harness Node local)
+O operador implantou o commit `3aa3a9bb26e9da263c63213e842e0f131fdfb163` somente em `staging.persimateriais.com.br`. Validação pós-deploy com `off/0/noop`: PDP abriu normalmente, **zero** novos eventos `[pim-catalog-shadow]` — `D2_OFF_MODE_ZERO_WORK_LIVE_PROVEN=YES`. Em seguida, ativação controlada `shadow/1/console` (mantendo `PERSI_RUNTIME_ENV=staging`): **um único** acesso ao PDP canário produziu **exatamente um** evento:
+```
+routeKind=product durationMs=352.99982 productId=cb5998f9-5f62-455b-a32b-156469760292
+classification=OFFICIAL_ONLY differenceCount=2 publishedAttributeCount=0
+shadowStatus=completed errorClass=null
+```
+```
+BEFORE_FIX_SHADOW_EVENTS=4
+AFTER_FIX_SHADOW_EVENTS=1
+D2_RUNTIME_DEDUP_PROVEN=YES
+DUPLICATE_SHADOW_EXECUTION_FIXED=YES
+```
+Esta é exatamente a confirmação que R1/R2 identificaram como necessária para fechar a limitação conhecida de teste do `React.cache()` (não observável no harness Node puro) — agora fechada pela evidência do runtime real.
+
+### Gates de telemetria, timeout e invariância
+`durationMs=352.99982 < DEFAULT_TIMEOUT_MS=500` (reconfirmado em código) → `D2_TIMEOUT_GATE=PASS`. Campos consistentes com o esperado (`OFFICIAL_ONLY`/`publishedAttributeCount=0`/`completed`/`errorClass=null`) → `D2_TELEMETRY_GATE=PASS`. PDP abriu normalmente antes e depois, sem regressão material reportada, Woo permanece official por arquitetura/testes → `D2_RESPONSE_INVARIANCE=PASS` (não byte-idêntico).
+
+### Estado atual (informado pelo operador, não lido por este agente)
+```
+PERSI_RUNTIME_ENV=staging
+PIM_PUBLICATION_MODE=shadow
+PIM_SHADOW_SAMPLE_RATE=1
+PIM_SHADOW_TELEMETRY_SINK=console
+```
+Rollback **não** foi executado pelo operador desta vez — o shadow a 1% permanece ativo em staging. `PIM_SHADOW_ACTIVE=YES`.
+
+### Limites da prova (Seção 7)
+Somente PDP conectado; amostragem 1%; Woo continua official; `publishedAttributeCount=0` no canário observado, então `OFFICIAL_ONLY` era a única classificação possível neste teste — **não** prova o comportamento com um atributo PIM realmente publicado (`MATCH`/`VALUE_DIFFERENCE`/etc. seguem comprovados apenas por código/teste, não ao vivo). Nenhuma publicação, nenhuma escrita em staging DB, nenhum acesso a produção nesta rodada.
+
+### Issues não relacionados (registrados, não investigados)
+Credenciais privadas do Woo ausentes em staging para frete grátis; recursos de imagem inválidos observados em staging; `StoreApiError` 500 histórico (já visto em builds/relatos anteriores). Nenhum invalida o resultado do canário.
+
+### Testes
+`npm run test:pim`: 659/659 (inalterado, nenhum código mudou nesta rodada). `tsc --noEmit`: limpo. Nenhum build de rede executado (não solicitado nesta rodada).
+
+### Fechamento de A3.6-D2 e de A3.6
+```
+D2_CONTROLLED_1PCT_SHADOW_PASS=YES
+A3_6_D2_PASS=YES
+A3_6_PASS=YES
+SAFE_TO_PREPARE_CONTROLLED_PUBLISHED_PIM_CANARY=YES
+SAFE_TO_PUBLISH=NO
+SAFE_TO_CONNECT_PIM_AS_STOREFRONT_SOURCE=NO
+SAFE_TO_REMOVE_WOO=NO
+SAFE_TO_PRODUCTION=NO
+SAFE_TO_EXECUTE_ANY_NEW_STAGING_WRITE=NO
+```
+Toda a linhagem A3.6-A/B/C/D1(+D1.5/D1.6/D1.7/D1.8+R1-R6)/D2(+A/B+R1-R3/C+R1-R2/D) está documentadamente fechada. Próxima fase recomendada (apenas preparar, não executar): publicar um único atributo não-crítico via o workflow de publicação PIM já existente, para observar ao vivo uma classificação real `MATCH`/`VALUE_DIFFERENCE` contra um candidato PIM não-vazio — fechando a única lacuna registrada na Seção 7 acima. Requer autorização explícita separada.
+
+Artefato: `scratchpad/a36d2d_live_1pct_shadow_success_and_d2_closure.json`, SHA256 `8665353e7ca8497f5de8858eb3990f9aea4a0c48884cd59f9dabb993b0cca8c8`.

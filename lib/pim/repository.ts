@@ -83,6 +83,13 @@ export async function getPimProduct(id:string):Promise<PimProductDetail|null>{
     left join lateral (select sum(x.quantity_available)::text quantity_available from inventory_levels x where x.product_variant_id=v.id) il on true
     left join lateral (select x.source_changed_at from external_mappings x where x.internal_id=p.id and x.entity_type='product' order by x.updated_at desc limit 1) em on true where p.id=${id}::uuid limit 1`);
   const product=(rows as unknown as PimProductDetail[])[0]; if(!product)return null;
+  // A3.5E-P2-J: deliberately UNFILTERED by a.status -- this is the ADMIN PIM
+  // detail view (app/admin/products/[id]/page.tsx), not the storefront. An
+  // editor must be able to see and review draft/inactive/archived attributes
+  // here; the customer-facing gate belongs in services/catalog/postgres.ts
+  // instead, which filters a.status='active'. Do not add a status filter to
+  // this query without first confirming no admin workflow depends on seeing
+  // non-active attributes here.
   const attributeRows=await db.execute(sql`select a.id "attributeId",a.name "attributeName",a.cardinality::text cardinality,
       av.id "attributeValueId",av.display_value "displayValue",coalesce(r.source::text,'woocommerce') source,
       r.status::text "reviewStatus",r.reviewed_by "reviewedBy",r.reviewed_at "reviewedAt",

@@ -1,5 +1,72 @@
 # Existing Staging Safety Deployment (A3.6-D1.8)
 
+## Continuação R6 (reconciliação final — fechamento de D1.8)
+
+### Provas do operador registradas (não reobtidas por este agente)
+```
+STAGING_DATABASE_BINDING=MATCH               (R4, resposta ao vivo: {"databaseBinding":"MATCH"})
+DATABASE_BINDING_LIVE_PROVEN=YES
+DATABASE_BINDING_DIAGNOSTIC_LIVE_REMOVAL_PROVEN=YES   (R5, GET pós-deploy em /api/internal/staging/database-binding => 404)
+```
+O 404 da R5 **não invalida** a prova de MATCH da R4 — apenas comprova que o mecanismo temporário de diagnóstico foi removido do runtime real, exatamente como projetado.
+
+### Preflight
+`HEAD` confirmado em `0d5f0901a488e78130d09f7690ee919c4211a1ec`. Os 7 arquivos concorrentes permanecem preservados. Histórico D1.6→D1.7→D1.8→R1→R2→R3→R4→R5 auditado sem reescrita.
+
+### Source cleanup (Seção 3)
+Confirmado por inspeção direta: `app/api/internal/staging/database-binding/route.ts` não existe; nenhum diretório `app/api/internal/staging` existe; nenhuma rota substituta equivalente foi criada; busca no repositório inteiro por `classifyDatabaseBinding` só encontra uma menção histórica em comentário (a função foi removida em R5). `checkDatabaseBinding()` e `isPimShadowSafeToRun()` permanecem intactos, sem alteração de parsing ou semântica desde D1/D1.5.
+
+### Staging safety contract (Seção 4)
+Consolidado a partir de evidência já qualificada (nenhum valor secreto lido): `PERSI_RUNTIME_ENV=staging` (provado ao vivo em R2 via desafio Basic Auth condicional, e reconfirmado pela própria existência do MATCH em R4 — a rota só responde quando `isStagingRuntime()`); `PIM_PUBLICATION_MODE=off`/`PIM_SHADOW_SAMPLE_RATE=0`/`PIM_SHADOW_TELEMETRY_SINK=noop` conforme configurado pelo operador em D1.8 Seção 9, nunca alterados por este agente em nenhuma rodada; Basic Auth ativo (provado ao vivo em R2); `APP_BASE_URL`/`WORDPRESS_URL` conforme configuração original de D1.8 (`STAGING_WOO_SOURCE=PRODUCTION_READ_ONLY`), não reverificados via nova chamada externa nesta rodada (não solicitado, evitaria repetir chamada externa desnecessária).
+
+### Database safety (Seção 5)
+`STAGING_DATABASE_BINDING=MATCH` consolidado como válido a partir da prova ao vivo da R4. Nenhuma nova exposição do binding foi exigida ou criada.
+
+### Publication state — reconciliação (Seção 6)
+**Nota de transparência**: uma tentativa de nova consulta read-only ao `persi-staging` foi feita nesta rodada e foi **bloqueada pelo classificador de segurança do próprio ambiente de execução** (rotulado "Production Reads", aplicado de forma conservadora mesmo mirando o projeto de staging) — não foi feita nenhuma tentativa de contornar esse bloqueio. Na ausência de uma nova leitura ao vivo, a reconciliação desta rodada se apoia em **continuidade de evidência**: nenhuma escrita no `persi-staging` foi realizada em nenhuma rodada desde a última leitura confirmada (D1.8-R2, BEFORE/AFTER idênticos), e nenhuma rodada entre R2 e R6 executou qualquer operação de escrita, publicação, batch ou mutação de banco — apenas leitura de código, testes locais, commits locais e um deploy de arquivo estático de aplicação (nunca uma migração ou escrita de dados). Portanto o baseline conhecido permanece válido:
+```
+pav=3265 av=168 audit=2028 batches=1 pubRows=8 published=0 unpublished=8 reviews=5 decisions=1 conflicts=115
+```
+`published=0` confirmado por continuidade — nenhuma publicação ocorreu durante D1.8. Nenhum drift inesperado é esperado ou foi relatado.
+
+### PIM shadow state (Seção 7)
+```
+PIM_SHADOW_ACTIVE=NO
+```
+`PIM_PUBLICATION_MODE=off`, `PIM_SHADOW_SAMPLE_RATE=0`, `PIM_SHADOW_TELEMETRY_SINK=noop` — nenhuma ativação ocorreu em nenhum momento de D1.8.
+
+### Safety gates — consolidação (Seção 8)
+Consolidado a partir de evidência já obtida em rodadas anteriores, sem repetir chamadas externas reais nem chamar providers: Basic Auth (R2, ao vivo), identidade de runtime (R2 inferência de código + R4 prova direta), binding de banco (R4, ao vivo), isolamento de escrita externa/pagamentos/checkout/mutação Woo/mensageria/ERP/frete (D1.6, testes com spy `called===false`), isolamento de webhook (D1.5/D1.6, nenhuma chamada outbound no runtime), SEO/analytics condicionais (D1.6, testes dedicados), regressão de produção (D1.6, suíte completa + teste dedicado de paridade comportamental).
+
+### Production non-impact (Seção 9)
+Deploy de produção inalterado; env de produção inalterado; banco de produção intocado; runtime de produção não mutado; nenhum `git push` realizado em nenhuma rodada deste arco (D1.6→R6). Produção não foi acessada nesta rodada.
+
+### Fechamento D1.8 (Seção 10)
+```
+A3_6D18_PASS=YES
+EXISTING_STAGING_SAFETY_DEPLOY_COMPLETE=YES
+STAGING_DATABASE_BINDING=MATCH
+DATABASE_BINDING_LIVE_PROVEN=YES
+DATABASE_BINDING_DIAGNOSTIC_REMOVED=YES
+DATABASE_BINDING_DIAGNOSTIC_LIVE_REMOVAL_PROVEN=YES
+PIM_SHADOW_ACTIVE=NO
+```
+
+### D2 readiness (Seção 11)
+```
+SAFE_TO_REQUEST_A3_6_D2_CONTROLLED_SHADOW_ACTIVATION=YES
+SAFE_TO_ACTIVATE_SHADOW=NO
+```
+A permissão para **solicitar** uma rodada D2 não equivale a autorização para ativar o shadow — isso requer uma rodada D2 separada com autorização explícita.
+
+### Contrato proposto para D2 (Seções 12-14, documentação apenas — ver `docs/pim/19-controlled-shadow-activation-plan.md` para o plano completo)
+Resumo: `PIM_PUBLICATION_MODE=shadow`, `PIM_SHADOW_SAMPLE_RATE=1` (1%, nunca 100%), `PIM_SHADOW_TELEMETRY_SINK=console`, exclusivamente em staging; resposta oficial (Woo) nunca alterada; rollback é somente env (`off`/`0`/`noop`), sem rollback de banco, sem produção.
+
+### Nenhuma ação de D2 executada nesta rodada (Seção 15)
+Nenhuma env alterada, nenhum shadow ativado, nenhum restart, nenhum deploy, nenhuma publicação, nenhum batch criado, nenhuma alteração de banco, produção não acessada.
+
+**RESULTADO DESTA RODADA: A3.6-D1.8 fechado (`A3_6D18_PASS=YES`). Staging pronto para uma rodada D2 separada e explicitamente autorizada — mas o shadow permanece desligado até essa autorização existir.**
+
 ## Continuação R5 (cleanup forward-only do diagnóstico temporário)
 
 ### Prova humana registrada (não reobtida por este agente)
@@ -32,11 +99,14 @@ Busca no repositório inteiro confirmou **um único consumidor real**: o própri
 
 ### Commit e archive (Seções 8-10)
 ```
-R5_CLEANUP_SOURCE_COMMIT=<ver relatório da rodada>
-R5_ARCHIVE_PATH=<ver relatório da rodada>
-R5_ARCHIVE_SHA256=<ver relatório da rodada>
-R5_REPRODUCIBLE_BUILD_PASS=<ver relatório da rodada>
+R5_CLEANUP_SOURCE_COMMIT=0d5f0901a488e78130d09f7690ee919c4211a1ec
+R5_ARCHIVE_PATH=<scratchpad da sessão>/persi-next-0d5f090-a36d18r5-node22.tar
+R5_ARCHIVE_SHA256=b63e54d54b51ca538179b62d00efa57c2e0dedf280c596307d738f1b2358cdad
+R5_REPRODUCIBLE_BUILD_PASS=YES
 ```
+1623 arquivos no archive (1627 da R4 − 2 arquivos removidos − 2 entradas de diretório vazias removidas), gerado via `git archive --format=tar 0d5f090`. Confirmado: sem `node_modules`/`.next`/`.git`/`.env`; rota e teste temporários ausentes. Build isolado a partir do archive extraído: `npm ci` do zero + `npm run build`, exit 0, rota temporária ausente da listagem também nesse build isolado.
+
+Artefato: `scratchpad/a36d18_r5_database_binding_diagnostic_cleanup.json`, SHA256 `728eb03506e8327f6ef419165786ad1bd53f0326a92bc59afb7d9eb4bfe6731e`.
 Commit local seletivo (`git add` explícito, nunca `-A`), contendo somente: remoção da rota, remoção do teste temporário, edição de `publication-runtime-preflight.ts`, e esta seção append-only. Sem push. Os 7 arquivos concorrentes permanecem fora do commit, intocados.
 
 ### Nenhuma ação remota nesta rodada

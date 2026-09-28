@@ -61,6 +61,9 @@ test("atributos estruturados contraditorios e desconhecidos continuam fail-close
 test("range e compatibilidade usam papeis sem escolher valor silenciosamente",()=>{
  const current=candidate(extract("Dispositivo 10A", "Faixa de 10A a 20A"),"current");
  assert.ok(["LEGITIMATE_MULTI_VALUE","SEMANTIC_ROLE_SEPARATION"].includes(current.sourceConflictDecision));
- const thread=candidate(extract('Adaptador rosca macho 1/2"', 'Saída fêmea 3/4"'),"thread");
- assert.equal(thread.sourceConflictDecision,"SEMANTIC_ROLE_SEPARATION");
+ // A3.5B: a lone inch fraction with hydraulic context ("rosca macho"/"fêmea")
+ // is bitola, never the removed "thread" bucket.
+ const bitola=candidate(extract('Adaptador rosca macho 1/2"', 'Saída fêmea 3/4"'),"bitola");
+ assert.equal(bitola.sourceConflictDecision,"SEMANTIC_ROLE_SEPARATION");
+ assert.equal(candidate(extract('Adaptador rosca macho 1/2"', 'Saída fêmea 3/4"'),"thread"),undefined);
 });

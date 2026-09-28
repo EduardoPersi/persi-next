@@ -193,7 +193,15 @@ test("services/catalog/postgres.ts (storefront) is untouched by this phase", asy
   assert.doesNotMatch(source, /pim_attribute_publications|pim_publication_batches|publication-read-model|publication-service/);
 });
 
-test("no route/page/action imports the publication service or read model yet (foundation only, not wired to storefront/UI)", async () => {
+// A3.7-A-R15 note: as of this round, the publication read model IS wired to
+// the storefront (app/_storefront/product-page.tsx's Ficha Técnica canary
+// path) -- but only indirectly, through services/catalog/productFichaTecnica.ts,
+// never by a direct "app"/"components" import of publication-service or
+// publication-read-model themselves. That narrower rule remains true and
+// is what this test still checks; see
+// tests/pimA37AR15FichaTecnicaOrchestration.test.mjs for the full,
+// single-entry-point transitive proof.
+test("no route/page/action imports the publication service or read model DIRECTLY (the only connection is the indirect Ficha Técnica seam)", async () => {
   const { execSync } = await import("node:child_process");
   let matches = [];
   try {
@@ -203,5 +211,5 @@ test("no route/page/action imports the publication service or read model yet (fo
     // git grep exits 1 (not an execution failure) when it finds no matches at all -- that is the expected, passing case.
     if (error.status !== 1) throw error;
   }
-  assert.deepEqual(matches, [], "publication service/read-model must not be imported by app/ or components/ yet");
+  assert.deepEqual(matches, [], "publication service/read-model must not be imported DIRECTLY by app/ or components/");
 });

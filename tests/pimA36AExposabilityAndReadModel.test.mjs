@@ -102,7 +102,20 @@ test("read model: batch join defends against orphaned batch via LEFT JOIN pim_pu
   assert.match(source, /left join public\.pim_publication_batches b on b\.id = pap\.batch_id/);
 });
 
-test("zero public leak: no file under app/ or components/ imports any lib/pim/publication-* module (foundation stays disconnected from storefront in A3.6-A)", async () => {
+// A3.7-A-R15: as of this round, the foundation is DELIBERATELY connected to
+// the storefront for the first time -- but only through ONE sanctioned,
+// indirect seam (app/_storefront/product-page.tsx ->
+// services/catalog/productFichaTecnica.ts -> lib/pim/publication-*), never
+// by a direct import from app/ or components/. This test's original claim
+// (zero app/component file imports lib/pim/publication-* AT ALL) predates
+// that sanctioned connection and is superseded by the more precise
+// invariant below -- kept here in its DIRECT-import form because that
+// narrower rule remains true and still enforces a real, meaningful
+// boundary (UI-adjacent code must always go through a services/ adapter,
+// never reference lib/pim/* by name itself). The full transitive-leakage
+// proof (exactly one entry point, no others) lives in
+// tests/pimA37AR15FichaTecnicaOrchestration.test.mjs.
+test("no file under app/ or components/ imports any lib/pim/publication-* module DIRECTLY (the only connection is the indirect, sanctioned seam via services/catalog/productFichaTecnica.ts)", async () => {
   const { execSync } = await import("node:child_process");
   let matches = [];
   try {

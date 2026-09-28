@@ -13,6 +13,7 @@ import type {
 } from "@/types/woocommerce-rest";
 import { getProductHref } from "../../lib/routing/storefrontUrls.ts";
 import { stripHtml } from "./mappers";
+import { truncateText } from "../../lib/formatting/truncateText.ts";
 import { getAllProductBrands } from "./brands";
 import { restApiGetWithMeta } from "./restClient";
 
@@ -180,7 +181,7 @@ export function mapRestProduct(product: WooCommerceRestProduct): Product {
     sku: product.sku ?? "",
     ean: product.global_unique_id?.trim() || null,
     shortDescription:
-      stripHtml(product.short_description ?? "") || description.slice(0, 240),
+      stripHtml(product.short_description ?? "") || truncateText(description, 240),
     description,
     price,
     regularPrice,

@@ -40,6 +40,8 @@ export function FlashDealCard({ product }: { product: Product }) {
     <article className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-orange-200 bg-white shadow-sm" role="listitem">
       <Link
         href={href}
+        prefetch={true}
+        data-route-transition-skip
         data-flash-deal-product
         data-product-id={product.sku || product.id}
         data-product-name={product.name}
@@ -56,7 +58,7 @@ export function FlashDealCard({ product }: { product: Product }) {
         <Image src={safeImage(product.image?.src)} alt={product.image?.alt || product.name} fill sizes="(min-width: 1280px) 16vw, (min-width: 768px) 25vw, 50vw" className="object-contain p-3" />
       </Link>
       <div className="flex flex-1 flex-col p-3">
-        <Link href={href} data-flash-deal-product data-product-id={product.sku || product.id} data-product-name={product.name} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+        <Link href={href} prefetch={true} data-route-transition-skip data-flash-deal-product data-product-id={product.sku || product.id} data-product-name={product.name} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
           <h3 className="line-clamp-2 min-h-9 text-xs font-semibold leading-[18px] text-foreground sm:text-sm">{product.name}</h3>
         </Link>
         <div className="mt-2 flex items-center gap-1 text-xs text-muted" aria-label={`${product.averageRating.toFixed(1)} de 5 estrelas, ${product.reviewCount} avaliações`}>

@@ -287,8 +287,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </div>
 
           <div className="mt-2 grid min-w-0 gap-8 sm:mt-4 lg:grid-cols-2 lg:gap-12">
-            <div className="min-w-0 lg:sticky lg:top-20 lg:self-start">
+            <div className="min-w-0 lg:sticky lg:top-20 lg:mx-auto lg:w-full lg:max-w-[calc(100dvh-14rem)] lg:self-start">
               <ProductGallery
+                key={product.id}
                 images={product.images}
                 productId={product.id}
                 productName={product.name}
@@ -296,6 +297,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </div>
             <div className="min-w-0">
               <ProductPurchasePanel
+                key={product.id}
                 product={product}
                 brand={brand}
                 boughtTogetherItems={boughtTogether}
@@ -305,7 +307,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </div>
           </div>
 
-          <ProductDetails product={displayProduct} />
+          <ProductDetails key={product.id} product={displayProduct} />
 
           <div className="mt-12">
             <FlashDeals context={{ type: "product", product }} />
