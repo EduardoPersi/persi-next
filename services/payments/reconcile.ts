@@ -2,6 +2,8 @@ import { isPixChargeExpired, type PixChargeStatus } from "./inter/pix.ts";
 import type { BoletoChargeStatus } from "./inter/boleto.ts";
 import type { CardChargeStatus } from "./pagbank/charge.ts";
 import type { MercadoPagoChargeStatus } from "./mercadopago/charge.ts";
+import { avisarPedido } from "../../lib/painel/whatsapp.ts";
+import { SITE_URL } from "../../lib/routing/storefrontUrls.ts";
 import {
   findOrderByPaymentReference,
   markOrderAsFailed,
@@ -11,6 +13,22 @@ import {
 } from "../woocommerce/orders.ts";
 
 export type PaymentStatusCategory = "paid" | "pending" | "failed";
+
+/**
+ * O aviso de "pagamento aprovado" no WhatsApp do cliente.
+ *
+ * Sem telefone no pedido não há para onde mandar — e isso não é erro: nem todo
+ * checkout pede telefone.
+ */
+async function avisarPedidoPagoPeloWhatsapp(order: WooCommerceOrder) {
+  if (!order.billingPhone) return { enviado: false as const };
+  return avisarPedido({
+    telefone: order.billingPhone,
+    pedido: String(order.id),
+    status: "Pagamento aprovado",
+    link: `${SITE_URL}/minha-conta/pedidos/${order.id}`,
+  });
+}
 
 export function categorizePixStatus(charge: {
   status: PixChargeStatus;
@@ -62,12 +80,18 @@ export interface ReconcilePaymentReferenceDeps {
   findOrder: typeof findOrderByPaymentReference;
   markPaid: typeof markOrderAsPaid;
   markFailed: typeof markOrderAsFailed;
+  /**
+   * Opcional de propósito: quem injeta deps num teste não deve ser obrigado a
+   * conhecer o aviso do WhatsApp para exercitar a conciliação de pagamento.
+   */
+  avisarPedido?: (order: WooCommerceOrder) => Promise<unknown>;
 }
 
 const defaultDeps: ReconcilePaymentReferenceDeps = {
   findOrder: findOrderByPaymentReference,
   markPaid: markOrderAsPaid,
   markFailed: markOrderAsFailed,
+  avisarPedido: avisarPedidoPagoPeloWhatsapp,
 };
 
 export interface PaymentReconciliationResult {
@@ -91,7 +115,13 @@ export async function reconcilePaymentReference(
   if (!order) return { order: null, category };
 
   if (category === "paid") {
-    return { order: await deps.markPaid(order, { provider, externalId }), category };
+    const pago = await deps.markPaid(order, { provider, externalId });
+    // O aviso pelo WhatsApp sai DEPOIS de o pedido estar marcado como pago, e
+    // solto: é o painel de atendimento do outro lado, e ele estar fora do ar
+    // não pode desfazer um pagamento que já entrou. `avisarPedido` nunca
+    // lança — o `catch` aqui é cinto e suspensório.
+    void deps.avisarPedido?.(pago)?.catch(() => {});
+    return { order: pago, category };
   }
   if (category === "failed") {
     return { order: await deps.markFailed(order, "failed"), category };

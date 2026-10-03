@@ -20,6 +20,8 @@ export interface WooCommerceOrder {
   currency: string;
   paymentMethod: string;
   billingEmail: string;
+  /** Para o aviso de pedido pelo WhatsApp (lib/painel/whatsapp.ts). */
+  billingPhone: string;
   metaData: Record<string, string>;
 }
 
@@ -29,7 +31,7 @@ interface WooCommerceOrderApiResponse {
   total: string;
   currency: string;
   payment_method?: string;
-  billing?: { email?: string };
+  billing?: { email?: string; phone?: string };
   meta_data?: { key: string; value: unknown }[];
 }
 
@@ -67,6 +69,7 @@ function toOrder(response: WooCommerceOrderApiResponse): WooCommerceOrder {
     currency: response.currency,
     paymentMethod: response.payment_method ?? "",
     billingEmail: response.billing?.email ?? "",
+    billingPhone: response.billing?.phone ?? "",
     metaData: toMetaRecord(response.meta_data),
   };
 }
