@@ -1,4 +1,13 @@
-import type { NextConfig } from "next";
+// Configuração do Next em JavaScript, e não em TypeScript.
+//
+// A build da Hostinger roda `next build --webpack`, e o arquivo de
+// configuração em `.ts` depende do carregador de TypeScript do Next — que não
+// é o mesmo caminho em todas as combinações de versão e bundler. Em `.mjs` o
+// próprio Node lê o arquivo, sem carregador no meio.
+//
+// O comentário de tipo abaixo não é enfeite: ele dá ao editor a mesma
+// conferência de campos que o `NextConfig` dava, sem o arquivo deixar de ser
+// JavaScript.
 
 const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -17,7 +26,8 @@ const SECURITY_HEADERS = [
   },
 ];
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   poweredByHeader: false,
   // Facilita depurar erros reais de produção (ex: mismatches de
   // hidratação) sem expor o código-fonte de forma óbvia — os .map ficam
