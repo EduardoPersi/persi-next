@@ -1,4 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Persi Materiais — loja
+
+Front-end Next.js da Persi Materiais, publicado na **Hostinger**.
+
+## ⚠️ A build é por webpack, e a configuração é `.mjs`
+
+**Não troque estas duas coisas sem testar uma implantação de verdade na
+Hostinger primeiro.**
+
+```json
+"build": "next build --webpack"
+```
+
+e a configuração em **`next.config.mjs`** — não `next.config.ts`.
+
+**Por quê.** É a recomendação da Hostinger para a publicação deste site. O
+Turbopack (o padrão do `next build` a partir do Next 16) e o arquivo de
+configuração em TypeScript não se comportaram bem na build da hospedagem: o
+`.ts` depende do carregador de TypeScript do Next, que não é o mesmo caminho
+em todas as combinações de versão e bundler, enquanto o `.mjs` é lido pelo
+próprio Node, sem carregador no meio.
+
+O erro que isso causa não aparece aqui: aparece **na implantação**, depois do
+merge. Por isso a regra é testar a implantação antes de voltar atrás — rodar
+`npm run build` na sua máquina não prova nada sobre a build da Hostinger.
+
+O comentário `/** @type {import('next').NextConfig} */` no topo do
+`next.config.mjs` mantém a conferência de campos no editor, que era o que o
+tipo `NextConfig` dava.
+
+Roteiro de implantação: `docs/19-deploy-hostinger.md` e, para a ligação com o
+painel de atendimento, `docs/44-deploy-etapa-c.md`.
+
+---
+
+Projeto Next.js criado com [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
 
@@ -29,8 +64,10 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Publicação
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Este site NÃO é publicado na Vercel** — o texto padrão do `create-next-app`
+dizia isso e foi removido daqui para ninguém seguir por engano. A publicação é
+na **Hostinger**, pelo hPanel, com as duas exigências do começo deste arquivo.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Ver `docs/19-deploy-hostinger.md`.
