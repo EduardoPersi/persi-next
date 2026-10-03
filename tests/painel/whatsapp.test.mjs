@@ -42,15 +42,68 @@ test("painel com problema vale tentar de novo", async () => {
   assert.equal(r.podeTentarDeNovo, true);
 });
 
-test("sem configuração, não chama ninguém", async () => {
-  let chamou = false;
-  globalThis.fetch = async () => { chamou = true; return { ok: true, status: 201, json: async () => ({}) }; };
-  delete process.env.SITE_WEBHOOK_KEY;
-  const r = await avisarPeloWhatsapp({ tipo: "pedido", telefone: "11999998888", pedido: "1", status: "ok" });
-  assert.equal(chamou, false);
-  assert.equal(r.enviado, false);
-  assert.equal(r.podeTentarDeNovo, false);
-  process.env.SITE_WEBHOOK_KEY = "chave-de-teste-com-tamanho-suficiente";
+// AS TRÊS COMBINAÇÕES DE "NÃO CONFIGURADO", uma por uma.
+//
+// É esta conferência que sustenta a decisão de deixar PAINEL_URL e
+// SITE_WEBHOOK_KEY vazias no site enquanto o aviso de pedido não é revisado:
+// com qualquer uma vazia, o site NÃO fala com o painel. Conferir só uma das
+// duas deixaria a outra metade da promessa sem prova.
+for (const [nome, vazias] of [
+  ["sem a chave", ["SITE_WEBHOOK_KEY"]],
+  ["sem o endereço", ["PAINEL_URL"]],
+  ["sem as duas", ["PAINEL_URL", "SITE_WEBHOOK_KEY"]],
+]) {
+  test(`${nome}, não chama ninguém`, async () => {
+    let chamou = false;
+    globalThis.fetch = async () => { chamou = true; return { ok: true, status: 201, json: async () => ({}) }; };
+    process.env.PAINEL_URL = "https://painel.exemplo/";
+    process.env.SITE_WEBHOOK_KEY = "chave-de-teste-com-tamanho-suficiente";
+    for (const v of vazias) delete process.env[v];
+
+    // Os DOIS avisos que existem, e não só o de pedido: o de código de acesso
+    // ainda não tem chamador, e no dia em que tiver não pode ser o caminho que
+    // escapa da guarda.
+    for (const aviso of [
+      { tipo: "pedido", telefone: "11999998888", pedido: "1", status: "ok" },
+      { tipo: "codigo_acesso", telefone: "11999998888", codigo: "A1B2C3" },
+    ]) {
+      const r = await avisarPeloWhatsapp(aviso);
+      assert.equal(chamou, false, `${aviso.tipo} chamou mesmo ${nome}`);
+      assert.equal(r.enviado, false);
+      assert.equal(r.podeTentarDeNovo, false);
+    }
+
+    process.env.PAINEL_URL = "https://painel.exemplo/";
+    process.env.SITE_WEBHOOK_KEY = "chave-de-teste-com-tamanho-suficiente";
+  });
+}
+
+test("e só UM módulo do site sabe falar com o painel", async () => {
+  // A guarda acima vale enquanto todo o site passar por `lib/painel/`. Um
+  // `fetch` para o painel escrito direto em outro arquivo passaria por fora
+  // dela, e a promessa de "vazias = ninguém chama" deixaria de valer sem
+  // ninguém notar.
+  const { readdir, readFile } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const raiz = new URL("../../", import.meta.url).pathname;
+  const porFora = [];
+  const pular = new Set(["node_modules", ".next", ".git", "tests", "wordpress-plugin"]);
+
+  const varrer = async (dir) => {
+    for (const item of await readdir(dir, { withFileTypes: true })) {
+      if (pular.has(item.name)) continue;
+      const caminho = join(dir, item.name);
+      if (item.isDirectory()) { await varrer(caminho); continue; }
+      if (!/\.tsx?$/.test(item.name)) continue;
+      if (caminho.includes("/lib/painel/")) continue;
+      const texto = await readFile(caminho, "utf8");
+      if (/PAINEL_URL|api\/webhooks\/site\/notificar/.test(texto)) {
+        porFora.push(caminho.replace(raiz, ""));
+      }
+    }
+  };
+  await varrer(raiz);
+  assert.deepEqual(porFora, [], `falam com o painel por fora de lib/painel: ${porFora.join(", ")}`);
 });
 
 test("o código é sorteado de verdade e sem letra ambígua", () => {
