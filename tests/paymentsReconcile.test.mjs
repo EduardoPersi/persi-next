@@ -187,3 +187,78 @@ test("pedido sem telefone não vira aviso de WhatsApp", async () => {
   assert.equal(typeof real, "function");
   assert.match(fonte, /if \(!order\.billingPhone\) return/);
 });
+
+// ---------------------------------------------------------------------------
+// A PRIMEIRA DAS DUAS TRAVAS CONTRA O AVISO EM DOBRO (etapa C2)
+// ---------------------------------------------------------------------------
+//
+// O provedor de pagamento REENVIA webhook — é o que ele faz quando a resposta
+// demora ou volta com erro. `markPaid` já era idempotente, mas o aviso pelo
+// WhatsApp saía SEM perguntar nada, e o cliente recebia "Pedido 1234 — pago"
+// tantas vezes quantas o provedor insistisse.
+//
+// A segunda trava está no painel, que recusa um segundo aviso do mesmo pedido.
+// Esta aqui é a de cá, e existe para o caso normal não chegar lá.
+
+const pedidoPagoPor = (externalId) => ({
+  id: 1,
+  status: "processing",
+  total: "10",
+  currency: "BRL",
+  metaData: { _persi_payment_reference: externalId },
+});
+
+test("o aviso sai UMA vez quando o pedido acabou de ser pago", async () => {
+  let avisos = 0;
+  const order = { id: 1, status: "pending", total: "10", currency: "BRL", metaData: {} };
+  await reconcilePaymentReference("inter", "TX1", "paid", {
+    findOrder: async () => order,
+    markPaid: async (o) => ({ ...o, status: "processing" }),
+    markFailed: async () => { throw new Error("não deveria chamar"); },
+    avisarPedido: async () => { avisos += 1; },
+  });
+  // O aviso é disparado solto (`void`), então damos uma volta de event loop.
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(avisos, 1);
+});
+
+test("o aviso NÃO sai de novo quando o webhook chega repetido", async () => {
+  let avisos = 0;
+  // O pedido JÁ está pago por esta mesma referência: é exatamente o que o
+  // segundo webhook encontra.
+  const order = pedidoPagoPor("TX1");
+  await reconcilePaymentReference("inter", "TX1", "paid", {
+    findOrder: async () => order,
+    markPaid: async (o) => o,
+    markFailed: async () => { throw new Error("não deveria chamar"); },
+    avisarPedido: async () => { avisos += 1; },
+  });
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(avisos, 0);
+});
+
+test("mas um pagamento de OUTRA referência no mesmo pedido avisa", async () => {
+  // Troca de meio de pagamento: o cliente tentou no Pix, não pagou, e pagou no
+  // cartão. É pagamento novo, e o cliente tem de saber.
+  let avisos = 0;
+  const order = pedidoPagoPor("TX-ANTIGA");
+  await reconcilePaymentReference("pagbank", "TX-NOVA", "paid", {
+    findOrder: async () => order,
+    markPaid: async (o) => ({ ...o, metaData: { _persi_payment_reference: "TX-NOVA" } }),
+    markFailed: async () => { throw new Error("não deveria chamar"); },
+    avisarPedido: async () => { avisos += 1; },
+  });
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(avisos, 1);
+});
+
+test("a regra de 'já pago' é UMA só, lida pelos dois lados", async () => {
+  // Se `markPaid` e o aviso decidissem com regras próprias, um dia uma delas
+  // mudaria — e aí o pedido não seria reescrito mas a mensagem sairia de novo.
+  const { readFileSync } = await import("node:fs");
+  const reconcile = readFileSync("services/payments/reconcile.ts", "utf8");
+  const orders = readFileSync("services/woocommerce/orders.ts", "utf8");
+  assert.match(orders, /export function alreadyPaidFor/);
+  assert.match(orders, /if \(alreadyPaidFor\(order, reference\)\) return order;/);
+  assert.match(reconcile, /alreadyPaidFor/);
+});

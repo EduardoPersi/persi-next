@@ -295,16 +295,31 @@ export async function getOrderById(
 
 const PAID_ORDER_STATUSES = new Set(["processing", "completed"]);
 
+/**
+ * Este pedido já está pago POR ESTA REFERÊNCIA?
+ *
+ * Exportada de propósito, e não repetida em quem precisa dela: é a mesma
+ * pergunta que decide se o WooCommerce é escrito e se o cliente recebe aviso
+ * no WhatsApp. Com a regra em dois lugares, um dia um deles muda — e aí o
+ * pedido não é reescrito mas o cliente recebe a mensagem de novo, que é
+ * exatamente o defeito que esta função existe para impedir.
+ */
+export function alreadyPaidFor(
+  order: WooCommerceOrder,
+  reference: { externalId: string },
+): boolean {
+  return (
+    PAID_ORDER_STATUSES.has(order.status) &&
+    order.metaData[PAYMENT_REFERENCE_META] === reference.externalId
+  );
+}
+
 export async function markOrderAsPaid(
   order: WooCommerceOrder,
   reference: { provider: PaymentProvider; externalId: string },
   put: WooPutFn = defaultPut,
 ): Promise<WooCommerceOrder> {
-  const alreadyPaidForThisReference =
-    PAID_ORDER_STATUSES.has(order.status) &&
-    order.metaData[PAYMENT_REFERENCE_META] === reference.externalId;
-
-  if (alreadyPaidForThisReference) return order;
+  if (alreadyPaidFor(order, reference)) return order;
 
   const response = await put<WooCommerceOrderApiResponse>(`orders/${order.id}`, {
     status: "processing",
