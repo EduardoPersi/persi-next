@@ -15,7 +15,7 @@ test("resumo preserva palavras e só acrescenta reticências quando corta", () =
 
 test("GTM inicializa consentimento e Pixel antes dos eventos antecipados do React", async () => {
   const source = await readFile(new URL("../components/layout/GoogleTagManager.tsx", import.meta.url), "utf8");
-  const script = source.match(/\{`([\s\S]*?)`\}/)[1].replace("${GTM_ID}", "GTM-TEST");
+  const script = source.match(/\{`([\s\S]*?)`\}/)[1].replace("${GTM_ID}", "GTM-TEST").replace("${IDS_PUSH}", "");
   const earlyEvents = [
     { event: "page_view", page_path: "/produto-teste" },
     { ecommerce: null },
@@ -40,4 +40,24 @@ test("GTM inicializa consentimento e Pixel antes dos eventos antecipados do Reac
     if (event.event === "view_item") window.fbq("track", "ViewContent");
   }
   assert.deepEqual(tracked, [["track", "ViewContent"]]);
+});
+
+test("GTM: IDs opcionais (GA4/Pixel) entram no dataLayer DEPOIS do consent default e ANTES do gtm.js", async () => {
+  const source = await readFile(new URL("../components/layout/GoogleTagManager.tsx", import.meta.url), "utf8");
+  const script = source
+    .match(/\{`([\s\S]*?)`\}/)[1]
+    .replace("${GTM_ID}", "GTM-TEST")
+    .replace("${IDS_PUSH}", 'window.dataLayer.push({"ga4_measurement_id":"G-TEST12345","meta_pixel_id":"123456789"});');
+  const earlyEvents = [{ event: "page_view", page_path: "/" }];
+  const window = { dataLayer: [...earlyEvents] };
+  const document = {
+    createElement: () => ({}),
+    getElementsByTagName: () => [{ parentNode: { insertBefore: () => {} } }],
+  };
+  runInNewContext(script, { window, document });
+  assert.equal(window.dataLayer[0][0], "consent");
+  assert.equal(window.dataLayer[1].ga4_measurement_id, "G-TEST12345");
+  assert.equal(window.dataLayer[1].meta_pixel_id, "123456789");
+  assert.equal(window.dataLayer[2].event, "gtm.js");
+  assert.deepEqual(window.dataLayer.slice(3), earlyEvents);
 });
