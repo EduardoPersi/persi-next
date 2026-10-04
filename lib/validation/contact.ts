@@ -26,6 +26,9 @@ export const contactFormSchema = z.object({
     .min(10, "Conte um pouco mais na mensagem (mínimo 10 caracteres).")
     .max(4000, "Mensagem muito longa."),
   website: z.literal(""),
+  // Só existe se o formulário tiver uma caixa de aceite de marketing. Hoje não
+  // tem: omitido = não consentiu (é assim que o painel interpreta).
+  marketingConsent: z.boolean().optional(),
 });
 
 export type ContactFormValues = z.infer<typeof contactFormSchema>;
