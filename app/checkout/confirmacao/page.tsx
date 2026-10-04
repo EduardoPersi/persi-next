@@ -7,8 +7,10 @@ import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
 import { CardPaymentResult } from "@/components/Checkout/CardPaymentResult";
 import { PendingPaymentConfirmation } from "@/components/Checkout/PendingPaymentConfirmation";
 import { CheckoutHeader } from "@/components/Header/CheckoutHeader";
+import { PurchaseEvent } from "@/components/Tracking/PurchaseEvent";
 import { Container } from "@/components/UI/Container";
 import { getCheckoutAttempt, reconcileCheckoutAttempt } from "@/lib/commerce/checkoutAttempt";
+import { montarItem } from "@/lib/analytics/eventos";
 import { formatBrazilianDocument, formatBrazilianPhone } from "@/lib/formatting/personalData";
 import { getServerAccountSession } from "@/services/account/serverSession";
 import { getBoletoChargeStatus } from "@/services/payments/inter/boleto";
@@ -424,6 +426,14 @@ export default async function CheckoutConfirmationPage({
   const details = isPaid && !cardResult
     ? await getOrderConfirmationDetails(resolved.order.id).catch(() => null)
     : null;
+  // Dados para o evento `purchase` do GA4. O cartão não busca os detalhes para
+  // a tela; aqui busca (uma consulta a mais, com falha tolerada) só para o
+  // evento levar os itens. Sem eles o evento sai igual, só sem `items`.
+  const purchaseDetails = isPaid
+    ? cardResult && resolved
+      ? await getOrderConfirmationDetails(resolved.order.id).catch(() => null)
+      : details
+    : null;
   const copy = resolved ? STATUS_COPY[resolved.category] : null;
   const pendingResult = resolved?.category === "pending" && resolved.recovery
     ? resolved.recovery.method === "inter_pix"
@@ -456,6 +466,23 @@ export default async function CheckoutConfirmationPage({
       <CheckoutHeader centered={isPaid && Boolean(details)} />
       <main id="main-content" className="bg-slate-50 py-5 sm:py-8 lg:py-10">
         <Container>
+          {isPaid && resolved ? (
+            <PurchaseEvent
+              transactionId={resolved.order.id}
+              value={purchaseDetails?.total ?? resolved.order.total}
+              shipping={purchaseDetails?.shippingTotal}
+              items={(purchaseDetails?.items ?? []).map((item) =>
+                montarItem({
+                  sku: item.sku,
+                  productId: item.productId ?? item.id,
+                  name: item.name,
+                  // `total` do item é o total da linha; o preço unitário é ele / quantidade.
+                  price: item.quantity > 0 ? Number(item.total) / item.quantity : undefined,
+                  quantity: item.quantity,
+                }),
+              )}
+            />
+          ) : null}
           {cardResult ? (
             <div className="mx-auto max-w-4xl">
               <CardPaymentResult {...cardResult} />
