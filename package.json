@@ -28,7 +28,9 @@
     "audit:urls": "node --env-file=.env.local scripts/audit-public-slugs.mjs",
     "register:inter-webhooks": "node --env-file=.env.local scripts/register-inter-webhooks.mjs",
     "generate:pagbank-public-key": "node --env-file=.env.local scripts/generate-pagbank-public-key.mjs",
-    "test:painel": "node --conditions=react-server --experimental-loader ./scripts/database/typescript-loader.mjs --test tests/painel/*.test.mjs"
+    "test:painel": "node --conditions=react-server --experimental-loader ./scripts/database/typescript-loader.mjs --test tests/painel/*.test.mjs",
+    "painel:testar-lead": "node scripts/testar-painel-lead.mjs",
+    "test:rastreio:e2e": "node tests/rastreio-e2e.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
