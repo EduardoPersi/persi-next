@@ -95,18 +95,34 @@ test("segredos permanecem exclusivos do serviço servidor", async () => {
 });
 
 test("Home carrega feed em Suspense e posts usam carrossel", async () => {
-  const [home, feed, carousel] = await Promise.all(
+  const [home, feed, carousel, lazy] = await Promise.all(
     [
       "../app/page.tsx",
       "../components/home/InstagramFeed.tsx",
       "../components/home/InstagramCarousel.tsx",
+      "../components/home/InstagramCarouselLazy.tsx",
     ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
   );
 
   assert.match(home, /<Suspense fallback={<InstagramSkeleton \/>}>/);
   assert.match(home, /<InstagramFeed \/>/);
   assert.equal(home.includes("getInstagramMedia()"), false);
-  assert.match(feed, /<InstagramCarousel posts={posts} \/>/);
+
+  // O CARROSSEL É CARREGADO SOB DEMANDA desde o f2ac5fe, e esta afirmação
+  // esperava o componente direto — ficou vermelha por meses apontando para uma
+  // melhoria, não para um defeito.
+  //
+  // O Swiper é pesado e fica no fim da Home: trazê-lo no primeiro carregamento
+  // atrasava o que o cliente veio ver. O que se guarda agora é a ponte inteira:
+  // o feed usa a versão preguiçosa, ela aponta para o carrossel de verdade, e
+  // não arrasta o Swiper para o servidor.
+  assert.match(feed, /<InstagramCarouselLazy posts={posts} \/>/);
+  assert.match(lazy, /dynamic\(/);
+  assert.match(lazy, /import\("\.\/InstagramCarousel"\)/);
+  assert.match(lazy, /ssr: false/);
+  // Com esqueleto enquanto carrega: sem ele, o fim da Home pula quando o
+  // carrossel chega.
+  assert.match(lazy, /loading: \(\) => <InstagramCarouselSkeleton \/>/);
   assert.match(carousel, /<Swiper/);
   assert.match(carousel, /slidesPerView={1\.2}/);
   assert.match(carousel, /loop={posts\.length > 3}/);

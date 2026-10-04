@@ -1,11 +1,14 @@
 import test from "node:test";
+import {existsSync} from "node:fs";
 import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 
+// Sem a pasta da corrida não há o que conferir: ver tests/helpers/artefatoPim.mjs.
+const SEM_ARTEFATO=existsSync("supabase/.temp/pim-ai/p5c-50")?false:"falta o artefato da corrida (saída de execução, não versionada)";
 const base="supabase/.temp/pim-ai/p5c-50";
 const load=name=>readFile(`${base}/${name}`,"utf8").then(JSON.parse);
 
-test("P5-C respeitou one-shots, zero retry e hard budget",async()=>{
+test("P5-C respeitou one-shots, zero retry e hard budget",{skip:SEM_ARTEFATO},async()=>{
   const result=await load("scale-results.json");
   assert.equal(result.phase,"P.5-C-50-REAL-AI");
   assert.equal(result.summary.attempts,6);
@@ -16,7 +19,7 @@ test("P5-C respeitou one-shots, zero retry e hard budget",async()=>{
   assert.equal(result.summary.hardBudgetUsdMicros,"400000");
 });
 
-test("P5-C acionou o stop sistemico na segunda divergencia semantica",async()=>{
+test("P5-C acionou o stop sistemico na segunda divergencia semantica",{skip:SEM_ARTEFATO},async()=>{
   const result=await load("scale-results.json");
   assert.equal(result.summary.batchStop,"SYSTEMIC_PATTERN:SEMANTIC_EVIDENCE_MISMATCH:2_PRODUCTS");
   assert.deepEqual(result.results.map(item=>item.index),[1,2,5]);
@@ -25,7 +28,7 @@ test("P5-C acionou o stop sistemico na segunda divergencia semantica",async()=>{
   assert.equal(result.quarantine.filter(item=>item.reason.startsWith("SEMANTIC_EVIDENCE_MISMATCH:")).length,2);
 });
 
-test("P5-C preservou staging e nao persistiu outputs",async()=>{
+test("P5-C preservou staging e nao persistiu outputs",{skip:SEM_ARTEFATO},async()=>{
   const result=await load("scale-results.json");
   assert.deepEqual(result.summary.before,result.summary.after);
   assert.equal(result.summary.remoteMutations,0);
@@ -34,7 +37,7 @@ test("P5-C preservou staging e nao persistiu outputs",async()=>{
   assert.equal(result.summary.pimAiEnabledFinal,false);
 });
 
-test("P5-C possui marcadores completos somente para as chamadas realizadas",async()=>{
+test("P5-C possui marcadores completos somente para as chamadas realizadas",{skip:SEM_ARTEFATO},async()=>{
   const batch=await load("scale-batch-marker.json");
   assert.equal(batch.state,"COMPLETED");
   assert.equal(batch.attempts,6);
