@@ -2,10 +2,11 @@ import { isPixChargeExpired, type PixChargeStatus } from "./inter/pix.ts";
 import type { BoletoChargeStatus } from "./inter/boleto.ts";
 import type { CardChargeStatus } from "./pagbank/charge.ts";
 import type { MercadoPagoChargeStatus } from "./mercadopago/charge.ts";
-import { avisarPedido } from "../../lib/painel/whatsapp.ts";
-import { SITE_URL } from "../../lib/routing/storefrontUrls.ts";
+import { avisarSituacaoDoPedido } from "../../lib/painel/pedido.ts";
 import {
   findOrderByPaymentReference,
+  isOrderAlreadyFailed,
+  isOrderAlreadyPaidFor,
   markOrderAsFailed,
   markOrderAsPaid,
   type PaymentProvider,
@@ -15,19 +16,23 @@ import {
 export type PaymentStatusCategory = "paid" | "pending" | "failed";
 
 /**
- * O aviso de "pagamento aprovado" no WhatsApp do cliente.
+ * O aviso de "pagamento aprovado" ao painel (que escreve ao cliente pelo
+ * WhatsApp quando `pago: true`), agora com e-mail e origem da compra.
  *
  * Sem telefone no pedido não há para onde mandar — e isso não é erro: nem todo
- * checkout pede telefone.
+ * checkout pede telefone (a regra está em `montarAvisoDoPedido`).
  */
 async function avisarPedidoPagoPeloWhatsapp(order: WooCommerceOrder) {
-  if (!order.billingPhone) return { enviado: false as const };
-  return avisarPedido({
-    telefone: order.billingPhone,
-    pedido: String(order.id),
-    status: "Pagamento aprovado",
-    link: `${SITE_URL}/minha-conta/pedidos/${order.id}`,
-  });
+  return avisarSituacaoDoPedido(order, "pago");
+}
+
+/**
+ * Pedido cancelado/expirado → `pago: false`, status "Cancelado". Só sai com
+ * `PAINEL_NOTIFICAR_PEDIDO_PENDENTE=1`; o painel NÃO escreve ao cliente nesse
+ * caso. Nunca é chamado para pedido pendente.
+ */
+async function avisarPedidoCanceladoNoPainel(order: WooCommerceOrder) {
+  return avisarSituacaoDoPedido(order, "cancelado");
 }
 
 export function categorizePixStatus(charge: {
@@ -85,6 +90,8 @@ export interface ReconcilePaymentReferenceDeps {
    * conhecer o aviso do WhatsApp para exercitar a conciliação de pagamento.
    */
   avisarPedido?: (order: WooCommerceOrder) => Promise<unknown>;
+  /** Idem: opcional, para não obrigar testes antigos a conhecer o painel. */
+  avisarCancelado?: (order: WooCommerceOrder) => Promise<unknown>;
 }
 
 const defaultDeps: ReconcilePaymentReferenceDeps = {
@@ -92,6 +99,7 @@ const defaultDeps: ReconcilePaymentReferenceDeps = {
   markPaid: markOrderAsPaid,
   markFailed: markOrderAsFailed,
   avisarPedido: avisarPedidoPagoPeloWhatsapp,
+  avisarCancelado: avisarPedidoCanceladoNoPainel,
 };
 
 export interface PaymentReconciliationResult {
@@ -115,16 +123,25 @@ export async function reconcilePaymentReference(
   if (!order) return { order: null, category };
 
   if (category === "paid") {
+    // Lido ANTES de marcar: o aviso é da MUDANÇA para pago. O banco reenvia
+    // webhook, a página de confirmação consulta de novo e o cron reconcilia — a
+    // mesma cobrança paga passa por aqui várias vezes, e só a primeira pode
+    // gerar mensagem ao cliente.
+    const jaEstavaPago = isOrderAlreadyPaidFor(order, externalId);
     const pago = await deps.markPaid(order, { provider, externalId });
-    // O aviso pelo WhatsApp sai DEPOIS de o pedido estar marcado como pago, e
-    // solto: é o painel de atendimento do outro lado, e ele estar fora do ar
-    // não pode desfazer um pagamento que já entrou. `avisarPedido` nunca
-    // lança — o `catch` aqui é cinto e suspensório.
-    void deps.avisarPedido?.(pago)?.catch(() => {});
+    // O aviso sai DEPOIS de o pedido estar marcado como pago, e solto: é o
+    // painel de atendimento do outro lado, e ele estar fora do ar não pode
+    // desfazer um pagamento que já entrou. `avisarPedido` nunca lança — o
+    // `catch` aqui é cinto e suspensório.
+    if (!jaEstavaPago) void deps.avisarPedido?.(pago)?.catch(() => {});
     return { order: pago, category };
   }
   if (category === "failed") {
-    return { order: await deps.markFailed(order, "failed"), category };
+    const jaEstavaCancelado = isOrderAlreadyFailed(order);
+    const falho = await deps.markFailed(order, "failed");
+    // Mesmo princípio: só a mudança para cancelado vai ao painel.
+    if (!jaEstavaCancelado) void deps.avisarCancelado?.(falho)?.catch(() => {});
+    return { order: falho, category };
   }
   return { order, category };
 }

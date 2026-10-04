@@ -20,6 +20,8 @@ export interface WooCommerceOrder {
   currency: string;
   paymentMethod: string;
   billingEmail: string;
+  /** Nome do cliente, para o lead de "pedido pendente" no painel. */
+  billingName: string;
   /** Para o aviso de pedido pelo WhatsApp (lib/painel/whatsapp.ts). */
   billingPhone: string;
   metaData: Record<string, string>;
@@ -31,7 +33,7 @@ interface WooCommerceOrderApiResponse {
   total: string;
   currency: string;
   payment_method?: string;
-  billing?: { email?: string; phone?: string };
+  billing?: { email?: string; phone?: string; first_name?: string; last_name?: string };
   meta_data?: { key: string; value: unknown }[];
 }
 
@@ -50,6 +52,11 @@ const PAYMENT_INSTALLMENTS_META = "_persi_payment_installments";
 // checkout, sem precisar de um token novo gerenciado pelo client
 // (ver services/payments/statusAuthorization.ts).
 const CHECKOUT_OWNER_TOKEN_META = "_persi_checkout_owner_token";
+// Origem da compra (UTM, gclid, primeiro/último toque), em JSON. Gravada na
+// criação do pedido a partir dos cookies de rastreio e reenviada ao painel
+// quando o pedido muda de situação (lib/painel/pedido.ts). É só um meta do
+// pedido: aditivo, sem migração, e removível sem afetar nada (ver LEIA-ME 3B).
+export const ORDER_ORIGIN_META = "_persi_origem";
 
 function toMetaRecord(
   metaData: WooCommerceOrderApiResponse["meta_data"],
@@ -69,6 +76,10 @@ function toOrder(response: WooCommerceOrderApiResponse): WooCommerceOrder {
     currency: response.currency,
     paymentMethod: response.payment_method ?? "",
     billingEmail: response.billing?.email ?? "",
+    billingName: [response.billing?.first_name, response.billing?.last_name]
+      .map((parte) => parte?.trim())
+      .filter(Boolean)
+      .join(" "),
     billingPhone: response.billing?.phone ?? "",
     metaData: toMetaRecord(response.meta_data),
   };
@@ -151,6 +162,9 @@ export interface CreatePendingOrderInput {
   // relatórios e a tela de confirmação não conseguiam mostrar a entrega.
   shippingLine?: { name: string; amount: number; methodId: string };
   couponCodes?: string[];
+  // Origem da compra já serializada (lib/tracking/servidor.ts). Opcional: sem
+  // cookies de rastreio o pedido nasce exatamente como antes.
+  origin?: string;
 }
 
 function toWooAddress(address: CheckoutStoreAddress) {
@@ -224,6 +238,7 @@ export async function createPendingOrder(
       { key: IDEMPOTENCY_KEY_META, value: input.idempotencyKey },
       { key: PAYMENT_PROVIDER_META, value: provider },
       { key: CHECKOUT_OWNER_TOKEN_META, value: input.ownerToken },
+      ...(input.origin ? [{ key: ORDER_ORIGIN_META, value: input.origin }] : []),
     ],
   });
 
@@ -295,16 +310,22 @@ export async function getOrderById(
 
 const PAID_ORDER_STATUSES = new Set(["processing", "completed"]);
 
+// "Este pedido já estava pago por esta cobrança?" Fonte única da resposta:
+// markOrderAsPaid a usa para não reescrever o pedido, e a conciliação a usa
+// para só avisar o painel/cliente quando o pedido MUDOU para pago.
+export function isOrderAlreadyPaidFor(order: WooCommerceOrder, externalId: string): boolean {
+  return (
+    PAID_ORDER_STATUSES.has(order.status) &&
+    order.metaData[PAYMENT_REFERENCE_META] === externalId
+  );
+}
+
 export async function markOrderAsPaid(
   order: WooCommerceOrder,
   reference: { provider: PaymentProvider; externalId: string },
   put: WooPutFn = defaultPut,
 ): Promise<WooCommerceOrder> {
-  const alreadyPaidForThisReference =
-    PAID_ORDER_STATUSES.has(order.status) &&
-    order.metaData[PAYMENT_REFERENCE_META] === reference.externalId;
-
-  if (alreadyPaidForThisReference) return order;
+  if (isOrderAlreadyPaidFor(order, reference.externalId)) return order;
 
   const response = await put<WooCommerceOrderApiResponse>(`orders/${order.id}`, {
     status: "processing",
@@ -319,6 +340,10 @@ export async function markOrderAsPaid(
 }
 
 const FAILED_ORDER_STATUSES = new Set(["failed", "cancelled"]);
+
+export function isOrderAlreadyFailed(order: WooCommerceOrder): boolean {
+  return FAILED_ORDER_STATUSES.has(order.status);
+}
 
 export async function markOrderAsFailed(
   order: WooCommerceOrder,
@@ -385,6 +410,10 @@ export interface OrderConfirmationItem {
   quantity: number;
   total: string;
   imageSrc?: string;
+  // Para o evento `purchase` do GA4 usar o mesmo item_id de add_to_cart/view_item
+  // (SKU, senão id do produto). Opcionais: pedidos antigos podem não trazer.
+  productId?: number;
+  sku?: string;
 }
 
 export interface OrderConfirmationDetails {
@@ -428,6 +457,8 @@ interface WooCommerceOrderDetailsApiResponse {
     quantity: number;
     total: string;
     image?: { src?: string };
+    product_id?: number;
+    sku?: string;
   }>;
   shipping_lines?: Array<{ method_title: string; total: string }>;
   fee_lines?: Array<{ name: string; total: string }>;
@@ -467,6 +498,8 @@ export async function getOrderConfirmationDetails(
       quantity: item.quantity,
       total: item.total,
       imageSrc: item.image?.src,
+      productId: item.product_id,
+      sku: item.sku || undefined,
     })),
     itemsSubtotal: sumMoneyStrings(items.map((item) => item.total)),
     shippingLabel: shipping?.method_title ?? "",

@@ -185,5 +185,11 @@ test("pedido sem telefone não vira aviso de WhatsApp", async () => {
     fs.readFile(new URL("../services/payments/reconcile.ts", import.meta.url), "utf8"),
   );
   assert.equal(typeof real, "function");
-  assert.match(fonte, /if \(!order\.billingPhone\) return/);
+  // A regra "sem telefone, sem aviso" morou aqui até o Sprint 3B; agora é de
+  // `montarAvisoDoPedido` (lib/painel/pedido.ts), que a conciliação chama.
+  assert.match(fonte, /avisarSituacaoDoPedido\(order, "pago"\)/);
+  const regra = await import("node:fs/promises").then((fs) =>
+    fs.readFile(new URL("../lib/painel/pedido.ts", import.meta.url), "utf8"),
+  );
+  assert.match(regra, /if \(!pedido\.billingPhone\) return null/);
 });

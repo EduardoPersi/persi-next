@@ -15,6 +15,8 @@
  * guardar e conferir é do lado de cá.
  */
 
+import type { OrigemDaVisita } from "../tracking/origem.ts";
+
 const TEMPO_LIMITE_MS = 8000;
 
 export type TipoDeAviso = "pedido" | "codigo_acesso";
@@ -29,6 +31,15 @@ export type AvisoDePedido = {
   observacao?: string;
   /** Só entra na mensagem se for do próprio site; o painel descarta o resto. */
   link?: string;
+  /**
+   * O jeito certo de dizer ao painel se o pedido está pago. É o painel quem
+   * decide se manda WhatsApp ao cliente — e só manda quando `pago` é `true`.
+   * Sem este campo, ele tenta adivinhar pelo texto do `status`.
+   */
+  pago?: boolean;
+  email?: string;
+  /** Origem da compra (UTM, gclid…). O painel grava na primeira vez que o pedido vira pago. */
+  origem?: OrigemDaVisita;
 };
 
 export type AvisoDeCodigo = {
