@@ -7,6 +7,7 @@ import { FooterVisibility } from "@/components/Footer/FooterVisibility";
 import { BackToTopButton } from "@/components/UI/BackToTopButton";
 import { WhatsAppFloatingButton } from "@/components/UI/WhatsAppFloatingButton";
 import { CookieConsentBanner } from "@/components/UI/CookieConsentBanner";
+import { OrigemCapture } from "@/components/Tracking/OrigemCapture";
 import {
   GoogleTagManagerNoScript,
   GoogleTagManagerScript,
@@ -93,6 +94,7 @@ export default async function RootLayout({
         <AnalyticsPageView />
         <RouteTransitionProvider>
           <CookieConsentProvider>
+            <OrigemCapture />
             <NavigationProvider menu={megaMenu}>
               <OverlayManagerProvider>
                 <AccountProvider>
