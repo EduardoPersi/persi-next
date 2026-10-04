@@ -262,3 +262,29 @@ test("a regra de 'já pago' é UMA só, lida pelos dois lados", async () => {
   assert.match(orders, /if \(alreadyPaidFor\(order, reference\)\) return order;/);
   assert.match(reconcile, /alreadyPaidFor/);
 });
+
+test("pedido que NÃO está num status pago volta a avisar, mesmo com a referência gravada", async () => {
+  // O caso que a regra de status protege: a referência do pagamento está no
+  // pedido, mas ele não está num status pago — foi devolvido para pendente, ou
+  // alguém mexeu nele no WooCommerce. Quando ele for pago de novo, o cliente
+  // tem de ser avisado.
+  //
+  // Sem a conferência de STATUS, `alreadyPaidFor` olharia só a referência e
+  // calaria o aviso para sempre naquele pedido.
+  let avisos = 0;
+  const order = {
+    id: 1,
+    status: "pending",
+    total: "10",
+    currency: "BRL",
+    metaData: { _persi_payment_reference: "TX1" },
+  };
+  await reconcilePaymentReference("inter", "TX1", "paid", {
+    findOrder: async () => order,
+    markPaid: async (o) => ({ ...o, status: "processing" }),
+    markFailed: async () => { throw new Error("não deveria chamar"); },
+    avisarPedido: async () => { avisos += 1; },
+  });
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(avisos, 1);
+});
