@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
+import { LinkWhatsApp } from "@/components/UI/LinkWhatsApp";
 import { WhatsAppIcon } from "@/components/UI/SocialIcons";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useCookieConsent } from "@/hooks/useCookieConsent";
@@ -90,15 +91,14 @@ export function WhatsAppFloatingButton() {
             </div>
           </div>
           <div className="p-3">
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <LinkWhatsApp
+              posicao="botao_flutuante"
+              fallbackHref={whatsappUrl}
               className="flex items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1fb958]"
             >
               <WhatsAppIcon className="h-5 w-5" aria-hidden="true" />
               Falar no WhatsApp
-            </a>
+            </LinkWhatsApp>
           </div>
         </div>
       ) : null}

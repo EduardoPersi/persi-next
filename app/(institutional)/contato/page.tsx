@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { Header } from "@/components/Header/Header";
 import { Container } from "@/components/UI/Container";
+import { LinkWhatsApp } from "@/components/UI/LinkWhatsApp";
 import { WhatsAppIcon } from "@/components/UI/SocialIcons";
 import { ContactForm } from "@/components/Contact/ContactForm";
 import { StoreMap } from "@/components/Contact/StoreMap";
@@ -36,10 +37,9 @@ export default function ContactPage() {
                 />
                 {STORE_INFO.address.line}
               </p>
-              <a
-                href={STORE_INFO.whatsapp.href}
-                target="_blank"
-                rel="noopener noreferrer"
+              <LinkWhatsApp
+                posicao="pagina_contato"
+                fallbackHref={STORE_INFO.whatsapp.href}
                 aria-label="Conversar com a Persi Materiais pelo WhatsApp"
                 className="tap-feedback mt-2 flex min-h-9 items-center gap-3 rounded-md text-sm text-muted transition-colors hover:text-secondary"
               >
@@ -48,7 +48,7 @@ export default function ContactPage() {
                   className="h-5 w-5 shrink-0 text-primary"
                 />
                 {STORE_INFO.whatsapp.label}
-              </a>
+              </LinkWhatsApp>
               <a
                 href={STORE_INFO.phone.href}
                 className="tap-feedback mt-2 flex min-h-9 items-center gap-3 rounded-md text-sm text-muted transition-colors hover:text-secondary"

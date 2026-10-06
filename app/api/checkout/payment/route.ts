@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { timingSafeEqual } from "node:crypto";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
 import { exceedsRequestLimit } from "@/app/api/checkout/checkout-request";
 import { MIN_BOLETO_AMOUNT } from "@/components/Checkout/paymentMethod";
@@ -18,6 +18,8 @@ import {
   transitionCheckoutAttempt,
 } from "@/lib/commerce/checkoutAttempt";
 import { moneyToNumber } from "@/lib/formatting/money";
+import { avisarSituacaoDoPedido } from "@/lib/painel/pedido";
+import { origemDoPedidoDosCookies } from "@/lib/tracking/servidor";
 import { paymentInitiationSchema } from "@/lib/validation/payments";
 import { interPaymentGateway } from "@/services/payments/gateway";
 import { getBoletoCreationDiagnostics } from "@/services/payments/inter/boleto";
@@ -265,7 +267,10 @@ function getErrorStatus(error: unknown): number {
 }
 
 export async function POST(request: Request) {
-  let activeCartToken = (await cookies()).get(CART_TOKEN_COOKIE)?.value;
+  const cookieStore = await cookies();
+  let activeCartToken = cookieStore.get(CART_TOKEN_COOKIE)?.value;
+  // Origem da compra (cookies de rastreio), gravada no pedido. Nunca lança.
+  const orderOrigin = origemDoPedidoDosCookies(cookieStore);
   const startedAt = Date.now();
   let stage: PaymentStage = "request_validation";
   let checkoutAttemptId: string | undefined;
@@ -487,6 +492,7 @@ export async function POST(request: Request) {
             }
           : undefined,
         couponCodes: cart.coupons.map(({ code }) => code),
+        origin: orderOrigin,
       }));
     orderId = order.id;
     logPaymentMilestone({
@@ -521,6 +527,15 @@ export async function POST(request: Request) {
         409,
         activeCartToken,
       );
+    }
+
+    // Pedido novo e com total conferido: conta ao painel como "pedido
+    // pendente" (lead com a marca de aguardando pagamento). Depois da resposta
+    // (`after`), sem esperar o painel, e só com PAINEL_NOTIFICAR_PEDIDO_PENDENTE
+    // ligada. NÃO é o aviso de pago: o painel só escreve ao cliente com
+    // `pago: true`, que sai da conciliação (services/payments/reconcile.ts).
+    if (!existingOrder) {
+      after(() => avisarSituacaoDoPedido(order, "pendente").then(() => undefined));
     }
 
     // Diagnóstico temporário: não existia nenhum log no caminho de sucesso —
@@ -684,6 +699,7 @@ export async function POST(request: Request) {
       // genérica de "aguardando confirmação" de um cartão negado.
       if (categorizeMercadoPagoCardStatus(charge.status) === "failed") {
         await markOrderAsFailed(order, "failed");
+        after(() => avisarSituacaoDoPedido(order, "cancelado").then(() => undefined));
         await reconcileCheckoutAttempt(charge.chargeId, "PAYMENT_FAILED").catch(() => undefined);
         console.info("[checkout-payment] card declined", {
           checkoutAttemptId,
@@ -739,6 +755,7 @@ export async function POST(request: Request) {
       // genérica de "aguardando confirmação" de um cartão negado.
       if (categorizeCardStatus(charge.status) === "failed") {
         await markOrderAsFailed(order, "failed");
+        after(() => avisarSituacaoDoPedido(order, "cancelado").then(() => undefined));
         await reconcileCheckoutAttempt(charge.chargeId, "PAYMENT_FAILED").catch(() => undefined);
         console.info("[checkout-payment] card declined", {
           checkoutAttemptId,

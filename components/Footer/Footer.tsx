@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { LinkWhatsApp } from "@/components/UI/LinkWhatsApp";
 import { WhatsAppIcon } from "@/components/UI/SocialIcons";
 import { NewsletterForm } from "@/components/Footer/NewsletterForm";
 
@@ -128,10 +129,9 @@ export function Footer() {
                 </address>
               </li>
               <li>
-                <a
-                  href={STORE_INFO.whatsapp.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <LinkWhatsApp
+                  posicao="rodape"
+                  fallbackHref={STORE_INFO.whatsapp.href}
                   aria-label="Conversar com a Persi Materiais pelo WhatsApp"
                   className="tap-feedback flex min-h-9 items-center gap-3 rounded-md transition-colors hover:text-secondary"
                 >
@@ -140,7 +140,7 @@ export function Footer() {
                     className="h-5 w-5 shrink-0 text-secondary"
                   />
                   WhatsApp: {STORE_INFO.whatsapp.label}
-                </a>
+                </LinkWhatsApp>
               </li>
               <li>
                 <a

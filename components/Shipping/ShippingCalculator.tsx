@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useId, type ReactNode } from "react";
 import { Button } from "@/components/UI/Button";
+import { LinkWhatsApp } from "@/components/UI/LinkWhatsApp";
 import { useShippingCalculator } from "@/hooks/useShippingCalculator";
 import { STORE_INFO } from "@/lib/constants/storeInfo";
 import { isZeroMoney } from "@/lib/formatting/money";
@@ -205,15 +206,14 @@ export function ShippingCalculator(props: ShippingCalculatorProps) {
                 <Search className="h-4 w-4" aria-hidden="true" />
                 Pesquisar CEP
               </a>
-              <a
-                href={STORE_INFO.whatsapp.href}
-                target="_blank"
-                rel="noopener noreferrer"
+              <LinkWhatsApp
+                posicao="calculadora_frete"
+                fallbackHref={STORE_INFO.whatsapp.href}
                 className="inline-flex min-h-9 items-center justify-center gap-2 rounded-xl bg-secondary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-orange-700"
               >
                 <MessageCircle className="h-4 w-4" aria-hidden="true" />
                 Falar com um consultor
-              </a>
+              </LinkWhatsApp>
             </div>
           </FeedbackCard>
         ) : null}

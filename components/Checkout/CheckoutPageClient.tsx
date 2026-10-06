@@ -7,6 +7,7 @@ import type {
   CustomerWorkspaceAddress,
   CustomerWorkspaceProfile,
 } from "@/lib/customer-workspace/types";
+import { BeginCheckoutEvent } from "@/components/Tracking/BeginCheckoutEvent";
 import { CheckoutForm } from "./CheckoutForm";
 import { CheckoutOrderSummary } from "./CheckoutOrderSummary";
 import type { CheckoutPaymentMethod } from "./paymentMethod";
@@ -80,6 +81,7 @@ export function CheckoutPageClient({
           capabilities={capabilities}
         />
       </div>
+      {!hasCreatedOrder ? <BeginCheckoutEvent cart={cart} /> : null}
       {!hasCreatedOrder ? (
         <div className="hidden lg:block">
           <CheckoutOrderSummary cart={cart} paymentMethod={paymentMethod} />

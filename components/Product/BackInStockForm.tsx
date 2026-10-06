@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { LinkWhatsApp } from "@/components/UI/LinkWhatsApp";
 import { EmailAutocompleteInput } from "@/components/UI/EmailAutocompleteInput";
 import { RecaptchaNotice } from "@/components/UI/RecaptchaNotice";
 import { useRecaptcha } from "@/hooks/useRecaptcha";
@@ -191,15 +192,14 @@ export function BackInStockForm({
       </p>
       <RecaptchaNotice className="mt-2" />
 
-      <a
-        href={whatsappUrl}
-        target="_blank"
-        rel="noopener noreferrer"
+      <LinkWhatsApp
+        posicao="produto_sem_estoque"
+        fallbackHref={whatsappUrl}
         className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl border border-emerald-600 px-4 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
         aria-label={`Consultar disponibilidade de ${productName} pelo WhatsApp`}
       >
         Consultar pelo WhatsApp
-      </a>
+      </LinkWhatsApp>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import {
   ContactError,
   submitContactMessage,
@@ -6,6 +6,10 @@ import {
 import { contactSubmissionSchema } from "@/lib/validation/contact";
 import { getRequestIp, verifyRecaptcha } from "@/lib/recaptcha/verify";
 import { createRateLimiter } from "@/lib/network/rateLimit";
+import { enviarLeadAoPainel, montarCorpoDoLead } from "@/lib/painel/lead";
+import { lerOrigemDosCookies } from "@/lib/tracking/servidor";
+import { SITE_URL } from "@/lib/routing/storefrontUrls";
+import { CONTACT_SUBJECTS } from "@/lib/validation/contact";
 
 const RECAPTCHA_ACTION = "contact_submit";
 
@@ -56,6 +60,33 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
+
+  // O formulário também vira lead no painel. Fica FORA do try do envio e roda
+  // depois da resposta (`after`): painel lento, fora do ar ou recusando não
+  // atrasa nem derruba o formulário. Já valido e com recaptcha aprovado — não
+  // vai lixo de robô ao painel. Falha vai ao log, sem dados pessoais.
+  const subjectLabel =
+    CONTACT_SUBJECTS.find((subject) => subject.value === parsed.data.subject)?.label ??
+    parsed.data.subject;
+  const origem = (() => {
+    try {
+      return lerOrigemDosCookies((nome) => request.cookies.get(nome)?.value);
+    } catch {
+      return undefined;
+    }
+  })();
+  const leadBody = montarCorpoDoLead({
+    contato: {
+      nome: parsed.data.name,
+      email: parsed.data.email,
+      mensagem: `[${subjectLabel}] ${parsed.data.message}`,
+    },
+    consentimentoMarketing: parsed.data.marketingConsent,
+    origem,
+    pagina: `${SITE_URL}/contato`,
+    formulario: "Contato do site",
+  });
+  after(() => enviarLeadAoPainel(leadBody).then(() => undefined));
 
   try {
     await submitContactMessage({

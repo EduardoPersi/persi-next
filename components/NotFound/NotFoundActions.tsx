@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { ArrowLeft, House } from "lucide-react";
 import { Button } from "@/components/UI/Button";
+import { LinkWhatsApp } from "@/components/UI/LinkWhatsApp";
 import { WhatsAppIcon } from "@/components/UI/SocialIcons";
 import { useRouteTransition } from "@/hooks/useRouteTransition";
 
@@ -39,18 +40,17 @@ export function NotFoundNavigationActions() {
 }
 
 export function NotFoundWhatsAppAction() {
-  function openWhatsApp() {
-    window.open(WHATSAPP_URL, "_blank", "noopener,noreferrer");
-  }
-
+  // Era um <button> que abria `window.open`; virou link de verdade (o mesmo
+  // visual do Button), para o clique passar pelo componente único de WhatsApp.
   return (
-    <Button
-      className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-700 sm:w-auto"
-      onClick={openWhatsApp}
+    <LinkWhatsApp
+      posicao="pagina_404"
+      fallbackHref={WHATSAPP_URL}
+      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2 text-base font-medium text-white transition-colors hover:bg-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 active:bg-secondary-hover bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-700 sm:w-auto"
       aria-label="Falar com a Persi Materiais no WhatsApp"
     >
       <WhatsAppIcon className="h-5 w-5" aria-hidden="true" />
       Falar no WhatsApp
-    </Button>
+    </LinkWhatsApp>
   );
 }

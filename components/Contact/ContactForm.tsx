@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { EmailAutocompleteInput } from "@/components/UI/EmailAutocompleteInput";
 import { RecaptchaNotice } from "@/components/UI/RecaptchaNotice";
 import { useRecaptcha } from "@/hooks/useRecaptcha";
+import { registrarGerarLead } from "@/lib/analytics/eventos";
 import {
   CONTACT_SUBJECTS,
   contactFormSchema,
@@ -62,6 +63,8 @@ export function ContactForm() {
       }
 
       reset();
+      // Só no sucesso confirmado pelo servidor, e sem dado pessoal no evento.
+      registrarGerarLead({ formulario: "contato", pagina: window.location.pathname });
       setState("success");
       setMessage(result.message || "Mensagem enviada com sucesso.");
     } catch {
