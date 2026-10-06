@@ -149,3 +149,68 @@ npm run test:painel
 painel fora do ar → `podeTentarDeNovo: true`; 401 → `false`; 503 → `true`; sem
 configuração não há requisição nenhuma; e 400 códigos gerados, todos no
 formato esperado e com variedade suficiente.
+
+## O pedido completo e a entrega sozinha (fase 7 do painel)
+
+A partir do painel v78, o aviso de pedido leva o **pedido inteiro**, e o painel
+guarda tudo. O pedido **pago** com entrega da loja vira **entrega na fila do
+motorista**, sem ninguém digitar. O contrato está no painel, em
+`docs/contrato-api-sites.md` §3.1.
+
+**O que vai, em toda situação** (pago, pendente, cancelado), quando o pedido tem:
+
+- `endereco`: o de **entrega**, ou o de cobrança quando o de entrega veio vazio,
+  com número e bairro do Brazilian Market e o `destinatario`;
+- `itens`: nome, quantidade, SKU e preço por unidade;
+- `envio`: método, `entrega_propria`, `retirada` e frete;
+- `pagamento`: forma e parcelas;
+- `cpf_cnpj`.
+
+A **mensagem ao cliente não muda**: nome e total continuam fora do aviso de pago.
+O painel usa o `destinatario` do endereço como nome na entrega.
+
+**Quem decide se a entrega é da loja é a forma de envio** (`method_id` da linha
+de frete do WooCommerce), por duas variáveis:
+
+| Variável | Padrão | Significa |
+|---|---|---|
+| `PAINEL_ENVIO_LOJA` | `flat_rate,free_shipping` | entrega da equipe da loja: vira entrega no painel |
+| `PAINEL_ENVIO_RETIRADA` | `local_pickup,pickup_location` | retirada na loja: não vira entrega |
+
+Qualquer outro método (Melhor Envio, Correios…) é transportadora. **Confira os
+nomes em WooCommerce › Configurações › Entrega antes de ligar**: se a entrega da
+loja usar outro método, ponha o nome dele em `PAINEL_ENVIO_LOJA`.
+
+### O cancelamento: webhook "Pedido atualizado"
+
+O site só sabia do pagamento que falhou. Cancelado ou reembolsado no WooCommerce
+passa a chegar por `POST /api/webhooks/woocommerce/pedido`:
+
+1. Em WooCommerce › Configurações › Avançado › Webhooks › **Adicionar**:
+   - tópico **Pedido atualizado**;
+   - URL `https://persimateriais.com.br/api/webhooks/woocommerce/pedido`;
+   - segredo igual ao de `PAINEL_WOO_PEDIDO_WEBHOOK_SECRET`.
+2. Ligar `PAINEL_NOTIFICAR_PEDIDO_PENDENTE=1`. É a mesma chave do pendente, e só
+   depois de o painel novo estar no ar.
+
+Só **cancelado, reembolsado e falho** vão ao painel. O pago continua vindo da
+conciliação do pagamento, que confere o banco. A regra fica em
+`lib/painel/webhookDoPedido.ts` (testada em `tests/painel/pedidoWebhook.test.mjs`);
+a rota é só a casca.
+
+### Quando o WooCommerce sair (site 100% Next)
+
+O contrato com o painel **não depende do WooCommerce**: o painel só lê o
+aviso (§3.1 do contrato). Na migração, duas coisas deste arquivo mudam de
+origem e **não podem ser esquecidas**:
+
+1. **A forma de envio.** Hoje sai do `method_id` do frete do Woo
+   (`PAINEL_ENVIO_LOJA` / `PAINEL_ENVIO_RETIRADA`). No site novo, o frete
+   escolhido no checkout tem de dizer direto se é entrega da loja, retirada ou
+   transportadora. Basta preencher `envio.entrega_propria` e `envio.retirada`
+   no aviso.
+2. **O cancelamento.** Hoje chega pelo webhook "Pedido atualizado" do Woo
+   (`/api/webhooks/woocommerce/pedido`). Sem o Woo, o próprio site, ao
+   cancelar ou reembolsar um pedido, chama `avisarSituacaoDoPedido(pedido,
+   "cancelado")`. Sem isso, o painel não cancela a entrega nem avisa o
+   motorista.

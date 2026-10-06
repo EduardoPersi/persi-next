@@ -25,6 +25,7 @@
 import { SITE_URL } from "../routing/storefrontUrls.ts";
 import { lerOrigemDoPedido } from "../tracking/servidor.ts";
 import { avisarPedido, type AvisoDePedido, type ResultadoDoAviso } from "./whatsapp.ts";
+import type { DadosDaEntrega } from "../../services/woocommerce/orders.ts";
 
 export type SituacaoDoPedido = "pago" | "pendente" | "cancelado";
 
@@ -44,12 +45,74 @@ export function classificarPedido(statusWoo: string): SituacaoDoPedido {
   return "pendente";
 }
 
+/**
+ * O que um webhook de PEDIDO ATUALIZADO do WooCommerce conta ao painel (fase 7):
+ * só o cancelamento. Cancelado, reembolsado ou falho no WooCommerce é "o cliente
+ * não vai receber" — e o painel cancela a entrega que ainda não saiu, ou avisa o
+ * gerente e o entregador da que já saiu.
+ *
+ * O pago NÃO vem por aqui: quem conta o pago é a conciliação do pagamento
+ * (`services/payments/reconcile.ts`), que confere o banco antes.
+ */
+export function situacaoDoWebhook(statusWoo: string): "cancelado" | null {
+  return ["cancelled", "refunded", "failed"].includes(statusWoo) ? "cancelado" : null;
+}
+
 export function avisoDePendenteLigado(
   env: Record<string, string | undefined> = process.env,
 ): boolean {
   const valor = env.PAINEL_NOTIFICAR_PEDIDO_PENDENTE?.trim().toLowerCase();
   return valor === "1" || valor === "true";
 }
+
+// ---------------------------------------------------------------------------
+// A FORMA DE ENVIO (fase 7 do painel)
+// ---------------------------------------------------------------------------
+//
+// Quem decide se a entrega é da EQUIPE DA LOJA é o site — pela forma de envio
+// que o cliente escolheu, que vem das zonas de frete do WooCommerce
+// (`shipping_lines[0].method_id`). Decisão do Eduardo, 06/10/2026.
+//
+// Os métodos ficam em variáveis de ambiente, e não no código, porque os nomes
+// são os da configuração do WooCommerce (WooCommerce › Configurações › Entrega)
+// e podem mudar sem deploy:
+//
+//   PAINEL_ENVIO_LOJA      métodos de entrega da loja   (padrão: flat_rate,free_shipping)
+//   PAINEL_ENVIO_RETIRADA  métodos de retirada na loja  (padrão: local_pickup,pickup_location)
+//
+// Qualquer outro método (Melhor Envio, Correios…) é transportadora: o pedido
+// fica no painel, mas não vira entrega. Comparação pelo nome inteiro ou pelo
+// começo seguido de ":" ou "_" — "flat_rate:3" casa com "flat_rate", e
+// "melhorenvio_sedex" com "melhorenvio".
+
+export type FormaDeEnvio = "loja" | "retirada" | "transportadora";
+
+const listaDoAmbiente = (valor: string | undefined, padrao: string) =>
+  (valor?.trim() ? valor : padrao)
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+export function classificarEnvio(
+  metodoId: string,
+  env: Record<string, string | undefined> = process.env,
+): FormaDeEnvio {
+  const metodo = metodoId.trim().toLowerCase();
+  const casa = (lista: string[]) =>
+    lista.some((m) => metodo === m || metodo.startsWith(`${m}:`) || metodo.startsWith(`${m}_`));
+  if (casa(listaDoAmbiente(env.PAINEL_ENVIO_RETIRADA, "local_pickup,pickup_location"))) return "retirada";
+  if (casa(listaDoAmbiente(env.PAINEL_ENVIO_LOJA, "flat_rate,free_shipping"))) return "loja";
+  return "transportadora";
+}
+
+/** A forma de pagamento, nas palavras do painel. */
+const FORMA_DE_PAGAMENTO: Record<string, string> = {
+  inter_pix: "pix",
+  inter_boleto: "boleto",
+  mercadopago_card: "cartão",
+  pagbank_apple_pay: "Apple Pay",
+  pagbank_google_pay: "Google Pay",
+};
 
 /** O que o aviso precisa saber do pedido (subconjunto do `WooCommerceOrder`). */
 export interface PedidoParaAviso {
@@ -60,6 +123,41 @@ export interface PedidoParaAviso {
   billingName?: string;
   total?: string;
   metaData: Record<string, string>;
+  /** Fase 7: endereço, itens e frete. Opcional — sem ele o aviso é o de antes. */
+  entrega?: DadosDaEntrega;
+  paymentMethod?: string;
+}
+
+/**
+ * Os campos do pedido completo (fase 7). Vão em toda situação: o painel guarda
+ * o pedido inteiro e decide sozinho o que vira entrega (só o pago de entrega da
+ * loja). Nenhum deles muda a mensagem que o cliente recebe.
+ */
+function camposDoPedidoCompleto(
+  pedido: PedidoParaAviso,
+  env: Record<string, string | undefined>,
+): Partial<AvisoDePedido> {
+  const campos: Partial<AvisoDePedido> = {};
+  const documento = (pedido.metaData._billing_cpf || pedido.metaData._billing_cnpj || "").replace(/\D/g, "");
+  if (documento.length === 11 || documento.length === 14) campos.cpf_cnpj = documento;
+
+  const entrega = pedido.entrega;
+  if (entrega?.endereco) campos.endereco = { ...entrega.endereco };
+  if (entrega?.itens.length) campos.itens = entrega.itens.map((item) => ({ ...item }));
+  if (entrega?.frete) {
+    const forma = classificarEnvio(entrega.frete.metodoId, env);
+    campos.envio = {
+      metodo: entrega.frete.metodo,
+      entrega_propria: forma === "loja",
+      retirada: forma === "retirada",
+      ...(entrega.frete.centavos !== undefined ? { frete_centavos: entrega.frete.centavos } : {}),
+    };
+  }
+
+  const forma = pedido.paymentMethod ? FORMA_DE_PAGAMENTO[pedido.paymentMethod] ?? pedido.paymentMethod : undefined;
+  const parcelas = Number(pedido.metaData._persi_payment_installments);
+  if (forma) campos.pagamento = { forma, ...(Number.isInteger(parcelas) && parcelas > 1 ? { parcelas } : {}) };
+  return campos;
 }
 
 /**
@@ -70,6 +168,7 @@ export interface PedidoParaAviso {
 export function montarAvisoDoPedido(
   pedido: PedidoParaAviso,
   situacao: SituacaoDoPedido,
+  env: Record<string, string | undefined> = process.env,
 ): Omit<AvisoDePedido, "tipo"> | null {
   if (!pedido.billingPhone) return null;
   const aviso: Omit<AvisoDePedido, "tipo"> = {
@@ -90,7 +189,7 @@ export function montarAvisoDoPedido(
   }
   const origem = lerOrigemDoPedido(pedido.metaData[META_ORIGEM_DO_PEDIDO]);
   if (origem) aviso.origem = origem;
-  return aviso;
+  return { ...aviso, ...camposDoPedidoCompleto(pedido, env) };
 }
 
 /**
