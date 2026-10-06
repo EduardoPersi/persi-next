@@ -197,3 +197,20 @@ Só **cancelado, reembolsado e falho** vão ao painel. O pago continua vindo da
 conciliação do pagamento, que confere o banco. A regra fica em
 `lib/painel/webhookDoPedido.ts` (testada em `tests/painel/pedidoWebhook.test.mjs`);
 a rota é só a casca.
+
+### Quando o WooCommerce sair (site 100% Next)
+
+O contrato com o painel **não depende do WooCommerce**: o painel só lê o
+aviso (§3.1 do contrato). Na migração, duas coisas deste arquivo mudam de
+origem e **não podem ser esquecidas**:
+
+1. **A forma de envio.** Hoje sai do `method_id` do frete do Woo
+   (`PAINEL_ENVIO_LOJA` / `PAINEL_ENVIO_RETIRADA`). No site novo, o frete
+   escolhido no checkout tem de dizer direto se é entrega da loja, retirada ou
+   transportadora. Basta preencher `envio.entrega_propria` e `envio.retirada`
+   no aviso.
+2. **O cancelamento.** Hoje chega pelo webhook "Pedido atualizado" do Woo
+   (`/api/webhooks/woocommerce/pedido`). Sem o Woo, o próprio site, ao
+   cancelar ou reembolsar um pedido, chama `avisarSituacaoDoPedido(pedido,
+   "cancelado")`. Sem isso, o painel não cancela a entrega nem avisa o
+   motorista.
