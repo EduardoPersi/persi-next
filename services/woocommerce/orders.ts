@@ -25,6 +25,50 @@ export interface WooCommerceOrder {
   /** Para o aviso de pedido pelo WhatsApp (lib/painel/whatsapp.ts). */
   billingPhone: string;
   metaData: Record<string, string>;
+  /**
+   * Para onde e o que entregar, e por qual frete (fase 7 do painel: o pedido
+   * pago de entrega da loja vira entrega na fila do motorista). Opcional:
+   * pedidos montados à mão em testes e respostas antigas não trazem.
+   */
+  entrega?: DadosDaEntrega;
+}
+
+export interface EnderecoDaEntrega {
+  destinatario?: string;
+  cep?: string;
+  rua?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+}
+
+export interface ItemDaEntrega {
+  sku?: string;
+  nome: string;
+  quantidade: number;
+  preco_centavos?: number;
+}
+
+export interface DadosDaEntrega {
+  endereco: EnderecoDaEntrega | null;
+  itens: ItemDaEntrega[];
+  /** A linha de frete escolhida no checkout (`shipping_lines[0]`). */
+  frete: { metodoId: string; metodo: string; centavos?: number } | null;
+}
+
+interface WooAddressApi {
+  first_name?: string;
+  last_name?: string;
+  address_1?: string;
+  address_2?: string;
+  city?: string;
+  state?: string;
+  postcode?: string;
+  // Campos do plugin "Brazilian Market on WooCommerce", quando instalado.
+  number?: string;
+  neighborhood?: string;
 }
 
 interface WooCommerceOrderApiResponse {
@@ -33,7 +77,10 @@ interface WooCommerceOrderApiResponse {
   total: string;
   currency: string;
   payment_method?: string;
-  billing?: { email?: string; phone?: string; first_name?: string; last_name?: string };
+  billing?: { email?: string; phone?: string; first_name?: string; last_name?: string } & WooAddressApi;
+  shipping?: WooAddressApi;
+  line_items?: Array<{ name?: string; quantity?: number; sku?: string; total?: string }>;
+  shipping_lines?: Array<{ method_id?: string; method_title?: string; total?: string }>;
   meta_data?: { key: string; value: unknown }[];
 }
 
@@ -68,7 +115,66 @@ function toMetaRecord(
   return record;
 }
 
+const limpo = (valor: unknown): string | undefined => {
+  const texto = typeof valor === "string" ? valor.trim() : "";
+  return texto || undefined;
+};
+const emCentavos = (valor: unknown): number | undefined => {
+  const numero = Math.round(Number(valor) * 100);
+  return Number.isFinite(numero) && numero >= 0 ? numero : undefined;
+};
+
+/**
+ * O endereço de ENTREGA (o de cobrança só quando o de entrega veio vazio), com
+ * número e bairro dos campos do Brazilian Market — no endereço ou nos metas.
+ */
+function enderecoDaEntrega(
+  response: WooCommerceOrderApiResponse,
+  meta: Record<string, string>,
+): EnderecoDaEntrega | null {
+  const usarEntrega = Boolean(limpo(response.shipping?.address_1) || limpo(response.shipping?.postcode));
+  const a = (usarEntrega ? response.shipping : response.billing) ?? {};
+  const prefixo = usarEntrega ? "_shipping" : "_billing";
+  const endereco: EnderecoDaEntrega = {
+    destinatario: [a.first_name, a.last_name].map(limpo).filter(Boolean).join(" ") || undefined,
+    cep: limpo(a.postcode),
+    rua: limpo(a.address_1),
+    numero: limpo(a.number) ?? limpo(meta[`${prefixo}_number`]),
+    complemento: limpo(a.address_2),
+    bairro: limpo(a.neighborhood) ?? limpo(meta[`${prefixo}_neighborhood`]),
+    cidade: limpo(a.city),
+    uf: limpo(a.state),
+  };
+  return endereco.rua || endereco.cep ? endereco : null;
+}
+
+function dadosDaEntrega(
+  response: WooCommerceOrderApiResponse,
+  meta: Record<string, string>,
+): DadosDaEntrega {
+  const linha = response.shipping_lines?.[0];
+  return {
+    endereco: enderecoDaEntrega(response, meta),
+    itens: (response.line_items ?? [])
+      .map((item) => {
+        const quantidade = Number(item.quantity) || 0;
+        const total = emCentavos(item.total);
+        return {
+          nome: limpo(item.name) ?? "",
+          quantidade,
+          sku: limpo(item.sku),
+          preco_centavos: total !== undefined && quantidade > 0 ? Math.round(total / quantidade) : undefined,
+        };
+      })
+      .filter((item) => item.nome && item.quantidade > 0),
+    frete: linha?.method_id
+      ? { metodoId: linha.method_id, metodo: limpo(linha.method_title) ?? linha.method_id, centavos: emCentavos(linha.total) }
+      : null,
+  };
+}
+
 function toOrder(response: WooCommerceOrderApiResponse): WooCommerceOrder {
+  const metaData = toMetaRecord(response.meta_data);
   return {
     id: response.id,
     status: response.status,
@@ -81,8 +187,21 @@ function toOrder(response: WooCommerceOrderApiResponse): WooCommerceOrder {
       .filter(Boolean)
       .join(" "),
     billingPhone: response.billing?.phone ?? "",
-    metaData: toMetaRecord(response.meta_data),
+    metaData,
+    entrega: dadosDaEntrega(response, metaData),
   };
+}
+
+/**
+ * O pedido a partir do corpo de um webhook do WooCommerce (`order.updated`).
+ * É o mesmo formato da REST API; o corpo é confiável porque chega assinado
+ * (ver app/api/webhooks/woocommerce/pedido/route.ts).
+ */
+export function orderFromWebhookPayload(payload: unknown): WooCommerceOrder | null {
+  if (!payload || typeof payload !== "object") return null;
+  const corpo = payload as WooCommerceOrderApiResponse;
+  if (!Number.isInteger(corpo.id) || corpo.id <= 0 || typeof corpo.status !== "string") return null;
+  return toOrder({ ...corpo, total: String(corpo.total ?? ""), currency: String(corpo.currency ?? "BRL") });
 }
 
 // Único ponto de leitura do meta de posse do pedido — mantém a chave de

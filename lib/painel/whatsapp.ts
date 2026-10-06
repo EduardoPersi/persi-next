@@ -40,6 +40,24 @@ export type AvisoDePedido = {
   email?: string;
   /** Origem da compra (UTM, gclid…). O painel grava na primeira vez que o pedido vira pago. */
   origem?: OrigemDaVisita;
+  /**
+   * O PEDIDO COMPLETO (contrato do painel, §3.1 — fase 7). Com eles, o pedido
+   * pago de entrega da loja vira entrega no painel, na fila do motorista.
+   */
+  cpf_cnpj?: string;
+  endereco?: {
+    destinatario?: string;
+    cep?: string;
+    rua?: string;
+    numero?: string;
+    complemento?: string;
+    bairro?: string;
+    cidade?: string;
+    uf?: string;
+  };
+  itens?: Array<{ sku?: string; nome: string; quantidade: number; preco_centavos?: number }>;
+  envio?: { metodo?: string; entrega_propria?: boolean; retirada?: boolean; frete_centavos?: number };
+  pagamento?: { forma?: string; parcelas?: number };
 };
 
 export type AvisoDeCodigo = {
