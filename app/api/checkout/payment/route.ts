@@ -18,6 +18,7 @@ import {
   transitionCheckoutAttempt,
 } from "@/lib/commerce/checkoutAttempt";
 import { moneyToNumber } from "@/lib/formatting/money";
+import { enviarCobranca } from "@/lib/painel/cobranca";
 import { avisarSituacaoDoPedido } from "@/lib/painel/pedido";
 import { origemDoPedidoDosCookies } from "@/lib/tracking/servidor";
 import { paymentInitiationSchema } from "@/lib/validation/payments";
@@ -631,6 +632,15 @@ export async function POST(request: Request) {
         checkoutAttemptId: input.idempotencyKey,
         confirmationUrl: getConfirmationUrl(input.idempotencyKey),
       };
+      // O Pix também pelo WhatsApp (lib/painel/cobranca.ts), depois da
+      // resposta e sem esperar o painel. Desligado sem PAINEL_ENVIAR_COBRANCA.
+      const pixDoWhatsapp = {
+        forma: "pix" as const,
+        codigo: charge.qrCodeCopyPaste,
+        valorCentavos: Math.round(amount * 100),
+        venceEm: charge.expiresAt,
+      };
+      after(() => enviarCobranca(order, pixDoWhatsapp, "agora").then(() => undefined));
     } else if (input.method === "inter_boleto") {
       if (attemptState === "PAYMENT_CREATING") {
         throw new CheckoutTransferError(409, "Boleto em reconciliação; uma nova cobrança não será criada.");
@@ -659,6 +669,18 @@ export async function POST(request: Request) {
         checkoutAttemptId: input.idempotencyKey,
         confirmationUrl: getConfirmationUrl(input.idempotencyKey),
       };
+      // O boleto também pelo WhatsApp. A linha digitável pode ainda não existir
+      // (emissão assíncrona no Inter): nesse caso, quem manda é o cron, na
+      // passada seguinte (app/api/cron/expire-pending-payments).
+      if (charge.digitableLine && charge.dueDate) {
+        const boletoDoWhatsapp = {
+          forma: "boleto" as const,
+          codigo: charge.digitableLine,
+          valorCentavos: Math.round(amount * 100),
+          venceEm: charge.dueDate,
+        };
+        after(() => enviarCobranca(order, boletoDoWhatsapp, "agora").then(() => undefined));
+      }
     } else if (input.method === "mercadopago_card") {
       if (attemptState === "PAYMENT_CREATING") {
         throw new CheckoutTransferError(

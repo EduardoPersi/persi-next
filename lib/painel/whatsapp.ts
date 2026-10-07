@@ -19,7 +19,7 @@ import type { OrigemDaVisita } from "../tracking/origem.ts";
 
 const TEMPO_LIMITE_MS = 8000;
 
-export type TipoDeAviso = "pedido" | "codigo_acesso";
+export type TipoDeAviso = "pedido" | "cobranca" | "codigo_acesso";
 
 export type AvisoDePedido = {
   tipo: "pedido";
@@ -68,11 +68,32 @@ export type AvisoDeCodigo = {
   validade_minutos?: number;
 };
 
-export type Aviso = AvisoDePedido | AvisoDeCodigo;
+/**
+ * A COBRANÇA: o Pix ou o boleto de um pedido que ainda não foi pago (contrato
+ * do painel, §3.2). O painel confere o código (CRC e recebedor do Pix; banco,
+ * dígitos e valor do boleto) e manda em duas mensagens — a explicação e o
+ * código sozinho, para copiar.
+ */
+export type AvisoDeCobranca = {
+  tipo: "cobranca";
+  telefone: string;
+  pedido: string;
+  forma: "pix" | "boleto";
+  /** "agora": logo depois do pedido. "lembrete": Pix perto de vencer, boleto no dia. */
+  momento: "agora" | "lembrete";
+  /** O Pix copia e cola, ou a linha digitável do boleto. */
+  codigo: string;
+  valor_centavos: number;
+  /** Pix: data e hora ISO do vencimento. Boleto: AAAA-MM-DD. */
+  vence_em: string;
+  link?: string;
+};
+
+export type Aviso = AvisoDePedido | AvisoDeCobranca | AvisoDeCodigo;
 
 export type ResultadoDoAviso =
   | { enviado: true; conversa: number | null }
-  | { enviado: false; motivo: string; status?: number; podeTentarDeNovo: boolean };
+  | { enviado: false; motivo: string; status?: number; codigo?: string; podeTentarDeNovo: boolean };
 
 function configuracao() {
   const url = process.env.PAINEL_URL?.trim();
@@ -120,11 +141,12 @@ export async function avisarPeloWhatsapp(aviso: Aviso): Promise<ResultadoDoAviso
       return { enviado: true, conversa: corpo.conversa ?? null };
     }
 
-    const corpo = (await resposta.json().catch(() => ({}))) as { error?: string };
+    const corpo = (await resposta.json().catch(() => ({}))) as { error?: string; code?: string };
     return {
       enviado: false,
       motivo: corpo.error || `o painel respondeu ${resposta.status}`,
       status: resposta.status,
+      ...(typeof corpo.code === "string" ? { codigo: corpo.code } : {}),
       // 5xx é problema do painel e passa; 4xx é pedido torto e não passa.
       podeTentarDeNovo: resposta.status >= 500,
     };
