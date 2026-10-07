@@ -4,10 +4,9 @@ import { useCallback, useRef } from "react";
 import { normalizePostcode } from "@/lib/commerce/shippingCalculator";
 import type { CartAddress } from "@/types/cart";
 
-// Consulta isolada de endereço por CEP (app/api/shipping/postcode), que só
-// reaproveita o mesmo serviço já usado pelo cálculo de frete
-// (services/shipping/postcode.ts -> ViaCEP) sem disparar um cálculo de
-// frete completo.
+// Consulta isolada de endereço por CEP (app/api/cep/[cep]), que usa o mesmo
+// serviço do cálculo de frete (services/shipping/postcode.ts -> BrasilAPI com
+// ViaCEP de reserva) sem disparar um cálculo de frete completo.
 //
 // Resultado:
 // - `CartAddress`: endereço encontrado;
@@ -45,10 +44,7 @@ export function usePostcodeAddressLookup() {
 
     const promise = (async (): Promise<PostcodeLookupResult> => {
       try {
-        const response = await fetch("/api/shipping/postcode", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ postcode: digits }),
+        const response = await fetch(`/api/cep/${digits}`, {
           cache: "no-store",
           signal: controller.signal,
         });

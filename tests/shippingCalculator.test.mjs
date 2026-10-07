@@ -240,8 +240,10 @@ test("calculadora usa somente o endereço de CEP verificado no servidor", () => 
     new URL("../hooks/useShippingCalculator.ts", import.meta.url),
     "utf8",
   );
+  // A consulta de CEP (BrasilAPI + ViaCEP de reserva) vive em módulo puro;
+  // o comportamento é coberto por tests/postcodeLookup.test.mjs.
   const postcodeService = readFileSync(
-    new URL("../services/shipping/postcode.ts", import.meta.url),
+    new URL("../lib/commerce/postcodeLookup.ts", import.meta.url),
     "utf8",
   );
 
@@ -250,7 +252,8 @@ test("calculadora usa somente o endereço de CEP verificado no servidor", () => 
   assert.match(hook, /result\.cart\.shippingDestination/);
   assert.doesNotMatch(hook, /destination: result\.cart\.shippingAddress/);
   assert.match(postcodeService, /https:\/\/viacep\.com\.br\/ws\//);
-  assert.match(postcodeService, /body\.erro === true/);
+  assert.match(postcodeService, /https:\/\/brasilapi\.com\.br\/api\/cep\/v1\//);
+  assert.match(postcodeService, /data\.erro === true/);
 });
 
 test("prazo numérico recebe dia útil no singular ou plural", () => {
