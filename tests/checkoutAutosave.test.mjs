@@ -29,7 +29,7 @@ test("CheckoutForm liga o autosave, o ?step= e o aviso de saída só para altera
   const source = read("components/Checkout/CheckoutForm.tsx");
   assert.match(source, /useCheckoutDraft\(methods, hasCreatedOrder\)/);
   assert.match(source, /readStoredCheckoutDraft\(\)/);
-  assert.match(source, /mergeCheckoutDraft\(accountValues, savedDraft\)/);
+  assert.match(source, /mergeCheckoutDraft\(withLink, savedDraft\)/);
   assert.match(source, /resolveInitialCheckoutStep\(/);
   assert.match(source, /addEventListener\("popstate"/);
   assert.match(source, /removeEventListener\("popstate"/);

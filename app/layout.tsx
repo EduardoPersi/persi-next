@@ -8,6 +8,7 @@ import { BackToTopButton } from "@/components/UI/BackToTopButton";
 import { WhatsAppFloatingButton } from "@/components/UI/WhatsAppFloatingButton";
 import { CookieConsentBanner } from "@/components/UI/CookieConsentBanner";
 import { OrigemCapture } from "@/components/Tracking/OrigemCapture";
+import { CheckoutPrefillCapture } from "@/components/Checkout/CheckoutPrefillCapture";
 import {
   GoogleTagManagerNoScript,
   GoogleTagManagerScript,
@@ -95,6 +96,7 @@ export default async function RootLayout({
         <RouteTransitionProvider>
           <CookieConsentProvider>
             <OrigemCapture />
+            <CheckoutPrefillCapture />
             <NavigationProvider menu={megaMenu}>
               <OverlayManagerProvider>
                 <AccountProvider>

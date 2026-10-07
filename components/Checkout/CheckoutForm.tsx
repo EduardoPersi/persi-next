@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Lock } from "lucide-react";
@@ -37,8 +37,14 @@ import {
 } from "@/lib/commerce/checkoutAddress";
 import {
   formatPostcode,
+  isValidPostcode,
   readLastShippingPostcode,
 } from "@/lib/commerce/shippingCalculator";
+import { mergeCheckoutPrefill } from "@/lib/commerce/checkoutPrefill";
+import {
+  clearStoredCheckoutPrefill,
+  readStoredCheckoutPrefill,
+} from "@/lib/commerce/checkoutPrefillStorage";
 import { moneyToNumber } from "@/lib/formatting/money";
 import type {
   CustomerWorkspaceAddress,
@@ -137,8 +143,9 @@ export function CheckoutForm({
   // Dados salvos no cadastro do cliente logado têm prioridade sobre
   // qualquer CEP solto lembrado da navegação anônima (ver efeito abaixo) —
   // só é calculado uma vez, a partir dos dados já resolvidos no servidor.
-  // Precedência (só preenche o que ainda está vazio): conta do cliente >
-  // rascunho salvo no navegador (autosave) > último CEP lembrado.
+  // Precedência (cada etapa só preenche o que ainda está vazio): conta do
+  // cliente > link do vendedor/campanha (?nome=…&cep=…) > rascunho salvo no
+  // navegador (autosave) > último CEP lembrado.
   const initialFormValues = useMemo(() => {
     const accountValues = applyAccountPrefill({
       ...checkoutDefaultValues,
@@ -150,10 +157,12 @@ export function CheckoutForm({
       profile: initialProfile,
       addresses: initialAddresses,
     });
-    const savedDraft = readStoredCheckoutDraft();
-    return savedDraft
-      ? mergeCheckoutDraft(accountValues, savedDraft)
+    const linkPrefill = readStoredCheckoutPrefill();
+    const withLink = linkPrefill
+      ? mergeCheckoutPrefill(accountValues, linkPrefill)
       : accountValues;
+    const savedDraft = readStoredCheckoutDraft();
+    return savedDraft ? mergeCheckoutDraft(withLink, savedDraft) : withLink;
   }, [initialAddresses, initialGuestEmail, initialProfile]);
 
   // Etapa inicial: a de `?step=` se os dados anteriores já estão válidos, ou
@@ -244,41 +253,47 @@ export function CheckoutForm({
   // correspondente — o cliente não precisa digitar de novo o que já
   // informou em outro lugar da navegação.
   useEffect(() => {
-    if (methods.getValues("billingAddress.addressLine1")) return;
+    const billing = methods.getValues("billingAddress");
+    if (billing.addressLine1 && billing.city && billing.state) return;
     if (typeof window === "undefined") return;
 
+    // CEP já no formulário (link ou rascunho) tem prioridade sobre o lembrado.
     const remembered = readLastShippingPostcode(window.localStorage);
-    if (!remembered) return;
+    const formatted = formatPostcode(
+      isValidPostcode(billing.postalCode) ? billing.postalCode : (remembered ?? ""),
+    );
+    if (!isValidPostcode(formatted)) return;
 
-    const formatted = formatPostcode(remembered);
-    methods.setValue("billingAddress.postalCode", formatted, {
-      shouldDirty: false,
-      shouldValidate: false,
-    });
+    if (billing.postalCode !== formatted) {
+      methods.setValue("billingAddress.postalCode", formatted, {
+        shouldDirty: false,
+        shouldValidate: false,
+      });
+    }
+
+    // Completa só o que ainda está vazio: nada digitado é sobrescrito.
+    const fillIfEmpty = (
+      field: "addressLine1" | "neighborhood" | "city" | "state",
+      value: string | undefined,
+    ) => {
+      if (!value || methods.getValues(`billingAddress.${field}`)) return;
+      methods.setValue(`billingAddress.${field}`, value, { shouldValidate: true });
+    };
 
     void lookupPostcodeAddress(formatted).then((address) => {
       if (!address) return;
-      if (address.address1) {
-        methods.setValue("billingAddress.addressLine1", address.address1, {
-          shouldValidate: true,
-        });
-      }
-      if (address.address2) {
-        methods.setValue("billingAddress.neighborhood", address.address2, {
-          shouldValidate: true,
-        });
-      }
-      if (address.city) {
-        methods.setValue("billingAddress.city", address.city, { shouldValidate: true });
-      }
-      if (address.state) {
-        methods.setValue("billingAddress.state", address.state, {
-          shouldValidate: true,
-        });
-      }
+      fillIfEmpty("addressLine1", address.address1);
+      fillIfEmpty("neighborhood", address.address2);
+      fillIfEmpty("city", address.city);
+      fillIfEmpty("state", address.state);
     });
     // Roda só uma vez, ao montar — não deve reagir a edições do cliente.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // O link de pré-preenchimento vale uma vez só: já foi aplicado acima.
+  useEffect(() => {
+    clearStoredCheckoutPrefill();
   }, []);
   const shipToBillingAddress = useWatch({
     control: methods.control,
@@ -640,3 +655,4 @@ export function CheckoutForm({
     </FormProvider>
   );
 }
+
