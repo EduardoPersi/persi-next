@@ -3,6 +3,7 @@ import type { BoletoChargeStatus } from "./inter/boleto.ts";
 import type { CardChargeStatus } from "./pagbank/charge.ts";
 import type { MercadoPagoChargeStatus } from "./mercadopago/charge.ts";
 import { avisarSituacaoDoPedido } from "../../lib/painel/pedido.ts";
+import { avisarAndamento, formaQueVence } from "../../lib/painel/andamento.ts";
 import {
   findOrderByPaymentReference,
   isOrderAlreadyFailed,
@@ -33,6 +34,17 @@ async function avisarPedidoPagoPeloWhatsapp(order: WooCommerceOrder) {
  */
 async function avisarPedidoCanceladoNoPainel(order: WooCommerceOrder) {
   return avisarSituacaoDoPedido(order, "cancelado");
+}
+
+/**
+ * Fase B: o Pix ou o boleto que venceu sem pagamento vira, para o CLIENTE,
+ * "o prazo do Pix acabou, e o pedido foi cancelado — quer refazer?". Só Pix e
+ * boleto: o cartão recusado o cliente viu na tela. Desligado sem
+ * `PAINEL_AVISAR_ANDAMENTO`; o painel espera a janela de horário para mandar.
+ */
+async function avisarPagamentoVencido(order: WooCommerceOrder) {
+  if (!formaQueVence(order.paymentMethod)) return;
+  return avisarAndamento(order, "cancelado", { motivo: "pagamento_expirado" });
 }
 
 export function categorizePixStatus(charge: {
@@ -92,6 +104,8 @@ export interface ReconcilePaymentReferenceDeps {
   avisarPedido?: (order: WooCommerceOrder) => Promise<unknown>;
   /** Idem: opcional, para não obrigar testes antigos a conhecer o painel. */
   avisarCancelado?: (order: WooCommerceOrder) => Promise<unknown>;
+  /** Idem: o "seu Pix venceu" ao cliente (fase B). */
+  avisarVencido?: (order: WooCommerceOrder) => Promise<unknown>;
 }
 
 const defaultDeps: ReconcilePaymentReferenceDeps = {
@@ -100,6 +114,7 @@ const defaultDeps: ReconcilePaymentReferenceDeps = {
   markFailed: markOrderAsFailed,
   avisarPedido: avisarPedidoPagoPeloWhatsapp,
   avisarCancelado: avisarPedidoCanceladoNoPainel,
+  avisarVencido: avisarPagamentoVencido,
 };
 
 export interface PaymentReconciliationResult {
@@ -140,7 +155,10 @@ export async function reconcilePaymentReference(
     const jaEstavaCancelado = isOrderAlreadyFailed(order);
     const falho = await deps.markFailed(order, "failed");
     // Mesmo princípio: só a mudança para cancelado vai ao painel.
-    if (!jaEstavaCancelado) void deps.avisarCancelado?.(falho)?.catch(() => {});
+    if (!jaEstavaCancelado) {
+      void deps.avisarCancelado?.(falho)?.catch(() => {});
+      void deps.avisarVencido?.(falho)?.catch(() => {});
+    }
     return { order: falho, category };
   }
   return { order, category };

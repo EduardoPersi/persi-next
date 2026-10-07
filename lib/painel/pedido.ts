@@ -58,6 +58,16 @@ export function situacaoDoWebhook(statusWoo: string): "cancelado" | null {
   return ["cancelled", "refunded", "failed"].includes(statusWoo) ? "cancelado" : null;
 }
 
+/**
+ * A chave da fase B (`PAINEL_AVISAR_ANDAMENTO=1`): o andamento do pedido pelo
+ * WhatsApp (lib/painel/andamento.ts) e o "Pagamento aprovado" completo. Mora
+ * aqui, e não lá, porque o aviso de pago também depende dela.
+ */
+export function andamentoLigado(env: Record<string, string | undefined> = process.env): boolean {
+  const valor = env.PAINEL_AVISAR_ANDAMENTO?.trim().toLowerCase();
+  return valor === "1" || valor === "true";
+}
+
 export function avisoDePendenteLigado(
   env: Record<string, string | undefined> = process.env,
 ): boolean {
@@ -106,7 +116,7 @@ export function classificarEnvio(
 }
 
 /** A forma de pagamento, nas palavras do painel. */
-const FORMA_DE_PAGAMENTO: Record<string, string> = {
+export const FORMA_DE_PAGAMENTO: Record<string, string> = {
   inter_pix: "pix",
   inter_boleto: "boleto",
   mercadopago_card: "cartão",
@@ -179,10 +189,11 @@ export function montarAvisoDoPedido(
     link: `${SITE_URL}/minha-conta/pedidos/${pedido.id}`,
   };
   if (pedido.billingEmail) aviso.email = pedido.billingEmail;
-  // Nome e valor só no pedido pendente: viram o lead "pedido pendente" no
-  // painel (que NÃO escreve ao cliente nesse caso). No aviso de pago ficam de
-  // fora de propósito — a mensagem ao cliente continua exatamente a de sempre.
-  if (situacao === "pendente") {
+  // Nome e valor no pedido pendente (viram o lead "pedido pendente" no painel)
+  // e, com a fase B ligada, também no pago: o painel novo escreve o "Pagamento
+  // aprovado" completo (itens, total, entrega). Sem a chave, o aviso de pago
+  // continua sem eles — um painel antigo os poria na mensagem como "Cliente:".
+  if (situacao === "pendente" || (situacao === "pago" && andamentoLigado(env))) {
     if (pedido.billingName) aviso.cliente = pedido.billingName;
     const centavos = Math.round(Number(pedido.total) * 100);
     if (Number.isFinite(centavos) && centavos > 0) aviso.total_centavos = centavos;

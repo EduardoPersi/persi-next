@@ -478,6 +478,20 @@ export async function markOrderAsFailed(
   return toOrder(response);
 }
 
+// As cobranças (Pix/boleto) já mandadas ao cliente pelo WhatsApp, como
+// "forma:momento" separados por vírgula (ex.: "pix:agora,pix:lembrete"). É a
+// trava do lado do site para o cron não pedir a mesma mensagem a cada passada;
+// o painel tem a sua (ver lib/painel/cobranca.ts). Só um meta: aditivo.
+export const COBRANCA_WHATSAPP_META = "_persi_cobranca_whatsapp";
+
+export async function marcarCobrancaNoPedido(
+  orderId: number,
+  valor: string,
+  put: WooPutFn = defaultPut,
+): Promise<void> {
+  await put(`orders/${orderId}`, { meta_data: [{ key: COBRANCA_WHATSAPP_META, value: valor }] });
+}
+
 // Reaproveitado pela tela de confirmação para pedidos criados diretamente
 // pelo checkout nativo do WooCommerce (não passam por markOrderAsPaid/
 // markOrderAsFailed, então o status já vem definido pelo próprio gateway).

@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server";
+import { avisarAndamento } from "@/lib/painel/andamento";
 import { avisarSituacaoDoPedido } from "@/lib/painel/pedido";
 import { LIMITE_DO_WEBHOOK_DE_PEDIDO, tratarWebhookDoPedido } from "@/lib/painel/webhookDoPedido";
 
@@ -27,5 +28,9 @@ export async function POST(request: Request) {
   // fora do ar não pode travar nada aqui. `avisarSituacaoDoPedido` nunca lança.
   const aviso = saida.avisar;
   if (aviso) after(() => avisarSituacaoDoPedido(aviso.pedido, aviso.situacao).then(() => undefined));
+  // Fase B: o andamento ao cliente (cancelado, entregue, reembolso). Desligado
+  // sem PAINEL_AVISAR_ANDAMENTO; o painel não repete o mesmo evento.
+  const andamento = saida.andamento;
+  if (andamento) after(() => avisarAndamento(andamento.pedido, andamento.evento).then(() => undefined));
   return NextResponse.json(saida.corpo, { status: saida.status });
 }

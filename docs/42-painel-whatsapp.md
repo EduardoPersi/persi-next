@@ -214,3 +214,61 @@ origem e **não podem ser esquecidas**:
    cancelar ou reembolsar um pedido, chama `avisarSituacaoDoPedido(pedido,
    "cancelado")`. Sem isso, o painel não cancela a entrega nem avisa o
    motorista.
+
+## A cobrança: Pix e boleto pelo WhatsApp
+
+Decisão do Eduardo (06/10/2026): quem paga com **Pix** ou **boleto** recebe o
+código pelo WhatsApp, além da tela de confirmação. **Cartão não entra**:
+aprovado já recebe o "Pagamento aprovado", recusado o cliente vê na tela.
+
+| Quando | O quê | De onde sai |
+|---|---|---|
+| logo depois do pedido | o Pix copia e cola, ou a linha digitável do boleto | `app/api/checkout/payment/route.ts`, com `after` |
+| Pix a até 20 min de vencer | lembrete com o mesmo código | o cron de conciliação |
+| dia do vencimento do boleto | lembrete com a linha digitável | o cron de conciliação |
+| boleto sem linha digitável na hora (emissão do Inter demorou) | o "logo depois", atrasado | o cron de conciliação |
+
+- **Só pedido não pago.** O lembrete só é montado quando o cron acabou de
+  reconsultar o Inter e a cobrança continua pendente. O painel confere de novo:
+  pedido pago ou cancelado lá não é cobrado.
+- **Duas mensagens:** a explicação e o código sozinho (para copiar). O painel
+  confere o código antes de mandar (CRC e recebedor do Pix; banco 077, dígitos e
+  valor do boleto). Contrato: persi-atendimento, `docs/contrato-api-sites.md`
+  §3.2.
+- **Uma vez cada.** O pedido guarda o que já foi (`_persi_cobranca_whatsapp`,
+  ex.: `pix:agora,pix:lembrete`); o painel tem a sua trava também. Resposta 429
+  do painel (fora da janela de horário, ritmo do número) não anota: a próxima
+  passada do cron tenta de novo.
+- **Desligada por padrão:** `PAINEL_ENVIAR_COBRANCA=1` liga, depois que o painel
+  novo estiver no ar.
+- **O cron a cada 5 minutos.** É o que faz o lembrete do Pix cair uns 15 minutos
+  antes de vencer. A varredura não espera os envios: eles saem com `after`,
+  depois da resposta.
+
+Lógica em `lib/painel/cobranca.ts`; testes em `tests/painel/cobranca.test.mjs`
+(`npm run test:painel`).
+
+## O andamento do pedido (fase B)
+
+Decisão do Eduardo (06/10/2026): as mensagens que o WooCommerce manda por
+e-mail também vão pelo WhatsApp. Os e-mails continuam saindo. No WooCommerce da
+Persi, **Concluído é ENTREGUE** ao cliente.
+
+| Evento | De onde | Mensagem |
+|---|---|---|
+| cancelado | webhook "Pedido atualizado" → `cancelled` | "cancelado" |
+| cancelado (`pagamento_expirado`) | conciliação: Pix/boleto vencido (só Pix e boleto) | "o prazo do Pix acabou… quer refazer?" |
+| concluido | webhook → `completed` | "entregue ✅" (retirada: "retirado ✅") |
+| reembolsado | webhook → `refunded` | "reembolso feito" |
+| enviado | `avisarEnvioDoPedido` — para o Melhor Envio no site chamar | "enviado 📦", com o rastreio |
+
+- O `failed` do webhook não vira mensagem: o vencido sai da conciliação (com o
+  motivo certo) e o cartão recusado o cliente viu na tela.
+- O painel põe na **fila de saída**: sai na janela de horário do número, uma vez
+  por pedido e evento (as repetições do webhook recebem 409, que não vai ao log).
+- A mesma chave liga o **"Pagamento aprovado" completo**: o aviso de pago passa a
+  levar o nome e o total, e o painel escreve itens, total, entrega, endereço e a
+  previsão do dia.
+- Desligado por padrão: `PAINEL_AVISAR_ANDAMENTO=1`.
+
+Lógica em `lib/painel/andamento.ts`; testes em `tests/painel/andamento.test.mjs`.
