@@ -12,6 +12,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/UI/Button";
 import { useBeforeUnloadWarning } from "@/hooks/useBeforeUnloadWarning";
 import { useCart } from "@/hooks/useCart";
+import {
+  readStoredCheckoutDraft,
+  useCheckoutDraft,
+} from "@/hooks/useCheckoutDraft";
 import { usePostcodeAddressLookup } from "@/hooks/usePostcodeAddressLookup";
 import { useRouteTransition } from "@/hooks/useRouteTransition";
 import { useTabAttentionTitle } from "@/hooks/useTabAttentionTitle";
@@ -21,6 +25,13 @@ import {
   getFirstCheckoutErrorPath,
   isAddressComplete,
 } from "@/lib/commerce/checkout";
+import {
+  CHECKOUT_STEP_ORDER,
+  getCheckoutStepAccess,
+  mergeCheckoutDraft,
+  parseCheckoutStep,
+  resolveInitialCheckoutStep,
+} from "@/lib/commerce/checkoutDraft";
 import {
   hasSelectedShippingRate,
 } from "@/lib/commerce/checkoutAddress";
@@ -118,7 +129,6 @@ export function CheckoutForm({
   const [cardDeclinedMessage, setCardDeclinedMessage] = useState("");
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [installments, setInstallments] = useState(1);
-  const [currentStep, setCurrentStep] = useState<CheckoutStep>("profile");
   const cardFieldsRef = useRef<PaymentCardFieldsHandle>(null);
   const submitButtonRef = useRef<HTMLButtonElement>(null);
   const checkoutAttemptIdRef = useRef(createIdempotencyKey());
@@ -127,20 +137,51 @@ export function CheckoutForm({
   // Dados salvos no cadastro do cliente logado têm prioridade sobre
   // qualquer CEP solto lembrado da navegação anônima (ver efeito abaixo) —
   // só é calculado uma vez, a partir dos dados já resolvidos no servidor.
-  const initialFormValues = useMemo(
-    () =>
-      applyAccountPrefill({
-        ...checkoutDefaultValues,
-        contact: {
-          ...checkoutDefaultValues.contact,
-          email: initialGuestEmail ?? checkoutDefaultValues.contact.email,
-        },
-      }, {
-        profile: initialProfile,
-        addresses: initialAddresses,
-      }),
-    [initialAddresses, initialGuestEmail, initialProfile],
-  );
+  // Precedência (só preenche o que ainda está vazio): conta do cliente >
+  // rascunho salvo no navegador (autosave) > último CEP lembrado.
+  const initialFormValues = useMemo(() => {
+    const accountValues = applyAccountPrefill({
+      ...checkoutDefaultValues,
+      contact: {
+        ...checkoutDefaultValues.contact,
+        email: initialGuestEmail ?? checkoutDefaultValues.contact.email,
+      },
+    }, {
+      profile: initialProfile,
+      addresses: initialAddresses,
+    });
+    const savedDraft = readStoredCheckoutDraft();
+    return savedDraft
+      ? mergeCheckoutDraft(accountValues, savedDraft)
+      : accountValues;
+  }, [initialAddresses, initialGuestEmail, initialProfile]);
+
+  // Etapa inicial: a de `?step=` se os dados anteriores já estão válidos, ou
+  // "Entrega" para cliente logado com perfil completo. O formulário só monta
+  // depois do carrinho carregar no cliente, então ler a URL aqui é seguro.
+  const [currentStep, setCurrentStep] = useState<CheckoutStep>(() => {
+    if (typeof window === "undefined") return "profile";
+    const initialAddress = initialFormValues.shipToBillingAddress
+      ? initialFormValues.billingAddress
+      : initialFormValues.shippingAddress;
+    return resolveInitialCheckoutStep({
+      requested: parseCheckoutStep(
+        new URLSearchParams(window.location.search).get("step"),
+      ),
+      isLoggedIn: Boolean(initialProfile),
+      access: getCheckoutStepAccess(initialFormValues),
+      addressReady:
+        Boolean(cart) &&
+        canAdvanceCheckoutAddress({
+          needsShipping: cart?.needsShipping ?? true,
+          addressComplete: isAddressComplete(initialAddress),
+          hasSelectedShippingRate: hasSelectedShippingRate(
+            cart?.shippingPackages ?? [],
+          ),
+          isUpdating: isCheckoutUpdating,
+        }),
+    });
+  });
 
   const methods = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),
@@ -149,6 +190,52 @@ export function CheckoutForm({
     shouldFocusError: false,
     shouldUnregister: false,
   });
+  const { hasUnsavedDraft } = useCheckoutDraft(methods, hasCreatedOrder);
+
+  // `?step=` acompanha a etapa: abrir direto numa etapa, recarregar e usar o
+  // botão voltar do navegador entre as etapas. O histórico só anda para trás
+  // até a etapa mais avançada já alcançada nesta sessão.
+  const furthestStepRef = useRef(CHECKOUT_STEP_ORDER.indexOf(currentStep));
+  const currentStepRef = useRef(currentStep);
+  const isFirstUrlSyncRef = useRef(true);
+
+  useEffect(() => {
+    currentStepRef.current = currentStep;
+    furthestStepRef.current = Math.max(
+      furthestStepRef.current,
+      CHECKOUT_STEP_ORDER.indexOf(currentStep),
+    );
+
+    const url = new URL(window.location.href);
+    if (parseCheckoutStep(url.searchParams.get("step")) !== currentStep) {
+      url.searchParams.set("step", currentStep);
+      const write = isFirstUrlSyncRef.current
+        ? window.history.replaceState
+        : window.history.pushState;
+      write.call(window.history, window.history.state, "", url);
+    }
+    isFirstUrlSyncRef.current = false;
+  }, [currentStep]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const step = parseCheckoutStep(
+        new URLSearchParams(window.location.search).get("step"),
+      );
+      if (!step) return;
+      if (CHECKOUT_STEP_ORDER.indexOf(step) <= furthestStepRef.current) {
+        setCurrentStep(step);
+        return;
+      }
+      // Avançar pelo histórico além do que já foi concluído: volta a URL
+      // para a etapa que está na tela.
+      const url = new URL(window.location.href);
+      url.searchParams.set("step", currentStepRef.current);
+      window.history.replaceState(window.history.state, "", url);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // Sem endereço salvo na conta (convidado, ou cliente logado que nunca
   // preencheu um endereço): sugere o último CEP usado em qualquer cálculo
@@ -202,10 +289,11 @@ export function CheckoutForm({
   const shippingAddress = useWatch({ control: methods.control, name: "shippingAddress" });
   const activeAddress = shipToBillingAddress ? billingAddress : shippingAddress;
 
-  // Só avisa ao sair da página depois que o cliente já preencheu algum
-  // dado (endereço/contato) ou trocou a forma de pagamento padrão — e para
-  // de avisar assim que o pedido é de fato criado no servidor.
-  const hasUnsavedProgress = methods.formState.isDirty || paymentMethod !== "inter_pix";
+  // Só avisa ao sair da página quando há alteração que o autosave ainda não
+  // gravou (ou se o armazenamento do navegador falhou), ou o cliente trocou
+  // a forma de pagamento padrão, que não é salva — e para de avisar assim
+  // que o pedido é de fato criado no servidor.
+  const hasUnsavedProgress = hasUnsavedDraft || paymentMethod !== "inter_pix";
   useBeforeUnloadWarning(hasUnsavedProgress && !hasCreatedOrder);
   useTabAttentionTitle(!hasCreatedOrder);
 
@@ -332,15 +420,9 @@ export function CheckoutForm({
     }
   };
 
-  const advanceToAddress = async () => {
-    setStatusMessage("");
-    const valid = await methods.trigger(PROFILE_FIELDS, { shouldFocus: true });
-    if (!valid) {
-      setStatusMessage("Revise os campos destacados para continuar.");
-      return;
-    }
-    // Sugere o destinatário a partir do nome informado no perfil — o
-    // cliente pode trocar livremente (ex.: presente, portaria).
+  // Sugere o destinatário a partir do nome informado no perfil — o cliente
+  // pode trocar livremente (ex.: presente, portaria).
+  const suggestRecipientName = () => {
     if (!methods.getValues("billingAddress.recipientName")) {
       const { firstName, lastName } = methods.getValues("contact");
       const fullName = `${firstName} ${lastName}`.trim();
@@ -350,6 +432,24 @@ export function CheckoutForm({
         });
       }
     }
+  };
+
+  // Abrir direto em Entrega/Pagamento (cliente logado ou `?step=`) pula o
+  // botão "Avançar" do perfil, que é onde a sugestão acontecia.
+  useEffect(() => {
+    if (currentStep !== "profile") suggestRecipientName();
+    // Só na montagem: não deve reagir a edições do cliente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const advanceToAddress = async () => {
+    setStatusMessage("");
+    const valid = await methods.trigger(PROFILE_FIELDS, { shouldFocus: true });
+    if (!valid) {
+      setStatusMessage("Revise os campos destacados para continuar.");
+      return;
+    }
+    suggestRecipientName();
     setCurrentStep("address");
   };
 
