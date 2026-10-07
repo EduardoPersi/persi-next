@@ -19,7 +19,7 @@ import type { OrigemDaVisita } from "../tracking/origem.ts";
 
 const TEMPO_LIMITE_MS = 8000;
 
-export type TipoDeAviso = "pedido" | "cobranca" | "codigo_acesso";
+export type TipoDeAviso = "pedido" | "cobranca" | "andamento" | "codigo_acesso";
 
 export type AvisoDePedido = {
   tipo: "pedido";
@@ -89,7 +89,30 @@ export type AvisoDeCobranca = {
   link?: string;
 };
 
-export type Aviso = AvisoDePedido | AvisoDeCobranca | AvisoDeCodigo;
+/**
+ * O ANDAMENTO do pedido (contrato do painel, §3.3): cancelado, enviado,
+ * concluído (na Persi, ENTREGUE) e reembolsado. O painel põe na fila de saída,
+ * que espera a janela de horário do número; cada evento sai uma vez por pedido.
+ */
+export type AvisoDeAndamento = {
+  tipo: "andamento";
+  telefone: string;
+  pedido: string;
+  evento: "cancelado" | "enviado" | "concluido" | "reembolsado";
+  /** cancelado: "loja" ou "pagamento_expirado" (Pix/boleto que venceu). */
+  motivo?: "loja" | "pagamento_expirado";
+  forma_pagamento?: string;
+  /** concluido: muda "entregue" para "retirado". */
+  forma_envio?: "loja" | "retirada" | "transportadora";
+  /** reembolsado. */
+  valor_centavos?: number;
+  /** enviado. */
+  transportadora?: string;
+  rastreio?: string;
+  link?: string;
+};
+
+export type Aviso = AvisoDePedido | AvisoDeCobranca | AvisoDeAndamento | AvisoDeCodigo;
 
 export type ResultadoDoAviso =
   | { enviado: true; conversa: number | null }

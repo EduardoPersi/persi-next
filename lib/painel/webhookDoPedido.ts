@@ -15,6 +15,7 @@
 import { verifyWooWebhookSignature } from "../catalog/webhookSecurity.ts";
 import { orderFromWebhookPayload, type WooCommerceOrder } from "../../services/woocommerce/orders.ts";
 import { situacaoDoWebhook } from "./pedido.ts";
+import { eventoDoWebhook, type EventoDoAndamento } from "./andamento.ts";
 
 export const LIMITE_DO_WEBHOOK_DE_PEDIDO = 262144;
 
@@ -26,9 +27,12 @@ export interface EntradaDoWebhook {
   segredo: string;
 }
 
+/** Fase B: o andamento ao cliente pelo WhatsApp (cancelado, entregue, reembolso). */
+export type AndamentoDoWebhook = { pedido: WooCommerceOrder; evento: EventoDoAndamento };
+
 export type SaidaDoWebhook =
-  | { status: number; corpo: Record<string, unknown>; avisar?: undefined }
-  | { status: 202; corpo: Record<string, unknown>; avisar: { pedido: WooCommerceOrder; situacao: "cancelado" } };
+  | { status: number; corpo: Record<string, unknown>; avisar?: undefined; andamento?: AndamentoDoWebhook }
+  | { status: 202; corpo: Record<string, unknown>; avisar: { pedido: WooCommerceOrder; situacao: "cancelado" }; andamento?: AndamentoDoWebhook };
 
 export function tratarWebhookDoPedido(e: EntradaDoWebhook): SaidaDoWebhook {
   // Sem segredo, FECHADO: nunca aberto por engano.
@@ -58,6 +62,8 @@ export function tratarWebhookDoPedido(e: EntradaDoWebhook): SaidaDoWebhook {
   if (!pedido) return { status: 422, corpo: { message: "Pedido inválido." } };
 
   const situacao = situacaoDoWebhook(pedido.status);
-  if (!situacao) return { status: 200, corpo: { ignorado: true } };
-  return { status: 202, corpo: { aceito: true }, avisar: { pedido, situacao } };
+  const evento = eventoDoWebhook(pedido.status);
+  const andamento = evento ? { andamento: { pedido, evento } } : {};
+  if (!situacao) return { status: 200, corpo: { ignorado: !evento }, ...andamento };
+  return { status: 202, corpo: { aceito: true }, avisar: { pedido, situacao }, ...andamento };
 }

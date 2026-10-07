@@ -247,3 +247,28 @@ aprovado já recebe o "Pagamento aprovado", recusado o cliente vê na tela.
 
 Lógica em `lib/painel/cobranca.ts`; testes em `tests/painel/cobranca.test.mjs`
 (`npm run test:painel`).
+
+## O andamento do pedido (fase B)
+
+Decisão do Eduardo (06/10/2026): as mensagens que o WooCommerce manda por
+e-mail também vão pelo WhatsApp. Os e-mails continuam saindo. No WooCommerce da
+Persi, **Concluído é ENTREGUE** ao cliente.
+
+| Evento | De onde | Mensagem |
+|---|---|---|
+| cancelado | webhook "Pedido atualizado" → `cancelled` | "cancelado" |
+| cancelado (`pagamento_expirado`) | conciliação: Pix/boleto vencido (só Pix e boleto) | "o prazo do Pix acabou… quer refazer?" |
+| concluido | webhook → `completed` | "entregue ✅" (retirada: "retirado ✅") |
+| reembolsado | webhook → `refunded` | "reembolso feito" |
+| enviado | `avisarEnvioDoPedido` — para o Melhor Envio no site chamar | "enviado 📦", com o rastreio |
+
+- O `failed` do webhook não vira mensagem: o vencido sai da conciliação (com o
+  motivo certo) e o cartão recusado o cliente viu na tela.
+- O painel põe na **fila de saída**: sai na janela de horário do número, uma vez
+  por pedido e evento (as repetições do webhook recebem 409, que não vai ao log).
+- A mesma chave liga o **"Pagamento aprovado" completo**: o aviso de pago passa a
+  levar o nome e o total, e o painel escreve itens, total, entrega, endereço e a
+  previsão do dia.
+- Desligado por padrão: `PAINEL_AVISAR_ANDAMENTO=1`.
+
+Lógica em `lib/painel/andamento.ts`; testes em `tests/painel/andamento.test.mjs`.
