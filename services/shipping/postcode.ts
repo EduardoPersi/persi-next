@@ -1,54 +1,27 @@
 import "server-only";
 
+import {
+  createPostcodeCache,
+  lookupPostcodeWithFallback,
+} from "@/lib/commerce/postcodeLookup";
 import type { CartAddress } from "@/types/cart";
 
-const POSTCODE_LOOKUP_TIMEOUT_MS = 4_000;
+const postcodeCache = createPostcodeCache();
 
-interface ViaCepResponse {
-  bairro?: unknown;
-  cep?: unknown;
-  erro?: unknown;
-  localidade?: unknown;
-  logradouro?: unknown;
-  uf?: unknown;
-}
-
-function readText(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim()
-    ? value.trim()
-    : undefined;
-}
-
+// BrasilAPI primeiro, ViaCEP como reserva, 3 s por provedor e cache em
+// memória dos CEPs encontrados (ver lib/commerce/postcodeLookup.ts).
 export async function lookupBrazilianPostcode(
   postcode: string,
 ): Promise<CartAddress | undefined> {
   const digits = postcode.replace(/\D/g, "");
   if (!/^\d{8}$/.test(digits)) return undefined;
 
-  try {
-    const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`, {
-      cache: "no-store",
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(POSTCODE_LOOKUP_TIMEOUT_MS),
-    });
-    if (!response.ok) return undefined;
+  const cached = postcodeCache.get(digits);
+  if (cached) return cached;
 
-    const body = (await response.json()) as ViaCepResponse;
-    if (!body || body.erro === true) return undefined;
-
-    const city = readText(body.localidade);
-    const state = readText(body.uf);
-    if (!city || !state) return undefined;
-
-    return {
-      address1: readText(body.logradouro),
-      address2: readText(body.bairro),
-      city,
-      state,
-      postcode: readText(body.cep) ?? digits,
-      country: "BR",
-    };
-  } catch {
-    return undefined;
-  }
+  const address = await lookupPostcodeWithFallback(digits, (url, init) =>
+    fetch(url, { ...init, cache: "no-store" }),
+  );
+  if (address) postcodeCache.set(digits, address);
+  return address;
 }

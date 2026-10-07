@@ -9,6 +9,11 @@ import {
   formatBrazilianPhone,
 } from "@/lib/formatting/personalData";
 
+const PERSON_TYPE_OPTIONS = [
+  { value: "fisica", label: "Pessoa Física" },
+  { value: "juridica", label: "Pessoa Jurídica" },
+] as const;
+
 export function CheckoutContactForm() {
   const {
     control,
@@ -55,22 +60,27 @@ export function CheckoutContactForm() {
           placeholder="(11) 99999-9999"
         />
       </div>
-      <div className="sm:col-span-2">
-        <label
-          htmlFor="checkout-person-type"
-          className="mb-1.5 block text-xs font-medium text-foreground"
-        >
+      <fieldset className="min-w-0 sm:col-span-2">
+        <legend className="mb-1.5 block text-xs font-medium text-foreground">
           Tipo de Pessoa
-        </label>
-        <select
-          id="checkout-person-type"
-          {...register("contact.personType")}
-          className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
-        >
-          <option value="fisica">Pessoa Física</option>
-          <option value="juridica">Pessoa Jurídica</option>
-        </select>
-      </div>
+        </legend>
+        <div className="grid grid-cols-2 gap-2">
+          {PERSON_TYPE_OPTIONS.map((option) => (
+            <label
+              key={option.value}
+              className="flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-foreground transition has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:checked]:text-primary has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/40"
+            >
+              <input
+                type="radio"
+                value={option.value}
+                {...register("contact.personType")}
+                className="sr-only"
+              />
+              {option.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <div className="sm:col-span-2">
         <CheckoutField
           id="checkout-document"

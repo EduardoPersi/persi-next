@@ -87,10 +87,17 @@ export function CheckoutAddressFields({
 
   const handlePostalCodeChange = (value: string) => {
     const formatted = formatPostcode(value);
+    const postcodeChanged =
+      normalizePostcode(formatted) !== normalizePostcode(postalCode ?? "");
     setValue(`${prefix}.postalCode`, formatted, {
       shouldDirty: true,
       shouldValidate: true,
     });
+    // O número pertence ao endereço anterior: trocar o CEP não pode deixar um
+    // número de outra rua preenchido.
+    if (postcodeChanged) {
+      setValue(`${prefix}.number`, "", { shouldDirty: true });
+    }
 
     if (normalizePostcode(formatted).length !== 8) {
       setAddressLookupFailed(false);
@@ -98,8 +105,14 @@ export function CheckoutAddressFields({
     }
 
     setIsLookingUpAddress(true);
+    let superseded = false;
     void lookupPostcodeAddress(formatted)
       .then((address) => {
+        // Consulta substituída por outra mais nova: quem responde é a nova.
+        if (address === undefined) {
+          superseded = true;
+          return;
+        }
         // `address2` do serviço de CEP carrega o bairro (não o
         // complemento) — ver services/shipping/postcode.ts.
         if (!address?.address1 || !address.city || !address.state) {
@@ -127,7 +140,9 @@ export function CheckoutAddressFields({
         });
       })
       .catch(() => setAddressLookupFailed(true))
-      .finally(() => setIsLookingUpAddress(false));
+      .finally(() => {
+        if (!superseded) setIsLookingUpAddress(false);
+      });
   };
 
   return (

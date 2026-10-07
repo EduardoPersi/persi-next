@@ -44,6 +44,7 @@ import { CheckoutContactForm } from "./CheckoutContactForm";
 import { CheckoutErrorMessage } from "./CheckoutErrorMessage";
 import { CheckoutMobileOrderSummary } from "./CheckoutMobileOrderSummary";
 import { CheckoutMobileStepper } from "./CheckoutMobileStepper";
+import { CheckoutMobileSubmitBar } from "./CheckoutMobileSubmitBar";
 import { CheckoutOrderNote } from "./CheckoutOrderNote";
 import { CheckoutPayment } from "./CheckoutPayment";
 import { CheckoutShippingPlaceholder } from "./CheckoutShippingPlaceholder";
@@ -119,6 +120,7 @@ export function CheckoutForm({
   const [installments, setInstallments] = useState(1);
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("profile");
   const cardFieldsRef = useRef<PaymentCardFieldsHandle>(null);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
   const checkoutAttemptIdRef = useRef(createIdempotencyKey());
   const lookupPostcodeAddress = usePostcodeAddressLookup();
 
@@ -496,6 +498,7 @@ export function CheckoutForm({
               />
               <CheckoutTerms />
               <Button
+                ref={submitButtonRef}
                 type="submit"
                 size="lg"
                 disabled={isCheckoutUpdating || isSubmittingPayment}
@@ -520,6 +523,18 @@ export function CheckoutForm({
           message={statusMessage}
           alwaysRender
           className="lg:col-span-2"
+        />
+        <CheckoutMobileSubmitBar
+          active={currentStep === "payment"}
+          submitButtonRef={submitButtonRef}
+          total={
+            cart
+              ? getCartPaymentTotals(paymentMethod, cart).finalTotal
+              : undefined
+          }
+          currencyCode={cart?.currencyCode}
+          isSubmitting={isSubmittingPayment}
+          disabled={isCheckoutUpdating}
         />
       </form>
     </FormProvider>

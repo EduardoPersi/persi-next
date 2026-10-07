@@ -10,6 +10,11 @@ import {
   isCheckoutCustomerSynced,
   mapCheckoutFormToWooAddress,
 } from "@/lib/commerce/checkoutAddress";
+import { normalizePostcode } from "@/lib/commerce/shippingCalculator";
+import {
+  pickDefaultShippingRate,
+  sortShippingRatesByPrice,
+} from "@/lib/commerce/shippingRateOrder";
 import { formatStoreMoney, isZeroMoney } from "@/lib/formatting/money";
 import type { CheckoutFormValues, ShippingStatus } from "@/types/checkout";
 
@@ -53,6 +58,8 @@ export function CheckoutShippingPlaceholder() {
     ? billingAddress
     : shippingAddress;
   const addressComplete = isAddressComplete(activeAddress);
+  const postcodeIncomplete =
+    normalizePostcode(activeAddress?.postalCode ?? "").length !== 8;
   // `reset()` (chamado no fim de updateAddress) troca a referência de
   // activeAddress mesmo devolvendo os mesmos valores — usar o objeto direto
   // como dependência do efeito abaixo fazia esse próprio reset disparar o
@@ -141,16 +148,17 @@ export function CheckoutShippingPlaceholder() {
     // pacote para o novo endereço (ex.: cliente logado cuja sessão já tinha
     // um endereço anterior associado) — sem isto, "Avançar" ficava travado
     // indefinidamente até o cliente reeditar o CEP na esperança de que o
-    // próximo cálculo viesse com uma tarifa selecionada. Seleciona a
-    // primeira tarifa do primeiro pacote como padrão para nunca deixar o
-    // cliente sem opção nenhuma marcada.
+    // próximo cálculo viesse com uma tarifa selecionada. Seleciona a entrega
+    // mais barata do primeiro pacote como padrão (a retirada na loja só se
+    // for a única opção) para nunca deixar o cliente sem opção nenhuma
+    // marcada.
     if (!hasSelectedShippingRate(packages)) {
       const [firstPackage] = packages;
-      const [firstRate] = firstPackage?.rates ?? [];
-      if (firstPackage && firstRate) {
+      const defaultRate = pickDefaultShippingRate(firstPackage?.rates ?? []);
+      if (firstPackage && defaultRate) {
         const selectResult = await selectShippingRate(
           firstPackage.packageId,
-          firstRate.rateId,
+          defaultRate.rateId,
         );
         if (!selectResult.success) {
           setStatus("error");
@@ -224,7 +232,9 @@ export function CheckoutShippingPlaceholder() {
           : availableRateCount > 0
             ? "Opções de entrega atualizadas."
             : !addressComplete
-              ? "Informe seu endereço para calcular a entrega."
+              ? postcodeIncomplete
+                ? "Informe um CEP completo para calcular a entrega."
+                : "Informe seu endereço para calcular a entrega."
               : message}
       </div>
 
@@ -242,7 +252,7 @@ export function CheckoutShippingPlaceholder() {
                   : "Opções disponíveis"}
               </legend>
               <div className="space-y-3">
-                {shippingPackage.rates.map((rate) => {
+                {sortShippingRatesByPrice(shippingPackage.rates).map((rate) => {
                   const descriptionId = `shipping-${shippingPackage.packageId}-${rate.rateId}-description`;
                   return (
                     <label
