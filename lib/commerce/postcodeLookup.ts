@@ -38,7 +38,9 @@ function toAddress(
     address2: readText(fields.neighborhood),
     city,
     state,
-    postcode: readText(fields.postcode) ?? digits,
+    // Sempre "00000-000": é o formato que o ViaCEP devolvia e que o restante
+    // do código já recebia (a BrasilAPI manda só os 8 dígitos).
+    postcode: `${digits.slice(0, 5)}-${digits.slice(5)}`,
     country: "BR",
   };
 }

@@ -40,6 +40,17 @@ test("BrasilAPI é consultada primeiro e o ViaCEP nem é chamado", async () => {
   assert.equal(address?.country, "BR");
 });
 
+test("o CEP devolvido tem sempre hífen, qualquer que seja o provedor", async () => {
+  const fromBrasilApi = await lookupPostcodeWithFallback("13201000", async () =>
+    respond(brasilApiBody),
+  );
+  const fromViaCep = await lookupPostcodeWithFallback("13201000", async (url) =>
+    url.includes("brasilapi") ? respond({}, false) : respond(viaCepBody),
+  );
+  assert.equal(fromBrasilApi?.postcode, "13201-000");
+  assert.equal(fromViaCep?.postcode, "13201-000");
+});
+
 test("cai para o ViaCEP quando a BrasilAPI falha, devolve erro ou não acha", async () => {
   for (const brasilApi of [
     async () => {
