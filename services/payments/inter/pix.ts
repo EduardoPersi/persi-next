@@ -167,7 +167,7 @@ export async function createPixCharge(
 export async function getPixChargeStatus(
   txid: string,
   request: InterRequestFn = defaultInterRequest,
-): Promise<Pick<PixCharge, "txid" | "status" | "expiresAt">> {
+): Promise<Pick<PixCharge, "txid" | "status" | "expiresAt"> & { qrCodeCopyPaste: string }> {
   const cob = await request<InterPixCobResponse>(
     `/pix/v2/cob/${encodeURIComponent(txid)}`,
     "GET",
@@ -177,6 +177,9 @@ export async function getPixChargeStatus(
     txid: cob.txid,
     status: assertPixChargeStatus(cob.status),
     expiresAt: computeExpiresAt(cob),
+    // A mesma consulta já traz o copia e cola: o lembrete pelo WhatsApp (cron)
+    // usa daqui, sem uma segunda chamada ao Inter. Vazio se não vier.
+    qrCodeCopyPaste: cob.pixCopiaECola ?? "",
   };
 }
 

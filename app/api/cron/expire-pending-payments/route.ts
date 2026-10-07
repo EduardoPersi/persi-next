@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { centavosDoTotal, cobrancaLigada, cobrancasJaEnviadas, enviarCobranca, momentoDoCron, type Cobranca } from "@/lib/painel/cobranca";
 import { getBoletoChargeStatus } from "@/services/payments/inter/boleto";
 import { getPixChargeStatus } from "@/services/payments/inter/pix";
 import { getCardChargeStatus as getMercadoPagoCardChargeStatus } from "@/services/payments/mercadopago/charge";
@@ -35,13 +36,38 @@ const PAYMENT_REFERENCE_META = "_persi_payment_reference";
 const TIME_BUDGET_MS = 20_000;
 const CONCURRENCY = 5;
 
-async function reconcileOrder(order: WooCommerceOrder): Promise<ReconciliationCategory> {
+// A COBRANÇA PELO WHATSAPP (lib/painel/cobranca.ts): com a cobrança ainda
+// pendente NO BANCO (acabou de ser reconsultada aqui), o lembrete do Pix perto
+// de vencer, o do boleto no dia do vencimento, ou o "agora" que o checkout não
+// conseguiu mandar. Só junta o que mandar; quem manda é o `after`, depois da
+// resposta, para o envio não comer o orçamento de tempo da varredura.
+type CobrancaPendente = { order: WooCommerceOrder; cobranca: Cobranca; momento: "agora" | "lembrete" };
+
+function cobrancaParaLembrar(
+  order: WooCommerceOrder,
+  cobranca: Omit<Cobranca, "valorCentavos">,
+): CobrancaPendente | null {
+  if (!cobrancaLigada()) return null;
+  const valorCentavos = centavosDoTotal(order.total);
+  if (!valorCentavos || !cobranca.codigo) return null;
+  const momento = momentoDoCron(cobranca, cobrancasJaEnviadas(order.metaData));
+  return momento ? { order, cobranca: { ...cobranca, valorCentavos }, momento } : null;
+}
+
+async function reconcileOrder(
+  order: WooCommerceOrder,
+  lembrar: CobrancaPendente[],
+): Promise<ReconciliationCategory> {
   const reference = order.metaData[PAYMENT_REFERENCE_META];
 
   if (order.paymentMethod === "inter_pix") {
     const charge = await getPixChargeStatus(reference);
     const category = categorizePixStatus(charge);
     await reconcilePaymentReference("inter", reference, category);
+    if (category === "pending") {
+      const pendente = cobrancaParaLembrar(order, { forma: "pix", codigo: charge.qrCodeCopyPaste, venceEm: charge.expiresAt });
+      if (pendente) lembrar.push(pendente);
+    }
     return category;
   }
 
@@ -49,6 +75,10 @@ async function reconcileOrder(order: WooCommerceOrder): Promise<ReconciliationCa
     const charge = await getBoletoChargeStatus(reference);
     const category = categorizeBoletoStatus(charge.status);
     await reconcilePaymentReference("inter", reference, category);
+    if (category === "pending") {
+      const pendente = cobrancaParaLembrar(order, { forma: "boleto", codigo: charge.digitableLine, venceEm: charge.dueDate });
+      if (pendente) lembrar.push(pendente);
+    }
     return category;
   }
 
@@ -108,10 +138,11 @@ async function handleCronRequest(request: Request): Promise<Response> {
 
   try {
     const orders = await findPendingOrdersWithPaymentReference();
+    const lembrar: CobrancaPendente[] = [];
     const summary = await reconcilePendingOrders(orders, {
       timeBudgetMs: TIME_BUDGET_MS,
       concurrency: CONCURRENCY,
-      reconcileOrder,
+      reconcileOrder: (order) => reconcileOrder(order, lembrar),
       getOrderId: (order) => order.id,
       onOrderError: (order, error) => {
         console.error("[cron-expire-pending-payments] falha ao reconciliar pedido", {
@@ -122,7 +153,15 @@ async function handleCronRequest(request: Request): Promise<Response> {
     });
 
     console.log("[cron-expire-pending-payments] resumo da execução", summary);
-    return NextResponse.json(summary, { status: 200 });
+    // Em sequência, um de cada vez: o painel espaça os envios do número.
+    if (lembrar.length) {
+      after(async () => {
+        for (const { order, cobranca, momento } of lembrar) {
+          await enviarCobranca(order, cobranca, momento);
+        }
+      });
+    }
+    return NextResponse.json({ ...summary, cobrancasWhatsapp: lembrar.length }, { status: 200 });
   } catch (error) {
     console.error("[cron-expire-pending-payments] falha ao listar pedidos pendentes", {
       code: error instanceof Error ? error.name : "UNKNOWN",

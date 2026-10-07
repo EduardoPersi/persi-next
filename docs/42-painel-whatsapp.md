@@ -214,3 +214,36 @@ origem e **não podem ser esquecidas**:
    cancelar ou reembolsar um pedido, chama `avisarSituacaoDoPedido(pedido,
    "cancelado")`. Sem isso, o painel não cancela a entrega nem avisa o
    motorista.
+
+## A cobrança: Pix e boleto pelo WhatsApp
+
+Decisão do Eduardo (06/10/2026): quem paga com **Pix** ou **boleto** recebe o
+código pelo WhatsApp, além da tela de confirmação. **Cartão não entra**:
+aprovado já recebe o "Pagamento aprovado", recusado o cliente vê na tela.
+
+| Quando | O quê | De onde sai |
+|---|---|---|
+| logo depois do pedido | o Pix copia e cola, ou a linha digitável do boleto | `app/api/checkout/payment/route.ts`, com `after` |
+| Pix a até 20 min de vencer | lembrete com o mesmo código | o cron de conciliação |
+| dia do vencimento do boleto | lembrete com a linha digitável | o cron de conciliação |
+| boleto sem linha digitável na hora (emissão do Inter demorou) | o "logo depois", atrasado | o cron de conciliação |
+
+- **Só pedido não pago.** O lembrete só é montado quando o cron acabou de
+  reconsultar o Inter e a cobrança continua pendente. O painel confere de novo:
+  pedido pago ou cancelado lá não é cobrado.
+- **Duas mensagens:** a explicação e o código sozinho (para copiar). O painel
+  confere o código antes de mandar (CRC e recebedor do Pix; banco 077, dígitos e
+  valor do boleto). Contrato: persi-atendimento, `docs/contrato-api-sites.md`
+  §3.2.
+- **Uma vez cada.** O pedido guarda o que já foi (`_persi_cobranca_whatsapp`,
+  ex.: `pix:agora,pix:lembrete`); o painel tem a sua trava também. Resposta 429
+  do painel (fora da janela de horário, ritmo do número) não anota: a próxima
+  passada do cron tenta de novo.
+- **Desligada por padrão:** `PAINEL_ENVIAR_COBRANCA=1` liga, depois que o painel
+  novo estiver no ar.
+- **O cron a cada 5 minutos.** É o que faz o lembrete do Pix cair uns 15 minutos
+  antes de vencer. A varredura não espera os envios: eles saem com `after`,
+  depois da resposta.
+
+Lógica em `lib/painel/cobranca.ts`; testes em `tests/painel/cobranca.test.mjs`
+(`npm run test:painel`).
