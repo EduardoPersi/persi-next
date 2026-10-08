@@ -127,6 +127,11 @@ export function CheckoutShippingPlaceholder() {
     () => () => {
       addressRequest.current?.abort();
       postcodeRequest.current?.abort();
+      // Cancelada não é cotada: sem zerar a marca, a montagem seguinte (o modo
+      // estrito do React monta, desmonta e monta de novo em desenvolvimento)
+      // acharia que o CEP já foi cotado e nunca refaria a requisição cancelada
+      // — a tela ficaria em "Consultando opções de entrega…" para sempre.
+      lastQuotedPostcode.current = "";
     },
     [],
   );
@@ -147,7 +152,11 @@ export function CheckoutShippingPlaceholder() {
       formatPostcode(digits),
       controller.signal,
     );
-    if (result.aborted) return;
+    if (result.aborted) {
+      // Cancelada sem outra cotação no lugar: este CEP volta a poder ser cotado.
+      if (postcodeRequest.current === controller) lastQuotedPostcode.current = "";
+      return;
+    }
     if (!result.success || !result.cart) {
       setStatus("error");
       setMessage(result.message);
