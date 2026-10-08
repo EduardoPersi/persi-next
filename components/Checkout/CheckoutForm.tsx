@@ -12,6 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/UI/Button";
 import { useBeforeUnloadWarning } from "@/hooks/useBeforeUnloadWarning";
 import { useCart } from "@/hooks/useCart";
+import { useCartSignal } from "@/hooks/useCartSignal";
 import {
   readStoredCheckoutDraft,
   useCheckoutDraft,
@@ -200,6 +201,12 @@ export function CheckoutForm({
     shouldUnregister: false,
   });
   const { hasUnsavedDraft } = useCheckoutDraft(methods, hasCreatedOrder);
+  useCartSignal({
+    methods,
+    step: currentStep,
+    cart,
+    enabled: capabilities.cartSignal && !hasCreatedOrder,
+  });
 
   // `?step=` acompanha a etapa: abrir direto numa etapa, recarregar e usar o
   // botão voltar do navegador entre as etapas. O histórico só anda para trás
