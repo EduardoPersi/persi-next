@@ -1,6 +1,7 @@
 import type { CheckoutShippingPackage } from "@/types/cart";
 import type { ShippingSelection } from "@/types/shipping";
 import { ShippingOptionCard } from "./ShippingOptionCard";
+import { useShippingBadges } from "@/hooks/useShippingBadges";
 
 interface ShippingOptionsProps {
   disabled: boolean;
@@ -17,6 +18,7 @@ export function ShippingOptions({
   selection,
   selectable = true,
 }: ShippingOptionsProps) {
+  const badgeFor = useShippingBadges(packages);
   return (
     <div className="space-y-5">
       {packages.map((shippingPackage, packageIndex) => (
@@ -36,6 +38,7 @@ export function ShippingOptions({
                 key={rate.rateId}
                 rate={rate}
                 destination={shippingPackage.destination}
+                badge={badgeFor(shippingPackage.packageId, rate.rateId)}
                 groupName={`shipping-${shippingPackage.packageId}`}
                 checked={
                   selection?.packageId === shippingPackage.packageId &&

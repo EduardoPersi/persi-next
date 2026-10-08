@@ -1,6 +1,8 @@
 import { formatStoreMoney, isZeroMoney } from "@/lib/formatting/money";
 import type { CartAddress, CheckoutShippingRate } from "@/types/cart";
 import { ShippingArrival } from "./ShippingArrival";
+import { ShippingBadgeLabel } from "@/components/UI/ShippingBadgeLabel";
+import type { ShippingBadge } from "@/lib/shipping/shippingBadges";
 
 function formatDeliveryTime(value: string | undefined): string | undefined {
   const normalized = value?.trim();
@@ -19,6 +21,8 @@ interface ShippingOptionCardProps {
   /** Para a previsão de chegada: CEP, cidade e UF do destino do pacote. */
   destination?: CartAddress;
   selectable?: boolean;
+  /** Selo "Mais barato" / "Mais rápido" (só visual). */
+  badge?: ShippingBadge;
 }
 
 export function ShippingOptionCard({
@@ -29,6 +33,7 @@ export function ShippingOptionCard({
   rate,
   destination,
   selectable = true,
+  badge,
 }: ShippingOptionCardProps) {
   const descriptionId = `${groupName}-${rate.rateId.replace(/[^a-z0-9_-]/gi, "-")}-description`;
   const detail =
@@ -54,7 +59,10 @@ export function ShippingOptionCard({
       ) : null}
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap justify-between gap-x-4 gap-y-1">
-          <strong className="text-sm text-foreground">{rate.name}</strong>
+          <span className="flex flex-wrap items-center gap-2">
+            <strong className="text-sm text-foreground">{rate.name}</strong>
+            <ShippingBadgeLabel badge={badge} />
+          </span>
           <strong className="text-sm text-foreground">
             {isZeroMoney(rate.price)
               ? "Grátis"
