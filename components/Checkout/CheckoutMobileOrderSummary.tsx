@@ -11,7 +11,7 @@ import {
   getCartPaymentTotals,
   type CheckoutPaymentMethod,
 } from "./paymentMethod";
-import { QuantitySelect } from "@/components/UI/QuantitySelect";
+import { QuantityStepper } from "@/components/UI/QuantityStepper";
 import { AnimatedValue } from "@/components/UI/AnimatedValue";
 import { CheckoutCoupon } from "./CheckoutCoupon";
 
@@ -108,7 +108,7 @@ export function CheckoutMobileOrderSummary({
                       </p>
                     ) : null}
                     <div className="mt-2 flex items-center justify-between gap-3">
-                      <QuantitySelect item={item} idSuffix="checkout-mobile" />
+                      <QuantityStepper item={item} itemCount={cart.items.length} />
                       <strong className="text-xs text-foreground">
                         <AnimatedValue animationKey={item.total}>
                           {formatter.format(item.total)}

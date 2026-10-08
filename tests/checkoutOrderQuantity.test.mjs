@@ -5,7 +5,8 @@ import { getQuantityOptions } from "../components/UI/quantityOptions.ts";
 
 const read = (path) => readFileSync(path, "utf8");
 
-test("carrinho e checkout reutilizam o seletor compacto de quantidade", () => {
+test("carrinho usa o seletor compacto e o resumo do checkout usa os botões − e +", () => {
+  const stepper = read("components/UI/QuantityStepper.tsx");
   const control = read("components/UI/QuantitySelect.tsx");
   const cart = read("components/Cart/CartPage.tsx");
   const desktop = read("components/Checkout/CheckoutOrderSummary.tsx");
@@ -13,8 +14,11 @@ test("carrinho e checkout reutilizam o seletor compacto de quantidade", () => {
 
   assert.match(cart, /<QuantitySelect item=\{item\} idSuffix="cart-mobile" \/>/);
   assert.match(cart, /<QuantitySelect item=\{item\} idSuffix="cart-desktop" \/>/);
-  assert.match(desktop, /<QuantitySelect item=\{item\} idSuffix="checkout-desktop" \/>/);
-  assert.match(mobile, /<QuantitySelect item=\{item\} idSuffix="checkout-mobile" \/>/);
+  assert.ok(desktop.includes("<QuantityStepper item={item} itemCount={cart.items.length} />"));
+  assert.ok(mobile.includes("<QuantityStepper item={item} itemCount={cart.items.length} />"));
+  assert.ok(!desktop.includes("QuantitySelect"));
+  assert.ok(!mobile.includes("QuantitySelect"));
+  assert.match(stepper, /memo\(function QuantityStepper/);
   assert.match(control, /memo\(function QuantitySelect/);
   assert.match(control, /aria-label=\{label\}/);
   assert.match(control, /title=\{label\}/);
