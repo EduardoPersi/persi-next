@@ -1,5 +1,5 @@
 import { after, NextResponse } from "next/server";
-import { avisarAndamento } from "@/lib/painel/andamento";
+import { avisarAndamento, avisarEnvioDoPedido } from "@/lib/painel/andamento";
 import { avisarSituacaoDoPedido } from "@/lib/painel/pedido";
 import { LIMITE_DO_WEBHOOK_DE_PEDIDO, tratarWebhookDoPedido } from "@/lib/painel/webhookDoPedido";
 
@@ -32,5 +32,12 @@ export async function POST(request: Request) {
   // sem PAINEL_AVISAR_ANDAMENTO; o painel não repete o mesmo evento.
   const andamento = saida.andamento;
   if (andamento) after(() => avisarAndamento(andamento.pedido, andamento.evento).then(() => undefined));
+  // Fase 0 do Melhor Envio: o plugin do WordPress gravou o rastreio no pedido,
+  // e este webhook é como o site fica sabendo. O painel não repete o "enviado"
+  // (responde 409 às repetições, que aqui são o normal).
+  const envio = saida.envio;
+  if (envio) {
+    after(() => avisarEnvioDoPedido(envio.pedido, envio.envio).then(() => undefined));
+  }
   return NextResponse.json(saida.corpo, { status: saida.status });
 }

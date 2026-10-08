@@ -12,7 +12,8 @@
  *   cancelado     conciliação: Pix/boleto venceu sem pagamento   "o prazo do Pix acabou…"
  *   concluido     webhook → completed                            "entregue" (ou "retirado")
  *   reembolsado   webhook → refunded                             "reembolso feito"
- *   enviado       Melhor Envio no site (a ligar)                 "enviado", com o rastreio
+ *   enviado       webhook → rastreio gravado pelo plugin do      "enviado", com o rastreio
+ *                 Melhor Envio (lib/painel/rastreio.ts, Fase 0)
  *
  * No WooCommerce da Persi, "Concluído" é ENTREGUE ao cliente.
  *
