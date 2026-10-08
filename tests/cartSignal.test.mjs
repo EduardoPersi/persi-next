@@ -169,8 +169,8 @@ test("NUNCA envia CPF/CNPJ, endereço completo nem dado de pagamento", () => {
   const permitidas = new Set([
     "tipo", "evento", "sessao", "enviado_em", "contato", "nome", "email", "telefone",
     "optin_whatsapp", "cep", "cidade", "etapa", "itens", "produto_id", "variacao_id",
-    "sku", "quantidade", "preco_centavos", "url", "imagem", "total_centavos", "moeda",
-    "cupom",
+    "sku", "quantidade", "preco_centavos", "url", "imagem", "variacao", "atributo", "valor",
+    "total_centavos", "moeda", "cupom",
   ]);
   const chaves = (valor) =>
     Array.isArray(valor)
@@ -320,4 +320,28 @@ test("o checkout dispara com debounce de 800 ms e keepalive, só com a flag liga
   const form = read("components/Checkout/CheckoutForm.tsx");
   assert.ok(form.includes("enabled: capabilities.cartSignal && !hasCreatedOrder"));
   assert.ok(read("lib/commerce/checkoutConfig.ts").includes("cartSignal: envioDoCarrinhoLigado()"));
+});
+
+test("produto com variação leva os atributos escolhidos; simples não leva", () => {
+  const evento = montar({
+    cart: {
+      ...cart,
+      items: [
+        ...cart.items,
+        {
+          ...cart.items[0],
+          key: "k2",
+          id: 5120,
+          productId: 5120,
+          variationId: 5120,
+          name: "Tinta acrílica 18L",
+          slug: "tinta-acrilica-18l",
+          variation: [{ attribute: "Cor", label: "Cor", value: "Branco" }],
+        },
+      ],
+    },
+  });
+  assert.equal("variacao" in evento.itens[0], false);
+  assert.deepEqual(evento.itens[1].variacao, [{ atributo: "Cor", valor: "Branco" }]);
+  assert.equal(evento.itens[1].variacao_id, 5120);
 });

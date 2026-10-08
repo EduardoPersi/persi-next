@@ -41,6 +41,12 @@ const nextConfig = {
         headers: SECURITY_HEADERS,
       },
       {
+        // Link de recuperação de carrinho (/r/<token>): o token não pode vazar
+        // por Referer. Vem depois da regra geral, então este valor prevalece.
+        source: "/r/:path*",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
+      {
         source: "/api/cart/:path*",
         headers: [
           {

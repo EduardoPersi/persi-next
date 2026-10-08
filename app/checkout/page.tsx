@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { CheckoutPageClient } from "@/components/Checkout/CheckoutPageClient";
 import { CheckoutIdentityGate } from "@/components/Checkout/CheckoutIdentityGate";
+import { CheckoutRecoveryNotice } from "@/components/Checkout/CheckoutRecoveryNotice";
 import { CheckoutHeader } from "@/components/Header/CheckoutHeader";
 import { Container } from "@/components/UI/Container";
 import {
   getCheckoutMode,
   getPublicCheckoutCapabilities,
 } from "@/lib/commerce/checkoutConfig";
+import { COOKIE_RECUPERACAO, lerRecuperacao } from "@/lib/painel/recuperarCookie";
 import {
   getServerAccountSession,
   getServerAccountToken,
@@ -49,6 +52,9 @@ export default async function CheckoutPage() {
     getServerAccountToken(),
     Promise.resolve(getPublicCheckoutCapabilities()),
   ]);
+  // Chegada pelo link de recuperação (/r/<token>): cookie httpOnly de 10 min,
+  // lido aqui no servidor e apagado pelo navegador logo depois de entregue.
+  const recuperacao = lerRecuperacao((await cookies()).get(COOKIE_RECUPERACAO)?.value);
   const authenticated = Boolean(session?.authenticated && token);
   const { profile, addresses } = authenticated && token
     ? await getAccountPrefillData(token)
@@ -60,6 +66,7 @@ export default async function CheckoutPage() {
       <main id="main-content" className="bg-slate-50 py-5 sm:py-8 lg:py-10">
         <Container>
           <h1 className="sr-only">Finalizar compra</h1>
+          {recuperacao ? <CheckoutRecoveryNotice recuperacao={recuperacao} /> : null}
           {authenticated ? (
             <CheckoutPageClient
               initialProfile={profile}
