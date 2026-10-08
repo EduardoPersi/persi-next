@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
+import { ShippingArrival } from "@/components/Shipping/ShippingArrival";
 import { Button } from "@/components/UI/Button";
 import { useCart } from "@/hooks/useCart";
 import { isAddressComplete } from "@/lib/commerce/checkout";
@@ -229,16 +230,19 @@ export function CheckoutShippingPlaceholder() {
       <div aria-live="polite" className="min-h-6 text-xs text-muted">
         {isBusy
           ? "Calculando opções de entrega…"
-          : availableRateCount > 0
-            ? "Opções de entrega atualizadas."
-            : !addressComplete
-              ? postcodeIncomplete
-                ? "Informe um CEP completo para calcular a entrega."
-                : "Informe seu endereço para calcular a entrega."
+          : !addressComplete
+            ? postcodeIncomplete
+              ? "Informe um CEP completo para calcular a entrega."
+              : "Informe seu endereço para calcular a entrega."
+            : availableRateCount > 0
+              ? "Opções de entrega atualizadas."
               : message}
       </div>
 
-      {effectiveStatus === "ready" && packages.length > 0 ? (
+      {/* Endereço incompleto = as opções que ainda estão no carrinho são do CEP
+          ANTERIOR (trocar o CEP limpa o endereço): não aparecem como se valessem
+          para o novo. */}
+      {addressComplete && effectiveStatus === "ready" && packages.length > 0 ? (
         <div className="mt-4 space-y-5">
           {packages.map((shippingPackage, packageIndex) => (
             <fieldset
@@ -305,6 +309,15 @@ export function CheckoutShippingPlaceholder() {
                               : null}
                           </span>
                         ) : null}
+                        <ShippingArrival
+                          rate={rate}
+                          destination={{
+                            postcode: activeAddress?.postalCode,
+                            city: activeAddress?.city,
+                            uf: activeAddress?.state,
+                          }}
+                          className="mt-1 block text-xs font-medium leading-5 text-emerald-700"
+                        />
                       </span>
                     </label>
                   );
