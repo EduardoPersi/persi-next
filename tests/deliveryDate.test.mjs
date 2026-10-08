@@ -187,10 +187,12 @@ test("corte de 13h nos dias de semana: antes sai hoje, a partir das 13h sai no p
   assert.equal(dispatchDate(sp("2026-10-07T18:30:00"), contexto), "2026-10-08");
 });
 
-test("corte de 10h no sábado; depois dele, o próximo dia útil pula o feriado de segunda", () => {
+test("corte de 10h30 no sábado; depois dele, o próximo dia útil pula o feriado de segunda", () => {
   assert.equal(dispatchDate(sp("2026-10-10T09:59:00"), contexto), "2026-10-10");
-  // Sábado 10h: domingo não opera e segunda 12/10 é feriado → terça 13/10.
-  assert.equal(dispatchDate(sp("2026-10-10T10:00:00"), contexto), "2026-10-13");
+  assert.equal(dispatchDate(sp("2026-10-10T10:00:00"), contexto), "2026-10-10");
+  assert.equal(dispatchDate(sp("2026-10-10T10:29:00"), contexto), "2026-10-10");
+  // Sábado 10h30: domingo não opera e segunda 12/10 é feriado → terça 13/10.
+  assert.equal(dispatchDate(sp("2026-10-10T10:30:00"), contexto), "2026-10-13");
 });
 
 test("pedido no domingo ou em feriado da loja sai no próximo dia de operação", () => {

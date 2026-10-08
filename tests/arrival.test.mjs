@@ -24,8 +24,10 @@ test("demais regiões: 1 dia antes do corte, 2 dias depois", () => {
   assert.equal(arrivalTextForRate(proprio, itupeva, sp("2026-10-07T14:00:00")), "Chega sexta, dia 9");
 });
 
-test("sábado: corte de 10h; depois dele, domingo não opera e a segunda é feriado", () => {
+test("sábado: corte de 10h30; depois dele, domingo não opera e a segunda é feriado", () => {
   assert.equal(arrivalTextForRate(proprio, jundiai, sp("2026-10-10T09:00:00")), "Chega hoje");
+  assert.equal(arrivalTextForRate(proprio, jundiai, sp("2026-10-10T10:29:00")), "Chega hoje");
+  assert.equal(arrivalTextForRate(proprio, jundiai, sp("2026-10-10T10:30:00")), "Chega até a próxima terça, dia 13");
   assert.equal(arrivalTextForRate(proprio, jundiai, sp("2026-10-10T11:00:00")), "Chega até a próxima terça, dia 13");
 });
 

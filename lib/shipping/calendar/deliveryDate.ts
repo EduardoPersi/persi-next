@@ -6,7 +6,7 @@
  * REGRAS (todas configuráveis; os padrões são os da Persi, decididos em
  * 07/10/2026, e vão virar tela no painel):
  *
- *   corte    pedido feito até as 13h (dias de semana) ou 10h (sábado) sai no
+ *   corte    pedido feito até as 13h (dias de semana) ou 10h30 (sábado) sai no
  *            mesmo dia; depois disso, no próximo dia de operação da loja;
  *   operação a loja separa e despacha de segunda a sábado, menos em feriado;
  *   trânsito o prazo da transportadora (Melhor Envio) é em dias úteis de
@@ -35,7 +35,7 @@ export interface CutoffRule {
   saturday: string;
 }
 
-export const DEFAULT_CUTOFF: CutoffRule = { weekday: "13:00", saturday: "10:00" };
+export const DEFAULT_CUTOFF: CutoffRule = { weekday: "13:00", saturday: "10:30" };
 
 /** A loja, para os feriados municipais e estaduais dela. */
 export const DEFAULT_STORE_PLACE: HolidayPlace = { uf: "SP", city: "Jundiaí" };

@@ -6,7 +6,7 @@ Escrito em 07/10/2026. Código em `lib/shipping/calendar/`.
 
 | Regra | Padrão da Persi |
 |---|---|
-| Corte para sair no mesmo dia | **13h** nos dias de semana, **10h** aos sábados (um pedido às 13h00 em ponto já é "depois") |
+| Corte para sair no mesmo dia | **13h** nos dias de semana, **10h30** aos sábados (um pedido às 13h00 em ponto já é "depois") |
 | Dias em que a loja despacha | segunda a **sábado**, menos feriado (nacional, de SP e de Jundiaí) |
 | Trânsito de transportadora (Melhor Envio) | dias **úteis** segunda a sexta, menos feriado nacional, de SP e do município de **destino** |
 | Entrega própria | conta **dias de operação** (segunda a sábado) conforme a regra da zona (abaixo) |

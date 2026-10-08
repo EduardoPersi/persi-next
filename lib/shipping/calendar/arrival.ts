@@ -67,7 +67,7 @@ export interface ArrivalOptions {
   ownZones?: readonly OwnDeliveryZone[];
   ownOtherDays?: number;
   ownMethodIds?: readonly string[];
-  /** Calendário e corte. Sem isso, a lista padrão da Persi e o corte de 13h/10h. */
+  /** Calendário e corte. Sem isso, a lista padrão da Persi e o corte de 13h (sábado 10h30). */
   context?: DeliveryContext;
 }
 
