@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   canIncreaseQuantity,
   getQuantityLimits,
+  resolveTypedQuantity,
   stepQuantity,
 } from "../components/UI/quantityStepping.ts";
 
@@ -41,19 +42,79 @@ test("limites usam os mesmos padrões do seletor do carrinho", () => {
   );
 });
 
+test("digitar: arredonda para o múltiplo, limita ao estoque e avisa o ajuste", () => {
+  const boxes = { minimum: 10, maximum: 200, step: 10 };
+  assert.deepEqual(resolveTypedQuantity("120", boxes, { zero: "remove" }), {
+    action: "update",
+    quantity: 120,
+  });
+  const rounded = resolveTypedQuantity("124", boxes, { zero: "remove" });
+  assert.equal(rounded.quantity, 120);
+  assert.equal(rounded.notice, "Ajustamos para 120, múltiplo de 10.");
+  const capped = resolveTypedQuantity("999", boxes, { zero: "remove" });
+  assert.equal(capped.quantity, 200);
+  assert.equal(capped.notice, "Ajustamos para 200, o máximo disponível.");
+  const raised = resolveTypedQuantity("4", boxes, { zero: "remove" });
+  assert.equal(raised.quantity, 10);
+  assert.equal(raised.notice, "Ajustamos para 10, a quantidade mínima.");
+  // Máximo que não é múltiplo: fica no maior múltiplo permitido.
+  assert.equal(resolveTypedQuantity("999", { minimum: 10, maximum: 95, step: 10 }, { zero: "remove" }).quantity, 90);
+});
+
+test("digitar 0: remove no carrinho, vira o mínimo antes de comprar; vazio é ignorado", () => {
+  assert.deepEqual(resolveTypedQuantity("0", free, { zero: "remove" }), { action: "remove" });
+  const local = resolveTypedQuantity("0", free, { zero: "minimum" });
+  assert.equal(local.action, "update");
+  assert.equal(local.quantity, 1);
+  assert.deepEqual(resolveTypedQuantity("", free, { zero: "remove" }), { action: "none" });
+  assert.deepEqual(resolveTypedQuantity("abc", free, { zero: "remove" }), { action: "none" });
+  assert.equal(resolveTypedQuantity("1a2", free, { zero: "remove" }).quantity, 10);
+});
+
 test("o controle usa as ações existentes do carrinho, trava durante a atualização e confirma a remoção", () => {
   const source = read("components/UI/QuantityStepper.tsx");
 
   // Mesmas ações do carrinho: nenhum cálculo de total novo.
-  assert.match(source, /updateItem\(item\.key, next\.quantity\)/);
-  assert.match(source, /removeItem\(item\.key\)/);
-  assert.doesNotMatch(source, /fetch\(/);
+  assert.ok(source.includes("updateItem(item.key, quantity)"));
+  assert.ok(source.includes("removeItem(item.key)"));
+  assert.ok(!source.includes("fetch("));
   // Botões travados enquanto há atualização em andamento.
-  assert.match(source, /isCheckoutUpdating \|\| isLoading \|\| pendingItemKey !== null/);
-  assert.match(source, /disabled=\{isBusy\}/);
-  // Confirmação antes de remover e volta ao carrinho quando esvazia.
+  assert.ok(source.includes("isCheckoutUpdating || isLoading || pendingItemKey !== null"));
+  assert.ok(source.includes("disabled={isBusy}"));
+  // Confirmação antes de remover; no mínimo o "−" fica ativo para perguntar.
   assert.ok(source.includes("Remover este item?"));
-  assert.ok(source.includes('navigate("/carrinho")'));
+  assert.ok(source.includes("canDecrease"));
+  // Volta ao carrinho só quando quem usa pede (checkout), nunca no mini-carrinho.
+  assert.ok(source.includes("emptyCartHref"));
+  assert.ok(source.includes("navigate(emptyCartHref)"));
   // Ajuste de estoque devolvido pelo servidor é informado ao cliente.
-  assert.ok(source.includes("A quantidade foi ajustada conforme o estoque disponível."));
+  assert.ok(source.includes("conforme o estoque disponível."));
+});
+
+test("um único visual: botões secundários do site, campo numérico e Enter/saída do campo", () => {
+  const control = read("components/UI/QuantityControl.tsx");
+  assert.ok(control.includes("text-secondary"));
+  assert.ok(control.includes("hover:bg-secondary/10"));
+  assert.ok(control.includes("active:bg-secondary/15"));
+  assert.ok(!control.includes("hover:bg-slate-100"));
+  assert.ok(control.includes('inputMode="numeric"'));
+  assert.ok(control.includes("onBlur={commit}"));
+  assert.ok(control.includes('event.key === "Enter"'));
+});
+
+test("produto, visualização rápida e comprados juntos usam o mesmo controle, sem pergunta de remoção", () => {
+  const product = read("components/Product/ProductQuantity.tsx");
+  assert.ok(product.includes("<QuantityControl"));
+  assert.ok(product.includes('zero: "minimum"'));
+  assert.ok(product.includes("canDecrease={value > limits.minimum}"));
+  assert.ok(!product.includes("Remover"));
+  for (const path of [
+    "components/Product/BuyTogether.tsx",
+    "components/Product/FrequentlyBoughtTogether.tsx",
+  ]) {
+    const source = read(path);
+    assert.ok(source.includes("<ProductQuantity"));
+    assert.ok(!source.includes('type="number"'));
+    assert.ok(!source.includes("Diminuir quantidade de"));
+  }
 });

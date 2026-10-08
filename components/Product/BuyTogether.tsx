@@ -2,12 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Minus, Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useCart } from "@/hooks/useCart";
 import { getProductPaymentInfo } from "@/lib/commerce/productPayment";
 import type { Product } from "@/types/product";
 import { Button } from "@/components/UI/Button";
+import { ProductQuantity } from "./ProductQuantity";
 import { getProductHref } from "@/lib/routing/storefrontUrls";
 
 const FALLBACK_IMAGE =
@@ -184,49 +185,16 @@ export function BuyTogether({
                   <strong>{formatCurrency(product.price, product.currencyCode)}</strong>
                 </Link>
                 {isSelected ? (
-                  <div
-                    className="mt-2 flex justify-center"
-                    role="group"
-                    aria-label={`Quantidade de ${product.name}`}
-                  >
-                    <div className="inline-flex h-8 items-center rounded-md border border-slate-200 bg-white">
-                      <button
-                        type="button"
-                        onClick={() => updateQuantity(product, quantity - 1)}
-                        disabled={quantity <= 1}
-                        aria-label={`Diminuir quantidade de ${product.name}`}
-                        className="flex h-full w-8 items-center justify-center text-foreground hover:bg-slate-100 disabled:text-slate-300"
-                      >
-                        <Minus className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                      <input
-                        type="number"
-                        min={1}
-                        max={Math.min(999, product.stockQuantity ?? 999)}
-                        step={1}
-                        value={quantity}
-                        onFocus={(event) => event.currentTarget.select()}
-                        onChange={(event) => {
-                          const nextQuantity = event.currentTarget.valueAsNumber;
-                          if (Number.isFinite(nextQuantity)) {
-                            updateQuantity(product, nextQuantity);
-                          }
-                        }}
-                        aria-label={`Quantidade de ${product.name}`}
-                        className="h-full w-12 appearance-none border-x border-slate-200 bg-white text-center text-sm font-semibold text-foreground outline-none focus:border-primary [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => updateQuantity(product, quantity + 1)}
-                        disabled={
-                          quantity >= Math.min(999, product.stockQuantity ?? 999)
-                        }
-                        aria-label={`Aumentar quantidade de ${product.name}`}
-                        className="flex h-full w-8 items-center justify-center text-foreground hover:bg-slate-100 disabled:text-slate-300"
-                      >
-                        <Plus className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                    </div>
+                  <div className="mt-2 flex justify-center">
+                    <ProductQuantity
+                      value={quantity}
+                      max={Math.min(999, product.stockQuantity ?? 999)}
+                      onChange={(next) => updateQuantity(product, next)}
+                      dense
+                      fullWidthOnMobile={false}
+                      showLabel={false}
+                      label={`Quantidade de ${product.name}`}
+                    />
                   </div>
                 ) : null}
               </div>

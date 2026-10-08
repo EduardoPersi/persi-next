@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
+import { ShoppingCart, Trash2, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useCart } from "@/hooks/useCart";
 import { useCheckoutTransfer } from "@/hooks/useCheckoutTransfer";
 import { FreeShippingBadge } from "@/components/Product/FreeShippingBadge";
+import { QuantityStepper } from "@/components/UI/QuantityStepper";
 
 export function MiniCart() {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -19,7 +20,6 @@ export function MiniCart() {
     error,
     pendingItemKey,
     removeItem,
-    updateItem,
   } = useCart();
   const { checkoutError, isPreparingCheckout, prepareCheckout } =
     useCheckoutTransfer();
@@ -123,73 +123,7 @@ export function MiniCart() {
                     </dl>
                   ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-                  <div className="inline-flex h-7 items-center rounded-md border border-slate-200">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void updateItem(
-                          item.key,
-                          Math.max(
-                            item.minQuantity,
-                            item.quantity - item.quantityStep,
-                          ),
-                        )
-                      }
-                      disabled={
-                        isLoading || item.quantity <= item.minQuantity
-                      }
-                      aria-label={`Diminuir quantidade de ${item.name}`}
-                      className="relative flex h-full w-7 items-center justify-center rounded-l-md text-foreground transition-colors before:absolute before:-bottom-2 before:-left-2 before:-top-2 before:right-0 before:content-[''] hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-300"
-                    >
-                      <Minus className="h-3 w-3" aria-hidden="true" />
-                    </button>
-                    <input
-                      key={`${item.key}-${item.quantity}`}
-                      type="number"
-                      min={item.minQuantity}
-                      max={item.maxQuantity ?? 999}
-                      step={item.quantityStep}
-                      defaultValue={item.quantity}
-                      onFocus={(event) => event.currentTarget.select()}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") event.currentTarget.blur();
-                      }}
-                      onBlur={(event) => {
-                        const nextQuantity = Math.min(
-                          item.maxQuantity ?? 999,
-                          Math.max(
-                            item.minQuantity,
-                            Math.trunc(event.currentTarget.valueAsNumber || 1),
-                          ),
-                        );
-                        event.currentTarget.value = String(nextQuantity);
-                        if (nextQuantity !== item.quantity) {
-                          void updateItem(item.key, nextQuantity);
-                        }
-                      }}
-                      aria-label={`Quantidade de ${item.name}`}
-                      className="h-full w-9 appearance-none border-x border-slate-200 bg-white text-center text-xs font-semibold text-foreground outline-none focus:border-primary [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void updateItem(
-                          item.key,
-                          Math.min(
-                            item.maxQuantity ?? 999,
-                            item.quantity + item.quantityStep,
-                          ),
-                        )
-                      }
-                      disabled={
-                        isLoading || item.quantity >= (item.maxQuantity ?? 999)
-                      }
-                      aria-label={`Aumentar quantidade de ${item.name}`}
-                      className="relative flex h-full w-7 items-center justify-center rounded-r-md text-foreground transition-colors before:absolute before:-bottom-2 before:-right-2 before:-top-2 before:left-0 before:content-[''] hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-300"
-                    >
-                      <Plus className="h-3 w-3" aria-hidden="true" />
-                    </button>
-                  </div>
+                  <QuantityStepper item={item} size="sm" />
                     <p className="text-xs text-slate-400">
                       {item.quantity} ×{" "}
                       <strong className="font-semibold text-primary">

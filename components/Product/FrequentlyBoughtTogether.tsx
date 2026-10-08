@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Minus, Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/UI/Button";
+import { ProductQuantity } from "./ProductQuantity";
 import { useCart } from "@/hooks/useCart";
 import type { BoughtTogetherItem } from "@/types/boughtTogether";
 import type { Product } from "@/types/product";
@@ -202,41 +203,15 @@ export function FrequentlyBoughtTogether({
                     </strong>
                   </Link>
                   {isSelected ? (
-                    <div
-                      className="mt-2 flex justify-center"
-                      role="group"
-                      aria-label={`Quantidade de ${item.name}`}
-                    >
-                      <div className="inline-flex h-8 items-center rounded-md border border-slate-200 bg-white">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateQuantity(item.productId, quantity - 1)
-                          }
-                          disabled={quantity <= 1}
-                          aria-label={`Diminuir quantidade de ${item.name}`}
-                          className="flex h-full w-8 items-center justify-center text-foreground hover:bg-slate-100 disabled:text-slate-300"
-                        >
-                          <Minus className="h-4 w-4" aria-hidden="true" />
-                        </button>
-                        <span
-                          className="flex h-full w-10 items-center justify-center border-x border-slate-200 text-sm font-semibold"
-                          aria-live="polite"
-                        >
-                          {quantity}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateQuantity(item.productId, quantity + 1)
-                          }
-                          disabled={quantity >= 999}
-                          aria-label={`Aumentar quantidade de ${item.name}`}
-                          className="flex h-full w-8 items-center justify-center text-foreground hover:bg-slate-100 disabled:text-slate-300"
-                        >
-                          <Plus className="h-4 w-4" aria-hidden="true" />
-                        </button>
-                      </div>
+                    <div className="mt-2 flex justify-center">
+                      <ProductQuantity
+                        value={quantity}
+                        onChange={(next) => updateQuantity(item.productId, next)}
+                        dense
+                        fullWidthOnMobile={false}
+                        showLabel={false}
+                        label={`Quantidade de ${item.name}`}
+                      />
                     </div>
                   ) : null}
                 </div>

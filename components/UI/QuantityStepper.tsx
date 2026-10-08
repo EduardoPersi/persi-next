@@ -1,39 +1,42 @@
 "use client";
 
 import { memo, useEffect, useRef, useState } from "react";
-import { LoaderCircle, Minus, Plus } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useRouteTransition } from "@/hooks/useRouteTransition";
 import type { CartItem } from "@/types/cart";
+import { QuantityControl } from "./QuantityControl";
 import {
   canIncreaseQuantity,
   getQuantityLimits,
+  resolveTypedQuantity,
   stepQuantity,
 } from "./quantityStepping";
 
 interface QuantityStepperProps {
   item: CartItem;
-  // Quantos itens há no carrinho: remover o último leva de volta ao carrinho.
-  itemCount: number;
+  size?: "sm" | "md";
+  // Remover o último item leva para esta rota (ex.: do checkout para o carrinho).
+  itemCount?: number;
+  emptyCartHref?: string;
 }
 
-const BUTTON_CLASS =
-  "inline-flex h-10 w-10 shrink-0 items-center justify-center text-foreground transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent";
-
-// Controle "− quantidade +" do resumo do checkout. Usa as mesmas ações do
-// carrinho (`updateItem` e `removeItem` em CartProvider): o total, o frete e
-// o estoque são recalculados e confirmados pelo servidor, nada é calculado aqui.
+// Quantidade de um item que já está no carrinho (carrinho, mini-carrinho e
+// resumo do checkout). Usa as mesmas ações do carrinho (`updateItem` e
+// `removeItem` em CartProvider): o total, o frete e o estoque são recalculados
+// e confirmados pelo servidor, nada é calculado aqui. No mínimo, o "−" (ou
+// digitar 0) pergunta "Remover este item?".
 export const QuantityStepper = memo(function QuantityStepper({
   item,
+  size = "md",
   itemCount,
+  emptyCartHref,
 }: QuantityStepperProps) {
   const { updateItem, removeItem, pendingItemKey, isCheckoutUpdating, isLoading } =
     useCart();
   const { navigate } = useRouteTransition();
   const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
   const [error, setError] = useState("");
-  const [adjustmentMessage, setAdjustmentMessage] = useState("");
-  const decreaseRef = useRef<HTMLButtonElement>(null);
+  const [notice, setNotice] = useState("");
   const cancelRef = useRef<HTMLButtonElement>(null);
   const limits = getQuantityLimits(item);
   // Qualquer atualização em andamento trava os botões (evita clique duplo).
@@ -45,7 +48,24 @@ export const QuantityStepper = memo(function QuantityStepper({
     if (isConfirmingRemoval) cancelRef.current?.focus();
   }, [isConfirmingRemoval]);
 
-  const change = async (direction: "decrease" | "increase") => {
+  const applyQuantity = async (quantity: number, adjustment?: string) => {
+    setError("");
+    setNotice(adjustment ?? "");
+    const result = await updateItem(item.key, quantity);
+    if (!result.success) {
+      setNotice("");
+      setError(result.message);
+      return;
+    }
+    const updatedQuantity = result.cart?.items.find(
+      (cartItem) => cartItem.key === item.key,
+    )?.quantity;
+    if (updatedQuantity !== undefined && updatedQuantity !== quantity) {
+      setNotice(`Ajustamos para ${updatedQuantity} conforme o estoque disponível.`);
+    }
+  };
+
+  const step = (direction: "decrease" | "increase") => {
     if (isBusy) return;
     const next = stepQuantity(item.quantity, direction, limits);
     if (next.action === "none") return;
@@ -53,22 +73,23 @@ export const QuantityStepper = memo(function QuantityStepper({
       setIsConfirmingRemoval(true);
       return;
     }
+    void applyQuantity(next.quantity);
+  };
 
-    setError("");
-    setAdjustmentMessage("");
-    const result = await updateItem(item.key, next.quantity);
-    if (!result.success) {
-      setError(result.message);
+  const commitTyped = (raw: string) => {
+    if (isBusy) return;
+    const next = resolveTypedQuantity(raw, limits, { zero: "remove" });
+    if (next.action === "none") return;
+    if (next.action === "remove") {
+      setIsConfirmingRemoval(true);
       return;
     }
-    const updatedQuantity = result.cart?.items.find(
-      (cartItem) => cartItem.key === item.key,
-    )?.quantity;
-    if (updatedQuantity !== undefined && updatedQuantity !== next.quantity) {
-      setAdjustmentMessage(
-        "A quantidade foi ajustada conforme o estoque disponível.",
-      );
+    if (next.quantity === item.quantity) {
+      setError("");
+      setNotice(next.notice ?? "");
+      return;
     }
+    void applyQuantity(next.quantity, next.notice);
   };
 
   const confirmRemoval = async () => {
@@ -80,53 +101,26 @@ export const QuantityStepper = memo(function QuantityStepper({
       setError(result.message);
       return;
     }
-    if (itemCount <= 1) navigate("/carrinho");
-  };
-
-  const cancelRemoval = () => {
-    setIsConfirmingRemoval(false);
-    decreaseRef.current?.focus();
+    if (emptyCartHref && (itemCount ?? 0) <= 1) navigate(emptyCartHref);
   };
 
   return (
     <div className="min-w-0">
-      <div
-        role="group"
-        aria-label={label}
-        aria-busy={isThisItemPending}
-        className="inline-flex items-center overflow-hidden rounded-xl border border-slate-300 bg-white"
-      >
-        <button
-          ref={decreaseRef}
-          type="button"
-          className={BUTTON_CLASS}
-          disabled={isBusy}
-          aria-label={`Diminuir ${label.toLocaleLowerCase("pt-BR")}`}
-          onClick={() => void change("decrease")}
-        >
-          <Minus size={16} aria-hidden="true" />
-        </button>
-        <span
-          className="flex h-10 min-w-9 items-center justify-center px-1 text-sm font-medium tabular-nums text-foreground"
-          role="status"
-          aria-label={`${label}: ${item.quantity}`}
-        >
-          {isThisItemPending ? (
-            <LoaderCircle size={14} className="animate-spin text-primary" aria-hidden="true" />
-          ) : (
-            item.quantity
-          )}
-        </span>
-        <button
-          type="button"
-          className={BUTTON_CLASS}
-          disabled={isBusy || !canIncreaseQuantity(item.quantity, limits)}
-          aria-label={`Aumentar ${label.toLocaleLowerCase("pt-BR")}`}
-          onClick={() => void change("increase")}
-        >
-          <Plus size={16} aria-hidden="true" />
-        </button>
-      </div>
+      <QuantityControl
+        value={item.quantity}
+        label={label}
+        size={size}
+        pending={isThisItemPending}
+        disabled={isBusy}
+        // O "−" fica ativo no mínimo: ele pergunta se quer remover.
+        canDecrease
+        canIncrease={canIncreaseQuantity(item.quantity, limits)}
+        onDecrease={() => step("decrease")}
+        onIncrease={() => step("increase")}
+        onCommit={commitTyped}
+        error={error}
+        notice={notice}
+      />
       {isConfirmingRemoval ? (
         <div
           role="group"
@@ -145,23 +139,13 @@ export const QuantityStepper = memo(function QuantityStepper({
           <button
             ref={cancelRef}
             type="button"
-            onClick={cancelRemoval}
+            onClick={() => setIsConfirmingRemoval(false)}
             disabled={isBusy}
-            className="min-h-9 rounded-xl border border-slate-300 bg-white px-3 font-medium text-foreground transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-60"
+            className="min-h-9 rounded-xl border border-secondary bg-white px-3 font-medium text-secondary transition-colors hover:bg-secondary/10 active:bg-secondary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-60"
           >
             Cancelar
           </button>
         </div>
-      ) : null}
-      {error ? (
-        <p className="mt-1 max-w-56 text-xs leading-4 text-red-700" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {adjustmentMessage ? (
-        <p className="mt-1 max-w-56 text-xs leading-4 text-amber-700" role="status">
-          {adjustmentMessage}
-        </p>
       ) : null}
     </div>
   );
