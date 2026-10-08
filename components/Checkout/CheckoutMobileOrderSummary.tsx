@@ -108,7 +108,11 @@ export function CheckoutMobileOrderSummary({
                       </p>
                     ) : null}
                     <div className="mt-2 flex items-center justify-between gap-3">
-                      <QuantityStepper item={item} itemCount={cart.items.length} />
+                      <QuantityStepper
+                  item={item}
+                  itemCount={cart.items.length}
+                  emptyCartHref="/carrinho"
+                />
                       <strong className="text-xs text-foreground">
                         <AnimatedValue animationKey={item.total}>
                           {formatter.format(item.total)}

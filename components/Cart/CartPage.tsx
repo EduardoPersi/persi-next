@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useCheckoutTransfer } from "@/hooks/useCheckoutTransfer";
-import { QuantitySelect } from "@/components/UI/QuantitySelect";
+import { QuantityStepper } from "@/components/UI/QuantityStepper";
 import { AnimatedValue } from "@/components/UI/AnimatedValue";
 import { FreeShippingBadge } from "@/components/Product/FreeShippingBadge";
 import { ShippingCalculator } from "@/components/Shipping/ShippingCalculator";
@@ -128,12 +128,12 @@ export function CartPage() {
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted">Quantidade</dt>
                       <dd className="shrink-0">
-                        <QuantitySelect item={item} idSuffix="cart-mobile" />
+                        <QuantityStepper item={item} />
                       </dd>
                     </div>
                   </dl>
                   <div className="mt-4 hidden md:flex md:items-end">
-                    <QuantitySelect item={item} idSuffix="cart-desktop" />
+                    <QuantityStepper item={item} />
                   </div>
                 </div>
                 <div className="col-span-2 flex flex-col items-end gap-1 border-t border-slate-100 pt-3 md:col-span-1 md:min-w-32 md:justify-between md:border-0 md:pt-0">

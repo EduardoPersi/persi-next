@@ -1,81 +1,66 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { getQuantityOptions } from "../components/UI/quantityOptions.ts";
+import {
+  getQuantityLimits,
+  resolveTypedQuantity,
+} from "../components/UI/quantityStepping.ts";
 
 const read = (path) => readFileSync(path, "utf8");
 
-test("carrinho usa o seletor compacto e o resumo do checkout usa os botões − e +", () => {
+test("carrinho, mini-carrinho e checkout usam o mesmo QuantityStepper", () => {
   const stepper = read("components/UI/QuantityStepper.tsx");
-  const control = read("components/UI/QuantitySelect.tsx");
   const cart = read("components/Cart/CartPage.tsx");
+  const miniCart = read("components/Header/MiniCart.tsx");
   const desktop = read("components/Checkout/CheckoutOrderSummary.tsx");
   const mobile = read("components/Checkout/CheckoutMobileOrderSummary.tsx");
 
-  assert.match(cart, /<QuantitySelect item=\{item\} idSuffix="cart-mobile" \/>/);
-  assert.match(cart, /<QuantitySelect item=\{item\} idSuffix="cart-desktop" \/>/);
-  assert.ok(desktop.includes("<QuantityStepper item={item} itemCount={cart.items.length} />"));
-  assert.ok(mobile.includes("<QuantityStepper item={item} itemCount={cart.items.length} />"));
-  assert.ok(!desktop.includes("QuantitySelect"));
-  assert.ok(!mobile.includes("QuantitySelect"));
-  assert.match(stepper, /memo\(function QuantityStepper/);
-  assert.match(control, /memo\(function QuantitySelect/);
-  assert.match(control, /aria-label=\{label\}/);
-  assert.match(control, /title=\{label\}/);
-  assert.match(control, /h-9 min-w-16/);
-  assert.match(control, /sm:min-w-\[72px\]/);
-  assert.match(control, /role="alert"/);
+  assert.equal(cart.split("<QuantityStepper item={item} />").length - 1, 2);
+  assert.ok(miniCart.includes('<QuantityStepper item={item} size="sm" />'));
+  for (const summary of [desktop, mobile]) {
+    assert.ok(summary.includes("<QuantityStepper"));
+    assert.ok(summary.includes("itemCount={cart.items.length}"));
+    assert.ok(summary.includes('emptyCartHref="/carrinho"'));
+  }
+  // O seletor em lista foi aposentado: nada de duas versões do controle.
+  for (const source of [cart, miniCart, desktop, mobile]) {
+    assert.ok(!source.includes("QuantitySelect"));
+  }
+  assert.ok(stepper.includes("memo(function QuantityStepper"));
+  assert.match(stepper, /<QuantityControl/);
 });
 
 test("controle respeita limites e passos de quantidade do WooCommerce", () => {
-  const control = read("components/UI/QuantitySelect.tsx");
-
-  assert.match(control, /Math\.max\(1, item\.minQuantity\)/);
-  assert.match(control, /item\.maxQuantity \?\? 999/);
-  assert.match(control, /Math\.max\(1, item\.quantityStep\)/);
-  assert.match(control, /nextQuantity < minimum/);
-  assert.match(control, /nextQuantity > maximum/);
+  assert.deepEqual(
+    getQuantityLimits({ minQuantity: 0, maxQuantity: undefined, quantityStep: 0 }),
+    { minimum: 1, maximum: 999, step: 1 },
+  );
+  const stepper = read("components/UI/QuantityStepper.tsx");
+  assert.ok(stepper.includes("getQuantityLimits(item)"));
+  assert.ok(stepper.includes("stepQuantity(item.quantity, direction, limits)"));
+  assert.ok(stepper.includes('resolveTypedQuantity(raw, limits, { zero: "remove" })'));
 });
 
-test("seletor mantém cinco quantidades antes e depois do valor atual", () => {
-  assert.deepEqual(getQuantityOptions(1, 1, 5000, 1), [1, 2, 3, 4, 5, 6]);
-  assert.deepEqual(getQuantityOptions(2, 1, 5000, 1), [1, 2, 3, 4, 5, 6, 7]);
-  assert.deepEqual(getQuantityOptions(6, 1, 5000, 1), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-  assert.deepEqual(getQuantityOptions(10, 1, 5000, 1), [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-  assert.deepEqual(getQuantityOptions(15, 1, 5000, 1), [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
-  assert.deepEqual(getQuantityOptions(38, 1, 5000, 1), [33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43]);
-  assert.deepEqual(getQuantityOptions(120, 1, 5000, 1), [115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125]);
-  assert.deepEqual(getQuantityOptions(250, 1, 5000, 1), [245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255]);
-});
-
-test("quantidade atual, estoque e limites do WooCommerce são preservados", () => {
-  for (const value of [1, 5, 10, 15, 20, 30, 50, 100, 250, 500, 1000]) {
-    const options = getQuantityOptions(value, 1, 5000, 1);
-    assert.ok(options.includes(value), `valor atual ${value} ausente`);
-    assert.ok(options.length <= 11);
-  }
-
-  assert.deepEqual(getQuantityOptions(1, 1, 1, 1), [1]);
-  assert.deepEqual(getQuantityOptions(5, 1, 5, 1), [1, 2, 3, 4, 5]);
-  assert.deepEqual(getQuantityOptions(7, 1, 7, 1), [2, 3, 4, 5, 6, 7]);
-  assert.deepEqual(getQuantityOptions(15, 1, 18, 1), [10, 11, 12, 13, 14, 15, 16, 17, 18]);
-  assert.deepEqual(getQuantityOptions(50, 1, 50, 1), [45, 46, 47, 48, 49, 50]);
-  assert.deepEqual(getQuantityOptions(250, 1, 253, 1), [245, 246, 247, 248, 249, 250, 251, 252, 253]);
-
-  const steppedOptions = getQuantityOptions(25, 5, 55, 5);
-  assert.ok(steppedOptions.every((quantity) => (quantity - 5) % 5 === 0));
-  assert.ok(steppedOptions.every((quantity) => quantity >= 5 && quantity <= 55));
-  assert.ok(steppedOptions.length <= 11);
+test("valor digitado respeita múltiplo de venda, mínimo e estoque", () => {
+  const limits = { minimum: 10, maximum: 200, step: 10 };
+  assert.deepEqual(resolveTypedQuantity("120", limits, { zero: "remove" }), {
+    action: "update",
+    quantity: 120,
+  });
+  assert.equal(resolveTypedQuantity("123", limits, { zero: "remove" }).quantity, 120);
+  assert.equal(resolveTypedQuantity("500", limits, { zero: "remove" }).quantity, 200);
+  assert.equal(resolveTypedQuantity("3", limits, { zero: "remove" }).quantity, 10);
+  assert.deepEqual(resolveTypedQuantity("0", limits, { zero: "remove" }), { action: "remove" });
 });
 
 test("ajuste autoritativo de estoque retorna o carrinho e informa o cliente", () => {
-  const control = read("components/UI/QuantitySelect.tsx");
+  const control = read("components/UI/QuantityStepper.tsx");
   const provider = read("components/Cart/CartProvider.tsx");
   const route = read("app/api/cart/items/route.ts");
 
   assert.match(provider, /message: "Quantidade atualizada\.", cart: result/);
   assert.match(control, /result\.cart\?\.items\.find/);
-  assert.match(control, /A quantidade foi ajustada conforme o estoque disponível\./);
+  assert.ok(control.includes("conforme o estoque disponível."));
   assert.match(route, /availableMaximum < quantity/);
   assert.match(route, /updateCartItem\(key, availableMaximum, cartToken\)/);
 });

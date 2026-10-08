@@ -1,7 +1,9 @@
 "use client";
 
 import clsx from "clsx";
-import { useId } from "react";
+import { useId, useState } from "react";
+import { QuantityControl } from "@/components/UI/QuantityControl";
+import { resolveTypedQuantity } from "@/components/UI/quantityStepping";
 
 interface ProductQuantityProps {
   value: number;
@@ -13,8 +15,13 @@ interface ProductQuantityProps {
   dense?: boolean;
   fullWidthOnMobile?: boolean;
   showLabel?: boolean;
+  // Nome acessível do grupo; o padrão é "Quantidade".
+  label?: string;
 }
 
+// Quantidade ANTES de adicionar ao carrinho (página de produto, visualização
+// rápida e "comprados juntos"): estado local de quem usa, mesmo visual do
+// QuantityControl. O "−" para no mínimo e não pergunta sobre remover.
 export function ProductQuantity({
   value,
   min = 1,
@@ -25,11 +32,27 @@ export function ProductQuantity({
   dense = false,
   fullWidthOnMobile = true,
   showLabel = true,
+  label = "Quantidade",
 }: ProductQuantityProps) {
   const labelId = useId();
-  const effectiveMax = Math.min(999, max ?? 999);
-  const effectiveMin = Math.max(1, min);
-  const canIncrease = value < effectiveMax;
+  const [notice, setNotice] = useState("");
+  const limits = {
+    minimum: Math.max(1, min),
+    maximum: Math.max(Math.max(1, min), Math.min(999, max ?? 999)),
+    step: Math.max(1, step),
+  };
+
+  const change = (next: number) => {
+    setNotice("");
+    onChange(next);
+  };
+
+  const commitTyped = (raw: string) => {
+    const next = resolveTypedQuantity(raw, limits, { zero: "minimum" });
+    if (next.action !== "update") return;
+    setNotice(next.notice ?? "");
+    if (next.quantity !== value) onChange(next.quantity);
+  };
 
   return (
     <div
@@ -47,72 +70,23 @@ export function ProductQuantity({
             : "sr-only"
         }
       >
-        Quantidade
+        {label}
       </span>
-      <div
-        className={clsx(
-          "items-center rounded-xl border border-slate-200 bg-white",
-          compact
-            ? [
-                "grid w-full grid-cols-3 overflow-hidden",
-                dense ? "h-9" : "h-[50px]",
-              ]
-            : [
-                "gap-1 p-1 sm:inline-flex sm:w-auto sm:justify-start",
-                fullWidthOnMobile
-                  ? "flex w-full justify-between"
-                  : "inline-flex w-auto justify-start",
-              ],
-        )}
-        role="group"
-        aria-labelledby={labelId}
-      >
-        <button
-          type="button"
-          onClick={() => onChange(Math.max(effectiveMin, value - step))}
-          disabled={value <= effectiveMin}
-          aria-label="Diminuir quantidade"
-          className={clsx(
-            "flex h-10 items-center justify-center text-xl font-medium text-primary transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40",
-            compact ? "h-full min-w-0 w-full rounded-none" : "w-10 rounded-md",
-          )}
-        >
-          −
-        </button>
-        <input
-          type="number"
-          min={effectiveMin}
-          max={effectiveMax}
-          step={step}
-          value={value}
-          onFocus={(event) => event.currentTarget.select()}
-          onChange={(event) => {
-            const nextValue = event.currentTarget.valueAsNumber;
-            if (!Number.isFinite(nextValue)) return;
-            const integerValue = Math.max(effectiveMin, Math.trunc(nextValue));
-            onChange(Math.min(effectiveMax, integerValue));
-          }}
-          aria-label="Quantidade"
-          className={clsx(
-            "h-10 appearance-none border-x border-slate-200 bg-white text-center text-base font-semibold text-foreground outline-none focus:border-primary [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-            compact ? "h-full min-w-0 w-full" : "w-14",
-          )}
-        />
-        <button
-          type="button"
-          onClick={() =>
-            canIncrease && onChange(Math.min(effectiveMax, value + step))
-          }
-          disabled={!canIncrease}
-          aria-label="Aumentar quantidade"
-          className={clsx(
-            "flex h-10 items-center justify-center text-xl font-medium text-primary transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40",
-            compact ? "h-full min-w-0 w-full rounded-none" : "w-10 rounded-md",
-          )}
-        >
-          +
-        </button>
-      </div>
+      <QuantityControl
+        value={value}
+        label={label}
+        size={dense ? "sm" : compact ? "lg" : "md"}
+        fullWidth={compact}
+        className={
+          !compact && fullWidthOnMobile ? "flex w-full sm:inline-flex sm:w-auto" : undefined
+        }
+        canDecrease={value > limits.minimum}
+        canIncrease={value < limits.maximum}
+        onDecrease={() => change(Math.max(limits.minimum, value - limits.step))}
+        onIncrease={() => change(Math.min(limits.maximum, value + limits.step))}
+        onCommit={commitTyped}
+        notice={notice}
+      />
     </div>
   );
 }
