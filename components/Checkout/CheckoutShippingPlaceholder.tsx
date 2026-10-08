@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { ShippingArrival } from "@/components/Shipping/ShippingArrival";
+import { ShippingBadgeLabel } from "@/components/UI/ShippingBadgeLabel";
+import { useShippingBadges } from "@/hooks/useShippingBadges";
 import { Button } from "@/components/UI/Button";
 import { useCart } from "@/hooks/useCart";
 import { isAddressComplete } from "@/lib/commerce/checkout";
@@ -102,6 +104,15 @@ export function CheckoutShippingPlaceholder() {
     (total, shippingPackage) => total + shippingPackage.rates.length,
     0,
   );
+  const badgeDestination = useMemo(
+    () => ({
+      postcode: activeAddress?.postalCode,
+      city: activeAddress?.city,
+      uf: activeAddress?.state,
+    }),
+    [activeAddress?.postalCode, activeAddress?.city, activeAddress?.state],
+  );
+  const badgeFor = useShippingBadges(packages, badgeDestination);
   const ratesMatchForm = cartRatesMatchPostcode(
     activeAddress?.postalCode ?? "",
     cart?.shippingAddress?.postcode,
@@ -372,9 +383,14 @@ export function CheckoutShippingPlaceholder() {
                       />
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap justify-between gap-x-4 gap-y-1">
-                          <strong className="text-xs text-foreground">
-                            {rate.name}
-                          </strong>
+                          <span className="flex flex-wrap items-center gap-2">
+                            <strong className="text-xs text-foreground">
+                              {rate.name}
+                            </strong>
+                            <ShippingBadgeLabel
+                              badge={badgeFor(shippingPackage.packageId, rate.rateId)}
+                            />
+                          </span>
                           <strong className="text-xs text-foreground">
                             {isZeroMoney(rate.price)
                               ? "Grátis"
