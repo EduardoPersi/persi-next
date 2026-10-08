@@ -22,6 +22,7 @@
  */
 
 import { SITE_URL } from "../routing/storefrontUrls.ts";
+import { optinWhatsappDoPedido } from "./optin.ts";
 import { avisarPeloWhatsapp, type AvisoDeCobranca, type ResultadoDoAviso } from "./whatsapp.ts";
 
 export type FormaDeCobranca = "pix" | "boleto";
@@ -118,7 +119,7 @@ export function momentoDoCron(
 
 /** O aviso ao painel; `null` sem telefone (não há para onde mandar). */
 export function montarAvisoDeCobranca(
-  pedido: Pick<PedidoParaCobranca, "id" | "billingPhone">,
+  pedido: Pick<PedidoParaCobranca, "id" | "billingPhone"> & { metaData?: Record<string, string> },
   cobranca: Cobranca,
   momento: MomentoDaCobranca,
 ): AvisoDeCobranca | null {
@@ -133,6 +134,7 @@ export function montarAvisoDeCobranca(
     valor_centavos: cobranca.valorCentavos,
     vence_em: cobranca.venceEm,
     link: `${SITE_URL}/minha-conta/pedidos/${pedido.id}`,
+    ...(optinWhatsappDoPedido(pedido.metaData) ? {} : { optin_whatsapp: false as const }),
   };
 }
 
@@ -173,6 +175,10 @@ export async function enviarCobranca(
   const { env = process.env, enviar = avisarPeloWhatsapp, marcar = marcarPadrao } = deps;
   if (!cobrancaLigada(env)) {
     return { enviado: false, motivo: "cobrança pelo WhatsApp desligada (PAINEL_ENVIAR_COBRANCA)", podeTentarDeNovo: false };
+  }
+  // Quem desmarcou a caixa de WhatsApp não recebe cobrança (e o cron não insiste).
+  if (!optinWhatsappDoPedido(pedido.metaData)) {
+    return { enviado: false, motivo: "o cliente desmarcou o aviso por WhatsApp", podeTentarDeNovo: false };
   }
   const enviadas = cobrancasJaEnviadas(pedido.metaData);
   const esta = marca(cobranca.forma, momento);

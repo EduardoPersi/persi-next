@@ -18,6 +18,7 @@ import {
   transitionCheckoutAttempt,
 } from "@/lib/commerce/checkoutAttempt";
 import { moneyToNumber } from "@/lib/formatting/money";
+import { sessaoDoCarrinho } from "@/lib/painel/carrinho";
 import { enviarCobranca } from "@/lib/painel/cobranca";
 import { avisarSituacaoDoPedido } from "@/lib/painel/pedido";
 import { origemDoPedidoDosCookies } from "@/lib/tracking/servidor";
@@ -270,6 +271,9 @@ function getErrorStatus(error: unknown): number {
 export async function POST(request: Request) {
   const cookieStore = await cookies();
   let activeCartToken = cookieStore.get(CART_TOKEN_COOKIE)?.value;
+  // A `sessao` do pedido é o hash do token que o navegador tem (o mesmo do
+  // `cart.updated`), antes de o WooCommerce poder trocá-lo.
+  const sessaoDoPedido = activeCartToken ? sessaoDoCarrinho(activeCartToken) : undefined;
   // Origem da compra (cookies de rastreio), gravada no pedido. Nunca lança.
   const orderOrigin = origemDoPedidoDosCookies(cookieStore);
   const startedAt = Date.now();
@@ -494,6 +498,8 @@ export async function POST(request: Request) {
           : undefined,
         couponCodes: cart.coupons.map(({ code }) => code),
         origin: orderOrigin,
+        sessao: sessaoDoPedido,
+        whatsappOptIn: input.whatsappOptIn,
       }));
     orderId = order.id;
     logPaymentMilestone({

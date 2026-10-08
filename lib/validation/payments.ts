@@ -8,6 +8,8 @@ const documentSchema = z
   .refine(isValidBrazilianDocument, "CPF ou CNPJ inválido.");
 const customerNoteSchema = z.string().trim().max(500).optional();
 const expectedAmountSchema = z.number().finite().positive().optional();
+// A caixa de WhatsApp do checkout. Só vira metadado do pedido. Ausente = marcado.
+const whatsappOptInSchema = z.boolean().optional();
 
 export const paymentInitiationSchema = z.discriminatedUnion("method", [
   z
@@ -17,6 +19,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
       document: documentSchema,
       customerNote: customerNoteSchema,
       expectedAmount: expectedAmountSchema,
+      whatsappOptIn: whatsappOptInSchema,
     })
     .strict(),
   z
@@ -26,6 +29,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
       document: documentSchema,
       customerNote: customerNoteSchema,
       expectedAmount: expectedAmountSchema,
+      whatsappOptIn: whatsappOptInSchema,
     })
     .strict(),
   z
@@ -39,6 +43,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
       holderDocument: documentSchema,
       customerNote: customerNoteSchema,
       expectedAmount: expectedAmountSchema,
+      whatsappOptIn: whatsappOptInSchema,
     })
     .strict(),
   z
@@ -49,6 +54,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
       holderDocument: documentSchema,
       customerNote: customerNoteSchema,
       expectedAmount: expectedAmountSchema,
+      whatsappOptIn: whatsappOptInSchema,
     })
     .strict(),
   z
@@ -59,6 +65,7 @@ export const paymentInitiationSchema = z.discriminatedUnion("method", [
       holderDocument: documentSchema,
       customerNote: customerNoteSchema,
       expectedAmount: expectedAmountSchema,
+      whatsappOptIn: whatsappOptInSchema,
     })
     .strict(),
 ]);

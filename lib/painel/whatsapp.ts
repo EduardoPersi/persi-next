@@ -38,6 +38,10 @@ export type AvisoDePedido = {
    */
   pago?: boolean;
   email?: string;
+  /** O mesmo `sessao` do `cart.updated` (hash do token do carrinho): o painel encerra a recuperação desse carrinho. */
+  sessao?: string;
+  /** A caixa de WhatsApp do checkout. Ausente = marcado. O painel não manda WhatsApp ao cliente se for `false`. */
+  optin_whatsapp?: boolean;
   /** Origem da compra (UTM, gclid…). O painel grava na primeira vez que o pedido vira pago. */
   origem?: OrigemDaVisita;
   /**
@@ -87,6 +91,8 @@ export type AvisoDeCobranca = {
   /** Pix: data e hora ISO do vencimento. Boleto: AAAA-MM-DD. */
   vence_em: string;
   link?: string;
+  /** Só existe quando o cliente DESMARCOU a caixa de WhatsApp: o site não envia (ver `avisarPeloWhatsapp`). */
+  optin_whatsapp?: false;
 };
 
 /**
@@ -110,6 +116,8 @@ export type AvisoDeAndamento = {
   transportadora?: string;
   rastreio?: string;
   link?: string;
+  /** Só existe quando o cliente DESMARCOU a caixa de WhatsApp: o site não envia (ver `avisarPeloWhatsapp`). */
+  optin_whatsapp?: false;
 };
 
 export type Aviso = AvisoDePedido | AvisoDeCobranca | AvisoDeAndamento | AvisoDeCodigo;
@@ -134,6 +142,15 @@ function configuracao() {
  * porta que não vai abrir.
  */
 export async function avisarPeloWhatsapp(aviso: Aviso): Promise<ResultadoDoAviso> {
+  // Quem desmarcou a caixa de WhatsApp não recebe cobrança nem andamento.
+  // Pedido antigo, sem a marca, segue como sempre.
+  if ((aviso.tipo === "cobranca" || aviso.tipo === "andamento") && aviso.optin_whatsapp === false) {
+    return {
+      enviado: false,
+      motivo: "o cliente desmarcou o aviso por WhatsApp",
+      podeTentarDeNovo: false,
+    };
+  }
   const config = configuracao();
   if (!config) {
     // Sem configuração não é erro do cliente: é o site que ainda não foi

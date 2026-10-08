@@ -44,11 +44,11 @@ test("a caixa de opt-in fica junto do telefone, com o texto aprovado", () => {
   assert.ok(optIn.includes("WhatsApp"));
 });
 
-test("nesta etapa o opt-in ainda não vai para o servidor nem para o pedido", () => {
+test("o opt-in sai do checkout só junto do pagamento, como campo opcional", () => {
   const form = read("components/Checkout/CheckoutForm.tsx");
-  assert.ok(!form.includes("whatsappOptIn"));
-  const payment = read("app/api/checkout/payment/route.ts");
-  assert.ok(!payment.includes("whatsappOptIn"));
+  assert.ok(form.includes("whatsappOptIn: values.whatsappOptIn,"));
+  // Nada de opt-in nas etapas de endereço, frete ou total.
+  assert.ok(!form.includes("calculateShippingPostcode(whatsappOptIn"));
 });
 
 test("o contrato descreve cart.updated, pedido com sessao e o endpoint recuperar", () => {

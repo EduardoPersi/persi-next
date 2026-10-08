@@ -1,5 +1,6 @@
 import type { CheckoutTransferItem } from "@/lib/commerce/checkoutTransfer";
 import type { CheckoutStoreAddress } from "@/types/checkout";
+import { OPTIN_WHATSAPP_META, optinParaMeta, SESSAO_META } from "../../lib/painel/optin.ts";
 import { rastreiosDoPedido } from "../../lib/rastreio/melhorEnvio.ts";
 import { WooCommerceRestError } from "./restError.ts";
 
@@ -289,6 +290,10 @@ export interface CreatePendingOrderInput {
   // relatórios e a tela de confirmação não conseguiam mostrar a entrega.
   shippingLine?: { name: string; amount: number; methodId: string };
   couponCodes?: string[];
+  // `sessao` (hash do token do carrinho) e a escolha de WhatsApp do cliente:
+  // só metadados, lib/painel/optin.ts. Opcionais: sem eles o pedido nasce como antes.
+  sessao?: string;
+  whatsappOptIn?: boolean;
   // Origem da compra já serializada (lib/tracking/servidor.ts). Opcional: sem
   // cookies de rastreio o pedido nasce exatamente como antes.
   origin?: string;
@@ -366,6 +371,10 @@ export async function createPendingOrder(
       { key: PAYMENT_PROVIDER_META, value: provider },
       { key: CHECKOUT_OWNER_TOKEN_META, value: input.ownerToken },
       ...(input.origin ? [{ key: ORDER_ORIGIN_META, value: input.origin }] : []),
+      ...(input.sessao ? [{ key: SESSAO_META, value: input.sessao }] : []),
+      ...(input.whatsappOptIn !== undefined
+        ? [{ key: OPTIN_WHATSAPP_META, value: optinParaMeta(input.whatsappOptIn) }]
+        : []),
     ],
   });
 
