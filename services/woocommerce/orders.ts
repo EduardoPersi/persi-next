@@ -1,5 +1,6 @@
 import type { CheckoutTransferItem } from "@/lib/commerce/checkoutTransfer";
 import type { CheckoutStoreAddress } from "@/types/checkout";
+import { rastreiosDoPedido } from "../../lib/rastreio/melhorEnvio.ts";
 import { WooCommerceRestError } from "./restError.ts";
 
 export { WooCommerceRestError };
@@ -25,6 +26,12 @@ export interface WooCommerceOrder {
   /** Para o aviso de pedido pelo WhatsApp (lib/painel/whatsapp.ts). */
   billingPhone: string;
   metaData: Record<string, string>;
+  /**
+   * Códigos de rastreio do Melhor Envio gravados pelo plugin no pedido (meta
+   * `_melhor_envio_tracking_codes`, que é uma LISTA e por isso não cabe em
+   * `metaData`, que só guarda texto). Ver lib/painel/rastreio.ts.
+   */
+  rastreios?: string[];
   /**
    * Para onde e o que entregar, e por qual frete (fase 7 do painel: o pedido
    * pago de entrega da loja vira entrega na fila do motorista). Opcional:
@@ -188,6 +195,7 @@ function toOrder(response: WooCommerceOrderApiResponse): WooCommerceOrder {
       .join(" "),
     billingPhone: response.billing?.phone ?? "",
     metaData,
+    rastreios: rastreiosDoPedido(response.meta_data),
     entrega: dadosDaEntrega(response, metaData),
   };
 }

@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { CustomerWorkspacePage } from "@/components/Account/CustomerWorkspacePage";
 import { parseOrderId } from "@/lib/account/orders";
 import { AccountServiceError } from "@/services/account/client";
+import { urlDoRastreio } from "@/lib/rastreio/melhorEnvio";
 import { getAccountOrder } from "@/services/account/orders";
+import { getOrderById } from "@/services/woocommerce/orders";
 import { getServerAccountSession, getServerAccountToken } from "@/services/account/serverSession";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +22,18 @@ const Address = ({ value }: { value: { firstName: string; lastName: string; comp
   </address>
 );
 
+// O rastreio do Melhor Envio mora no pedido do WooCommerce (o plugin do
+// WordPress o grava) e não no formato do plugin de conta, que é validado
+// campo a campo. Só é chamado DEPOIS de `getAccountOrder` ter confirmado que o
+// pedido é do cliente, e qualquer falha só esconde a seção — a página não cai.
+async function buscarRastreios(orderId: number): Promise<string[]> {
+  try {
+    return (await getOrderById(orderId)).rastreios ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [session, token] = await Promise.all([getServerAccountSession(), getServerAccountToken()]);
   if (!session || !token) redirect("/entrar");
@@ -31,12 +45,20 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     const missing = error instanceof AccountServiceError && error.status === 404;
     return <CustomerWorkspacePage title={missing ? "Pedido não encontrado" : "Detalhes do pedido"} session={session}><p role="alert">{missing ? "Pedido não encontrado." : "Não foi possível carregar seus pedidos agora."}</p></CustomerWorkspacePage>;
   }
+  const rastreios = await buscarRastreios(order.id);
   return (
     <CustomerWorkspacePage title={`Pedido #${order.number}`} session={session}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(order.dateCreated))}</p>
         <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-primary">{order.statusLabel}</span>
       </div>
+      {rastreios.length > 0 && <section className="mt-7 rounded-xl border border-blue-100 bg-blue-50 p-5" aria-labelledby="rastreio-titulo">
+        <h2 id="rastreio-titulo" className="text-xl font-bold text-primary-hover">Acompanhe seu envio</h2>
+        <ul className="mt-3 grid gap-2">{rastreios.map((codigo) => <li key={codigo} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>Código de rastreio: <strong className="font-mono">{codigo}</strong></span>
+          <a href={urlDoRastreio(codigo)} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline underline-offset-2">Rastrear a encomenda</a>
+        </li>)}</ul>
+      </section>}
       <section className="mt-7"><h2 className="text-xl font-bold text-primary-hover">Itens</h2>
         <div className="mt-4 grid gap-4">{order.items.map((item) => <article key={item.id} className="flex gap-4 rounded-xl border p-4">
           <Image src={item.image.src} alt={item.image.alt} width={88} height={88} className="h-22 w-22 rounded-xl object-contain" />
