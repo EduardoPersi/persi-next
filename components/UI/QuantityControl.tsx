@@ -65,6 +65,9 @@ export function QuantityControl({
   notice,
 }: QuantityControlProps) {
   const [draft, setDraft] = useState<string | null>(null);
+  // Qual botão foi tocado: o ícone de carregando entra no lugar do ícone dele,
+  // e o número do campo nunca fica coberto.
+  const [touched, setTouched] = useState<"decrease" | "increase" | null>(null);
   const stretches = size === "lg" && fullWidth;
   const buttonClass = clsx(
     "flex h-full shrink-0 items-center justify-center text-foreground transition-colors hover:bg-slate-100 active:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent",
@@ -75,6 +78,7 @@ export function QuantityControl({
     if (draft === null) return;
     const raw = draft;
     setDraft(null);
+    setTouched(null);
     onCommit(raw);
   };
 
@@ -95,9 +99,16 @@ export function QuantityControl({
           className={buttonClass}
           disabled={disabled || !canDecrease}
           aria-label={`Diminuir ${label.toLocaleLowerCase("pt-BR")}`}
-          onClick={onDecrease}
+          onClick={() => {
+            setTouched("decrease");
+            onDecrease();
+          }}
         >
-          <Minus className="h-4 w-4" aria-hidden="true" />
+          {pending && touched === "decrease" ? (
+            <LoaderCircle className="h-4 w-4 animate-spin text-primary" aria-hidden="true" />
+          ) : (
+            <Minus className="h-4 w-4" aria-hidden="true" />
+          )}
         </button>
         <div className={clsx("relative h-full", size === "lg" ? "min-w-0 flex-1" : "shrink-0")}>
           <input
@@ -123,22 +134,22 @@ export function QuantityControl({
               INPUT_CLASSES[size],
             )}
           />
-          {pending ? (
-            <LoaderCircle
-              size={14}
-              className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 animate-spin text-primary"
-              aria-hidden="true"
-            />
-          ) : null}
         </div>
         <button
           type="button"
           className={buttonClass}
           disabled={disabled || !canIncrease}
           aria-label={`Aumentar ${label.toLocaleLowerCase("pt-BR")}`}
-          onClick={onIncrease}
+          onClick={() => {
+            setTouched("increase");
+            onIncrease();
+          }}
         >
-          <Plus className="h-4 w-4" aria-hidden="true" />
+          {pending && touched === "increase" ? (
+            <LoaderCircle className="h-4 w-4 animate-spin text-primary" aria-hidden="true" />
+          ) : (
+            <Plus className="h-4 w-4" aria-hidden="true" />
+          )}
         </button>
       </div>
       {error ? (

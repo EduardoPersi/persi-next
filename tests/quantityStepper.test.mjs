@@ -126,3 +126,19 @@ test("produto, visualização rápida e comprados juntos usam o mesmo controle, 
     assert.ok(!source.includes("Diminuir quantidade de"));
   }
 });
+
+test("o ícone de carregando entra no lugar do ícone do botão tocado e nunca cobre o número", () => {
+  const control = read("components/UI/QuantityControl.tsx");
+  assert.ok(control.includes('pending && touched === "decrease" ?'));
+  assert.ok(control.includes('pending && touched === "increase" ?'));
+  assert.ok(control.includes('setTouched("decrease")'));
+  assert.ok(control.includes('setTouched("increase")'));
+  // Nada de spinner por cima do campo.
+  assert.ok(!control.includes("absolute"));
+  assert.equal(control.split("<LoaderCircle").length - 1, 2);
+  // Os dois botões continuam travados durante a atualização.
+  const stepper = read("components/UI/QuantityStepper.tsx");
+  assert.ok(stepper.includes("disabled={isBusy}"));
+  assert.ok(control.includes("disabled={disabled || !canDecrease}"));
+  assert.ok(control.includes("disabled={disabled || !canIncrease}"));
+});
