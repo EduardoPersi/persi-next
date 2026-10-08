@@ -77,6 +77,7 @@ test("o rascunho guarda só os campos permitidos e nunca dados sensíveis", () =
     "orderNote",
     "shipToBillingAddress",
     "shippingAddress",
+    "whatsappOptIn",
   ]);
 });
 
@@ -249,4 +250,28 @@ test("cliente logado com perfil válido abre em Entrega; visitante não", () => 
     }),
     "profile",
   );
+});
+
+test("opt-in de WhatsApp: marcado por padrão, e desmarcar nunca é desfeito pelo rascunho", () => {
+  assert.equal(checkoutDefaultValues.whatsappOptIn, true);
+
+  // Desmarcado é lembrado entre visitas...
+  const refused = filledValues({ whatsappOptIn: false });
+  const draft = parseCheckoutDraft(serializeCheckoutDraft(refused, NOW), NOW);
+  assert.equal(draft?.whatsappOptIn, false);
+  assert.equal(mergeCheckoutDraft(checkoutDefaultValues, draft).whatsappOptIn, false);
+
+  // ...e um rascunho antigo, sem o campo, não desmarca ninguém.
+  const legacy = JSON.stringify({
+    v: 1,
+    savedAt: NOW,
+    values: { contact: { firstName: "Ana" } },
+  });
+  const old = parseCheckoutDraft(legacy, NOW);
+  assert.equal(old?.whatsappOptIn, true);
+  assert.equal(mergeCheckoutDraft(checkoutDefaultValues, old).whatsappOptIn, true);
+
+  // Quem já desmarcou na tela não é remarcado pelo rascunho.
+  const current = { ...checkoutDefaultValues, whatsappOptIn: false };
+  assert.equal(mergeCheckoutDraft(current, old).whatsappOptIn, false);
 });

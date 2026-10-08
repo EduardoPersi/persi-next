@@ -2,6 +2,7 @@
 
 import { useFormContext, useWatch } from "react-hook-form";
 import { CheckoutField } from "./CheckoutField";
+import { CheckoutWhatsAppOptIn } from "./CheckoutWhatsAppOptIn";
 import type { CheckoutFormValues } from "@/types/checkout";
 import {
   formatBrazilianCnpj,
@@ -59,6 +60,7 @@ export function CheckoutContactForm() {
           maxLength={15}
           placeholder="(11) 99999-9999"
         />
+        <CheckoutWhatsAppOptIn />
       </div>
       <fieldset className="min-w-0 sm:col-span-2">
         <legend className="mb-1.5 block text-xs font-medium text-foreground">

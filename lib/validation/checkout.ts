@@ -67,6 +67,7 @@ export const checkoutSchema = z
     shippingAddress: inactiveAddressSchema,
     includeOrderNote: z.boolean(),
     orderNote: z.string().trim().max(500, "Informe até 500 caracteres."),
+    whatsappOptIn: z.boolean(),
     acceptsTerms: z.boolean().refine((value) => value, {
       message: "Você precisa aceitar os termos para continuar.",
     }),
@@ -128,5 +129,6 @@ export const checkoutDefaultValues: CheckoutFormValues = {
   shippingAddress: { ...emptyCheckoutAddress },
   includeOrderNote: false,
   orderNote: "",
+  whatsappOptIn: true,
   acceptsTerms: false,
 };
