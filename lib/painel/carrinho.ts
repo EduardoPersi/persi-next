@@ -53,6 +53,8 @@ export interface ItemDoCarrinhoParaOPainel {
   preco_centavos: number;
   url: string | null;
   imagem: string | null;
+  /** Só em produto com variação: os atributos escolhidos, para recriar o item. */
+  variacao?: Array<{ atributo: string; valor: string }>;
 }
 
 export interface CartUpdated {
@@ -92,6 +94,14 @@ function itemParaOPainel(item: CartItem, siteUrl: string): ItemDoCarrinhoParaOPa
     preco_centavos: Math.round(item.price * 100),
     url: urlDoItem(item, siteUrl),
     imagem: item.image?.src ?? null,
+    ...(item.variation.length > 0
+      ? {
+          variacao: item.variation.map((atributo) => ({
+            atributo: atributo.attribute,
+            valor: atributo.value,
+          })),
+        }
+      : {}),
   };
 }
 

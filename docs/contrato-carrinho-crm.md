@@ -74,6 +74,17 @@ enviado (`itens: []`).
       "preco_centavos": 3490,
       "url": "https://persimateriais.com.br/produto/cano-pvc-25mm-6m",
       "imagem": "https://persimateriais.com.br/wp-content/uploads/cano.webp"
+    },
+    {
+      "produto_id": 5120,
+      "variacao_id": 5120,
+      "sku": "TIN-ACR-18-BR",
+      "nome": "Tinta acrílica 18L",
+      "quantidade": 1,
+      "preco_centavos": 28990,
+      "url": "https://persimateriais.com.br/produto/tinta-acrilica-18l",
+      "imagem": null,
+      "variacao": [{ "atributo": "Cor", "valor": "Branco" }]
     }
   ],
   "total_centavos": 6980,
@@ -94,7 +105,7 @@ Campos:
 | `contato.nome` | Pode vir vazio. `email` e `telefone`: pelo menos um é válido. |
 | `optin_whatsapp` | `false` quando o cliente desmarcou a caixa. **O CRM não envia recuperação** nesse caso (pode guardar o carrinho para estatística). |
 | `etapa` | `perfil`, `entrega` ou `pagamento`: onde o cliente parou. |
-| `itens` | Lista **completa** do carrinho (substitui a anterior). `variacao_id` é `null` em produto simples. |
+| `itens` | Lista **completa** do carrinho (substitui a anterior). `variacao_id` é `null` em produto simples. Em produto com variação, `variacao` traz os atributos escolhidos (`atributo`/`valor`); o CRM guarda como veio e devolve igual em `recuperar`. |
 | `total_centavos` | Soma dos itens menos descontos, como o carrinho mostra. Sem frete. Informativo: o site recalcula tudo ao recuperar. |
 | `cupom` | Código do cupom aplicado, ou `null`. |
 | `origem` | O mesmo objeto de origem que o `pedido` já leva (`primeiro_toque`, `ultimo_toque`, e com consentimento `ga_client_id`, `fbp`, `fbc`). O **servidor** lê dos cookies de origem, respeitando o consentimento; o navegador não manda UTM. Pode faltar. |
@@ -136,14 +147,22 @@ Sucesso, `200`:
     "cep": "13201000"
   },
   "itens": [
-    { "produto_id": 4821, "variacao_id": null, "sku": "CAN-PVC-25", "quantidade": 2 }
+    { "produto_id": 4821, "variacao_id": null, "sku": "CAN-PVC-25", "quantidade": 2 },
+    {
+      "produto_id": 5120,
+      "variacao_id": 5120,
+      "sku": "TIN-ACR-18-BR",
+      "quantidade": 1,
+      "variacao": [{ "atributo": "Cor", "valor": "Branco" }]
+    }
   ],
   "cupom": "VOLTA10"
 }
 ```
 
-- `itens` vem do **último** `cart.updated` com itens. Sem preço: o site usa o
-  preço de agora.
+- `itens` vem do **último** `cart.updated` com itens, com `variacao` quando
+  houver. Sem preço: o site usa o preço de agora. Item de produto variável sem
+  `variacao` não pode ser recriado e fica de fora.
 - `cupom`: código ou `null`. O site confere se é válido antes de aplicar.
 - Chamar várias vezes é seguro. O CRM pode registrar "clicou no link" na
   primeira chamada.

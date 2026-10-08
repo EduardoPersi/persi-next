@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { CartPage } from "@/components/Cart/CartPage";
+import { CartRecoveryNotice } from "@/components/Cart/CartRecoveryNotice";
 import { Header } from "@/components/Header/Header";
 import { Container } from "@/components/UI/Container";
 
@@ -18,6 +20,9 @@ export default function CartRoute() {
       <main id="main-content" className="bg-slate-50 py-5 sm:py-8 lg:py-10">
         <Container>
           <h1 className="sr-only">Seu carrinho</h1>
+          <Suspense fallback={null}>
+            <CartRecoveryNotice />
+          </Suspense>
           <CartPage />
         </Container>
       </main>
