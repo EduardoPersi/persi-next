@@ -14,7 +14,6 @@ import {
 
 interface QuantityStepperProps {
   item: CartItem;
-  size?: "sm" | "md";
   // Remover o último item leva para esta rota (ex.: do checkout para o carrinho).
   itemCount?: number;
   emptyCartHref?: string;
@@ -27,7 +26,6 @@ interface QuantityStepperProps {
 // digitar 0) pergunta "Remover este item?".
 export const QuantityStepper = memo(function QuantityStepper({
   item,
-  size = "md",
   itemCount,
   emptyCartHref,
 }: QuantityStepperProps) {
@@ -109,7 +107,6 @@ export const QuantityStepper = memo(function QuantityStepper({
       <QuantityControl
         value={item.quantity}
         label={label}
-        size={size}
         pending={isThisItemPending}
         disabled={isBusy}
         // O "−" fica ativo no mínimo: ele pergunta se quer remover.
@@ -141,7 +138,7 @@ export const QuantityStepper = memo(function QuantityStepper({
             type="button"
             onClick={() => setIsConfirmingRemoval(false)}
             disabled={isBusy}
-            className="min-h-9 rounded-xl border border-secondary bg-white px-3 font-medium text-secondary transition-colors hover:bg-secondary/10 active:bg-secondary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-60"
+            className="min-h-9 rounded-xl border border-slate-300 bg-white px-3 font-medium text-foreground transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-60"
           >
             Cancelar
           </button>

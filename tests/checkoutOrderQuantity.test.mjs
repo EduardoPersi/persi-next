@@ -16,7 +16,7 @@ test("carrinho, mini-carrinho e checkout usam o mesmo QuantityStepper", () => {
   const mobile = read("components/Checkout/CheckoutMobileOrderSummary.tsx");
 
   assert.equal(cart.split("<QuantityStepper item={item} />").length - 1, 2);
-  assert.ok(miniCart.includes('<QuantityStepper item={item} size="sm" />'));
+  assert.ok(miniCart.includes('<QuantityStepper item={item} />'));
   for (const summary of [desktop, mobile]) {
     assert.ok(summary.includes("<QuantityStepper"));
     assert.ok(summary.includes("itemCount={cart.items.length}"));
