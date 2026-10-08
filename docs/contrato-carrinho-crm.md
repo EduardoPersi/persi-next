@@ -211,6 +211,14 @@ O aviso que o site **já envia** quando o pedido passa a pago
 - Sem `sessao`, o CRM pode casar por telefone ou e-mail dentro de uma janela
   curta.
 - Pedido apenas criado (pendente) **não** encerra: só o pago.
+- `sessao` e a escolha de WhatsApp ficam gravadas no pedido (metadados
+  `_persi_sessao` e `_persi_optin_whatsapp`), então valem também para os
+  avisos seguintes do mesmo pedido.
+- **`optin_whatsapp: false` no pedido pago:** o site **continua enviando** este
+  aviso (ele encerra a recuperação e cria a entrega), mas o CRM **não deve
+  escrever ao cliente por WhatsApp**, nem o "Pagamento aprovado". Quem manda
+  essa regra é o CRM; o site só informa a escolha.
+- Pedido antigo, sem o campo, conta como `true`.
 
 ## 7. Opt-in
 
@@ -222,6 +230,17 @@ Texto da caixa no checkout, marcada por padrão, junto do telefone:
 - Desmarcada: `optin_whatsapp: false`. **Nenhuma** mensagem de recuperação.
 - A escolha do cliente vale a cada `cart.updated`. Se mudar para `false`
   depois, o CRM interrompe o que estiver agendado.
+
+Decisão de 08/10/2026: quem desmarcar **não recebe nenhuma mensagem de WhatsApp
+do site**: nem recuperação de carrinho, nem avisos de pedido. E-mails seguem
+normais.
+
+- O **site** deixa de enviar `cobranca` (Pix e boleto) e `andamento`
+  (cancelado, enviado com rastreio, entregue, reembolso) quando o pedido tem
+  `optin_whatsapp: false`. Nada chega ao CRM nesses casos.
+- O **CRM** não envia recuperação de carrinho quando o último `cart.updated`
+  veio com `optin_whatsapp: false`, e não escreve o "Pagamento aprovado"
+  quando o `pedido` pago vem com `optin_whatsapp: false`.
 
 ## 8. Ligar e testar
 
