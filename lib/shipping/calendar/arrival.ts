@@ -8,7 +8,8 @@
  * Três tipos de frete, pelo `methodId` do WooCommerce:
  *   - ENTREGA PRÓPRIA da loja (`flat_rate`, `free_shipping`): não traz prazo; o
  *     prazo vem da ZONA do destino (abaixo);
- *   - RETIRADA (`local_pickup`, `pickup_location`): sem previsão de chegada;
+ *   - RETIRADA (`local_pickup`, `pickup_location`): "Retire hoje" antes do corte
+ *     e "Retire a partir de [próximo dia de trabalho]" depois dele;
  *   - TRANSPORTADORA (Melhor Envio, Olist Envios…): usa os dias úteis que o
  *     provedor informa (`melhorenvio_delivery_time`, `delivery_time` ou
  *     "2 dias úteis" no texto do prazo). Sem prazo, sem previsão.
@@ -23,9 +24,11 @@ import type { CivilDate } from "./civilDate.ts";
 import { civilDateInSaoPaulo } from "./civilDate.ts";
 import {
   DEFAULT_STORE_PLACE,
+  dispatchDate,
   estimateCarrierArrival,
   estimateOwnDeliveryArrival,
   formatArrival,
+  formatPickup,
   type DeliveryContext,
 } from "./deliveryDate.ts";
 import { DEFAULT_HOLIDAYS_CSV } from "./holidaysDefault.ts";
@@ -146,13 +149,29 @@ export function arrivalDateForRate(
   return estimateCarrierArrival(now, transit, context, place);
 }
 
-/** O texto pronto para a tela, ou `null`. */
+/** A retirada na loja é pelo `methodId` do WooCommerce (`local_pickup`, `pickup_location`). */
+export function isPickupRate(rate: ArrivalRate): boolean {
+  return startsWithId(rate.methodId ?? "", PICKUP_METHOD_IDS);
+}
+
+/**
+ * O texto pronto para a tela, ou `null`. Entrega e transportadora: "Chega
+ * quinta, dia 9". Retirada na loja: "Retire hoje" antes do corte e "Retire a
+ * partir de [próximo dia de trabalho]" depois dele.
+ */
 export function arrivalTextForRate(
   rate: ArrivalRate,
   destination: ArrivalDestination,
   now: Date = new Date(),
   options: ArrivalOptions = {},
 ): string | null {
+  const today = civilDateInSaoPaulo(now);
+
+  if (isPickupRate(rate)) {
+    const context: DeliveryContext = options.context ?? { holidays: holidaysPadrao(), store: DEFAULT_STORE_PLACE };
+    return formatPickup(dispatchDate(now, context), today);
+  }
+
   const arrival = arrivalDateForRate(rate, destination, now, options);
-  return arrival ? formatArrival(arrival, civilDateInSaoPaulo(now)) : null;
+  return arrival ? formatArrival(arrival, today) : null;
 }

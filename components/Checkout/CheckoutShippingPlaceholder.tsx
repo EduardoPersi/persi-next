@@ -230,16 +230,19 @@ export function CheckoutShippingPlaceholder() {
       <div aria-live="polite" className="min-h-6 text-xs text-muted">
         {isBusy
           ? "Calculando opções de entrega…"
-          : availableRateCount > 0
-            ? "Opções de entrega atualizadas."
-            : !addressComplete
-              ? postcodeIncomplete
-                ? "Informe um CEP completo para calcular a entrega."
-                : "Informe seu endereço para calcular a entrega."
+          : !addressComplete
+            ? postcodeIncomplete
+              ? "Informe um CEP completo para calcular a entrega."
+              : "Informe seu endereço para calcular a entrega."
+            : availableRateCount > 0
+              ? "Opções de entrega atualizadas."
               : message}
       </div>
 
-      {effectiveStatus === "ready" && packages.length > 0 ? (
+      {/* Endereço incompleto = as opções que ainda estão no carrinho são do CEP
+          ANTERIOR (trocar o CEP limpa o endereço): não aparecem como se valessem
+          para o novo. */}
+      {addressComplete && effectiveStatus === "ready" && packages.length > 0 ? (
         <div className="mt-4 space-y-5">
           {packages.map((shippingPackage, packageIndex) => (
             <fieldset

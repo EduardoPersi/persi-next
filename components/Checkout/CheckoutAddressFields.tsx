@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { usePostcodeAddressLookup } from "@/hooks/usePostcodeAddressLookup";
+import {
+  POSTCODE_BOUND_FIELDS,
+  addressFieldsFromLookup,
+} from "@/lib/commerce/postcodeAddress";
 import { formatPostcode, normalizePostcode } from "@/lib/commerce/shippingCalculator";
 import { BRAZILIAN_STATES } from "@/lib/constants/brazilianStates";
 import type { CheckoutFormValues } from "@/types/checkout";
@@ -93,10 +97,15 @@ export function CheckoutAddressFields({
       shouldDirty: true,
       shouldValidate: true,
     });
-    // O número pertence ao endereço anterior: trocar o CEP não pode deixar um
-    // número de outra rua preenchido.
+    // Número, rua, bairro, cidade e UF pertencem ao CEP anterior: trocar o CEP
+    // não pode deixar um endereço de outro lugar preenchido (ele iria para o
+    // cálculo do frete e para o pedido). Limpar já aqui também evita calcular
+    // o frete com o endereço velho enquanto a busca ainda não respondeu.
     if (postcodeChanged) {
       setValue(`${prefix}.number`, "", { shouldDirty: true });
+      for (const field of POSTCODE_BOUND_FIELDS) {
+        setValue(`${prefix}.${field}`, "", { shouldDirty: true });
+      }
     }
 
     if (normalizePostcode(formatted).length !== 8) {
@@ -113,31 +122,18 @@ export function CheckoutAddressFields({
           superseded = true;
           return;
         }
-        // `address2` do serviço de CEP carrega o bairro (não o
-        // complemento) — ver services/shipping/postcode.ts.
-        if (!address?.address1 || !address.city || !address.state) {
-          setAddressLookupFailed(true);
-          return;
-        }
-        setAddressLookupFailed(false);
-        setValue(`${prefix}.addressLine1`, address.address1, {
-          shouldDirty: true,
-          shouldValidate: true,
-        });
-        if (address.address2) {
-          setValue(`${prefix}.neighborhood`, address.address2, {
+        const fields = addressFieldsFromLookup(address);
+        // CEP geral de cidade pequena (só cidade e UF) ou não encontrado:
+        // aparecem os campos manuais, já com o que se sabe.
+        setAddressLookupFailed(!fields.resolved);
+        if (fields.neighborhoodMissing) setNeighborhoodBackfillFailed(true);
+        for (const field of POSTCODE_BOUND_FIELDS) {
+          if (!fields[field]) continue;
+          setValue(`${prefix}.${field}`, fields[field], {
             shouldDirty: true,
             shouldValidate: true,
           });
         }
-        setValue(`${prefix}.city`, address.city, {
-          shouldDirty: true,
-          shouldValidate: true,
-        });
-        setValue(`${prefix}.state`, address.state, {
-          shouldDirty: true,
-          shouldValidate: true,
-        });
       })
       .catch(() => setAddressLookupFailed(true))
       .finally(() => {

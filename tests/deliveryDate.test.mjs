@@ -22,6 +22,7 @@ import {
   estimateCarrierArrival,
   estimateOwnDeliveryArrival,
   formatArrival,
+  formatPickup,
   isOperatingDay,
 } from "../lib/shipping/calendar/deliveryDate.ts";
 
@@ -336,4 +337,13 @@ test("com a lista padrão, um pedido para Cabreúva chega antes de um para Itu n
   const itu = estimateCarrierArrival(agora, 3, ctx, { uf: "SP", city: "Itu" });
   assert.equal(cabreuva, "2026-06-05");
   assert.equal(itu, "2026-06-08");
+});
+test("textos da retirada na loja", () => {
+  const hoje = "2026-10-07"; // quarta-feira
+  assert.equal(formatPickup("2026-10-07", hoje), "Retire hoje");
+  assert.equal(formatPickup("2026-10-08", hoje), "Retire a partir de amanhã, dia 8");
+  assert.equal(formatPickup("2026-10-09", hoje), "Retire a partir de sexta, dia 9");
+  assert.equal(formatPickup("2026-10-13", hoje), "Retire a partir de terça, dia 13");
+  assert.equal(formatPickup("2026-10-23", hoje), "Retire a partir de sexta, dia 23 de outubro");
+  assert.equal(formatPickup("2026-10-01", hoje), "Retire hoje");
 });

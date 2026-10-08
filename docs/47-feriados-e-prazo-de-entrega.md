@@ -6,7 +6,7 @@ Escrito em 07/10/2026. Código em `lib/shipping/calendar/`.
 
 | Regra | Padrão da Persi |
 |---|---|
-| Corte para sair no mesmo dia | **13h** nos dias de semana, **10h30** aos sábados (um pedido às 13h00 em ponto já é "depois") |
+| Corte para sair no mesmo dia | **13h** nos dias de semana, **10h30** aos sábados (um pedido às 13h00 em ponto, ou às 10h30 no sábado, já é "depois") |
 | Dias em que a loja despacha | segunda a **sábado**, menos feriado (nacional, de SP e de Jundiaí) |
 | Trânsito de transportadora (Melhor Envio) | dias **úteis** segunda a sexta, menos feriado nacional, de SP e do município de **destino** |
 | Entrega própria | conta **dias de operação** (segunda a sábado) conforme a regra da zona (abaixo) |
@@ -42,7 +42,7 @@ dia 9" (mesma semana), "Chega até a próxima terça, dia 13" (semana seguinte) 
 "Chega até sexta, dia 23 de outubro" (mais longe). A semana vai de segunda a
 domingo.
 
-Tudo é configurável: o horário de corte (`CutoffRule`), os dias de operação, a
+**Retirada na loja:** antes do corte, "Retire hoje"; depois dele, "Retire a partir\nde amanhã, dia 8" (ou o próximo dia de trabalho: pula domingo e feriado).\n\nTudo é configurável: o horário de corte (`CutoffRule`), os dias de operação, a
 loja e a lista de feriados. Hoje os padrões estão no código
 (`deliveryDate.ts`, `holidaysDefault.ts`); a ideia é o painel de administração
 passar a fornecê-los.
@@ -78,29 +78,34 @@ declara** na lista.
 
 ## De onde vieram os feriados municipais
 
-Fonte principal: calendário do Tribunal de Justiça de SP para **2026**
-(Provimento CSM nº 2.813/2025, feriados municipais por comarca), conferido com
+Fonte principal: edital do Conselho Superior da Magistratura do TJSP, de
+24/11/2025, com os feriados municipais de **2026** por comarca, conferido com
 decretos municipais e o anexo do TRT-15.
 
-| Cidade | Fixos | Corpus Christi | Observação |
-|---|---|---|---|
-| Jundiaí | 15/08 (Padroeira) | sim | decreto municipal anual |
-| Itupeva | 20/01 | sim | nome a confirmar |
-| Jarinu | 17/04, 16/07 | sim | decreto nº 3.539/2025 |
-| Cabreúva | 24/03, 15/09 | **não** | nomes a confirmar |
-| Itatiba | 08/09 | sim | Lei 827/1967 |
-| Louveira | 20/01, 21/03 | sim | nome do 20/01 a confirmar |
-| Várzea Paulista | 21/03, 15/09 | **não** | |
-| Campo Limpo Paulista | 21/03, 07/10 | sim | Lei 583/77 (07/10) |
-| Cajamar | 20/01, 18/02 | sim | decreto nº 7.650/2025 |
-| Vinhedo | 02/04, 26/07 | sim | nome do 26/07 a confirmar |
-| Itu | 02/02 | sim | Lei 998/1967 |
-| Valinhos | 20/01, 28/05 | sim | nomes a confirmar |
-| Franco da Rocha | 30/11 | sim | |
-| Perus (distrito de São Paulo) | 25/01 | sim | segue a capital; não há feriado próprio do distrito |
+**TJSP** = edital do Conselho Superior da Magistratura, de 24/11/2025 (feriados
+municipais de 2026 por comarca). Lido em
+<https://cnbsp.org.br/2025/11/25/dje-csm-divulga-edital-sobre-aprovacao-de-feriados-municipais-para-2026/>
+e conferido linha a linha contra a lista padrão em 08/10/2026.
 
+| Cidade | Datas fixas | Corpus Christi | Fonte | Observação |
+|---|---|---|---|---|
+| Jundiaí | 15/08 (Padroeira) | sim | TJSP; [decreto municipal](https://jundiai.sp.gov.br/noticias/2026/08/13/feriado-da-padroeira-confira-o-abre-e-fecha-dos-servicos-publicos-em-jundiai/) | confirmado |
+| Itupeva | 20/01 | sim | TJSP | nome do feriado a confirmar |
+| Jarinu | 17/04, 16/07 | sim | [Decreto 3.539/2025](https://jarinu.sp.gov.br/feriados-e-pontos-facultativos-2026); TJSP para as datas fixas | **Corpus Christi está no decreto (seção "Feriados"), mas não consta no edital do TJSP** |
+| Cabreúva | 24/03, 15/09 | **não** | TJSP | nomes a confirmar |
+| Itatiba | 08/09 (Padroeira) | sim | TJSP; [anexo do TRT-15](https://trt15.jus.br/sites/portal/files/roles/institucional/corregedoria/Feriados/Feriados%20Municipais%202026%20-%20Anexo%20%C3%9Anico%20-%20Atualizado%2027_11_2025%20-%20Ato%200000457-92.2025%20-%20P%C3%A1gina1.pdf) (Lei 827/1967) | confirmado |
+| Louveira | 20/01, 21/03 | sim | TJSP | nome do 20/01 a confirmar |
+| Várzea Paulista | 21/03, 15/09 | **não** | TJSP | 21/03 sem nome |
+| Campo Limpo Paulista | 21/03, 07/10 (Padroeira) | sim | TJSP; anexo do TRT-15 (Lei 583/77, para o 07/10) | confirmado |
+| Cajamar | 20/01, 18/02 | sim | TJSP; [decreto municipal](https://cajamar.sp.gov.br/cidade/feriados/) (Decreto 7.650/2025) | confirmado |
+| Vinhedo | 02/04, 26/07 | sim | TJSP | nome do 26/07 a confirmar |
+| Itu | 02/02 | sim | TJSP; anexo do TRT-15 (Lei 998/1967) | confirmado |
+| Valinhos | 20/01, 28/05 | sim | TJSP | nomes a confirmar |
+| Franco da Rocha | 30/11 | sim | TJSP | confirmado |
+| Perus (distrito de São Paulo) | 25/01 | sim | TJSP (São Paulo); [calendário da capital](https://mercadoeconsumo.com.br/26/12/2025/servicos/confira-o-calendario-de-feriados-e-pontos-facultativos-de-sao-paulo-em-2026/amp/) | segue a capital; não há feriado próprio do distrito |
 Nacionais fixos: 01/01, 21/04, 01/05, 07/09, 12/10, 02/11, 15/11, **20/11**
-(nacional desde 2024, Lei 14.759/2023), 25/12. Estadual de SP: 09/07.
+(nacional desde 2024, [Lei 14.759/2023](https://www2.camara.leg.br/legin/fed/lei/2023/lei-14759-21-dezembro-2023-795091-norma-pl.html)), 25/12.
+Estadual de SP: 09/07 ([Lei estadual 9.497/1997](https://www.al.sp.gov.br/documentacao/estudos-e-manuais/feriado-9-julho/)).
 
 ## O que ficou de fora de propósito
 
@@ -126,6 +131,5 @@ móveis são calculados.
   (Jundiaí 15/08, Itupeva, Jarinu, Cabreúva, Louveira, Várzea Paulista, Cajamar,
   Vinhedo, Valinhos, Franco da Rocha). As **datas** estão confirmadas; só o nome
   e a lei faltam.
-- Falta ligar o cálculo ao checkout e à página de produto: depende da regra de
-  **entrega própria por zona** (quantos dias cada cidade leva) e do prazo da
-  transportadora (hoje vem do plugin; depois, do Melhor Envio direto).
+- O prazo já aparece na calculadora de frete e no checkout. Quando o Melhor Envio
+  ligar direto no site, só muda de onde vem o prazo da transportadora.

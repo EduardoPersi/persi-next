@@ -3,10 +3,11 @@
  * administração vai importar (ver o cabeçalho de holidays.ts). É o ponto de
  * partida: o painel passa a ser a fonte e esta lista vira o "valor de fábrica".
  *
- * Fonte dos municipais: calendário do Tribunal de Justiça de SP para 2026
- * (Provimento CSM nº 2.813/2025, por comarca), conferido com os decretos das
- * prefeituras de Jundiaí, Jarinu e Cajamar e com o anexo do TRT-15 (Itatiba, Itu
- * e Campo Limpo Paulista). Detalhes, conflitos entre sites e o que NÃO entrou:
+ * Fonte dos municipais: edital do Conselho Superior da Magistratura do TJSP de
+ * 24/11/2025 (feriados municipais de 2026, por comarca), conferido com os
+ * decretos das prefeituras de Jundiaí, Jarinu e Cajamar e com o anexo do TRT-15
+ * (Itatiba, Itu e Campo Limpo Paulista). Jarinu: o Corpus Christi está no decreto
+ * municipal, mas não no edital do TJSP. Detalhes, conflitos entre sites e o que NÃO entrou:
  * docs/47-feriados-e-prazo-de-entrega.md.
  *
  * ATENÇÃO: o calendário do TJSP é de 2026. As datas fixas costumam se repetir

@@ -68,9 +68,31 @@ test("transportadora sem prazo, ou com prazo absurdo, não tem previsão", () =>
   assert.equal(transitDaysOfRate({ deliveryTime: "9999 dias" }), null);
 });
 
-test("retirada na loja não tem previsão de chegada", () => {
-  assert.equal(arrivalTextForRate({ methodId: "local_pickup:4" }, jundiai, sp("2026-10-07T10:00:00")), null);
-  assert.equal(arrivalTextForRate({ methodId: "pickup_location" }, jundiai, sp("2026-10-07T10:00:00")), null);
+test("retirada na loja: 'Retire hoje' antes do corte, e a partir do próximo dia de trabalho depois dele", () => {
+  const retirada = { methodId: "local_pickup:4" };
+  assert.equal(arrivalTextForRate(retirada, jundiai, sp("2026-10-07T10:00:00")), "Retire hoje");
+  assert.equal(arrivalTextForRate(retirada, jundiai, sp("2026-10-07T12:59:00")), "Retire hoje");
+  assert.equal(arrivalTextForRate(retirada, jundiai, sp("2026-10-07T13:00:00")), "Retire a partir de amanhã, dia 8");
+  assert.equal(arrivalTextForRate({ methodId: "pickup_location" }, jundiai, sp("2026-10-07T10:00:00")), "Retire hoje");
+});
+
+test("retirada: sexta à tarde vira sábado (a loja abre); sábado depois do corte pula domingo e feriado", () => {
+  const retirada = { methodId: "local_pickup:4" };
+  assert.equal(arrivalTextForRate(retirada, jundiai, sp("2026-10-09T14:00:00")), "Retire a partir de amanhã, dia 10");
+  assert.equal(arrivalTextForRate(retirada, jundiai, sp("2026-10-10T10:29:00")), "Retire hoje");
+  assert.equal(arrivalTextForRate(retirada, jundiai, sp("2026-10-10T10:30:00")), "Retire a partir de terça, dia 13");
+  assert.equal(arrivalTextForRate(retirada, jundiai, sp("2026-10-11T09:00:00")), "Retire a partir de terça, dia 13");
+});
+
+test("retirada em feriado da loja: só no próximo dia de trabalho (Jundiaí, 15/08/2026 é sábado e feriado)", () => {
+  const retirada = { methodId: "local_pickup:4" };
+  assert.equal(arrivalTextForRate(retirada, jundiai, sp("2026-08-15T09:00:00")), "Retire a partir de segunda, dia 17");
+});
+
+test("a retirada não depende do destino nem de transportadora", () => {
+  const retirada = { methodId: "local_pickup:15" };
+  assert.equal(arrivalTextForRate(retirada, itupeva, sp("2026-10-07T10:00:00")), "Retire hoje");
+  assert.equal(arrivalTextForRate(retirada, {}, sp("2026-10-07T10:00:00")), "Retire hoje");
 });
 
 test("frete grátis da loja segue a regra da entrega própria", () => {

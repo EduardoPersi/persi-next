@@ -149,6 +149,24 @@ const MONTH_NAMES = [
 ];
 
 /**
+ * RETIRADA NA LOJA: "Retire hoje" (pedido antes do corte, em dia de operação) ou
+ * "Retire a partir de amanhã, dia 8" / "Retire a partir de terça, dia 13" (o
+ * próximo dia de trabalho da loja, pulando domingo e feriado). Usa o mesmo
+ * corte do despacho.
+ */
+export function formatPickup(date: CivilDate, today: CivilDate): string {
+  const diff = diffInDays(today, date);
+  const { day, month } = parseCivilDate(date);
+  if (diff <= 0) return "Retire hoje";
+  if (diff === 1) return `Retire a partir de amanhã, dia ${day}`;
+
+  const weekday = WEEKDAY_NAMES[weekdayOf(date)];
+  const weeksAhead = diffInDays(mondayOf(today), mondayOf(date)) / 7;
+  if (weeksAhead <= 1) return `Retire a partir de ${weekday}, dia ${day}`;
+  return `Retire a partir de ${weekday}, dia ${day} de ${MONTH_NAMES[month - 1]}`;
+}
+
+/**
  * "Chega hoje", "Chega amanhã, dia 7", "Chega quinta, dia 9" (nesta semana),
  * "Chega até a próxima terça, dia 13" (semana que vem) e, mais longe,
  * "Chega até sexta, dia 23 de outubro". A semana vai de segunda a domingo.
