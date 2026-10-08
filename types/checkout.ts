@@ -27,6 +27,9 @@ export type CheckoutFormValues = {
   shippingAddress: CheckoutAddress;
   includeOrderNote: boolean;
   orderNote: string;
+  // "Quero receber atualizações do pedido e lembretes do meu carrinho pelo
+  // WhatsApp". Marcado por padrão; desmarcar impede a recuperação de carrinho.
+  whatsappOptIn: boolean;
   acceptsTerms: boolean;
 };
 

@@ -35,6 +35,8 @@ export type CheckoutDraftValues = {
   shippingAddress: CheckoutAddress;
   includeOrderNote: boolean;
   orderNote: string;
+  // Só a escolha de receber (ou não) avisos pelo WhatsApp; desmarcar vale.
+  whatsappOptIn: boolean;
 };
 
 function pickAddress(address: CheckoutAddress): CheckoutAddress {
@@ -66,6 +68,7 @@ export function buildCheckoutDraft(
     shippingAddress: pickAddress(values.shippingAddress),
     includeOrderNote: values.includeOrderNote,
     orderNote: values.orderNote,
+    whatsappOptIn: values.whatsappOptIn,
   };
 }
 
@@ -162,6 +165,7 @@ export function parseCheckoutDraft(
     shippingAddress: readAddress(values.shippingAddress),
     includeOrderNote: values.includeOrderNote === true,
     orderNote: readText(values.orderNote),
+    whatsappOptIn: values.whatsappOptIn !== false,
   };
   return isCheckoutDraftEmpty(draft) ? null : draft;
 }
@@ -218,6 +222,8 @@ export function mergeCheckoutDraft(
       current.includeOrderNote ||
       (!current.orderNote && draft.includeOrderNote && Boolean(draft.orderNote)),
     orderNote: fillEmpty(current.orderNote, draft.orderNote),
+    // Desmarcar é uma recusa: nunca é desfeita pelo que veio de antes.
+    whatsappOptIn: current.whatsappOptIn && draft.whatsappOptIn,
   };
 }
 
