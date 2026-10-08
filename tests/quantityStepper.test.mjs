@@ -91,12 +91,20 @@ test("o controle usa as ações existentes do carrinho, trava durante a atualiza
   assert.ok(source.includes("conforme o estoque disponível."));
 });
 
-test("um único visual: botões secundários do site, campo numérico e Enter/saída do campo", () => {
+test("um único visual: cores originais do mini-carrinho, tamanho fixo, campo numérico e Enter/saída do campo", () => {
   const control = read("components/UI/QuantityControl.tsx");
-  assert.ok(control.includes("text-secondary"));
-  assert.ok(control.includes("hover:bg-secondary/10"));
-  assert.ok(control.includes("active:bg-secondary/15"));
-  assert.ok(!control.includes("hover:bg-slate-100"));
+  // Cores e hover originais do mini-carrinho: borda e fundo neutros, ícone escuro.
+  assert.ok(control.includes("border border-slate-200 bg-white"));
+  assert.ok(control.includes("text-foreground"));
+  assert.ok(control.includes("hover:bg-slate-100 active:bg-slate-200"));
+  assert.ok(control.includes("disabled:text-slate-300"));
+  assert.ok(control.includes("focus:border-primary"));
+  // Sem laranja na borda nem nos ícones.
+  assert.ok(!control.includes("secondary"));
+  // Tamanho compacto e fixo: 114 x 36 px, botões quadrados de 36 px.
+  assert.ok(control.includes('md: "h-9 w-[114px] rounded-md"'));
+  assert.ok(control.includes('md: "w-9"'));
+  assert.ok(control.includes('"w-10"'));
   assert.ok(control.includes('inputMode="numeric"'));
   assert.ok(control.includes("onBlur={commit}"));
   assert.ok(control.includes('event.key === "Enter"'));

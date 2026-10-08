@@ -4,7 +4,11 @@ import { useState } from "react";
 import clsx from "clsx";
 import { LoaderCircle, Minus, Plus } from "lucide-react";
 
-type QuantityControlSize = "sm" | "md" | "lg";
+// "md": padrão compacto de todo o site (carrinho, mini-carrinho, checkout,
+// "comprados juntos"): 114 x 36 px (36 + 40 + 36 + bordas), fixo, sem esticar até a borda do cartão.
+// "lg": página de produto e visualização rápida, na altura do botão de comprar
+// (50 px); nas grades da página de produto ocupa a coluna dela (`fullWidth`).
+type QuantityControlSize = "md" | "lg";
 
 interface QuantityControlProps {
   value: number;
@@ -15,9 +19,8 @@ interface QuantityControlProps {
   disabled?: boolean;
   pending?: boolean;
   size?: QuantityControlSize;
-  // Ocupa toda a largura do contêiner (o campo estica; os botões não).
+  // Só no "lg": ocupa a largura da coluna em que está (o campo estica).
   fullWidth?: boolean;
-  className?: string;
   onDecrease: () => void;
   onIncrease: () => void;
   // Valor digitado, aplicado ao sair do campo ou com Enter (nunca a cada tecla).
@@ -26,17 +29,26 @@ interface QuantityControlProps {
   notice?: string;
 }
 
-const SIZE_CLASSES: Record<QuantityControlSize, { button: string; input: string }> = {
-  sm: { button: "h-9 w-9", input: "h-9 min-w-10 text-sm" },
-  md: { button: "h-10 w-10", input: "h-10 min-w-12 text-sm" },
-  lg: { button: "h-[50px] w-12", input: "h-[50px] min-w-12 text-base" },
+const GROUP_CLASSES: Record<QuantityControlSize, string> = {
+  md: "h-9 w-[114px] rounded-md",
+  lg: "h-[50px] rounded-xl",
+};
+
+const BUTTON_CLASSES: Record<QuantityControlSize, string> = {
+  md: "w-9",
+  lg: "w-10",
+};
+
+const INPUT_CLASSES: Record<QuantityControlSize, string> = {
+  md: "text-sm",
+  lg: "min-w-0 text-base",
 };
 
 // Controle visual único de quantidade: [ − ] [ campo editável ] [ + ]. Só
 // desenha e repassa os eventos: quem decide o que fazer (atualizar o carrinho,
 // pedir confirmação de remoção ou só guardar o valor antes de comprar) é o
 // componente que o usa — QuantityStepper (carrinho) ou ProductQuantity (produto).
-// Cores e hover seguem o botão secundário do site (variante "secondary" de Button).
+// Cores e hover são os dos botões −/+ originais do mini-carrinho.
 export function QuantityControl({
   value,
   label,
@@ -46,7 +58,6 @@ export function QuantityControl({
   pending = false,
   size = "md",
   fullWidth = false,
-  className,
   onDecrease,
   onIncrease,
   onCommit,
@@ -54,10 +65,10 @@ export function QuantityControl({
   notice,
 }: QuantityControlProps) {
   const [draft, setDraft] = useState<string | null>(null);
-  const sizes = SIZE_CLASSES[size];
+  const stretches = size === "lg" && fullWidth;
   const buttonClass = clsx(
-    "inline-flex shrink-0 items-center justify-center text-secondary transition-colors hover:bg-secondary/10 active:bg-secondary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent",
-    sizes.button,
+    "flex h-full shrink-0 items-center justify-center text-foreground transition-colors hover:bg-slate-100 active:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent",
+    BUTTON_CLASSES[size],
   );
 
   const commit = () => {
@@ -68,15 +79,15 @@ export function QuantityControl({
   };
 
   return (
-    <div className={clsx("min-w-0", fullWidth && "w-full")}>
+    <div className={clsx("min-w-0", stretches && "w-full")}>
       <div
         role="group"
         aria-label={label}
         aria-busy={pending}
         className={clsx(
-          "items-center overflow-hidden rounded-xl border border-secondary bg-white",
-          fullWidth ? "flex w-full" : "inline-flex",
-          className,
+          "flex items-center overflow-hidden border border-slate-200 bg-white",
+          GROUP_CLASSES[size],
+          stretches ? "w-full" : size === "lg" && "w-[140px]",
         )}
       >
         <button
@@ -86,9 +97,9 @@ export function QuantityControl({
           aria-label={`Diminuir ${label.toLocaleLowerCase("pt-BR")}`}
           onClick={onDecrease}
         >
-          <Minus size={16} aria-hidden="true" />
+          <Minus className="h-4 w-4" aria-hidden="true" />
         </button>
-        <div className="relative min-w-0 flex-1">
+        <div className={clsx("relative h-full", size === "lg" ? "min-w-0 flex-1" : "shrink-0")}>
           <input
             type="text"
             inputMode="numeric"
@@ -99,7 +110,7 @@ export function QuantityControl({
             aria-label={label}
             onFocus={(event) => event.currentTarget.select()}
             onChange={(event) =>
-              setDraft(event.currentTarget.value.replace(/\D/g, "").slice(0, 6))
+              setDraft(event.currentTarget.value.replace(/\D/g, "").slice(0, 4))
             }
             onBlur={commit}
             onKeyDown={(event) => {
@@ -107,14 +118,15 @@ export function QuantityControl({
               if (event.key === "Escape") setDraft(null);
             }}
             className={clsx(
-              "w-full border-x border-secondary/40 bg-white px-1 text-center font-semibold tabular-nums text-foreground outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring disabled:opacity-60",
-              sizes.input,
+              "h-full appearance-none border-x border-slate-200 bg-white text-center font-semibold tabular-nums text-foreground outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30 disabled:opacity-60",
+              size === "lg" ? "w-full" : "w-10",
+              INPUT_CLASSES[size],
             )}
           />
           {pending ? (
             <LoaderCircle
               size={14}
-              className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 animate-spin text-secondary"
+              className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 animate-spin text-primary"
               aria-hidden="true"
             />
           ) : null}
@@ -126,7 +138,7 @@ export function QuantityControl({
           aria-label={`Aumentar ${label.toLocaleLowerCase("pt-BR")}`}
           onClick={onIncrease}
         >
-          <Plus size={16} aria-hidden="true" />
+          <Plus className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
       {error ? (

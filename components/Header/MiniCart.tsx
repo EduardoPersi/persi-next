@@ -123,7 +123,7 @@ export function MiniCart() {
                     </dl>
                   ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-                  <QuantityStepper item={item} size="sm" />
+                  <QuantityStepper item={item} />
                     <p className="text-xs text-slate-400">
                       {item.quantity} ×{" "}
                       <strong className="font-semibold text-primary">

@@ -75,11 +75,8 @@ export function ProductQuantity({
       <QuantityControl
         value={value}
         label={label}
-        size={dense ? "sm" : compact ? "lg" : "md"}
+        size={dense ? "md" : "lg"}
         fullWidth={compact}
-        className={
-          !compact && fullWidthOnMobile ? "flex w-full sm:inline-flex sm:w-auto" : undefined
-        }
         canDecrease={value > limits.minimum}
         canIncrease={value < limits.maximum}
         onDecrease={() => change(Math.max(limits.minimum, value - limits.step))}
