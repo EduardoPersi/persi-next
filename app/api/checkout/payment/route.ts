@@ -7,6 +7,12 @@ import { MIN_BOLETO_AMOUNT } from "@/components/Checkout/paymentMethod";
 import { calculatePaymentTotals } from "@/lib/commerce/paymentDiscount";
 import { getPublicCheckoutCapabilities } from "@/lib/commerce/checkoutConfig";
 import {
+  PAYMENT_RATE_LIMIT_MAX_ATTEMPTS,
+  PAYMENT_RATE_LIMIT_MESSAGE,
+  PAYMENT_RATE_LIMIT_WINDOW_MS,
+  pagamentoRateLimitLigado,
+} from "@/lib/commerce/paymentRateLimit";
+import {
   getCartTokenCookieOptions,
   getExpiredCartTokenCookieOptions,
   getPrivateCartHeaders,
@@ -18,6 +24,7 @@ import {
   transitionCheckoutAttempt,
 } from "@/lib/commerce/checkoutAttempt";
 import { moneyToNumber } from "@/lib/formatting/money";
+import { createUniqueKeyRateLimiter } from "@/lib/network/rateLimit";
 import { sessaoDoCarrinho } from "@/lib/painel/carrinho";
 import { enviarCobranca } from "@/lib/painel/cobranca";
 import { avisarSituacaoDoPedido } from "@/lib/painel/pedido";
@@ -58,6 +65,13 @@ export const revalidate = 0;
 export const runtime = "nodejs";
 
 const GENERIC_ERROR_MESSAGE = "Não foi possível iniciar o pagamento. Tente novamente.";
+
+// 10 tentativas por minuto por IP; a mesma chave de idempotência não conta de
+// novo. PAGAMENTO_RATE_LIMIT=0 desliga (staging).
+const paymentRateLimiter = createUniqueKeyRateLimiter(
+  PAYMENT_RATE_LIMIT_WINDOW_MS,
+  PAYMENT_RATE_LIMIT_MAX_ATTEMPTS,
+);
 
 type PaymentStage =
   | "request_validation"
@@ -298,6 +312,18 @@ export async function POST(request: Request) {
       throw new CheckoutTransferError(400, "Dados de pagamento inválidos");
     }
     const input = parsed.data;
+    if (
+      pagamentoRateLimitLigado() &&
+      paymentRateLimiter.isLimited(request.headers, input.idempotencyKey)
+    ) {
+      const limited = createPrivateResponse(
+        { code: "RATE_LIMITED", message: PAYMENT_RATE_LIMIT_MESSAGE },
+        429,
+        activeCartToken,
+      );
+      limited.headers.set("Retry-After", "60");
+      return limited;
+    }
     checkoutAttemptId = input.idempotencyKey;
     paymentMethod = input.method;
     logPaymentMilestone({
