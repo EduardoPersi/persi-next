@@ -6,7 +6,7 @@ import { checkoutSchema } from "../validation/checkout.ts";
 // sem DOM. A leitura/gravação em si fica em hooks/useCheckoutDraft.ts.
 
 export const CHECKOUT_DRAFT_KEY = "checkout_form_v1";
-export const CHECKOUT_DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const CHECKOUT_DRAFT_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 const DRAFT_VERSION = 1;
 const MAX_TEXT_LENGTH = 500;
 
@@ -21,14 +21,14 @@ export const CHECKOUT_STEP_ORDER: readonly CheckoutStepName[] = [
 // copiando o objeto inteiro), então senha, código de acesso, forma de
 // pagamento, dados de cartão, aceite de termos e o e-mail (vem da
 // identificação, não do formulário) não têm como vazar para o rascunho.
+// CPF/CNPJ (e o tipo PF/PJ, que depende dele) também ficam de fora: documento
+// nunca é guardado no navegador.
 export type CheckoutDraftValues = {
   contact: {
     firstName: string;
     lastName: string;
     company: string;
     phone: string;
-    personType: "fisica" | "juridica";
-    document: string;
   };
   billingAddress: CheckoutAddress;
   shipToBillingAddress: boolean;
@@ -60,8 +60,6 @@ export function buildCheckoutDraft(
       lastName: values.contact.lastName,
       company: values.contact.company,
       phone: values.contact.phone,
-      personType: values.contact.personType,
-      document: values.contact.document,
     },
     billingAddress: pickAddress(values.billingAddress),
     shipToBillingAddress: values.shipToBillingAddress,
@@ -91,7 +89,6 @@ export function isCheckoutDraftEmpty(draft: CheckoutDraftValues): boolean {
     !draft.contact.lastName &&
     !draft.contact.company &&
     !draft.contact.phone &&
-    !draft.contact.document &&
     !draft.orderNote &&
     addressIsEmpty(draft.billingAddress) &&
     addressIsEmpty(draft.shippingAddress)
@@ -159,8 +156,6 @@ export function parseCheckoutDraft(
       lastName: readText(contact.lastName),
       company: readText(contact.company),
       phone: readText(contact.phone),
-      personType: contact.personType === "juridica" ? "juridica" : "fisica",
-      document: readText(contact.document),
     },
     billingAddress: readAddress(values.billingAddress),
     shipToBillingAddress: values.shipToBillingAddress !== false,
@@ -199,7 +194,6 @@ export function mergeCheckoutDraft(
   current: CheckoutFormValues,
   draft: CheckoutDraftValues,
 ): CheckoutFormValues {
-  const documentWasEmpty = !current.contact.document;
   const shippingWasEmpty = addressIsEmpty(current.shippingAddress);
 
   return {
@@ -210,12 +204,6 @@ export function mergeCheckoutDraft(
       lastName: fillEmpty(current.contact.lastName, draft.contact.lastName),
       company: fillEmpty(current.contact.company, draft.contact.company),
       phone: fillEmpty(current.contact.phone, draft.contact.phone),
-      // PF/PJ acompanha o documento: só vem do rascunho junto com ele.
-      personType:
-        documentWasEmpty && draft.contact.document
-          ? draft.contact.personType
-          : current.contact.personType,
-      document: fillEmpty(current.contact.document, draft.contact.document),
     },
     billingAddress: mergeAddress(current.billingAddress, draft.billingAddress),
     shipToBillingAddress:

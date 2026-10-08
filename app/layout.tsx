@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { CartProvider } from "@/components/Cart/CartProvider";
 import { GoogleOneTap } from "@/components/Account/GoogleOneTap";
 import { Footer } from "@/components/Footer/Footer";
@@ -27,10 +27,12 @@ import { getMegaMenuData } from "@/services/menu/menu";
 
 const PERSI_HEADER_COLOR = "#002b57";
 
-const inter = Inter({
+// Fonte local (variável, subconjunto latin): o build não depende de baixar a
+// fonte do Google, o que já falhou na Hostinger.
+const inter = localFont({
+  src: "./fonts/Inter-latin-variable.woff2",
   variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "400 700",
   display: "swap",
 });
 

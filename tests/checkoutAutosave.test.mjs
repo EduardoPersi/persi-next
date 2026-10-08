@@ -36,3 +36,17 @@ test("CheckoutForm liga o autosave, o ?step= e o aviso de saída só para altera
   assert.match(source, /hasUnsavedDraft \|\| paymentMethod !== "inter_pix"/);
   assert.match(source, /useBeforeUnloadWarning\(hasUnsavedProgress && !hasCreatedOrder\)/);
 });
+
+test("logout apaga o rascunho do checkout (esta aba e as outras)", () => {
+  const source = read("hooks/useAccount.tsx");
+  assert.ok(source.includes('import { clearStoredCheckoutDraft } from "@/hooks/useCheckoutDraft"'));
+  assert.equal(source.split("clearStoredCheckoutDraft();").length - 1, 2);
+});
+
+test("a fonte Inter é local, sem depender do Google no build", () => {
+  const layout = read("app/layout.tsx");
+  assert.ok(layout.includes('from "next/font/local"'));
+  assert.ok(!layout.includes("next/font/google"));
+  assert.match(layout, /variable: "--font-inter"/);
+  assert.match(layout, /display: "swap"/);
+});

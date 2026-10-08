@@ -88,11 +88,11 @@ test("lê o que gravou e devolve os mesmos dados", () => {
   const raw = serializeCheckoutDraft(filledValues(), NOW);
   const draft = parseCheckoutDraft(raw, NOW + 1000);
   assert.equal(draft?.contact.firstName, "Maria");
-  assert.equal(draft?.contact.document, "529.982.247-25");
+  assert.equal(draft?.contact.phone, "(11) 98765-4321");
   assert.equal(draft?.billingAddress.addressLine1, "Rua Rangel Pestana");
 });
 
-test("rascunho expira em 7 dias e rejeita lixo, versão antiga e data futura", () => {
+test("rascunho expira em 3 dias e rejeita lixo, versão antiga e data futura", () => {
   const raw = serializeCheckoutDraft(filledValues(), NOW);
   assert.ok(parseCheckoutDraft(raw, NOW + CHECKOUT_DRAFT_TTL_MS));
   assert.equal(parseCheckoutDraft(raw, NOW + CHECKOUT_DRAFT_TTL_MS + 1), null);
@@ -111,7 +111,7 @@ test("campos com tipo errado viram vazio e textos longos são cortados", () => {
     v: 1,
     savedAt: NOW,
     values: {
-      contact: { firstName: 42, lastName: "x".repeat(900), personType: "outro" },
+      contact: { firstName: 42, lastName: "x".repeat(900) },
       billingAddress: "texto",
       orderNote: "Entregar na portaria",
     },
@@ -119,7 +119,6 @@ test("campos com tipo errado viram vazio e textos longos são cortados", () => {
   const draft = parseCheckoutDraft(raw, NOW);
   assert.equal(draft?.contact.firstName, "");
   assert.equal(draft?.contact.lastName.length, 500);
-  assert.equal(draft?.contact.personType, "fisica");
   assert.equal(draft?.billingAddress.postalCode, "");
   assert.equal(draft?.orderNote, "Entregar na portaria");
 });
@@ -142,24 +141,35 @@ test("mescla só preenche campos vazios e nunca mexe no e-mail", () => {
   assert.equal(merged.acceptsTerms, false);
 });
 
-test("PF/PJ vem do rascunho junto com o documento, não sozinho", () => {
+test("CPF/CNPJ e tipo PF/PJ nunca entram no rascunho nem voltam dele", () => {
   const juridica = filledValues({
     contact: { ...filledValues().contact, personType: "juridica", document: "11.222.333/0001-81" },
   });
-  const draft = parseCheckoutDraft(serializeCheckoutDraft(juridica, NOW), NOW);
+  const raw = serializeCheckoutDraft(juridica, NOW);
+  assert.ok(raw);
+  for (const forbidden of ["11.222.333", "11222333", "529.982", "document", "personType"]) {
+    assert.ok(!raw.includes(forbidden), `vazou: ${forbidden}`);
+  }
 
-  const empty = mergeCheckoutDraft(checkoutDefaultValues, draft);
-  assert.equal(empty.contact.personType, "juridica");
+  // Mesmo um rascunho antigo, gravado com documento, é lido sem ele.
+  const legacy = JSON.stringify({
+    v: 1,
+    savedAt: NOW,
+    values: { contact: { firstName: "Ana", document: "529.982.247-25", personType: "juridica" } },
+  });
+  const draft = parseCheckoutDraft(legacy, NOW);
+  assert.equal(draft?.contact.firstName, "Ana");
+  assert.equal("document" in draft.contact, false);
 
-  const withDocument = mergeCheckoutDraft(
+  const merged = mergeCheckoutDraft(
     {
       ...checkoutDefaultValues,
-      contact: { ...checkoutDefaultValues.contact, document: "529.982.247-25" },
+      contact: { ...checkoutDefaultValues.contact, document: "529.982.247-25", personType: "fisica" },
     },
     draft,
   );
-  assert.equal(withDocument.contact.personType, "fisica");
-  assert.equal(withDocument.contact.document, "529.982.247-25");
+  assert.equal(merged.contact.document, "529.982.247-25");
+  assert.equal(merged.contact.personType, "fisica");
 });
 
 test("endereço de entrega diferente e observação são restaurados", () => {

@@ -26,6 +26,16 @@ export function readStoredCheckoutDraft(): CheckoutDraftValues | null {
   }
 }
 
+// Apaga o rascunho salvo (logout, pedido criado). Nunca lança.
+export function clearStoredCheckoutDraft() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(CHECKOUT_DRAFT_KEY);
+  } catch {
+    // Sem acesso ao armazenamento: nada a apagar.
+  }
+}
+
 // Autosave do formulário: grava 500 ms depois da última alteração e também
 // ao esconder/fechar a página (`visibilitychange` e `pagehide`). Devolve se
 // há alteração ainda não gravada — o aviso de saída só deve aparecer nesse
@@ -39,11 +49,7 @@ export function useCheckoutDraft(
 
   useEffect(() => {
     if (disabled) {
-      try {
-        window.localStorage.removeItem(CHECKOUT_DRAFT_KEY);
-      } catch {
-        // Sem acesso ao armazenamento: nada a apagar.
-      }
+      clearStoredCheckoutDraft();
       return;
     }
 
