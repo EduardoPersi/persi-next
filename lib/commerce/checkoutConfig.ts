@@ -1,5 +1,7 @@
 import "server-only";
 
+import { envioDoCarrinhoLigado } from "@/lib/painel/carrinho";
+
 export type CheckoutMode = "next" | "hybrid";
 
 export interface PublicCheckoutCapabilities {
@@ -7,6 +9,8 @@ export interface PublicCheckoutCapabilities {
   boleto: boolean;
   card: boolean;
   wallet: boolean;
+  // Aviso do carrinho ao painel de atendimento (PAINEL_ENVIAR_CARRINHO=1).
+  cartSignal: boolean;
 }
 
 function readBoolean(name: string, fallback: boolean): boolean {
@@ -58,5 +62,6 @@ export function getPublicCheckoutCapabilities(): PublicCheckoutCapabilities {
     // exige uma segunda confirmação independente da flag principal.
     card: cardEnabled && (sandboxConfigured || productionApproved),
     wallet: walletEnabled && (walletSandboxConfigured || walletProductionApproved),
+    cartSignal: envioDoCarrinhoLigado(),
   };
 }

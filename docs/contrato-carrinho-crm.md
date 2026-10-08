@@ -80,9 +80,8 @@ enviado (`itens: []`).
   "moeda": "BRL",
   "cupom": null,
   "origem": {
-    "utm_source": "google",
-    "utm_medium": "cpc",
-    "utm_campaign": "hidraulica"
+    "primeiro_toque": { "utm_source": "google", "utm_medium": "cpc", "utm_campaign": "hidraulica" },
+    "ultimo_toque": { "utm_source": "google", "utm_medium": "cpc", "utm_campaign": "hidraulica" }
   }
 }
 ```
@@ -98,7 +97,7 @@ Campos:
 | `itens` | Lista **completa** do carrinho (substitui a anterior). `variacao_id` é `null` em produto simples. |
 | `total_centavos` | Soma dos itens menos descontos, como o carrinho mostra. Sem frete. Informativo: o site recalcula tudo ao recuperar. |
 | `cupom` | Código do cupom aplicado, ou `null`. |
-| `origem` | UTMs, só com o consentimento de cookies; pode faltar. |
+| `origem` | O mesmo objeto de origem que o `pedido` já leva (`primeiro_toque`, `ultimo_toque`, e com consentimento `ga_client_id`, `fbp`, `fbc`). O **servidor** lê dos cookies de origem, respeitando o consentimento; o navegador não manda UTM. Pode faltar. |
 
 Respostas: `200 {"ok":true}` (também para repetição), `401` chave inválida,
 `422 {"ok":false,"codigo":"…"}` corpo inválido, `429` limite. O site só
