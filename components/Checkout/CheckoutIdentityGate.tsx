@@ -7,6 +7,7 @@ import { useAccount } from "@/hooks/useAccount";
 import { maskCheckoutEmail, normalizeCheckoutEmail } from "@/lib/checkout-auth/validation";
 import { parseAccountSession } from "@/lib/account/validation";
 import type { PublicCheckoutCapabilities } from "@/lib/commerce/checkoutConfig";
+import { readStoredCheckoutPrefill } from "@/lib/commerce/checkoutPrefillStorage";
 import { CheckoutPageClient } from "./CheckoutPageClient";
 import { CheckoutEmailStep } from "./CheckoutEmailStep";
 import { CheckoutPasswordStep } from "./CheckoutPasswordStep";
@@ -60,6 +61,15 @@ export function CheckoutIdentityGate({ capabilities }: CheckoutIdentityGateProps
     } catch {
       window.sessionStorage.removeItem(OTP_STORAGE_KEY);
     }
+  }, []);
+
+  // E-mail vindo do link do vendedor/campanha (?email=…): só preenche o campo
+  // enquanto ele está vazio — nunca sobrescreve o que o cliente digitou nem o
+  // e-mail de um código já enviado.
+  useEffect(() => {
+    const prefilledEmail = readStoredCheckoutPrefill()?.email;
+    if (!prefilledEmail) return;
+    queueMicrotask(() => setEmail((current) => current || prefilledEmail));
   }, []);
 
   useEffect(() => {

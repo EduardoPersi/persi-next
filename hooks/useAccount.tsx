@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { clearStoredCheckoutDraft } from "@/hooks/useCheckoutDraft";
 import type {
   AccountCustomer,
   AccountLoginPayload,
@@ -80,6 +81,7 @@ export function AccountProvider({
     const channel = new BroadcastChannel(AUTH_CHANNEL);
     channel.addEventListener("message", (event) => {
       if (event.data !== "logout") return;
+      clearStoredCheckoutDraft();
       setCustomer(null);
       setStatus("anonymous");
       if (window.location.pathname.startsWith("/minha-conta") || window.location.pathname.startsWith("/checkout")) {
@@ -129,6 +131,9 @@ export function AccountProvider({
         credentials: "same-origin",
       });
     } finally {
+      // O rascunho do checkout tem nome, telefone e endereço: não fica para
+      // a próxima pessoa que usar este navegador.
+      clearStoredCheckoutDraft();
       setCustomer(null);
       setStatus("anonymous");
       if ("BroadcastChannel" in window) {
