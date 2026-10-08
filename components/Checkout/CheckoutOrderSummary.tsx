@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatStoreMoney, isZeroMoney } from "@/lib/formatting/money";
 import type { Cart } from "@/types/cart";
-import { QuantitySelect } from "@/components/UI/QuantitySelect";
+import { QuantityStepper } from "@/components/UI/QuantityStepper";
 import { AnimatedValue } from "@/components/UI/AnimatedValue";
 import { CheckoutCoupon } from "./CheckoutCoupon";
 import {
@@ -82,7 +82,7 @@ export function CheckoutOrderSummary({
                 </p>
               ) : null}
               <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <QuantitySelect item={item} idSuffix="checkout-desktop" />
+                <QuantityStepper item={item} itemCount={cart.items.length} />
                 <strong>
                   <AnimatedValue animationKey={item.total}>
                     {formatter.format(item.total)}
