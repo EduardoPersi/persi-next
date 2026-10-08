@@ -9,7 +9,30 @@ Escrito em 07/10/2026. Código em `lib/shipping/calendar/`.
 | Corte para sair no mesmo dia | **13h** nos dias de semana, **10h** aos sábados (um pedido às 13h00 em ponto já é "depois") |
 | Dias em que a loja despacha | segunda a **sábado**, menos feriado (nacional, de SP e de Jundiaí) |
 | Trânsito de transportadora (Melhor Envio) | dias **úteis** segunda a sexta, menos feriado nacional, de SP e do município de **destino** |
-| Entrega própria | conta **dias de operação** (segunda a sábado) conforme a regra da zona |
+| Entrega própria | conta **dias de operação** (segunda a sábado) conforme a regra da zona (abaixo) |
+
+### Zonas da entrega própria (decisão de 07/10/2026)
+
+| Destino | Regra | Exemplo (corte de 13h) |
+|---|---|---|
+| **Jundiaí** (CEP 13200-000 a 13219-999, ou a cidade) | sai no mesmo dia antes do corte; depois, no dia seguinte | quarta 10h → "Chega hoje"; quarta 14h → "Chega amanhã, dia 8" |
+| **Demais regiões** atendidas | 1 dia antes do corte, 2 depois | quarta 10h → "Chega amanhã"; quarta 14h → "Chega sexta, dia 9" |
+
+A entrega própria é o frete `flat_rate` / `free_shipping` do WooCommerce (hoje o
+"Frete Expresso" de R$ 10 em Jundiaí e R$ 20 em Itupeva); a retirada
+(`local_pickup`) não tem previsão. Transportadoras usam o prazo que o provedor
+informa: `melhorenvio_delivery_time` (Melhor Envio) ou `delivery_time`/texto
+"2 dias úteis" (Olist Envios). Os dias, as zonas e os métodos ficam em
+`lib/shipping/calendar/arrival.ts` (`DEFAULT_OWN_DELIVERY_ZONES`).
+
+**Onde aparece:** na calculadora de frete (carrinho e produto) e no checkout,
+como uma linha verde em cada opção. É calculado no navegador, depois que a
+tela carrega, com a hora de São Paulo.
+
+**Limite conhecido:** a calculadora só sabe o CEP, não a cidade. A zona de
+Jundiaí vale por faixa de CEP; já o feriado **municipal do destino** só entra no
+cálculo quando a cidade é conhecida (no checkout, sim; na calculadora, só os
+feriados nacionais e de SP).
 
 O feriado municipal de **Jundiaí** só decide em que dia o pedido pode **sair**.
 Depois que o pacote sai, o que atrasa o trânsito é o feriado do destino.

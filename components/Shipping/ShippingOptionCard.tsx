@@ -1,5 +1,6 @@
 import { formatStoreMoney, isZeroMoney } from "@/lib/formatting/money";
-import type { CheckoutShippingRate } from "@/types/cart";
+import type { CartAddress, CheckoutShippingRate } from "@/types/cart";
+import { ShippingArrival } from "./ShippingArrival";
 
 function formatDeliveryTime(value: string | undefined): string | undefined {
   const normalized = value?.trim();
@@ -15,6 +16,8 @@ interface ShippingOptionCardProps {
   groupName: string;
   onSelect: () => void;
   rate: CheckoutShippingRate;
+  /** Para a previsão de chegada: CEP, cidade e UF do destino do pacote. */
+  destination?: CartAddress;
   selectable?: boolean;
 }
 
@@ -24,6 +27,7 @@ export function ShippingOptionCard({
   groupName,
   onSelect,
   rate,
+  destination,
   selectable = true,
 }: ShippingOptionCardProps) {
   const descriptionId = `${groupName}-${rate.rateId.replace(/[^a-z0-9_-]/gi, "-")}-description`;
@@ -65,6 +69,14 @@ export function ShippingOptionCard({
             {detail}
           </span>
         ) : null}
+        <ShippingArrival
+          rate={rate}
+          destination={{
+            postcode: destination?.postcode,
+            city: destination?.city,
+            uf: destination?.state,
+          }}
+        />
       </span>
     </>
   );

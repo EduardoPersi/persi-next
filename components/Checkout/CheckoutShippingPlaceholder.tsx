@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
+import { ShippingArrival } from "@/components/Shipping/ShippingArrival";
 import { Button } from "@/components/UI/Button";
 import { useCart } from "@/hooks/useCart";
 import { isAddressComplete } from "@/lib/commerce/checkout";
@@ -305,6 +306,15 @@ export function CheckoutShippingPlaceholder() {
                               : null}
                           </span>
                         ) : null}
+                        <ShippingArrival
+                          rate={rate}
+                          destination={{
+                            postcode: activeAddress?.postalCode,
+                            city: activeAddress?.city,
+                            uf: activeAddress?.state,
+                          }}
+                          className="mt-1 block text-xs font-medium leading-5 text-emerald-700"
+                        />
                       </span>
                     </label>
                   );

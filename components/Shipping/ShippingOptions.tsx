@@ -35,6 +35,7 @@ export function ShippingOptions({
               <ShippingOptionCard
                 key={rate.rateId}
                 rate={rate}
+                destination={shippingPackage.destination}
                 groupName={`shipping-${shippingPackage.packageId}`}
                 checked={
                   selection?.packageId === shippingPackage.packageId &&
