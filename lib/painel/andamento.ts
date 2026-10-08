@@ -31,6 +31,7 @@
  */
 
 import { SITE_URL } from "../routing/storefrontUrls.ts";
+import { optinWhatsappDoPedido } from "./optin.ts";
 import { andamentoLigado, classificarEnvio, FORMA_DE_PAGAMENTO, type PedidoParaAviso } from "./pedido.ts";
 import { avisarPeloWhatsapp, type AvisoDeAndamento, type ResultadoDoAviso } from "./whatsapp.ts";
 
@@ -59,7 +60,9 @@ export interface ExtrasDoAndamento {
   rastreio?: string;
 }
 
-type PedidoDoAndamento = Pick<PedidoParaAviso, "id" | "billingPhone" | "total" | "paymentMethod" | "entrega">;
+type PedidoDoAndamento = Pick<PedidoParaAviso, "id" | "billingPhone" | "total" | "paymentMethod" | "entrega"> & {
+  metaData?: Record<string, string>;
+};
 
 /** O aviso ao painel; `null` sem telefone (não há para onde mandar). */
 export function montarAvisoDeAndamento(
@@ -75,6 +78,7 @@ export function montarAvisoDeAndamento(
     pedido: String(pedido.id),
     evento,
     link: `${SITE_URL}/minha-conta/pedidos/${pedido.id}`,
+    ...(optinWhatsappDoPedido(pedido.metaData) ? {} : { optin_whatsapp: false as const }),
   };
   const forma = pedido.paymentMethod ? FORMA_DE_PAGAMENTO[pedido.paymentMethod] ?? pedido.paymentMethod : undefined;
 
@@ -109,6 +113,10 @@ export async function avisarAndamento(
   const { env = process.env, enviar = avisarPeloWhatsapp } = deps;
   if (!andamentoLigado(env)) {
     return { enviado: false, motivo: "andamento pelo WhatsApp desligado (PAINEL_AVISAR_ANDAMENTO)", podeTentarDeNovo: false };
+  }
+  // Quem desmarcou a caixa de WhatsApp não recebe andamento (nem rastreio).
+  if (!optinWhatsappDoPedido(pedido.metaData)) {
+    return { enviado: false, motivo: "o cliente desmarcou o aviso por WhatsApp", podeTentarDeNovo: false };
   }
   const aviso = montarAvisoDeAndamento(pedido, evento, extras, env);
   if (!aviso) return { enviado: false, motivo: "pedido sem telefone", podeTentarDeNovo: false };

@@ -24,6 +24,7 @@
 
 import { SITE_URL } from "../routing/storefrontUrls.ts";
 import { lerOrigemDoPedido } from "../tracking/servidor.ts";
+import { optinWhatsappDoPedido, sessaoDoPedido } from "./optin.ts";
 import { avisarPedido, type AvisoDePedido, type ResultadoDoAviso } from "./whatsapp.ts";
 import type { DadosDaEntrega } from "../../services/woocommerce/orders.ts";
 
@@ -189,6 +190,11 @@ export function montarAvisoDoPedido(
     link: `${SITE_URL}/minha-conta/pedidos/${pedido.id}`,
   };
   if (pedido.billingEmail) aviso.email = pedido.billingEmail;
+  // Contrato do carrinho (docs/contrato-carrinho-crm.md, seção 6): o painel
+  // encerra a recuperação desse carrinho e respeita a escolha de WhatsApp.
+  const sessao = sessaoDoPedido(pedido.metaData);
+  if (sessao) aviso.sessao = sessao;
+  aviso.optin_whatsapp = optinWhatsappDoPedido(pedido.metaData);
   // Nome e valor no pedido pendente (viram o lead "pedido pendente" no painel)
   // e, com a fase B ligada, também no pago: o painel novo escreve o "Pagamento
   // aprovado" completo (itens, total, entrega). Sem a chave, o aviso de pago

@@ -353,7 +353,14 @@ export function CheckoutForm({
       let body: Record<string, unknown>;
 
       if (paymentMethod === "inter_pix" || paymentMethod === "inter_boleto") {
-        body = { method: paymentMethod, idempotencyKey, document, customerNote, expectedAmount };
+        body = {
+          method: paymentMethod,
+          idempotencyKey,
+          document,
+          customerNote,
+          expectedAmount,
+          whatsappOptIn: values.whatsappOptIn,
+        };
       } else if (paymentMethod === "mercadopago_card") {
         const tokenization = await cardFieldsRef.current?.tokenize();
         if (!tokenization) {
@@ -369,6 +376,7 @@ export function CheckoutForm({
           holderDocument: document,
           customerNote,
           expectedAmount,
+          whatsappOptIn: values.whatsappOptIn,
         };
       } else {
         setStatusMessage(
