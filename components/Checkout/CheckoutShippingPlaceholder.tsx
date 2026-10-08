@@ -11,7 +11,11 @@ import {
   isCheckoutCustomerSynced,
   mapCheckoutFormToWooAddress,
 } from "@/lib/commerce/checkoutAddress";
-import { normalizePostcode } from "@/lib/commerce/shippingCalculator";
+import {
+  cartRatesMatchPostcode,
+  shouldAutoQuotePostcode,
+} from "@/lib/commerce/checkoutShippingAutoQuote";
+import { formatPostcode, normalizePostcode } from "@/lib/commerce/shippingCalculator";
 import {
   pickDefaultShippingRate,
   sortShippingRatesByPrice,
@@ -44,8 +48,13 @@ const shippingFields = [
 ] as const;
 
 export function CheckoutShippingPlaceholder() {
-  const { cart, isCheckoutUpdating, selectShippingRate, updateCustomerAddress } =
-    useCart();
+  const {
+    cart,
+    isCheckoutUpdating,
+    selectShippingRate,
+    updateCustomerAddress,
+    calculateShippingPostcode,
+  } = useCart();
   const { control, getValues, reset, trigger } =
     useFormContext<CheckoutFormValues>();
   const shipToBillingAddress = useWatch({
@@ -88,14 +97,63 @@ export function CheckoutShippingPlaceholder() {
       : "idle",
   );
   const [message, setMessage] = useState("");
+  const packages = cart?.shippingPackages ?? [];
+  const availableRateCount = packages.reduce(
+    (total, shippingPackage) => total + shippingPackage.rates.length,
+    0,
+  );
+  const ratesMatchForm = cartRatesMatchPostcode(
+    activeAddress?.postalCode ?? "",
+    cart?.shippingAddress?.postcode,
+    availableRateCount,
+  );
   const addressRequest = useRef<AbortController | null>(null);
+  const postcodeRequest = useRef<AbortController | null>(null);
+  // Último CEP cotado sozinho: cada CEP é cotado uma única vez.
+  const lastQuotedPostcode = useRef("");
 
   useEffect(
     () => () => {
       addressRequest.current?.abort();
+      postcodeRequest.current?.abort();
     },
     [],
   );
+
+  // Cotação só pelo CEP (sem exigir número nem destinatário): as opções de
+  // entrega aparecem assim que o checkout abre com o CEP já preenchido. Usa a
+  // mesma ação do carrinho da calculadora de frete (calculateShippingPostcode),
+  // que ignora respostas antigas quando outra atualização é mais recente.
+  const quotePostcode = async (postcode: string) => {
+    const digits = normalizePostcode(postcode);
+    lastQuotedPostcode.current = digits;
+    postcodeRequest.current?.abort();
+    const controller = new AbortController();
+    postcodeRequest.current = controller;
+    setStatus("loading-rates");
+    setMessage("");
+    const result = await calculateShippingPostcode(
+      formatPostcode(digits),
+      controller.signal,
+    );
+    if (result.aborted) return;
+    if (!result.success || !result.cart) {
+      setStatus("error");
+      setMessage(result.message);
+      return;
+    }
+    const rateCount = result.cart.shippingPackages.reduce(
+      (total, shippingPackage) => total + shippingPackage.rates.length,
+      0,
+    );
+    if (!rateCount) {
+      setStatus("unavailable");
+      setMessage("Não encontramos uma opção de entrega para este CEP.");
+      return;
+    }
+    setStatus("ready");
+    setMessage("");
+  };
 
   const updateAddress = async () => {
     setStatus("validating");
@@ -107,6 +165,18 @@ export function CheckoutShippingPlaceholder() {
     if (!valid) {
       setStatus("idle");
       setMessage("Confira os dados do endereço para calcular a entrega.");
+      // Mesmo com algum dado pendente, o CEP válido já permite mostrar as opções.
+      if (
+        shouldAutoQuotePostcode({
+          postcode: activeAddress?.postalCode ?? "",
+          addressComplete: false,
+          cartPostcode: cart?.shippingAddress?.postcode,
+          cartRateCount: availableRateCount,
+          lastQuotedPostcode: lastQuotedPostcode.current,
+        })
+      ) {
+        void quotePostcode(activeAddress?.postalCode ?? "");
+      }
       return;
     }
 
@@ -193,6 +263,24 @@ export function CheckoutShippingPlaceholder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addressComplete, addressKey, customerSynced, selectedShippingRateValid]);
 
+  // CEP válido já preenchido (conta, rascunho ou link) mas endereço ainda
+  // incompleto: cota só pelo CEP, uma vez por CEP.
+  useEffect(() => {
+    if (
+      !shouldAutoQuotePostcode({
+        postcode: activeAddress?.postalCode ?? "",
+        addressComplete,
+        cartPostcode: cart?.shippingAddress?.postcode,
+        cartRateCount: availableRateCount,
+        lastQuotedPostcode: lastQuotedPostcode.current,
+      })
+    ) {
+      return;
+    }
+    void quotePostcode(activeAddress?.postalCode ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAddress?.postalCode, addressComplete, cart?.shippingAddress?.postcode]);
+
   const chooseRate = async (packageId: number | string, rateId: string) => {
     if (isCheckoutUpdating || status === "selecting-rate") return;
     setStatus("selecting-rate");
@@ -210,11 +298,6 @@ export function CheckoutShippingPlaceholder() {
     setMessage("Opção de entrega atualizada.");
   };
 
-  const packages = cart?.shippingPackages ?? [];
-  const availableRateCount = packages.reduce(
-    (total, shippingPackage) => total + shippingPackage.rates.length,
-    0,
-  );
   const effectiveStatus =
     availableRateCount > 0 ? "ready" : status;
   const isBusy =
@@ -229,11 +312,13 @@ export function CheckoutShippingPlaceholder() {
       <h3 className="mb-3 text-xs font-bold text-foreground">Entrega</h3>
       <div aria-live="polite" className="min-h-6 text-xs text-muted">
         {isBusy
-          ? "Calculando opções de entrega…"
+          ? "Consultando opções de entrega…"
           : !addressComplete
             ? postcodeIncomplete
               ? "Informe um CEP completo para calcular a entrega."
-              : "Informe seu endereço para calcular a entrega."
+              : ratesMatchForm
+                ? "Opções para este CEP. Complete o endereço para continuar."
+                : "Informe seu endereço para calcular a entrega."
             : availableRateCount > 0
               ? "Opções de entrega atualizadas."
               : message}
@@ -242,7 +327,9 @@ export function CheckoutShippingPlaceholder() {
       {/* Endereço incompleto = as opções que ainda estão no carrinho são do CEP
           ANTERIOR (trocar o CEP limpa o endereço): não aparecem como se valessem
           para o novo. */}
-      {addressComplete && effectiveStatus === "ready" && packages.length > 0 ? (
+      {(addressComplete || ratesMatchForm) &&
+      effectiveStatus === "ready" &&
+      packages.length > 0 ? (
         <div className="mt-4 space-y-5">
           {packages.map((shippingPackage, packageIndex) => (
             <fieldset
@@ -332,8 +419,12 @@ export function CheckoutShippingPlaceholder() {
         <Button
           type="button"
           variant="outline"
-          disabled={!addressComplete || isBusy}
-          onClick={() => void updateAddress()}
+          disabled={postcodeIncomplete || isBusy}
+          onClick={() =>
+            void (addressComplete
+              ? updateAddress()
+              : quotePostcode(activeAddress?.postalCode ?? ""))
+          }
           className="mt-5 w-full sm:w-auto"
         >
           Tentar novamente
