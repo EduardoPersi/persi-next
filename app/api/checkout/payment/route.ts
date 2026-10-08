@@ -19,7 +19,8 @@ import {
 } from "@/lib/commerce/checkoutAttempt";
 import { moneyToNumber } from "@/lib/formatting/money";
 import { enviarCobranca } from "@/lib/painel/cobranca";
-import { avisarSituacaoDoPedido } from "@/lib/painel/pedido";
+import { classificarEnvio, avisarSituacaoDoPedido } from "@/lib/painel/pedido";
+import { calcularPrevisaoCongelada } from "@/lib/painel/previsaoEntrega";
 import { origemDoPedidoDosCookies } from "@/lib/tracking/servidor";
 import { paymentInitiationSchema } from "@/lib/validation/payments";
 import { interPaymentGateway } from "@/services/payments/gateway";
@@ -466,6 +467,21 @@ export async function POST(request: Request) {
       );
     }
 
+    // A data que a tela mostrou ("Chega hoje…"), congelada no pedido para o
+    // painel encaixar a entrega da loja. Só com PAINEL_ENVIAR_PREVISAO_ENTREGA e
+    // só para entrega da loja; sem a chave devolve null e nada muda no pedido.
+    const deliveryForecast = selectedShippingRate?.methodId
+      ? calcularPrevisaoCongelada({
+          rate: selectedShippingRate,
+          destino: {
+            postcode: shippingAddress.postcode,
+            city: shippingAddress.city,
+            uf: shippingAddress.state,
+          },
+          entregaPropria: classificarEnvio(selectedShippingRate.methodId) === "loja",
+        })
+      : null;
+
     const order =
       existingOrder ??
       (await createPendingOrder({
@@ -494,6 +510,7 @@ export async function POST(request: Request) {
           : undefined,
         couponCodes: cart.coupons.map(({ code }) => code),
         origin: orderOrigin,
+        deliveryForecast: deliveryForecast ?? undefined,
       }));
     orderId = order.id;
     logPaymentMilestone({
