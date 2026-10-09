@@ -126,7 +126,7 @@ async function resolveInterOrCardStatus(
     // Diferente de Pix/boleto (reconciliados no caminho ?attempt=), este
     // caminho ainda não persistia uma recusa de cartão no pedido — o pedido
     // ficava "pending" mesmo com o Mercado Pago já tendo respondido rejected.
-    if (category === "failed") {
+    if (category === "failed" || category === "paid") {
       await reconcilePaymentReference("mercadopago", reference, category);
     }
     return { category, order };
@@ -229,11 +229,19 @@ async function resolveStatus(params: {
       }
       if (attempt.payment_method === "mercadopago_card") {
         const charge = await getMercadoPagoCardChargeStatus(attempt.provider_reference);
-        return { category: categorizeMercadoPagoCardStatus(charge.status), order };
+        const category = categorizeMercadoPagoCardStatus(charge.status);
+        if (category === "paid") {
+          await reconcilePaymentReference("mercadopago", attempt.provider_reference, category);
+        }
+        return { category, order };
       }
       if (attempt.payment_method.startsWith("pagbank_")) {
         const charge = await getPagBankCardChargeStatus(attempt.provider_reference);
-        return { category: categorizeCardStatus(charge.status), order };
+        const category = categorizeCardStatus(charge.status);
+        if (category === "paid") {
+          await reconcilePaymentReference("pagbank", attempt.provider_reference, category);
+        }
+        return { category, order };
       }
       return null;
     } catch (error) {

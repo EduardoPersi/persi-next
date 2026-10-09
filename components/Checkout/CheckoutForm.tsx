@@ -392,6 +392,9 @@ export function CheckoutForm({
   const markOrderCreated = () => {
     clearPendingPayment(browserPendingStorage());
     setHasCreatedOrder();
+    // O servidor já esvaziou os itens do carrinho: atualiza o carrinho que o site tem
+    // na tela (mini-carrinho e página do carrinho), senão os produtos continuam lá.
+    void refreshCart();
   };
 
   // Recarregou a página com uma chave pendente (menos de 30 min): consulta o estado
