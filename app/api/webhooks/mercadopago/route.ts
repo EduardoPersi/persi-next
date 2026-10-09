@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { exceedsRequestLimit } from "@/app/api/checkout/checkout-request";
 import { getCardChargeStatus } from "@/services/payments/mercadopago/charge";
-import { categorizeMercadoPagoCardStatus, reconcilePaymentReference } from "@/services/payments/reconcile";
+import { reconcileCardCharge } from "@/services/payments/cardReconcile";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
 
   try {
     const charge = await getCardChargeStatus(paymentId);
-    await reconcilePaymentReference("mercadopago", paymentId, categorizeMercadoPagoCardStatus(charge.status));
+    await reconcileCardCharge("mercadopago", paymentId, charge);
   } catch (error) {
     console.error("[webhook-mercadopago]", { code: error instanceof Error ? error.name : "UNKNOWN" });
     return NextResponse.json({ received: false }, { status: 502, headers: NO_STORE_HEADERS });
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
 
   try {
     const charge = await getCardChargeStatus(paymentId);
-    await reconcilePaymentReference("mercadopago", paymentId, categorizeMercadoPagoCardStatus(charge.status));
+    await reconcileCardCharge("mercadopago", paymentId, charge);
   } catch (error) {
     console.error("[webhook-mercadopago]", { code: error instanceof Error ? error.name : "UNKNOWN" });
     return NextResponse.json({ received: false }, { status: 502, headers: NO_STORE_HEADERS });

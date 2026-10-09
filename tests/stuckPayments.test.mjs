@@ -34,7 +34,7 @@ function pedido(overrides = {}) {
 }
 
 // Dependências de mentira: guardam o que foi chamado.
-function montar({ estado = "PAYMENT_CREATING", mp = null, pb = null, pix = null, erro } = {}) {
+function montar({ estado = "PAYMENT_CREATING", mp = null, pb = null, pix = null, ref = null, erro } = {}) {
   const chamadas = { markPaid: [], markDeclined: [], markNotFound: [], attachReference: [], logs: [], leituras: [] };
   const deps = {
     getAttemptState: async () => estado,
@@ -53,6 +53,11 @@ function montar({ estado = "PAYMENT_CREATING", mp = null, pb = null, pix = null,
         chamadas.leituras.push(["pix", txid]);
         if (erro) throw erro;
         return pix;
+      },
+      byReference: async (order, reference) => {
+        chamadas.leituras.push(["byReference", order.paymentMethod, reference]);
+        if (erro) throw erro;
+        return ref;
       },
     },
     markPaid: async (order, provider, externalId) => chamadas.markPaid.push([order.id, provider, externalId]),
@@ -84,7 +89,7 @@ test("candidatas: pendentes do checkout, sem cobrança guardada, com mais de 3 m
 
 // ---------- o que decide ----------
 test("achou e aprovada: o pedido fica pago, pelo mesmo caminho do webhook", async () => {
-  const { deps, chamadas } = montar({ mp: { externalId: "98765", category: "paid" } });
+  const { deps, chamadas } = montar({ mp: { externalId: "98765", evaluation: { category: "paid" } } });
   assert.equal(await reconcileStuckOrder(pedido(), deps), "paid");
   assert.deepEqual(chamadas.markPaid, [[1501, "mercadopago", "98765"]]);
   assert.deepEqual(chamadas.markDeclined, []);
@@ -94,7 +99,7 @@ test("achou e aprovada: o pedido fica pago, pelo mesmo caminho do webhook", asyn
 });
 
 test("achou e recusada: falha definitiva", async () => {
-  const { deps, chamadas } = montar({ mp: { externalId: "98765", category: "failed" } });
+  const { deps, chamadas } = montar({ mp: { externalId: "98765", evaluation: { category: "failed" } } });
   assert.equal(await reconcileStuckOrder(pedido(), deps), "declined");
   assert.deepEqual(chamadas.markDeclined, [[1501, "mercadopago", "98765"]]);
   assert.deepEqual(chamadas.markPaid, []);
@@ -102,7 +107,7 @@ test("achou e recusada: falha definitiva", async () => {
 });
 
 test("achou e ainda pendente: só guarda a referência para a varredura normal e os webhooks", async () => {
-  const { deps, chamadas } = montar({ mp: { externalId: "98765", category: "pending" } });
+  const { deps, chamadas } = montar({ mp: { externalId: "98765", evaluation: { category: "pending" } } });
   assert.equal(await reconcileStuckOrder(pedido(), deps), "pending");
   assert.deepEqual(chamadas.attachReference, [[1501, "mercadopago", "98765"]]);
   assert.deepEqual(chamadas.markPaid, []);
@@ -115,7 +120,7 @@ test("não achou depois de 30 minutos: falha, e registra no log", async () => {
   const resultado = await reconcileStuckOrder(pedido({ createdAtGmt: minutosAtras(30) }), deps);
   assert.equal(resultado, "not_found_failed");
   assert.deepEqual(chamadas.markNotFound, [1501]);
-  assert.deepEqual(chamadas.logs, [{ orderId: 1501, gateway: "mercadopago", result: "not_found_failed" }]);
+  assert.deepEqual(chamadas.logs, [{ orderId: 1501, gateway: "mercadopago", band: "A", result: "not_found_failed" }]);
   assert.deepEqual(chamadas.markPaid, []);
 });
 
@@ -128,12 +133,12 @@ test("não achou antes de 30 minutos: espera a próxima passada, sem mexer em na
 });
 
 test("cada gateway é consultado pela referência certa", async () => {
-  const pb = montar({ pb: { externalId: "CHAR_1", category: "paid" } });
+  const pb = montar({ pb: { externalId: "CHAR_1", evaluation: { category: "paid" } } });
   assert.equal(await reconcileStuckOrder(pedido({ paymentMethod: "pagbank_google_pay" }), pb.deps), "paid");
   assert.deepEqual(pb.chamadas.leituras, [["pagbank", "1501"]]);
   assert.deepEqual(pb.chamadas.markPaid, [[1501, "pagbank", "CHAR_1"]]);
 
-  const pix = montar({ pix: { externalId: "6f1c1c1e5a0b4d1e9a0b5a0b4d1e9a0b", category: "paid" } });
+  const pix = montar({ pix: { externalId: "6f1c1c1e5a0b4d1e9a0b5a0b4d1e9a0b", evaluation: { category: "paid" } } });
   assert.equal(await reconcileStuckOrder(pedido({ paymentMethod: "inter_pix" }), pix.deps), "paid");
   // O txid é a chave de idempotência sem os traços.
   assert.deepEqual(pix.chamadas.leituras, [["pix", "6f1c1c1e5a0b4d1e9a0b5a0b4d1e9a0b"]]);
@@ -142,7 +147,7 @@ test("cada gateway é consultado pela referência certa", async () => {
 
 test("só tentativas em PAYMENT_CREATING; boleto e erros não mudam nada", async () => {
   // Outro estado: não consulta o gateway nem grava.
-  const outro = montar({ estado: "PAYMENT_CREATED", mp: { externalId: "1", category: "paid" } });
+  const outro = montar({ estado: "PAYMENT_CREATED", mp: { externalId: "1", evaluation: { category: "paid" } } });
   assert.equal(await reconcileStuckOrder(pedido(), outro.deps), "skipped");
   assert.deepEqual(outro.chamadas.leituras, []);
   // Tentativa que nunca existiu (sem estado).
@@ -161,10 +166,10 @@ test("só tentativas em PAYMENT_CREATING; boleto e erros não mudam nada", async
 });
 
 test("o log só tem número do pedido, gateway e resultado: nada de dado pessoal", async () => {
-  const { deps, chamadas } = montar({ mp: { externalId: "98765", category: "paid" } });
+  const { deps, chamadas } = montar({ mp: { externalId: "98765", evaluation: { category: "paid" } } });
   await reconcileStuckOrder(pedido(), deps);
   const texto = JSON.stringify(chamadas.logs);
-  assert.deepEqual(Object.keys(chamadas.logs[0]).sort(), ["gateway", "orderId", "result"]);
+  assert.deepEqual(Object.keys(chamadas.logs[0]).sort(), ["band", "gateway", "orderId", "result"]);
   for (const proibido of ["maria", "Maria", "987654321", "199.90", CHAVE]) {
     assert.ok(!texto.includes(proibido), `vazou no log: ${proibido}`);
   }
@@ -200,6 +205,8 @@ test("Mercado Pago: busca por external_reference com GET, sem corpo", () => {
 test("os arquivos da rotina não têm nenhuma chamada de criação, estorno ou repetição de cobrança", () => {
   const arquivos = [
     "services/payments/stuckPayments.ts",
+    "services/payments/chargeEvaluation.ts",
+    "services/payments/cardReconcile.ts",
     "app/api/cron/reconcile-stuck-payments/route.ts",
   ];
   const proibidos = [

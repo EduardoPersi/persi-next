@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { amountField } from "./amount.ts";
 import { InterPaymentError, type InterHttpMethod } from "./errors.ts";
 
 type InterRequestFn = <T>(
@@ -43,6 +44,7 @@ export interface PixCharge {
 interface InterPixCobResponse {
   txid: string;
   status: string;
+  valor?: { original?: string };
   calendario: { criacao: string; expiracao: number };
   pixCopiaECola: string;
 }
@@ -167,7 +169,9 @@ export async function createPixCharge(
 export async function getPixChargeStatus(
   txid: string,
   request: InterRequestFn = defaultInterRequest,
-): Promise<Pick<PixCharge, "txid" | "status" | "expiresAt"> & { qrCodeCopyPaste: string }> {
+): Promise<
+  Pick<PixCharge, "txid" | "status" | "expiresAt"> & { qrCodeCopyPaste: string; amount?: number }
+> {
   const cob = await request<InterPixCobResponse>(
     `/pix/v2/cob/${encodeURIComponent(txid)}`,
     "GET",
@@ -180,6 +184,8 @@ export async function getPixChargeStatus(
     // A mesma consulta já traz o copia e cola: o lembrete pelo WhatsApp (cron)
     // usa daqui, sem uma segunda chamada ao Inter. Vazio se não vier.
     qrCodeCopyPaste: cob.pixCopiaECola ?? "",
+    // `valor.original` (string "199.90"); ausente ou ilegível = undefined (a conferência de pagamento não marca pago).
+    ...amountField(cob.valor?.original),
   };
 }
 

@@ -564,6 +564,24 @@ export async function findPendingOrdersWithoutPaymentReference(
     .filter((order) => Boolean(order.metaData[IDEMPOTENCY_KEY_META]) && !order.metaData[PAYMENT_REFERENCE_META]);
 }
 
+// Pedidos "pending" COM cobrança guardada, criados depois de `afterIso` (a faixa dos
+// últimos 5 dias da rotina de pagamentos pendentes). Só leitura. Os mais novos primeiro:
+// são os que mais provavelmente acabaram de ser pagos.
+export async function findPendingOrdersWithPaymentReferenceSince(
+  afterIso: string,
+  getList: WooGetListFn = defaultGetList,
+): Promise<WooCommerceOrder[]> {
+  const orders = await getList<WooCommerceOrderApiResponse>("orders", {
+    status: "pending",
+    meta_key: PAYMENT_REFERENCE_META,
+    after: afterIso,
+    per_page: "100",
+    orderby: "date",
+    order: "desc",
+  });
+  return orders.map(toOrder).filter((order) => Boolean(order.metaData[PAYMENT_REFERENCE_META]));
+}
+
 export async function findPendingOrdersWithPaymentReference(
   getList: WooGetListFn = defaultGetList,
 ): Promise<WooCommerceOrder[]> {

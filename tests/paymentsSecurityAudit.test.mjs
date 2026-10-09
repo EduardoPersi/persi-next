@@ -22,18 +22,18 @@ test("webhook do Inter sempre reconsulta o provedor antes de reconciliar o pedid
 test("webhook do PagBank sempre reconsulta o provedor antes de reconciliar o pedido", () => {
   const source = read("app/api/webhooks/pagbank/route.ts");
   assert.match(source, /getCardChargeStatus/);
-  assert.match(source, /reconcilePaymentReference/);
+  assert.match(source, /reconcileCardCharge/);
   const getStatusIndex = source.indexOf("getCardChargeStatus(chargeId)");
-  const reconcileIndex = source.indexOf("reconcilePaymentReference(");
+  const reconcileIndex = source.indexOf("reconcileCardCharge(");
   assert.ok(getStatusIndex > -1 && reconcileIndex > -1 && getStatusIndex < reconcileIndex);
 });
 
 test("webhook do Mercado Pago sempre reconsulta o provedor antes de reconciliar o pedido", () => {
   const source = read("app/api/webhooks/mercadopago/route.ts");
   assert.match(source, /getCardChargeStatus/);
-  assert.match(source, /reconcilePaymentReference/);
+  assert.match(source, /reconcileCardCharge/);
   const getStatusIndex = source.indexOf("getCardChargeStatus(paymentId)");
-  const reconcileIndex = source.indexOf("reconcilePaymentReference(");
+  const reconcileIndex = source.indexOf("reconcileCardCharge(");
   assert.ok(getStatusIndex > -1 && reconcileIndex > -1 && getStatusIndex < reconcileIndex);
 });
 

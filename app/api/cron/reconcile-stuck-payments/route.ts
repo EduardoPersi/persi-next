@@ -1,44 +1,59 @@
 import { NextResponse } from "next/server";
 import { getCheckoutAttempt } from "@/lib/commerce/checkoutAttempt";
+import { getBoletoChargeStatus } from "@/services/payments/inter/boleto";
 import { getPixChargeStatus } from "@/services/payments/inter/pix";
 import { InterPaymentError } from "@/services/payments/inter/errors";
-import { findCardChargeByReference as findMercadoPagoCharge } from "@/services/payments/mercadopago/charge";
-import { findCardChargeByReference as findPagBankCharge } from "@/services/payments/pagbank/charge";
 import {
-  categorizeCardStatus,
-  categorizeMercadoPagoCardStatus,
-  categorizePixStatus,
-  reconcilePaymentReference,
-} from "@/services/payments/reconcile";
+  findCardChargeByReference as findMercadoPagoCharge,
+  getCardChargeStatus as getMercadoPagoCharge,
+} from "@/services/payments/mercadopago/charge";
+import {
+  findCardChargeByReference as findPagBankCharge,
+  getCardChargeStatus as getPagBankCharge,
+} from "@/services/payments/pagbank/charge";
+import {
+  evaluateBoletoCharge,
+  evaluateCardCharge,
+  evaluatePixCharge,
+} from "@/services/payments/chargeEvaluation";
+import { reconcilePaymentReference } from "@/services/payments/reconcile";
 import {
   createOverlapGuard,
   isAuthorizedCronRequest,
 } from "@/services/payments/cronReconciliation";
 import {
+  isPendingCandidate,
   isStuckCandidate,
-  reconcileStuckOrder,
+  PENDING_MAX_AGE_MS,
   STUCK_MAX_AGE_MS,
+  reconcilePendingOrder,
+  reconcileStuckOrder,
+  type FoundCharge,
   type StuckDeps,
   type StuckResult,
 } from "@/services/payments/stuckPayments";
 import {
   attachPaymentReference,
+  findPendingOrdersWithPaymentReferenceSince,
   findPendingOrdersWithoutPaymentReference,
   markOrderAsFailed,
+  type WooCommerceOrder,
 } from "@/services/woocommerce/orders";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const runtime = "nodejs";
 
-// TENTATIVAS DE PAGAMENTO TRAVADAS (PAYMENT_CREATING sem a cobrança guardada).
-// Chamada de 5 em 5 minutos por uma tarefa agendada externa (a mesma que já chama
-// /api/cron/expire-pending-payments), com `Authorization: Bearer <CRON_SECRET>`.
-// A regra está em services/payments/stuckPayments.ts. SÓ LEITURA no gateway: esta
-// rota não cria, não estorna e não repete cobrança.
+// REDE DE SEGURANÇA DOS PAGAMENTOS: tentativas travadas (faixa A) e pedidos
+// pendentes com cobrança de até 5 dias (faixa B). Chamada de 10 em 10 minutos por
+// uma tarefa agendada externa (a mesma que já chama /api/cron/expire-pending-payments),
+// com `Authorization: Bearer <CRON_SECRET>`. A regra está em
+// services/payments/stuckPayments.ts. SÓ LEITURA no gateway: esta rota não cria,
+// não estorna e não repete cobrança, e não cancela Pix/boleto.
 //
 // `?dryRun=1` faz a passada inteira (lista, consulta o gateway, decide) sem gravar
-// nada, para conferir o que ela faria.
+// nada, para conferir o que ela faria. `?all=1` ignora a cadência por hora dos
+// pedidos de 1 a 5 dias (útil no teste).
 //
 // O log traz só número do pedido, gateway e resultado: nada de dado pessoal.
 
@@ -54,6 +69,29 @@ function isNotFound(error: unknown): boolean {
   return error instanceof InterPaymentError && error.status === 404;
 }
 
+async function readPix(txid: string, order: WooCommerceOrder): Promise<FoundCharge | null> {
+  try {
+    const charge = await getPixChargeStatus(txid);
+    return { externalId: charge.txid, evaluation: evaluatePixCharge(charge, order, Date.now()) };
+  } catch (error) {
+    if (isNotFound(error)) return null;
+    throw error;
+  }
+}
+
+async function readByReference(order: WooCommerceOrder, reference: string): Promise<FoundCharge | null> {
+  switch (order.paymentMethod) {
+    case "mercadopago_card":
+      return { externalId: reference, evaluation: evaluateCardCharge("mercadopago", await getMercadoPagoCharge(reference), order) };
+    case "inter_pix":
+      return readPix(reference, order);
+    case "inter_boleto":
+      return { externalId: reference, evaluation: evaluateBoletoCharge(await getBoletoChargeStatus(reference), order) };
+    default:
+      return { externalId: reference, evaluation: evaluateCardCharge("pagbank", await getPagBankCharge(reference), order) };
+  }
+}
+
 async function handleCronRequest(request: Request): Promise<Response> {
   if (!isAuthorizedCronRequest(request.headers.get("authorization"), process.env.CRON_SECRET)) {
     return NextResponse.json({ message: "Não autorizado." }, { status: 401 });
@@ -64,19 +102,31 @@ async function handleCronRequest(request: Request): Promise<Response> {
   }
 
   try {
-    const dryRun = new URL(request.url).searchParams.get("dryRun") === "1";
+    const searchParams = new URL(request.url).searchParams;
+    const dryRun = searchParams.get("dryRun") === "1";
+    const all = searchParams.get("all") === "1";
     const startedAt = Date.now();
-    const after = new Date(startedAt - STUCK_MAX_AGE_MS - 60 * 60 * 1000).toISOString().replace(/\.\d+Z$/, "");
+    const toIso = (ms: number) => new Date(ms).toISOString().replace(/\.\d+Z$/, "");
 
-    const orders = (await findPendingOrdersWithoutPaymentReference(after))
-      .filter((order) => isStuckCandidate(order, startedAt))
-      .slice(0, MAX_ORDERS_PER_RUN);
+    // Faixa A (travadas sem cobrança) e faixa B (pendentes com cobrança, até 5 dias).
+    const [withoutReference, withReference] = await Promise.all([
+      findPendingOrdersWithoutPaymentReference(toIso(startedAt - STUCK_MAX_AGE_MS - 60 * 60 * 1000)),
+      findPendingOrdersWithPaymentReferenceSince(toIso(startedAt - PENDING_MAX_AGE_MS - 60 * 60 * 1000)),
+    ]);
+    const bandA = withoutReference.filter((order) => isStuckCandidate(order, startedAt));
+    const bandB = withReference.filter((order) => isPendingCandidate(order, startedAt, all));
+    const queue = [
+      ...bandA.map((order) => ({ band: "A" as const, order })),
+      ...bandB.map((order) => ({ band: "B" as const, order })),
+    ].slice(0, MAX_ORDERS_PER_RUN);
 
     const summary: Record<StuckResult, number> = {
       paid: 0,
       declined: 0,
       not_found_failed: 0,
       pending: 0,
+      closed: 0,
+      unverified: 0,
       skipped: 0,
       error: 0,
     };
@@ -92,32 +142,27 @@ async function handleCronRequest(request: Request): Promise<Response> {
         }
       },
       readers: {
-        mercadopago: async (referenceId) => {
+        mercadopago: async (referenceId, order) => {
           const charge = await findMercadoPagoCharge(referenceId);
           return charge
-            ? { externalId: charge.chargeId, category: categorizeMercadoPagoCardStatus(charge.status) }
+            ? { externalId: charge.chargeId, evaluation: evaluateCardCharge("mercadopago", charge, order) }
             : null;
         },
-        pagbank: async (referenceId) => {
+        pagbank: async (referenceId, order) => {
           const charge = await findPagBankCharge(referenceId);
           return charge
-            ? { externalId: charge.chargeId, category: categorizeCardStatus(charge.status) }
+            ? { externalId: charge.chargeId, evaluation: evaluateCardCharge("pagbank", charge, order) }
             : null;
         },
-        pix: async (txid) => {
-          try {
-            const charge = await getPixChargeStatus(txid);
-            return { externalId: charge.txid, category: categorizePixStatus(charge) };
-          } catch (error) {
-            if (isNotFound(error)) return null;
-            throw error;
-          }
-        },
+        pix: readPix,
+        byReference: readByReference,
       },
-      // Mesmo caminho do webhook: guarda a referência no pedido e reconcilia.
+      // Mesmo caminho do webhook: guarda a referência (se o pedido ainda não tem) e reconcilia.
       markPaid: async (order, provider, externalId) => {
         if (dryRun) return;
-        await attachPaymentReference(order.id, { provider, externalId });
+        if (order.metaData["_persi_payment_reference"] !== externalId) {
+          await attachPaymentReference(order.id, { provider, externalId });
+        }
         await reconcilePaymentReference(provider, externalId, "paid");
       },
       markDeclined: async (order, provider, externalId) => {
@@ -140,17 +185,19 @@ async function handleCronRequest(request: Request): Promise<Response> {
     };
 
     let processed = 0;
-    for (const order of orders) {
+    for (const { band, order } of queue) {
       if (Date.now() - startedAt >= TIME_BUDGET_MS) break;
-      summary[await reconcileStuckOrder(order, deps)] += 1;
+      const result = band === "A" ? await reconcileStuckOrder(order, deps) : await reconcilePendingOrder(order, deps);
+      summary[result] += 1;
       processed += 1;
     }
 
     const result = {
       dryRun,
-      candidates: orders.length,
+      candidatesA: bandA.length,
+      candidatesB: bandB.length,
       processed,
-      truncated: processed < orders.length,
+      truncated: processed < queue.length,
       ...summary,
       durationMs: Date.now() - startedAt,
     };

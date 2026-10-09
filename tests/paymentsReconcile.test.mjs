@@ -49,7 +49,7 @@ test("categoriza status do boleto corretamente", () => {
 
 test("categoriza status de cartão do PagBank corretamente", () => {
   assert.equal(categorizeCardStatus("PAID"), "paid");
-  assert.equal(categorizeCardStatus("AUTHORIZED"), "paid");
+  assert.equal(categorizeCardStatus("AUTHORIZED"), "pending");
   assert.equal(categorizeCardStatus("IN_ANALYSIS"), "pending");
   assert.equal(categorizeCardStatus("DECLINED"), "failed");
   assert.equal(categorizeCardStatus("CANCELED"), "failed");
