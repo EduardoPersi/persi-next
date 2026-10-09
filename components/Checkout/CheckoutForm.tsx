@@ -334,10 +334,9 @@ export function CheckoutForm({
   // a forma de pagamento padrão, que não é salva — e para de avisar assim
   // que o pedido é de fato criado no servidor.
   const hasUnsavedProgress = hasUnsavedDraft || paymentMethod !== "inter_pix";
+  useBeforeUnloadWarning(hasUnsavedProgress && !hasCreatedOrder);
   // "Não feche esta página": enquanto o banco confirma, sair da página avisa.
-  useBeforeUnloadWarning(
-    (hasUnsavedProgress || paymentProcessing === "confirming") && !hasCreatedOrder,
-  );
+  useBeforeUnloadWarning(paymentProcessing === "confirming" && !hasCreatedOrder);
   useTabAttentionTitle(!hasCreatedOrder);
 
   // Troca de forma de pagamento invalida qualquer recusa de cartão mostrada
@@ -730,7 +729,7 @@ export function CheckoutForm({
                 ref={submitButtonRef}
                 type="submit"
                 size="lg"
-                disabled={isCheckoutUpdating || isSubmittingPayment || paymentProcessing !== "idle"}
+                disabled={isCheckoutUpdating || isSubmittingPayment}
                 aria-describedby="checkout-submit-status"
                 className="w-full"
               >

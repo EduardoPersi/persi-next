@@ -226,8 +226,11 @@ test("checkout: espera com a mesma chave, trava novo pagamento e mostra o WhatsA
   assert.ok(!tempoEsgotado.includes('setPaymentProcessing("idle")'));
   // Nenhum novo pagamento nesse estado: ignorado no envio, botão e barra do celular travados.
   assert.ok(form.includes('if (paymentProcessing !== "idle") return;'));
-  assert.ok(form.includes('paymentProcessing !== "idle"}\n                aria-describedby="checkout-submit-status"'));
+  // O botão mantém a regra de antes; a trava vem do `inert` abaixo, da guarda de envio acima e da barra do celular.
+  assert.ok(form.includes("disabled={isCheckoutUpdating || isSubmittingPayment}"));
   assert.ok(form.includes('disabled={isCheckoutUpdating || paymentProcessing !== "idle"}'));
+  // Sair da página durante a espera avisa.
+  assert.ok(form.includes('useBeforeUnloadWarning(paymentProcessing === "confirming" && !hasCreatedOrder);'));
   // A área de pagamento fica inerte (nem trocar de forma de pagamento) e o formulário não é apagado.
   assert.ok(form.includes('inert={paymentProcessing !== "idle"}'));
   assert.ok(!espera.includes("reset("));
