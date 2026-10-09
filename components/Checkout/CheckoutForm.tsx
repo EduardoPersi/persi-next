@@ -43,6 +43,12 @@ import {
 } from "@/lib/commerce/shippingCalculator";
 import { mergeCheckoutPrefill } from "@/lib/commerce/checkoutPrefill";
 import {
+  CARD_DECLINED_RETRY_MESSAGE,
+  isDefinitiveCardFailure,
+  nextIdempotencyKey,
+  shouldSuggestPix,
+} from "@/lib/commerce/paymentRetry";
+import {
   clearStoredCheckoutPrefill,
   readStoredCheckoutPrefill,
 } from "@/lib/commerce/checkoutPrefillStorage";
@@ -134,6 +140,8 @@ export function CheckoutForm({
   const { navigate } = useRouteTransition();
   const [statusMessage, setStatusMessage] = useState("");
   const [cardDeclinedMessage, setCardDeclinedMessage] = useState("");
+  // Depois de uma recusa de cartão, o Pix aparece em destaque.
+  const [suggestPix, setSuggestPix] = useState(false);
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [installments, setInstallments] = useState(1);
   const cardFieldsRef = useRef<PaymentCardFieldsHandle>(null);
@@ -327,6 +335,7 @@ export function CheckoutForm({
   // selecionado deixa de ser válido.
   const handlePaymentMethodChange = (method: CheckoutPaymentMethod) => {
     setCardDeclinedMessage("");
+    setSuggestPix(false);
     setPaymentMethod(method);
   };
 
@@ -341,6 +350,7 @@ export function CheckoutForm({
   const submitPayment = async (values: CheckoutFormValues) => {
     setStatusMessage("");
     setCardDeclinedMessage("");
+    setSuggestPix(false);
     setIsSubmittingPayment(true);
 
     try {
@@ -396,13 +406,27 @@ export function CheckoutForm({
         if (result?.code === "CART_CHANGED" || result?.code === "ORDER_TOTAL_MISMATCH") {
           await refreshCart();
         }
-        const message =
-          result?.message ?? "Não foi possível iniciar o pagamento. Tente novamente.";
+        const outcome = { status: response.status, code: result?.code };
+        const declined = isDefinitiveCardFailure(outcome);
+        // Recusa definitiva: a tentativa acabou e o servidor devolveria sempre a
+        // mesma recusa para esta chave. Chave NOVA, sem recarregar a página e sem
+        // mexer no formulário, para o cliente tentar outro cartão ou o Pix. Em
+        // qualquer outro caso (409, 429, erro do servidor) a chave é mantida:
+        // nunca existe cobrança dupla.
+        checkoutAttemptIdRef.current = nextIdempotencyKey(
+          idempotencyKey,
+          outcome,
+          createIdempotencyKey,
+        );
+        if (shouldSuggestPix(outcome)) setSuggestPix(true);
+        const message = declined
+          ? CARD_DECLINED_RETRY_MESSAGE
+          : (result?.message ?? "Não foi possível iniciar o pagamento. Tente novamente.");
         // Recusa de cartão tem exibição própria, perto dos campos do cartão
         // (PaymentCardFields) — não duplica no aviso genérico do rodapé.
         // Carteiras digitais (Apple/Google Pay) não têm campos de cartão na
         // tela, então continuam usando o aviso genérico.
-        if (result?.code === "CARD_PAYMENT_DECLINED" && paymentMethod === "mercadopago_card") {
+        if (declined && paymentMethod === "mercadopago_card") {
           setCardDeclinedMessage(message);
         } else {
           setStatusMessage(message);
@@ -612,6 +636,7 @@ export function CheckoutForm({
                 cardFieldsRef={cardFieldsRef}
                 onCardError={handleCardError}
                 cardDeclinedMessage={cardDeclinedMessage}
+                suggestPix={suggestPix}
                 cartTotal={cart ? moneyToNumber(cart.totals.price) : undefined}
                 discountBase={
                   cart
