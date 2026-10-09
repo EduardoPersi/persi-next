@@ -92,7 +92,7 @@ export async function GET(request: Request) {
     const cardDeclined = attempt.provider_reference
       ? await isCardDeclined(attempt.payment_method, attempt.provider_reference)
       : null;
-    const outcome = resolveAttemptOutcome(attempt, cardDeclined);
+    const outcome = resolveAttemptOutcome(attempt, cardDeclined, order.status);
     return respond({
       outcome,
       ...(outcome === "created"

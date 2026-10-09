@@ -27,6 +27,8 @@ export interface WooCommerceOrder {
   /** Para o aviso de pedido pelo WhatsApp (lib/painel/whatsapp.ts). */
   billingPhone: string;
   metaData: Record<string, string>;
+  /** Quando o pedido foi criado (GMT, ISO 8601). Opcional: respostas antigas e testes não trazem. */
+  createdAtGmt?: string;
   /**
    * Códigos de rastreio do Melhor Envio gravados pelo plugin no pedido (meta
    * `_melhor_envio_tracking_codes`, que é uma LISTA e por isso não cabe em
@@ -90,6 +92,7 @@ interface WooCommerceOrderApiResponse {
   line_items?: Array<{ name?: string; quantity?: number; sku?: string; total?: string }>;
   shipping_lines?: Array<{ method_id?: string; method_title?: string; total?: string }>;
   meta_data?: { key: string; value: unknown }[];
+  date_created_gmt?: string;
 }
 
 const IDEMPOTENCY_KEY_META = "_persi_idempotency_key";
@@ -196,6 +199,7 @@ function toOrder(response: WooCommerceOrderApiResponse): WooCommerceOrder {
       .join(" "),
     billingPhone: response.billing?.phone ?? "",
     metaData,
+    ...(response.date_created_gmt ? { createdAtGmt: `${response.date_created_gmt}Z` } : {}),
     rastreios: rastreiosDoPedido(response.meta_data),
     entrega: dadosDaEntrega(response, metaData),
   };
@@ -531,6 +535,27 @@ export function categorizeOrderStatus(
 // para sempre a esta varredura mesmo já pagos. Ver docs/25 e histórico do
 // incidente do pedido #30855 (2026-08-04).
 const RECONCILIABLE_ORDER_STATUSES = ["pending", "on-hold"] as const;
+
+// Pedidos "pending" criados pelo checkout (têm chave de idempotência) que ainda NÃO
+// têm cobrança guardada: o que sobra de uma tentativa que parou antes de gravar a
+// referência do pagamento. Só leitura. `afterIso` limita a busca no tempo (a
+// comparação fina de idade é de quem chama, em GMT).
+export async function findPendingOrdersWithoutPaymentReference(
+  afterIso: string,
+  getList: WooGetListFn = defaultGetList,
+): Promise<WooCommerceOrder[]> {
+  const orders = await getList<WooCommerceOrderApiResponse>("orders", {
+    status: "pending",
+    meta_key: IDEMPOTENCY_KEY_META,
+    after: afterIso,
+    per_page: "100",
+    orderby: "date",
+    order: "asc",
+  });
+  return orders
+    .map(toOrder)
+    .filter((order) => Boolean(order.metaData[IDEMPOTENCY_KEY_META]) && !order.metaData[PAYMENT_REFERENCE_META]);
+}
 
 export async function findPendingOrdersWithPaymentReference(
   getList: WooGetListFn = defaultGetList,

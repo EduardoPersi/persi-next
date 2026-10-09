@@ -136,6 +136,24 @@ export async function createCardCharge(
   return toChargeResult(payment);
 }
 
+interface MercadoPagoSearchResponse {
+  results?: MercadoPagoPaymentResponse[];
+}
+
+// Só leitura: busca a cobrança pelo `external_reference` (o número do pedido, que o
+// site manda ao criar). Devolve a mais recente, ou `null` se não houver nenhuma.
+export async function findCardChargeByReference(
+  referenceId: string,
+  request: MercadoPagoRequestFn = defaultMercadoPagoRequest,
+): Promise<CardChargeResult | null> {
+  const search = await request<MercadoPagoSearchResponse>(
+    `/v1/payments/search?external_reference=${encodeURIComponent(referenceId)}&sort=date_created&criteria=desc&limit=1`,
+    "GET",
+  );
+  const [payment] = search.results ?? [];
+  return payment ? toChargeResult(payment) : null;
+}
+
 export async function getCardChargeStatus(
   chargeId: string,
   request: MercadoPagoRequestFn = defaultMercadoPagoRequest,

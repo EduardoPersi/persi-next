@@ -43,15 +43,25 @@ export interface AttemptSnapshot {
  * Lê a tentativa guardada e diz em que pé está. `cardDeclined` é o resultado
  * da consulta (só leitura) ao gateway do cartão: `true` recusado, `false` não
  * recusado, `null` quando não foi possível consultar.
+ *
+ * `orderStatus` é o status do pedido no WooCommerce. A rotina do servidor que
+ * resolve tentativas travadas (services/payments/stuckPayments.ts) não consegue
+ * mexer na tentativa guardada no plugin, só no pedido: pedido pago vira "created",
+ * pedido falho ou cancelado vira "declined", mesmo sem a cobrança guardada.
  */
 export function resolveAttemptOutcome(
   attempt: AttemptSnapshot,
   cardDeclined: boolean | null,
+  orderStatus?: string,
 ): AttemptOutcome {
   if (attempt.state === "PAYMENT_FAILED") return "declined";
   if (attempt.state === "PAYMENT_CONFIRMED") return "created";
-  // Ainda sem cobrança guardada (PAYMENT_CREATING): nada a fazer além de esperar.
-  if (!attempt.provider_reference) return "processing";
+  // Ainda sem cobrança guardada (PAYMENT_CREATING): só o pedido pode dizer algo.
+  if (!attempt.provider_reference) {
+    if (orderStatus === "processing" || orderStatus === "completed") return "created";
+    if (orderStatus === "failed" || orderStatus === "cancelled") return "declined";
+    return "processing";
+  }
   const isCard =
     attempt.payment_method === "mercadopago_card" || attempt.payment_method.startsWith("pagbank_");
   if (!isCard) return "created";
