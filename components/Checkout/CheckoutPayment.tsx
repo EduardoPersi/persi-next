@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
+import { Button } from "@/components/UI/Button";
 import { PaymentCardFields, type PaymentCardFieldsHandle } from "./PaymentCardFields";
 import { PaymentMethodSelector } from "./PaymentMethodSelector";
 import { isPaymentMethodAvailable, type CheckoutPaymentMethod } from "./paymentMethod";
@@ -14,6 +15,8 @@ interface CheckoutPaymentProps {
   cardFieldsRef: RefObject<PaymentCardFieldsHandle | null>;
   onCardError: (message: string) => void;
   cardDeclinedMessage?: string;
+  // Depois de uma recusa de cartão: destaca "Pagar com Pix".
+  suggestPix?: boolean;
   cartTotal?: number;
   discountBase?: number;
   currencyCode?: string;
@@ -35,6 +38,7 @@ export function CheckoutPayment({
   cardFieldsRef,
   onCardError,
   cardDeclinedMessage,
+  suggestPix = false,
   cartTotal,
   discountBase,
   currencyCode,
@@ -82,6 +86,22 @@ export function CheckoutPayment({
           Você vai confirmar o pagamento pela carteira digital do seu dispositivo ao
           continuar.
         </p>
+      ) : null}
+      {suggestPix && capabilities.pix && method !== "inter_pix" ? (
+        <div className="rounded-xl border border-secondary/40 bg-secondary/5 p-4">
+          <p className="text-sm font-semibold text-foreground">Prefere pagar com Pix?</p>
+          <p className="mt-1 text-xs leading-5 text-muted">
+            Troque a forma de pagamento sem perder nenhum dado do seu pedido.
+          </p>
+          <Button
+            type="button"
+            variant="primary"
+            className="mt-3 w-full sm:w-auto"
+            onClick={() => onMethodChange("inter_pix")}
+          >
+            Pagar com Pix
+          </Button>
+        </div>
       ) : null}
     </div>
   );
