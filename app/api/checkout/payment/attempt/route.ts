@@ -4,7 +4,7 @@ import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
 import { getPrivateCartHeaders } from "@/lib/commerce/cartResponsePolicy";
 import { getCheckoutAttempt } from "@/lib/commerce/checkoutAttempt";
 import { resolveAttemptOutcome, type AttemptOutcome } from "@/lib/commerce/paymentPolling";
-import { createRateLimiter } from "@/lib/network/rateLimit";
+import { createTrustedIpRateLimiter } from "@/lib/network/rateLimit";
 import { getServerAccountSession } from "@/services/account/serverSession";
 import { getCardChargeStatus as getMercadoPagoCardChargeStatus } from "@/services/payments/mercadopago/charge";
 import { getCardChargeStatus as getPagBankCardChargeStatus } from "@/services/payments/pagbank/charge";
@@ -27,8 +27,10 @@ export const runtime = "nodejs";
 // "processing": o cliente continua esperando, nada é liberado.
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-// Uma aba consulta a cada 5 s (12 por minuto); a folga cobre abas repetidas.
-const rateLimiter = createRateLimiter(60 * 1000, 30);
+// Uma aba consulta a cada 5 s (12 por minuto); 60 por minuto por IP dá folga para
+// várias abas. O IP vem só de `cf-connecting-ip`; sem ele, o limite não se aplica
+// e o aviso sai no log com a rota (mesma regra do pagamento).
+const rateLimiter = createTrustedIpRateLimiter(60 * 1000, 60, "/api/checkout/payment/attempt");
 
 function respond(body: object, status = 200) {
   const response = NextResponse.json(body, { status });

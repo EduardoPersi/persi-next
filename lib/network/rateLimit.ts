@@ -1,6 +1,7 @@
 import "server-only";
 import { getRequestIp } from "@/lib/recaptcha/verify";
 import { getTrustedClientIp } from "./trustedIp";
+import { createTrustedIpLimiter } from "./trustedIpLimiter";
 import { createUniqueKeyLimiter } from "./uniqueKeyLimiter";
 
 // Limitador em memória de processo único (a Hostinger roda um único
@@ -58,6 +59,24 @@ export function createUniqueKeyRateLimiter(
   return createUniqueKeyLimiter({
     windowMs,
     maxAttempts,
+    route,
+    getIp: getTrustedClientIp,
+    warn: (message, data) => console.warn(message, data),
+  });
+}
+
+// Conta REQUISIÇÕES por IP de confiança (`cf-connecting-ip`, trustedIp.ts):
+// sem o IP o limite não se aplica e sai um aviso no log com a rota. Para rotas
+// que o próprio checkout consulta sozinho (ex.: espera do pagamento). Os
+// limitadores acima não mudam.
+export function createTrustedIpRateLimiter(
+  windowMs: number,
+  maxRequests: number,
+  route: string,
+) {
+  return createTrustedIpLimiter({
+    windowMs,
+    maxRequests,
     route,
     getIp: getTrustedClientIp,
     warn: (message, data) => console.warn(message, data),
