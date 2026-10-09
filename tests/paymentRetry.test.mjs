@@ -98,17 +98,23 @@ test("checkout: chave nova só na falha definitiva, formulário intocado, Pix em
   const form = read("components/Checkout/CheckoutForm.tsx");
 
   // A chave só é atribuída na criação e no ramo de falha, via nextIdempotencyKey.
-  assert.equal(form.split("checkoutAttemptIdRef.current = ").length - 1, 1);
-  assert.ok(form.includes("checkoutAttemptIdRef.current = nextIdempotencyKey("));
+  // Só na recusa direta e na recusa descoberta durante a espera (paymentPolling).
+  assert.equal(form.split("checkoutAttemptIdRef.current = ").length - 1, 2);
+  assert.equal(form.split("checkoutAttemptIdRef.current = nextIdempotencyKey(").length - 1, 2);
   const inicio = form.indexOf("if (!response.ok || !result) {");
   const fim = form.indexOf("if (result.alreadyInitiated)", inicio);
   const falha = form.slice(inicio, fim);
   assert.ok(falha.includes("isDefinitiveCardFailure(outcome)"));
   assert.ok(falha.includes("CARD_DECLINED_RETRY_MESSAGE"));
   // O formulário não é apagado nem recarregado na falha.
-  for (const proibido of ["reset(", "methods.reset", "location.reload", "navigate(", "router.refresh"]) {
+  for (const proibido of ["reset(", "methods.reset", "location.reload", "router.refresh"]) {
     assert.ok(!falha.includes(proibido), `não pode haver ${proibido} na falha`);
   }
+  // A única navegação na falha é a da espera do pagamento "em processamento",
+  // quando o banco confirma que a cobrança existe (paymentPolling).
+  assert.equal(falha.split("navigate(").length - 1, 1);
+  const espera = falha.slice(falha.indexOf("if (isPaymentInProgress(outcome)) {"), falha.indexOf("const message = declined"));
+  assert.ok(espera.includes("navigate(polled.confirmationUrl)"));
 
   // Erro de rede (catch) mantém a chave: o bloco não toca nela.
   const catchBloco = form.slice(

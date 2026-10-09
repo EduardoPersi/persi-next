@@ -76,7 +76,9 @@ export type CheckoutDiagnosticCode =
   | "CHECKOUT_WORDPRESS_403"
   | "CHECKOUT_WORDPRESS_404"
   | "CHECKOUT_WORDPRESS_UNAVAILABLE"
-  | "CHECKOUT_RESPONSE_INVALID";
+  | "CHECKOUT_RESPONSE_INVALID"
+  // 409: a tentativa ficou em PAYMENT_CREATING; o checkout espera, sem chave nova.
+  | "PAYMENT_IN_PROGRESS";
 
 function requireEnvironmentValue(
   environment: NodeJS.ProcessEnv,
