@@ -697,7 +697,11 @@ export async function POST(request: Request) {
       after(() => enviarCobranca(order, pixDoWhatsapp, "agora").then(() => undefined));
     } else if (input.method === "inter_boleto") {
       if (attemptState === "PAYMENT_CREATING") {
-        throw new CheckoutTransferError(409, "Boleto em reconciliação; uma nova cobrança não será criada.");
+        throw new CheckoutTransferError(
+          409,
+          "Boleto em reconciliação; uma nova cobrança não será criada.",
+          "PAYMENT_IN_PROGRESS",
+        );
       }
       const charge = await interPaymentGateway.createBoleto({
         seuNumero: String(order.id),
@@ -740,6 +744,7 @@ export async function POST(request: Request) {
         throw new CheckoutTransferError(
           409,
           "Pagamento com cartão em reconciliação; uma nova cobrança não será criada.",
+          "PAYMENT_IN_PROGRESS",
         );
       }
 
@@ -800,6 +805,7 @@ export async function POST(request: Request) {
         throw new CheckoutTransferError(
           409,
           "Pagamento com carteira digital em reconciliação; uma nova cobrança não será criada.",
+          "PAYMENT_IN_PROGRESS",
         );
       }
       const cardPaymentMethod = input.method === "pagbank_apple_pay" ? "apple_pay" : "google_pay";

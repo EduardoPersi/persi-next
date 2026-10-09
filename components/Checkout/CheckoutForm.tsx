@@ -43,6 +43,11 @@ import {
 } from "@/lib/commerce/shippingCalculator";
 import { mergeCheckoutPrefill } from "@/lib/commerce/checkoutPrefill";
 import {
+  isPaymentInProgress,
+  pollPaymentAttempt,
+  type PollCheck,
+} from "@/lib/commerce/paymentPolling";
+import {
   CARD_DECLINED_RETRY_MESSAGE,
   isDefinitiveCardFailure,
   nextIdempotencyKey,
@@ -74,6 +79,7 @@ import { CheckoutPayment } from "./CheckoutPayment";
 import { CheckoutShippingPlaceholder } from "./CheckoutShippingPlaceholder";
 import { CheckoutStepCard, type CheckoutStepState } from "./CheckoutStepCard";
 import { CheckoutTerms } from "./CheckoutTerms";
+import { PaymentProcessingNotice } from "./PaymentProcessingNotice";
 import {
   createIdempotencyKey,
   getCartPaymentTotals,
@@ -142,6 +148,10 @@ export function CheckoutForm({
   const [cardDeclinedMessage, setCardDeclinedMessage] = useState("");
   // Depois de uma recusa de cartão, o Pix aparece em destaque.
   const [suggestPix, setSuggestPix] = useState(false);
+  // Pagamento "em processamento" (409): espera a confirmação do banco com a MESMA
+  // chave, sem liberar outro pagamento. Ver lib/commerce/paymentPolling.ts.
+  const [paymentProcessing, setPaymentProcessing] = useState<"idle" | "confirming" | "timeout">("idle");
+  const isUnmountedRef = useRef(false);
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [installments, setInstallments] = useState(1);
   const cardFieldsRef = useRef<PaymentCardFieldsHandle>(null);
@@ -325,6 +335,8 @@ export function CheckoutForm({
   // que o pedido é de fato criado no servidor.
   const hasUnsavedProgress = hasUnsavedDraft || paymentMethod !== "inter_pix";
   useBeforeUnloadWarning(hasUnsavedProgress && !hasCreatedOrder);
+  // "Não feche esta página": enquanto o banco confirma, sair da página avisa.
+  useBeforeUnloadWarning(paymentProcessing === "confirming" && !hasCreatedOrder);
   useTabAttentionTitle(!hasCreatedOrder);
 
   // Troca de forma de pagamento invalida qualquer recusa de cartão mostrada
@@ -347,7 +359,26 @@ export function CheckoutForm({
     setCardDeclinedMessage(message);
   };
 
+  useEffect(() => {
+    isUnmountedRef.current = false;
+    return () => {
+      isUnmountedRef.current = true;
+    };
+  }, []);
+
+  // Consulta (só leitura) o estado da tentativa pela mesma chave de idempotência.
+  const checkAttempt = async (key: string): Promise<PollCheck | null> => {
+    const response = await fetch(
+      `/api/checkout/payment/attempt?key=${encodeURIComponent(key)}`,
+      { cache: "no-store", credentials: "same-origin" },
+    );
+    if (!response.ok) return null;
+    return (await response.json().catch(() => null)) as PollCheck | null;
+  };
+
   const submitPayment = async (values: CheckoutFormValues) => {
+    // Enquanto o banco confirma, nenhum novo pagamento sai (nem pelo botão fixo do celular).
+    if (paymentProcessing !== "idle") return;
     setStatusMessage("");
     setCardDeclinedMessage("");
     setSuggestPix(false);
@@ -419,6 +450,41 @@ export function CheckoutForm({
           createIdempotencyKey,
         );
         if (shouldSuggestPix(outcome)) setSuggestPix(true);
+
+        // Em processamento (409): o resultado é incerto. NADA de chave nova nem de
+        // outra forma de pagamento; só espera, consultando a mesma chave.
+        if (isPaymentInProgress(outcome)) {
+          setPaymentProcessing("confirming");
+          const polled = await pollPaymentAttempt({
+            check: () => checkAttempt(idempotencyKey),
+            wait: (ms) => new Promise((resolve) => window.setTimeout(resolve, ms)),
+            isCancelled: () => isUnmountedRef.current,
+          });
+          if (polled.kind === "cancelled") return;
+          if (polled.kind === "created") {
+            setHasCreatedOrder();
+            navigate(polled.confirmationUrl);
+            return;
+          }
+          if (polled.kind === "declined") {
+            setPaymentProcessing("idle");
+            checkoutAttemptIdRef.current = nextIdempotencyKey(
+              idempotencyKey,
+              { status: 402, code: "CARD_PAYMENT_DECLINED" },
+              createIdempotencyKey,
+            );
+            setSuggestPix(true);
+            if (paymentMethod === "mercadopago_card") {
+              setCardDeclinedMessage(CARD_DECLINED_RETRY_MESSAGE);
+            } else {
+              setStatusMessage(CARD_DECLINED_RETRY_MESSAGE);
+            }
+            return;
+          }
+          // 2 minutos sem confirmação: mensagem final, sem liberar novo pagamento.
+          setPaymentProcessing("timeout");
+          return;
+        }
         const message = declined
           ? CARD_DECLINED_RETRY_MESSAGE
           : (result?.message ?? "Não foi possível iniciar o pagamento. Tente novamente.");
@@ -628,6 +694,13 @@ export function CheckoutForm({
             upcomingText="Finalize seu cadastro e endereço para avançar..."
           >
             <div className="space-y-5">
+              {paymentProcessing !== "idle" ? (
+                <PaymentProcessingNotice state={paymentProcessing} />
+              ) : null}
+              <div
+                inert={paymentProcessing !== "idle"}
+                className={paymentProcessing !== "idle" ? "space-y-5 opacity-50" : "space-y-5"}
+              >
               <CheckoutPayment
                 method={paymentMethod}
                 onMethodChange={handlePaymentMethodChange}
@@ -669,6 +742,7 @@ export function CheckoutForm({
                   </>
                 )}
               </Button>
+              </div>
             </div>
           </CheckoutStepCard>
         </div>
@@ -689,7 +763,7 @@ export function CheckoutForm({
           }
           currencyCode={cart?.currencyCode}
           isSubmitting={isSubmittingPayment}
-          disabled={isCheckoutUpdating}
+          disabled={isCheckoutUpdating || paymentProcessing !== "idle"}
         />
       </form>
     </FormProvider>

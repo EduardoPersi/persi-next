@@ -110,7 +110,9 @@ test("o checkout mostra a mensagem ao cliente e mantém o formulário", () => {
   assert.ok(falha.includes("result?.message"));
   assert.ok(falha.includes("setStatusMessage(message)"));
   assert.ok(falha.includes("return;"));
-  // Falha de pagamento nunca limpa o formulário nem navega.
+  // Falha de pagamento nunca limpa o formulário. A única navegação é a da espera
+  // do pagamento "em processamento", quando o banco confirma que a cobrança existe.
   assert.ok(!falha.includes("reset("));
-  assert.ok(!falha.includes("navigate("));
+  assert.equal(falha.split("navigate(").length - 1, 1);
+  assert.ok(falha.includes("navigate(polled.confirmationUrl)"));
 });
