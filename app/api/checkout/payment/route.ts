@@ -283,6 +283,14 @@ async function reconcileApprovedCard(
       });
       return;
     }
+    if (check.currencyAssumed) {
+      // O gateway não informou a moeda: assumido BRL (a loja só vende em reais).
+      console.warn("[checkout-payment] moeda não informada pelo gateway", {
+        orderId: order.id,
+        provider,
+        note: "currency_assumed_brl",
+      });
+    }
     await reconcilePaymentReference(provider, chargeId, "paid");
   } catch (error) {
     console.error("[checkout-payment] falha ao marcar o cartão aprovado como pago", {

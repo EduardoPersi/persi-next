@@ -48,11 +48,43 @@ test("o valor pago tem de ser igual ao total do pedido, ao centavo", () => {
 });
 
 // ---------- moeda ----------
-test("a moeda tem de ser a do pedido; sem moeda informada não dá para conferir", () => {
+test("moeda: a loja só vende em BRL; sem moeda informada assume BRL e avisa; outra moeda não marca pago", () => {
   assert.deepEqual(verifyApprovedCharge("mercadopago", cobranca({ currency: "brl" }), PEDIDO), { approved: true });
   assert.deepEqual(verifyApprovedCharge("mercadopago", cobranca({ currency: "USD" }), PEDIDO), { approved: false, reason: "currency_mismatch" });
-  assert.deepEqual(verifyApprovedCharge("mercadopago", cobranca({ currency: undefined }), PEDIDO), { approved: false, reason: "currency_unverified" });
-  assert.deepEqual(verifyApprovedCharge("mercadopago", cobranca({ currency: "  " }), PEDIDO), { approved: false, reason: "currency_unverified" });
+  assert.deepEqual(verifyApprovedCharge("mercadopago", cobranca({ currency: "ARS" }), PEDIDO), { approved: false, reason: "currency_mismatch" });
+  // O gateway não devolveu a moeda: assume BRL e marca para o log (`currency_assumed_brl`).
+  assert.deepEqual(verifyApprovedCharge("mercadopago", cobranca({ currency: undefined }), PEDIDO), { approved: true, currencyAssumed: true });
+  assert.deepEqual(verifyApprovedCharge("pagbank", { status: "PAID", amount: 199.9 }, PEDIDO), { approved: true, currencyAssumed: true });
+  assert.deepEqual(verifyApprovedCharge("mercadopago", cobranca({ currency: "  " }), PEDIDO), { approved: true, currencyAssumed: true });
+  // Status e valor continuam obrigatórios mesmo sem moeda.
+  assert.equal(verifyApprovedCharge("mercadopago", cobranca({ currency: undefined, status: "authorized" }), PEDIDO).approved, false);
+  assert.equal(verifyApprovedCharge("mercadopago", cobranca({ currency: undefined, amount: 150 }), PEDIDO).approved, false);
+  // Pedido que não é em BRL nunca foi vendido por esta loja.
+  assert.equal(verifyApprovedCharge("mercadopago", cobranca(), { total: "199.90", currency: "USD" }).approved, false);
+});
+
+// ---------- parcelado com juros ----------
+test("cartão parcelado com juros: vale o valor da COMPRA (transaction_amount), não o total pago com juros", () => {
+  // Pedido de R$ 199,90 em 6x com juros: o cliente paga R$ 214,30 no total, mas a compra é de R$ 199,90.
+  const respostaMercadoPago = { status: "approved", transaction_amount: 199.9, currency_id: "BRL", installments: 6, transaction_details: { total_paid_amount: 214.3 } };
+  // O mapeamento do site lê transaction_amount, nunca o total pago.
+  const cobrancaMapeada = { status: respostaMercadoPago.status, amount: respostaMercadoPago.transaction_amount, currency: respostaMercadoPago.currency_id };
+  assert.deepEqual(verifyApprovedCharge("mercadopago", cobrancaMapeada, PEDIDO), { approved: true });
+  // Se alguém comparasse com o total pago com juros, o pedido legítimo seria recusado.
+  assert.equal(verifyApprovedCharge("mercadopago", { ...cobrancaMapeada, amount: respostaMercadoPago.transaction_details.total_paid_amount }, PEDIDO).approved, false);
+  const fonte = read("services/payments/mercadopago/charge.ts");
+  assert.ok(fonte.includes("amount: payment.transaction_amount,"));
+  assert.ok(!fonte.includes("total_paid_amount") && !fonte.includes("transaction_details"));
+});
+
+test("PagBank parcelado com juros: vale amount.value (a cobrança sem taxas e juros), em centavos", async () => {
+  const resposta = { id: "CHAR_9", status: "PAID", amount: { value: 19990, currency: "BRL", summary: { total: 21430, paid: 21430, fees: 1440 } }, payment_method: { installments: 6 } };
+  const lida = await getPagBankCharge("CHAR_9", async () => resposta);
+  assert.equal(lida.amount, 199.9);
+  assert.deepEqual(verifyApprovedCharge("pagbank", lida, PEDIDO), { approved: true });
+  const fonte = read("services/payments/pagbank/charge.ts");
+  assert.ok(fonte.includes("amount: charge.amount.value / 100,"));
+  assert.ok(!fonte.includes("summary"));
 });
 
 // ---------- a leitura traz a moeda ----------
@@ -86,6 +118,9 @@ test("rota: consulta de novo pelo id e só marca pago depois de status, valor e 
   // O motivo vai para o log sem dado pessoal: número do pedido, gateway e motivo.
   assert.ok(funcao.includes("orderId: order.id,"));
   assert.ok(!/email|phone|telefone|document|total|amount/i.test(funcao.slice(funcao.indexOf("console.warn"), funcao.indexOf("return;"))));
+  // Moeda não informada: assume BRL e registra o aviso.
+  assert.ok(funcao.includes("if (check.currencyAssumed) {"));
+  assert.ok(funcao.includes('note: "currency_assumed_brl"'));
   // A função recebe o pedido nos dois ramos de cartão.
   assert.ok(route.includes('await reconcileApprovedCard("mercadopago", charge.chargeId, order);'));
   assert.ok(route.includes('await reconcileApprovedCard("pagbank", charge.chargeId, order);'));

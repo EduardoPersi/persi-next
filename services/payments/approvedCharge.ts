@@ -8,8 +8,13 @@
  *      PagBank `PAID`. `authorized`/`AUTHORIZED` (autorizado, sem captura),
  *      `in_process`, `pending` e qualquer outro NÃO contam;
  *   2. valor igual ao total do pedido, ao centavo;
- *   3. moeda igual à do pedido. Se o gateway não informar a moeda, não há como
- *      conferir: não marca pago.
+ *   3. moeda BRL (a loja só vende em reais). Se o gateway devolver outra moeda,
+ *      não marca pago. Se não devolver, assume BRL e avisa (`currencyAssumed`).
+ *
+ * O valor comparado é o da COMPRA, sem juros do parcelamento: Mercado Pago
+ * `transaction_amount` (não `total_paid_amount`) e PagBank `amount.value` (a
+ * cobrança sem taxas). O cliente que parcela com juros paga mais que o pedido, e
+ * isso é esperado.
  *
  * Qualquer falha deixa o pedido como está: o webhook e a varredura de pendentes
  * continuam como rede de segurança. Código puro, sem rede.
@@ -19,9 +24,12 @@ export type ApprovalProvider = "mercadopago" | "pagbank";
 
 export interface GatewayChargeForApproval {
   status: string;
-  /** Valor da cobrança em unidades da moeda (ex.: 199.9). */
+  /**
+   * Valor da COMPRA em unidades da moeda (ex.: 199.9), sem juros de parcelamento:
+   * Mercado Pago `transaction_amount`, PagBank `amount.value` / 100.
+   */
   amount: number;
-  /** Moeda informada pelo gateway (ex.: "BRL"); ausente = não conferível. */
+  /** Moeda informada pelo gateway (ex.: "BRL"); ausente = assume BRL. */
   currency?: string;
 }
 
@@ -32,16 +40,18 @@ export interface OrderForApproval {
 }
 
 export type ApprovalCheck =
-  | { approved: true }
+  | {
+      approved: true;
+      /** O gateway não informou a moeda e foi assumido BRL: quem chama registra `currency_assumed_brl`. */
+      currencyAssumed?: true;
+    }
   | {
       approved: false;
-      reason:
-        | "not_approved"
-        | "invalid_amount"
-        | "amount_mismatch"
-        | "currency_unverified"
-        | "currency_mismatch";
+      reason: "not_approved" | "invalid_amount" | "amount_mismatch" | "currency_mismatch";
     };
+
+/** A única moeda em que a loja vende. */
+export const STORE_CURRENCY = "BRL";
 
 /** Status que significa "aprovado e capturado" em cada gateway. */
 export function isApprovedStatus(provider: ApprovalProvider, status: string): boolean {
@@ -70,9 +80,12 @@ export function verifyApprovedCharge(
   if (paid !== expected) return { approved: false, reason: "amount_mismatch" };
 
   const chargeCurrency = charge.currency?.trim().toUpperCase();
-  if (!chargeCurrency) return { approved: false, reason: "currency_unverified" };
-  if (chargeCurrency !== order.currency.trim().toUpperCase()) {
+  const orderCurrency = order.currency.trim().toUpperCase();
+  // Pedido em outra moeda que não BRL nunca foi vendido por esta loja: não marca pago.
+  if (orderCurrency && orderCurrency !== STORE_CURRENCY) {
     return { approved: false, reason: "currency_mismatch" };
   }
+  if (!chargeCurrency) return { approved: true, currencyAssumed: true };
+  if (chargeCurrency !== STORE_CURRENCY) return { approved: false, reason: "currency_mismatch" };
   return { approved: true };
 }
