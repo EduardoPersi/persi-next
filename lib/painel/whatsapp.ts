@@ -60,7 +60,16 @@ export type AvisoDePedido = {
     uf?: string;
   };
   itens?: Array<{ sku?: string; nome: string; quantidade: number; preco_centavos?: number }>;
-  envio?: { metodo?: string; entrega_propria?: boolean; retirada?: boolean; frete_centavos?: number };
+  envio?: {
+    metodo?: string;
+    entrega_propria?: boolean;
+    retirada?: boolean;
+    frete_centavos?: number;
+    /** AAAA-MM-DD: a data que o checkout mostrou ao cliente (só entrega da loja, só com PAINEL_ENVIAR_PREVISAO_ENTREGA). */
+    previsao_entrega?: string;
+    /** ISO 8601 (UTC) de quando a previsão foi calculada. */
+    previsao_calculada_em?: string;
+  };
   pagamento?: { forma?: string; parcelas?: number };
 };
 
