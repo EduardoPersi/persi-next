@@ -31,7 +31,7 @@ export function isPaymentInProgress(outcome: { status?: number; code?: string })
   );
 }
 
-export type AttemptOutcome = "processing" | "created" | "declined";
+export type AttemptOutcome = "processing" | "created" | "declined" | "not_found";
 
 export interface AttemptSnapshot {
   state: string;
@@ -68,13 +68,17 @@ export interface PollCheck {
 export type PollResult =
   | { kind: "created"; confirmationUrl: string }
   | { kind: "declined" }
+  | { kind: "not_found" }
   | { kind: "timeout" }
   | { kind: "cancelled" };
 
 /**
  * Consulta de tempos em tempos até a tentativa se resolver ou o tempo acabar.
  * Erro de rede, 401, 429 e qualquer resposta torta contam como "ainda
- * processando": a chave nunca muda aqui.
+ * processando": a chave nunca muda aqui. "Não encontrada" (a tentativa nunca
+ * existiu) só encerra a espera quando `stopOnNotFound` está ligado, o que vale
+ * ao RETOMAR uma chave guardada depois de recarregar a página; no pagamento
+ * em andamento ela conta como "ainda processando".
  */
 export async function pollPaymentAttempt(options: {
   check: () => Promise<PollCheck | null>;
@@ -83,6 +87,7 @@ export async function pollPaymentAttempt(options: {
   intervalMs?: number;
   timeoutMs?: number;
   isCancelled?: () => boolean;
+  stopOnNotFound?: boolean;
 }): Promise<PollResult> {
   const now = options.now ?? Date.now;
   const intervalMs = options.intervalMs ?? PAYMENT_POLL_INTERVAL_MS;
@@ -98,6 +103,7 @@ export async function pollPaymentAttempt(options: {
       result = null;
     }
     if (result?.outcome === "declined") return { kind: "declined" };
+    if (result?.outcome === "not_found" && options.stopOnNotFound) return { kind: "not_found" };
     if (result?.outcome === "created" && result.confirmationUrl) {
       return { kind: "created", confirmationUrl: result.confirmationUrl };
     }

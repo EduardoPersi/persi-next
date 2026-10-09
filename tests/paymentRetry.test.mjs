@@ -98,8 +98,10 @@ test("checkout: chave nova só na falha definitiva, formulário intocado, Pix em
   const form = read("components/Checkout/CheckoutForm.tsx");
 
   // A chave só é atribuída na criação e no ramo de falha, via nextIdempotencyKey.
-  // Só na recusa direta e na recusa descoberta durante a espera (paymentPolling).
-  assert.equal(form.split("checkoutAttemptIdRef.current = ").length - 1, 2);
+  // Só na recusa direta, na recusa descoberta durante a espera (paymentPolling) e
+  // na recusa descoberta ao retomar uma chave pendente (resumePendingPayment).
+  assert.equal(form.split("checkoutAttemptIdRef.current = ").length - 1, 3);
+  assert.ok(form.includes("checkoutAttemptIdRef.current = resumed.newKey;"));
   assert.equal(form.split("checkoutAttemptIdRef.current = nextIdempotencyKey(").length - 1, 2);
   const inicio = form.indexOf("if (!response.ok || !result) {");
   const fim = form.indexOf("if (result.alreadyInitiated)", inicio);
