@@ -49,10 +49,16 @@ import {
   getCardChargeStatus as getPagBankCardChargeStatus,
 } from "@/services/payments/pagbank/charge";
 import { PagBankPaymentError } from "@/services/payments/pagbank/errors";
-import { categorizeCardStatus, categorizeMercadoPagoCardStatus } from "@/services/payments/reconcile";
+import {
+  categorizeCardStatus,
+  categorizeMercadoPagoCardStatus,
+  reconcilePaymentReference,
+} from "@/services/payments/reconcile";
 import { getServerAccountSession } from "@/services/account/serverSession";
 import { getAuthoritativeCheckoutItems } from "@/services/checkout/headlessCheckout";
-import { CartServiceError, getCart } from "@/services/woocommerce/cart";
+import { verifyApprovedCharge } from "@/services/payments/approvedCharge";
+import { emptyCartItems } from "@/services/woocommerce/cartEmpty";
+import { CartServiceError, getCart, removeCartItem } from "@/services/woocommerce/cart";
 import {
   attachPaymentReference,
   createPendingOrder,
@@ -60,6 +66,7 @@ import {
   markOrderAsFailed,
   WooCommerceRestError,
   type PersiPaymentMethod,
+  type WooCommerceOrder,
 } from "@/services/woocommerce/orders";
 import type { CartAddress } from "@/types/cart";
 import type { CheckoutStoreAddress } from "@/types/checkout";
@@ -239,6 +246,58 @@ function createPrivateResponse(
     );
   }
   return response;
+}
+
+// O pedido foi criado: esvazia os ITENS do carrinho (o token fica: ele prova que quem
+// consulta o pedido é quem o criou). Nunca lança; o pagamento vale mais que a limpeza.
+async function emptyCartAfterOrder(cartToken: string | undefined) {
+  const emptied = await emptyCartItems(cartToken, { getCart, removeItem: removeCartItem });
+  if (emptied.failed > 0) {
+    console.warn("[checkout-payment] carrinho não foi esvaziado por completo", emptied);
+  }
+}
+
+// Cartão aprovado na hora: o pedido vira pago AGORA, pelo mesmo caminho do webhook
+// (reconcilePaymentReference), em vez de esperar o webhook do gateway chegar. Antes de
+// marcar, consulta a cobrança DE NOVO no gateway pelo id (não confia só na resposta da
+// criação) e exige status aprovado e capturado (Mercado Pago `approved`, PagBank `PAID`;
+// `authorized`, `in_process` e `pending` não valem), valor igual ao total do pedido e
+// moeda igual (services/payments/approvedCharge.ts). Qualquer dúvida deixa o pedido como
+// está: o webhook segue como rede de segurança. É idempotente. Nunca lança.
+async function reconcileApprovedCard(
+  provider: "mercadopago" | "pagbank",
+  chargeId: string,
+  order: WooCommerceOrder,
+) {
+  try {
+    const fresh =
+      provider === "mercadopago"
+        ? await getMercadoPagoCardChargeStatus(chargeId)
+        : await getPagBankCardChargeStatus(chargeId);
+    const check = verifyApprovedCharge(provider, fresh, order);
+    if (!check.approved) {
+      console.warn("[checkout-payment] cartão não confirmado como pago pelo gateway", {
+        orderId: order.id,
+        provider,
+        reason: check.reason,
+      });
+      return;
+    }
+    if (check.currencyAssumed) {
+      // O gateway não informou a moeda: assumido BRL (a loja só vende em reais).
+      console.warn("[checkout-payment] moeda não informada pelo gateway", {
+        orderId: order.id,
+        provider,
+        note: "currency_assumed_brl",
+      });
+    }
+    await reconcilePaymentReference(provider, chargeId, "paid");
+  } catch (error) {
+    console.error("[checkout-payment] falha ao marcar o cartão aprovado como pago", {
+      provider,
+      code: error instanceof Error ? error.name : "UNKNOWN",
+    });
+  }
 }
 
 function requireCompleteAddress(
@@ -446,6 +505,7 @@ export async function POST(request: Request) {
           checkoutAttemptId: input.idempotencyKey,
           confirmationUrl: getConfirmationUrl(input.idempotencyKey),
         };
+        await emptyCartAfterOrder(activeCartToken);
         return createPrivateResponse(result, 200, activeCartToken);
       }
       return createPrivateResponse(
@@ -485,6 +545,7 @@ export async function POST(request: Request) {
         checkoutAttemptId: input.idempotencyKey,
         confirmationUrl: getConfirmationUrl(input.idempotencyKey),
       };
+      await emptyCartAfterOrder(activeCartToken);
       return createPrivateResponse(result, 200, activeCartToken);
     }
 
@@ -808,6 +869,9 @@ export async function POST(request: Request) {
         });
         return createCardDeclinedResponse(order.id, charge.chargeId, charge.status, activeCartToken);
       }
+      if (categorizeMercadoPagoCardStatus(charge.status) === "paid") {
+        await reconcileApprovedCard("mercadopago", charge.chargeId, order);
+      }
 
       result = {
         method: input.method,
@@ -866,6 +930,9 @@ export async function POST(request: Request) {
         });
         return createCardDeclinedResponse(order.id, charge.chargeId, charge.status, activeCartToken);
       }
+      if (categorizeCardStatus(charge.status) === "paid") {
+        await reconcileApprovedCard("pagbank", charge.chargeId, order);
+      }
 
       result = {
         method: input.method,
@@ -906,6 +973,7 @@ export async function POST(request: Request) {
       method: paymentMethod,
       orderId,
     });
+    await emptyCartAfterOrder(activeCartToken);
     return createPrivateResponse(result, 201, activeCartToken);
   } catch (error) {
     const status = getErrorStatus(error);

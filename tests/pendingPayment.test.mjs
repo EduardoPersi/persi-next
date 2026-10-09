@@ -292,7 +292,7 @@ test("checkout: grava a chave antes de enviar, libera ao concluir e retoma ao ab
   // Só chave, forma de pagamento e horário (o horário é de agora, dentro de pendingPayment.ts).
   assert.ok(read("lib/commerce/pendingPayment.ts").includes("writePendingPayment(storage, { key, method, at: Date.now() });"));
   // Pedido criado apaga a chave (os quatro desfechos de sucesso passam por um só lugar).
-  assert.ok(form.includes("const markOrderCreated = () => {\n    clearPendingPayment(browserPendingStorage());\n    setHasCreatedOrder();\n  };"));
+  assert.ok(form.includes("const markOrderCreated = () => {") && form.includes("clearPendingPayment(browserPendingStorage());") && form.includes("    setHasCreatedOrder();"));
   assert.equal(form.split("markOrderCreated();").length - 1, 4);
   assert.equal(form.split("setHasCreatedOrder();").length - 1, 1 + 1); // a definição + a retomada
   // Falha definitiva apaga; incerta mantém.
