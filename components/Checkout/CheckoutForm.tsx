@@ -47,6 +47,14 @@ import {
   pollPaymentAttempt,
   type PollCheck,
 } from "@/lib/commerce/paymentPolling";
+import { resumePendingPayment } from "@/lib/commerce/resumePendingPayment";
+import {
+  browserPendingStorage,
+  clearPendingPayment,
+  readPendingPayment,
+  rememberPendingPayment,
+  shouldKeepPendingAfterFailure,
+} from "@/lib/commerce/pendingPayment";
 import {
   CARD_DECLINED_RETRY_MESSAGE,
   isDefinitiveCardFailure,
@@ -150,7 +158,11 @@ export function CheckoutForm({
   const [suggestPix, setSuggestPix] = useState(false);
   // Pagamento "em processamento" (409): espera a confirmação do banco com a MESMA
   // chave, sem liberar outro pagamento. Ver lib/commerce/paymentPolling.ts.
-  const [paymentProcessing, setPaymentProcessing] = useState<"idle" | "confirming" | "timeout">("idle");
+  // Chave pendente guardada (recarregou durante ou depois de uma tentativa de pagamento):
+  // começa já travado, consultando o estado dela antes de liberar qualquer pagamento.
+  const [paymentProcessing, setPaymentProcessing] = useState<"idle" | "confirming" | "timeout">(
+    () => (readPendingPayment(browserPendingStorage()) ? "confirming" : "idle"),
+  );
   const isUnmountedRef = useRef(false);
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [installments, setInstallments] = useState(1);
@@ -376,6 +388,53 @@ export function CheckoutForm({
     return (await response.json().catch(() => null)) as PollCheck | null;
   };
 
+  // Pedido criado: o cliente vai para a página do pedido e a chave pendente sai.
+  const markOrderCreated = () => {
+    clearPendingPayment(browserPendingStorage());
+    setHasCreatedOrder();
+  };
+
+  // Recarregou a página com uma chave pendente (menos de 30 min): consulta o estado
+  // dela, só leitura, ANTES de liberar qualquer pagamento. Mesma espera do 409.
+  const resumedPendingRef = useRef(false);
+  useEffect(() => {
+    if (resumedPendingRef.current) return;
+    const storage = browserPendingStorage();
+    if (!readPendingPayment(storage)) return;
+    resumedPendingRef.current = true;
+    void resumePendingPayment({
+      storage,
+      check: checkAttempt,
+      wait: (ms) => new Promise((resolve) => window.setTimeout(resolve, ms)),
+      generateKey: createIdempotencyKey,
+      isCancelled: () => isUnmountedRef.current,
+    }).then((resumed) => {
+      if (resumed.kind === "cancelled") return;
+      if (resumed.kind === "created") {
+        navigate(resumed.confirmationUrl);
+        setHasCreatedOrder();
+        return;
+      }
+      if (resumed.kind === "declined") {
+        // Recusa definitiva: chave NOVA e o fluxo da recusa (mensagem + Pix).
+        checkoutAttemptIdRef.current = resumed.newKey;
+        setPaymentProcessing("idle");
+        setSuggestPix(true);
+        setStatusMessage(CARD_DECLINED_RETRY_MESSAGE);
+        return;
+      }
+      if (resumed.kind === "timeout") {
+        // 2 minutos sem confirmação: mensagem final, sem liberar pagamento.
+        setPaymentProcessing("timeout");
+        return;
+      }
+      // Sem nada pendente ou tentativa que nunca existiu: libera normalmente.
+      setPaymentProcessing("idle");
+    });
+    // Só ao abrir o checkout.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const submitPayment = async (values: CheckoutFormValues) => {
     // Enquanto o banco confirma, nenhum novo pagamento sai (nem pelo botão fixo do celular).
     if (paymentProcessing !== "idle") return;
@@ -426,6 +485,10 @@ export function CheckoutForm({
         return;
       }
 
+      // Guarda a chave em uso, a forma de pagamento e o horário (nada de cartão nem de
+      // dado pessoal). Se a página recarregar antes de o resultado chegar, o checkout
+      // consulta esta chave em vez de liberar outro pagamento.
+      rememberPendingPayment(browserPendingStorage(), idempotencyKey, paymentMethod);
       const response = await fetch("/api/checkout/payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -450,6 +513,8 @@ export function CheckoutForm({
           createIdempotencyKey,
         );
         if (shouldSuggestPix(outcome)) setSuggestPix(true);
+        // Só fica guardada quando o resultado é incerto (409, 5xx, sem resposta).
+        if (!shouldKeepPendingAfterFailure(outcome)) clearPendingPayment(browserPendingStorage());
 
         // Em processamento (409): o resultado é incerto. NADA de chave nova nem de
         // outra forma de pagamento; só espera, consultando a mesma chave.
@@ -462,11 +527,12 @@ export function CheckoutForm({
           });
           if (polled.kind === "cancelled") return;
           if (polled.kind === "created") {
-            setHasCreatedOrder();
+            markOrderCreated();
             navigate(polled.confirmationUrl);
             return;
           }
           if (polled.kind === "declined") {
+            clearPendingPayment(browserPendingStorage());
             setPaymentProcessing("idle");
             checkoutAttemptIdRef.current = nextIdempotencyKey(
               idempotencyKey,
@@ -501,18 +567,18 @@ export function CheckoutForm({
       }
 
       if (result.alreadyInitiated) {
-        setHasCreatedOrder();
+        markOrderCreated();
         navigate(result.confirmationUrl);
         return;
       }
 
       if (result.method === "inter_pix" || result.method === "inter_boleto") {
-        setHasCreatedOrder();
+        markOrderCreated();
         navigate(result.confirmationUrl);
         return;
       }
 
-      setHasCreatedOrder();
+      markOrderCreated();
       navigate(
         `/checkout/confirmacao?provider=mercadopago_card&reference=${encodeURIComponent(result.chargeId)}`,
       );

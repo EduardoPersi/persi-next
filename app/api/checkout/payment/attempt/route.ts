@@ -22,7 +22,7 @@ export const runtime = "nodejs";
 // quando a cobrança existe). Usada pelo checkout enquanto o pagamento está
 // "em processamento" (409). Contrato: lib/commerce/paymentPolling.ts.
 //
-// Resposta: { outcome: "processing" | "created" | "declined", confirmationUrl }.
+// Resposta: { outcome: "processing" | "created" | "declined" | "not_found", confirmationUrl }.
 // Qualquer dúvida (sem pedido, sem autorização, erro de consulta) vira
 // "processing": o cliente continua esperando, nada é liberado.
 
@@ -68,7 +68,17 @@ export async function GET(request: Request) {
   if (!UUID.test(key)) return respond({ message: "Parâmetros inválidos." }, 400);
 
   try {
-    const attempt = await getCheckoutAttempt(key);
+    let attempt;
+    try {
+      attempt = await getCheckoutAttempt(key);
+    } catch (error) {
+      // O plugin responde 404 quando a chave nunca foi reservada (o envio não
+      // chegou a existir): seguro liberar. Qualquer outro erro é dúvida.
+      if (error instanceof Error && error.message.endsWith("(404)")) {
+        return respond({ outcome: "not_found" satisfies AttemptOutcome });
+      }
+      throw error;
+    }
     if (!attempt?.order_id) return processing();
 
     // Só quem criou o pedido consulta (mesma regra da rota de status).

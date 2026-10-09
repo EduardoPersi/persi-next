@@ -48,6 +48,11 @@ test("CheckoutForm liga os dois hooks de UX e os desliga antes da transferência
   // O checkout híbrido possui um único ramo de sucesso: antes de navegar
   // para o checkout WooCommerce, o callback desarma os avisos do Next.js.
   assert.match(source, /onOrderCreated: setHasCreatedOrder/);
-  const setHasCreatedOrderCount = source.split("setHasCreatedOrder()").length - 1;
-  assert.ok(setHasCreatedOrderCount >= 3);
+  // Todos os ramos de sucesso passam por markOrderCreated, que desarma os avisos
+  // (setHasCreatedOrder) e apaga a chave de pagamento pendente.
+  assert.ok(source.includes("const markOrderCreated = () => {"));
+  assert.ok(source.includes("clearPendingPayment(browserPendingStorage());"));
+  assert.ok(source.includes("setHasCreatedOrder();"));
+  const markOrderCreatedCount = source.split("markOrderCreated();").length - 1;
+  assert.ok(markOrderCreatedCount >= 3);
 });
