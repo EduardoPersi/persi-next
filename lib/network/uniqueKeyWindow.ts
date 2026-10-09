@@ -34,11 +34,16 @@ export function createUniqueKeyWindow(
 
   return {
     /**
+     * Cliente vazio (IP desconhecido) nunca é barrado.
+     *
      * `true` quando esta tentativa passa do limite (e NÃO é registrada, então
      * quem foi barrado não alonga o próprio bloqueio). A mesma chave dentro da
      * janela nunca é barrada e nunca conta de novo.
      */
     isLimited(client: string, key: string): boolean {
+      // Sem cliente identificado não há de quem contar: deixa passar, sem
+      // criar um balde "desconhecido" que misturaria todo mundo.
+      if (!client) return false;
       const at = now();
       pruneAll(at);
 

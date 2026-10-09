@@ -1,6 +1,7 @@
 import "server-only";
 import { getRequestIp } from "@/lib/recaptcha/verify";
-import { createUniqueKeyWindow } from "./uniqueKeyWindow";
+import { getTrustedClientIp } from "./trustedIp";
+import { createUniqueKeyLimiter } from "./uniqueKeyLimiter";
 
 // Limitador em memória de processo único (a Hostinger roda um único
 // processo Node persistente). Chaveia pelo IP real do cliente (via
@@ -41,14 +42,24 @@ export function createRateLimiter(windowMs: number, maxRequests: number) {
 
 // Conta tentativas DISTINTAS por IP (cada chave conta uma vez dentro da
 // janela): repetir a mesma chave, como a retentativa do mesmo pagamento com a
-// mesma chave de idempotência, não é tentativa nova. Mesmo critério de IP
-// acima; a lógica está em uniqueKeyWindow.ts.
-export function createUniqueKeyRateLimiter(windowMs: number, maxAttempts: number) {
-  const window = createUniqueKeyWindow(windowMs, maxAttempts);
-
-  return {
-    isLimited(headers: Headers, key: string): boolean {
-      return window.isLimited(getRequestIp(headers) || "unknown", key);
-    },
-  };
+// mesma chave de idempotência, não é tentativa nova. A lógica está em
+// uniqueKeyWindow.ts.
+//
+// O IP vem só de fonte confiável (`cf-connecting-ip`, trustedIp.ts). Sem ele,
+// o limite NÃO se aplica (nada de balde "desconhecido" com todo mundo junto) e
+// sai um aviso no log a CADA ocorrência, com a rota e quantas já houve desde que
+// o servidor subiu (para ver depois do deploy se acontece em todo pedido). Sem
+// dado pessoal: nem IP, nem chave, nem cabeçalhos.
+export function createUniqueKeyRateLimiter(
+  windowMs: number,
+  maxAttempts: number,
+  route: string,
+) {
+  return createUniqueKeyLimiter({
+    windowMs,
+    maxAttempts,
+    route,
+    getIp: getTrustedClientIp,
+    warn: (message, data) => console.warn(message, data),
+  });
 }

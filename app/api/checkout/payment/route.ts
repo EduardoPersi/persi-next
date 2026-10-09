@@ -7,6 +7,10 @@ import { MIN_BOLETO_AMOUNT } from "@/components/Checkout/paymentMethod";
 import { calculatePaymentTotals } from "@/lib/commerce/paymentDiscount";
 import { getPublicCheckoutCapabilities } from "@/lib/commerce/checkoutConfig";
 import {
+  CARD_ATTEMPTS_EXCEEDED_MESSAGE,
+  createCardDeclineCounter,
+} from "@/lib/commerce/cardDeclineLimit";
+import {
   PAYMENT_RATE_LIMIT_MAX_ATTEMPTS,
   PAYMENT_RATE_LIMIT_MESSAGE,
   PAYMENT_RATE_LIMIT_WINDOW_MS,
@@ -71,7 +75,12 @@ const GENERIC_ERROR_MESSAGE = "Não foi possível iniciar o pagamento. Tente nov
 const paymentRateLimiter = createUniqueKeyRateLimiter(
   PAYMENT_RATE_LIMIT_WINDOW_MS,
   PAYMENT_RATE_LIMIT_MAX_ATTEMPTS,
+  "/api/checkout/payment",
 );
+
+// No máximo 5 cartões recusados por pedido (carrinho), independente do IP; na 6ª
+// tentativa de cartão, só o Pix. Mesma chave de desligar: PAGAMENTO_RATE_LIMIT=0.
+const cardDeclines = createCardDeclineCounter();
 
 type PaymentStage =
   | "request_validation"
@@ -323,6 +332,19 @@ export async function POST(request: Request) {
       );
       limited.headers.set("Retry-After", "60");
       return limited;
+    }
+    // Por pedido, não por IP: vale mesmo sem IP identificado ou com IP trocando.
+    if (
+      pagamentoRateLimitLigado() &&
+      CARD_PAYMENT_METHODS.has(input.method) &&
+      sessaoDoPedido &&
+      cardDeclines.isBlocked(sessaoDoPedido)
+    ) {
+      return createPrivateResponse(
+        { code: "CARD_ATTEMPTS_EXCEEDED", message: CARD_ATTEMPTS_EXCEEDED_MESSAGE },
+        429,
+        activeCartToken,
+      );
     }
     checkoutAttemptId = input.idempotencyKey;
     paymentMethod = input.method;
@@ -753,6 +775,7 @@ export async function POST(request: Request) {
       // genérica de "aguardando confirmação" de um cartão negado.
       if (categorizeMercadoPagoCardStatus(charge.status) === "failed") {
         await markOrderAsFailed(order, "failed");
+        if (sessaoDoPedido) cardDeclines.recordDecline(sessaoDoPedido);
         after(() => avisarSituacaoDoPedido(order, "cancelado").then(() => undefined));
         await reconcileCheckoutAttempt(charge.chargeId, "PAYMENT_FAILED").catch(() => undefined);
         console.info("[checkout-payment] card declined", {
@@ -809,6 +832,7 @@ export async function POST(request: Request) {
       // genérica de "aguardando confirmação" de um cartão negado.
       if (categorizeCardStatus(charge.status) === "failed") {
         await markOrderAsFailed(order, "failed");
+        if (sessaoDoPedido) cardDeclines.recordDecline(sessaoDoPedido);
         after(() => avisarSituacaoDoPedido(order, "cancelado").then(() => undefined));
         await reconcileCheckoutAttempt(charge.chargeId, "PAYMENT_FAILED").catch(() => undefined);
         console.info("[checkout-payment] card declined", {
