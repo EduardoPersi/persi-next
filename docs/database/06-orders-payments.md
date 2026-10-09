@@ -49,6 +49,32 @@ Snapshots não são atualizados por mudanças de product/customer/method. Corre�
 de pedido é evento administrativo auditado ou documento de ajuste, não refresh
 do catálogo.
 
+### Previsão de entrega prometida (obrigatória no pedido nativo)
+
+O checkout mostra ao cliente a data de chegada ("Chega hoje", "Chega amanhã, dia
+9") e o painel de atendimento usa essa MESMA data para encaixar a entrega da loja
+(`envio.previsao_entrega` em `POST /api/webhooks/site/notificar`, contrato do
+painel §3.1). Hoje o pedido do WooCommerce a guarda em dois metas; **o pedido
+nativo precisa gravar o mesmo dado**, senão ele se perde quando o WooCommerce for
+desligado e o painel volta a ter de adivinhar o dia:
+
+| WooCommerce (hoje) | Pedido nativo | Regra |
+| --- | --- | --- |
+| meta `_persi_previsao_entrega` | `shipping.promised_delivery_date` (`date`, anulável) | AAAA-MM-DD, data civil de São Paulo. Só entrega da loja; `null` em retirada e transportadora |
+| meta `_persi_previsao_calculada_em` | `shipping.promised_delivery_calculated_at` (`timestamptz`) | quando a data foi calculada |
+
+- **Calculada uma vez, na criação do pedido** (mesmo cálculo da tela:
+  `lib/shipping/calendar`), dentro do snapshot de `shipping`. Nunca recalculada
+  no pagamento: quem viu "Chega hoje" às 12h55 e pagou às 13h05 continua com a
+  data que viu. Faz parte do snapshot imutável acima.
+- Os eventos `order.created` (pendente), de pagamento confirmado e de
+  cancelamento levam a data congelada; o consumidor do painel decide o dia real
+  (inclusive quando a data já passou, como em boleto pago tarde).
+- Hoje o envio do campo é controlado por `PAINEL_ENVIAR_PREVISAO_ENTREGA=1`
+  (desligado por padrão); o pedido nativo mantém uma chave equivalente até o
+  painel estar no ar.
+- Detalhes e prova: `docs/48-previsao-de-entrega-no-pedido.md`.
+
 ## Máquinas de estado independentes
 
 ### Order status
@@ -148,4 +174,6 @@ integration error/alerta e não força transição financeira destrutiva.
 - duração de reserva Pix e, especialmente, boleto;
 - captura automática/manual de cartão e política de parcelamento;
 - regras de cancelamento, refund, pagamento tardio e devolução;
-- formato/numeração fiscal do `order_number`.
+- formato/numeração fiscal do `order_number`;
+- gravar `shipping.promised_delivery_date` e `promised_delivery_calculated_at` no
+  pedido nativo desde o primeiro dia (ver "Previsão de entrega prometida").

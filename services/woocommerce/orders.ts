@@ -1,6 +1,7 @@
 import type { CheckoutTransferItem } from "@/lib/commerce/checkoutTransfer";
 import type { CheckoutStoreAddress } from "@/types/checkout";
 import { OPTIN_WHATSAPP_META, optinParaMeta, SESSAO_META } from "../../lib/painel/optin.ts";
+import { metasDaPrevisao, type PrevisaoCongelada } from "../../lib/painel/previsaoEntrega.ts";
 import { rastreiosDoPedido } from "../../lib/rastreio/melhorEnvio.ts";
 import { WooCommerceRestError } from "./restError.ts";
 
@@ -297,6 +298,11 @@ export interface CreatePendingOrderInput {
   // Origem da compra já serializada (lib/tracking/servidor.ts). Opcional: sem
   // cookies de rastreio o pedido nasce exatamente como antes.
   origin?: string;
+  // Previsão de entrega congelada (lib/painel/previsaoEntrega.ts): a data que o
+  // checkout mostrou ao cliente. Gravada em metas do pedido para os avisos de
+  // pago e cancelado repetirem a MESMA data. Opcional: sem ela (chave
+  // PAINEL_ENVIAR_PREVISAO_ENTREGA desligada) o pedido nasce como antes.
+  deliveryForecast?: PrevisaoCongelada;
 }
 
 function toWooAddress(address: CheckoutStoreAddress) {
@@ -375,6 +381,7 @@ export async function createPendingOrder(
       ...(input.whatsappOptIn !== undefined
         ? [{ key: OPTIN_WHATSAPP_META, value: optinParaMeta(input.whatsappOptIn) }]
         : []),
+      ...metasDaPrevisao(input.deliveryForecast),
     ],
   });
 

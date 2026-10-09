@@ -25,6 +25,7 @@
 import { SITE_URL } from "../routing/storefrontUrls.ts";
 import { lerOrigemDoPedido } from "../tracking/servidor.ts";
 import { optinWhatsappDoPedido, sessaoDoPedido } from "./optin.ts";
+import { lerPrevisaoDoPedido, previsaoEntregaLigada } from "./previsaoEntrega.ts";
 import { avisarPedido, type AvisoDePedido, type ResultadoDoAviso } from "./whatsapp.ts";
 import type { DadosDaEntrega } from "../../services/woocommerce/orders.ts";
 
@@ -163,6 +164,16 @@ function camposDoPedidoCompleto(
       retirada: forma === "retirada",
       ...(entrega.frete.centavos !== undefined ? { frete_centavos: entrega.frete.centavos } : {}),
     };
+    // A data que o checkout prometeu, congelada na criação do pedido (ver
+    // previsaoEntrega.ts). Só entrega da loja e só com a chave ligada; sem meta
+    // (pedido antigo, ou criado com a chave desligada), o campo não vai.
+    if (forma === "loja" && previsaoEntregaLigada(env)) {
+      const previsao = lerPrevisaoDoPedido(pedido.metaData);
+      if (previsao) {
+        campos.envio.previsao_entrega = previsao.data;
+        if (previsao.calculadaEm) campos.envio.previsao_calculada_em = previsao.calculadaEm;
+      }
+    }
   }
 
   const forma = pedido.paymentMethod ? FORMA_DE_PAGAMENTO[pedido.paymentMethod] ?? pedido.paymentMethod : undefined;
