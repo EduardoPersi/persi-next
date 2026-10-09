@@ -31,6 +31,8 @@ export interface CardChargeResult {
   chargeId: string;
   status: CardChargeStatus;
   amount: number;
+  /** Moeda informada pelo gateway (`amount.currency`), para conferir com a do pedido. */
+  currency?: string;
   brand?: string;
   lastDigits?: string;
   installments?: number;
@@ -39,7 +41,7 @@ export interface CardChargeResult {
 interface PagBankChargeResponse {
   id: string;
   status: string;
-  amount: { value: number };
+  amount: { value: number; currency?: string };
   payment_method?: {
     installments?: number;
     card?: {
@@ -93,6 +95,7 @@ function toChargeResult(charge: PagBankChargeResponse): CardChargeResult {
     chargeId: charge.id,
     status: assertChargeStatus(charge.status),
     amount: charge.amount.value / 100,
+    currency: charge.amount.currency,
     brand: charge.payment_method?.card?.brand,
     lastDigits: charge.payment_method?.card?.last_digits,
     installments: charge.payment_method?.installments,

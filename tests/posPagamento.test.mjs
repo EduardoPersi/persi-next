@@ -83,12 +83,10 @@ test("rota: o carrinho é esvaziado nos sucessos (inclusive repetição da mesma
 test("rota: cartão aprovado na hora vira pedido pago agora, pelo caminho do webhook, e nunca quebra o pagamento", () => {
   const route = read("app/api/checkout/payment/route.ts");
   assert.ok(route.includes('await reconcilePaymentReference(provider, chargeId, "paid");'));
-  assert.ok(route.includes('if (categorizeMercadoPagoCardStatus(charge.status) === "paid") {\n        await reconcileApprovedCard("mercadopago", charge.chargeId);'));
-  assert.ok(route.includes('if (categorizeCardStatus(charge.status) === "paid") {\n        await reconcileApprovedCard("pagbank", charge.chargeId);'));
-  // Depois da recusa e antes do resultado de cada ramo de cartão.
+  // Os dois ramos de cartão disparam depois da recusa e antes do resultado.
   for (const provedor of ["mercadopago", "pagbank"]) {
-    const reconciliacao = route.indexOf(`await reconcileApprovedCard("${provedor}", charge.chargeId);`);
-    const resultado = route.indexOf("result = {\n        method: input.method,", reconciliacao);
+    const reconciliacao = route.indexOf(`await reconcileApprovedCard("${provedor}", charge.chargeId, order);`);
+    const resultado = route.indexOf("result = {", reconciliacao);
     assert.ok(reconciliacao > -1 && resultado > reconciliacao);
   }
   // A função engole o erro (log sem dado pessoal): o cliente nunca vê falha por causa disto.
@@ -98,11 +96,11 @@ test("rota: cartão aprovado na hora vira pedido pago agora, pelo caminho do web
   assert.ok(!/email|phone|telefone|document/i.test(funcao));
 });
 
-test("página de confirmação: cartão aprovado também é reconciliado (segurança extra, idempotente)", () => {
+test("página de confirmação: o aprovado também é reconciliado, depois da conferência (idempotente)", () => {
   const page = read("app/checkout/confirmacao/page.tsx");
-  assert.ok(page.includes('if (category === "failed" || category === "paid") {\n      await reconcilePaymentReference("mercadopago", reference, category);'));
-  assert.ok(page.includes('await reconcilePaymentReference("mercadopago", attempt.provider_reference, category);'));
-  assert.ok(page.includes('await reconcilePaymentReference("pagbank", attempt.provider_reference, category);'));
+  assert.ok(page.includes('await reconcilePaymentReference("mercadopago", reference, "paid");'));
+  assert.ok(page.includes('await reconcilePaymentReference("mercadopago", attempt.provider_reference, "paid");'));
+  assert.ok(page.includes('await reconcilePaymentReference("pagbank", attempt.provider_reference, "paid");'));
 });
 
 test("checkout: depois do pedido criado, o carrinho que o site tem na tela é atualizado", () => {

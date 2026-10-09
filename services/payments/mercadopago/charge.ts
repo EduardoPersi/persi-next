@@ -30,6 +30,8 @@ export interface CardChargeResult {
   chargeId: string;
   status: MercadoPagoChargeStatus;
   amount: number;
+  /** Moeda informada pelo gateway (`currency_id`), para conferir com a do pedido. */
+  currency?: string;
   brand?: string;
   lastDigits?: string;
   installments?: number;
@@ -39,6 +41,7 @@ interface MercadoPagoPaymentResponse {
   id: number;
   status: string;
   transaction_amount: number;
+  currency_id?: string;
   payment_method_id?: string;
   installments?: number;
   card?: {
@@ -89,6 +92,7 @@ function toChargeResult(payment: MercadoPagoPaymentResponse): CardChargeResult {
     chargeId: String(payment.id),
     status: assertChargeStatus(payment.status),
     amount: payment.transaction_amount,
+    currency: payment.currency_id,
     brand: payment.payment_method_id,
     lastDigits: payment.card?.last_four_digits,
     installments: payment.installments,

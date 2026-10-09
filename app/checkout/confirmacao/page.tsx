@@ -15,6 +15,7 @@ import { formatBrazilianDocument, formatBrazilianPhone } from "@/lib/formatting/
 import { getServerAccountSession } from "@/services/account/serverSession";
 import { getBoletoChargeStatus } from "@/services/payments/inter/boleto";
 import { getPixCharge, getPixChargeStatus } from "@/services/payments/inter/pix";
+import { verifyApprovedCharge } from "@/services/payments/approvedCharge";
 import { getCardChargeStatus as getMercadoPagoCardChargeStatus } from "@/services/payments/mercadopago/charge";
 import { getCardChargeStatus as getPagBankCardChargeStatus } from "@/services/payments/pagbank/charge";
 import {
@@ -126,8 +127,12 @@ async function resolveInterOrCardStatus(
     // Diferente de Pix/boleto (reconciliados no caminho ?attempt=), este
     // caminho ainda não persistia uma recusa de cartão no pedido — o pedido
     // ficava "pending" mesmo com o Mercado Pago já tendo respondido rejected.
-    if (category === "failed" || category === "paid") {
+    if (category === "failed") {
       await reconcilePaymentReference("mercadopago", reference, category);
+    }
+    // Aprovado: só marca pago se o gateway confirma status aprovado, valor e moeda do pedido.
+    if (verifyApprovedCharge("mercadopago", charge, order).approved) {
+      await reconcilePaymentReference("mercadopago", reference, "paid");
     }
     return { category, order };
   } catch (error) {
@@ -230,16 +235,16 @@ async function resolveStatus(params: {
       if (attempt.payment_method === "mercadopago_card") {
         const charge = await getMercadoPagoCardChargeStatus(attempt.provider_reference);
         const category = categorizeMercadoPagoCardStatus(charge.status);
-        if (category === "paid") {
-          await reconcilePaymentReference("mercadopago", attempt.provider_reference, category);
+        if (verifyApprovedCharge("mercadopago", charge, order).approved) {
+          await reconcilePaymentReference("mercadopago", attempt.provider_reference, "paid");
         }
         return { category, order };
       }
       if (attempt.payment_method.startsWith("pagbank_")) {
         const charge = await getPagBankCardChargeStatus(attempt.provider_reference);
         const category = categorizeCardStatus(charge.status);
-        if (category === "paid") {
-          await reconcilePaymentReference("pagbank", attempt.provider_reference, category);
+        if (verifyApprovedCharge("pagbank", charge, order).approved) {
+          await reconcilePaymentReference("pagbank", attempt.provider_reference, "paid");
         }
         return { category, order };
       }

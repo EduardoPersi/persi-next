@@ -56,6 +56,7 @@ import {
 } from "@/services/payments/reconcile";
 import { getServerAccountSession } from "@/services/account/serverSession";
 import { getAuthoritativeCheckoutItems } from "@/services/checkout/headlessCheckout";
+import { verifyApprovedCharge } from "@/services/payments/approvedCharge";
 import { emptyCartItems } from "@/services/woocommerce/cartEmpty";
 import { CartServiceError, getCart, removeCartItem } from "@/services/woocommerce/cart";
 import {
@@ -65,6 +66,7 @@ import {
   markOrderAsFailed,
   WooCommerceRestError,
   type PersiPaymentMethod,
+  type WooCommerceOrder,
 } from "@/services/woocommerce/orders";
 import type { CartAddress } from "@/types/cart";
 import type { CheckoutStoreAddress } from "@/types/checkout";
@@ -256,13 +258,31 @@ async function emptyCartAfterOrder(cartToken: string | undefined) {
 }
 
 // Cartão aprovado na hora: o pedido vira pago AGORA, pelo mesmo caminho do webhook
-// (reconcilePaymentReference), em vez de esperar o webhook do gateway chegar. É
-// idempotente: se o webhook também chegar, nada se repete. Nunca lança.
+// (reconcilePaymentReference), em vez de esperar o webhook do gateway chegar. Antes de
+// marcar, consulta a cobrança DE NOVO no gateway pelo id (não confia só na resposta da
+// criação) e exige status aprovado e capturado (Mercado Pago `approved`, PagBank `PAID`;
+// `authorized`, `in_process` e `pending` não valem), valor igual ao total do pedido e
+// moeda igual (services/payments/approvedCharge.ts). Qualquer dúvida deixa o pedido como
+// está: o webhook segue como rede de segurança. É idempotente. Nunca lança.
 async function reconcileApprovedCard(
   provider: "mercadopago" | "pagbank",
   chargeId: string,
+  order: WooCommerceOrder,
 ) {
   try {
+    const fresh =
+      provider === "mercadopago"
+        ? await getMercadoPagoCardChargeStatus(chargeId)
+        : await getPagBankCardChargeStatus(chargeId);
+    const check = verifyApprovedCharge(provider, fresh, order);
+    if (!check.approved) {
+      console.warn("[checkout-payment] cartão não confirmado como pago pelo gateway", {
+        orderId: order.id,
+        provider,
+        reason: check.reason,
+      });
+      return;
+    }
     await reconcilePaymentReference(provider, chargeId, "paid");
   } catch (error) {
     console.error("[checkout-payment] falha ao marcar o cartão aprovado como pago", {
@@ -842,7 +862,7 @@ export async function POST(request: Request) {
         return createCardDeclinedResponse(order.id, charge.chargeId, charge.status, activeCartToken);
       }
       if (categorizeMercadoPagoCardStatus(charge.status) === "paid") {
-        await reconcileApprovedCard("mercadopago", charge.chargeId);
+        await reconcileApprovedCard("mercadopago", charge.chargeId, order);
       }
 
       result = {
@@ -903,7 +923,7 @@ export async function POST(request: Request) {
         return createCardDeclinedResponse(order.id, charge.chargeId, charge.status, activeCartToken);
       }
       if (categorizeCardStatus(charge.status) === "paid") {
-        await reconcileApprovedCard("pagbank", charge.chargeId);
+        await reconcileApprovedCard("pagbank", charge.chargeId, order);
       }
 
       result = {
