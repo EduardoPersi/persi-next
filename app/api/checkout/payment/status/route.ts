@@ -9,11 +9,11 @@ import { getBoletoChargeStatus } from "@/services/payments/inter/boleto";
 import { InterPaymentError } from "@/services/payments/inter/errors";
 import { getPixChargeStatus } from "@/services/payments/inter/pix";
 import { getCardChargeStatus } from "@/services/payments/mercadopago/charge";
+import { reconcileCardCharge } from "@/services/payments/cardReconcile";
 import { MercadoPagoPaymentError } from "@/services/payments/mercadopago/errors";
 import { PagBankPaymentError } from "@/services/payments/pagbank/errors";
 import {
   categorizeBoletoStatus,
-  categorizeMercadoPagoCardStatus,
   categorizePixStatus,
   reconcilePaymentReference,
 } from "@/services/payments/reconcile";
@@ -128,8 +128,7 @@ export async function GET(request: Request) {
     }
 
     const charge = await getCardChargeStatus(reference);
-    const category = categorizeMercadoPagoCardStatus(charge.status);
-    await reconcilePaymentReference("mercadopago", reference, category);
+    const category = await reconcileCardCharge("mercadopago", reference, charge);
     return createPrivateResponse({ status: charge.status, category }, 200, category !== "pending");
   } catch (error) {
     const status = getErrorStatus(error);

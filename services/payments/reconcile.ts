@@ -72,8 +72,10 @@ export function categorizeBoletoStatus(status: BoletoChargeStatus): PaymentStatu
   return "pending";
 }
 
+// Regra estrita: só `PAID` (capturado) conta como pago. `AUTHORIZED` (autorizado, sem
+// captura) fica pendente. O site cria toda cobrança com `capture: true`.
 export function categorizeCardStatus(status: CardChargeStatus): PaymentStatusCategory {
-  if (status === "PAID" || status === "AUTHORIZED") return "paid";
+  if (status === "PAID") return "paid";
   if (status === "DECLINED" || status === "CANCELED") return "failed";
   return "pending";
 }
@@ -81,7 +83,8 @@ export function categorizeCardStatus(status: CardChargeStatus): PaymentStatusCat
 export function categorizeMercadoPagoCardStatus(
   status: MercadoPagoChargeStatus,
 ): PaymentStatusCategory {
-  if (status === "approved" || status === "authorized") return "paid";
+  // Estrito: só `approved` conta como pago; `authorized` (reserva sem captura) fica pendente.
+  if (status === "approved") return "paid";
   if (
     status === "rejected" ||
     status === "cancelled" ||

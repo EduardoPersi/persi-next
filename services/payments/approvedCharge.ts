@@ -20,7 +20,7 @@
  * continuam como rede de segurança. Código puro, sem rede.
  */
 
-export type ApprovalProvider = "mercadopago" | "pagbank";
+export type ApprovalProvider = "mercadopago" | "pagbank" | "inter_pix" | "inter_boleto";
 
 export interface GatewayChargeForApproval {
   status: string;
@@ -55,7 +55,12 @@ export const STORE_CURRENCY = "BRL";
 
 /** Status que significa "aprovado e capturado" em cada gateway. */
 export function isApprovedStatus(provider: ApprovalProvider, status: string): boolean {
-  return provider === "mercadopago" ? status === "approved" : status === "PAID";
+  if (provider === "mercadopago") return status === "approved";
+  if (provider === "pagbank") return status === "PAID";
+  // Inter: Pix `CONCLUIDA`; boleto `MARCADO_RECEBIDO`. Nos dois, o valor vem de
+  // `valor.original` (Pix) e `valorNominal` (boleto); campo ausente = NaN aqui
+  // (nunca marca pago). O Inter só opera em reais: quem chama informa BRL.
+  return provider === "inter_pix" ? status === "CONCLUIDA" : status === "MARCADO_RECEBIDO";
 }
 
 function toCents(value: number): number | null {

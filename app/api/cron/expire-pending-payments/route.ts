@@ -6,11 +6,10 @@ import { getCardChargeStatus as getMercadoPagoCardChargeStatus } from "@/service
 import { getCardChargeStatus as getPagBankCardChargeStatus } from "@/services/payments/pagbank/charge";
 import {
   categorizeBoletoStatus,
-  categorizeCardStatus,
-  categorizeMercadoPagoCardStatus,
   categorizePixStatus,
   reconcilePaymentReference,
 } from "@/services/payments/reconcile";
+import { reconcileCardCharge } from "@/services/payments/cardReconcile";
 import {
   createOverlapGuard,
   isAuthorizedCronRequest,
@@ -84,15 +83,11 @@ async function reconcileOrder(
 
   if (order.paymentMethod === "mercadopago_card") {
     const charge = await getMercadoPagoCardChargeStatus(reference);
-    const category = categorizeMercadoPagoCardStatus(charge.status);
-    await reconcilePaymentReference("mercadopago", reference, category);
-    return category;
+    return reconcileCardCharge("mercadopago", reference, charge);
   }
 
   const charge = await getPagBankCardChargeStatus(reference);
-  const category = categorizeCardStatus(charge.status);
-  await reconcilePaymentReference("pagbank", reference, category);
-  return category;
+  return reconcileCardCharge("pagbank", reference, charge);
 }
 
 // Não existe um agendador (cron) rodando dentro deste app Next.js — este

@@ -154,6 +154,27 @@ export async function createCardCharge(
   return toChargeResult(charge);
 }
 
+interface PagBankOrdersSearchResponse {
+  orders?: PagBankOrderResponse[];
+}
+
+// Só leitura: busca o pedido pelo `reference_id` (o número do pedido, que o site manda
+// ao criar) e devolve a cobrança dele, ou `null` se não houver nenhum.
+export async function findCardChargeByReference(
+  referenceId: string,
+  request: PagBankRequestFn = defaultPagBankRequest,
+): Promise<CardChargeResult | null> {
+  const search = await request<PagBankOrdersSearchResponse>(
+    `/orders?reference_id=${encodeURIComponent(referenceId)}`,
+    "GET",
+  );
+  for (const order of search.orders ?? []) {
+    const [charge] = order.charges ?? [];
+    if (charge) return toChargeResult(charge);
+  }
+  return null;
+}
+
 export async function getCardChargeStatus(
   chargeId: string,
   request: PagBankRequestFn = defaultPagBankRequest,

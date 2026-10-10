@@ -1,4 +1,5 @@
 import type { CheckoutStoreAddress } from "@/types/checkout";
+import { amountField } from "./amount.ts";
 import { InterPaymentError, type InterHttpMethod } from "./errors.ts";
 
 type InterRequestFn = <T>(
@@ -49,6 +50,8 @@ export interface BoletoCharge {
   digitableLine: string;
   barcode: string;
   dueDate: string;
+  /** `cobranca.valorNominal`; ausente quando o Inter não traz (a conferência de pagamento não marca pago). */
+  amount?: number;
 }
 
 interface InterBoletoCreateResponse {
@@ -62,6 +65,7 @@ interface InterBoletoDetailResponse {
   cobranca?: {
     situacao: string;
     dataVencimento?: string;
+    valorNominal?: number | string;
   };
   boleto?: { linhaDigitavel: string; codigoBarras: string };
 }
@@ -211,6 +215,7 @@ export async function getBoletoChargeStatus(
     digitableLine: detail.boleto?.linhaDigitavel ?? "",
     barcode: detail.boleto?.codigoBarras ?? "",
     dueDate: detail.cobranca?.dataVencimento ?? "",
+    ...amountField(detail.cobranca?.valorNominal),
   };
 }
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { exceedsRequestLimit } from "@/app/api/checkout/checkout-request";
 import { getCardChargeStatus } from "@/services/payments/pagbank/charge";
-import { categorizeCardStatus, reconcilePaymentReference } from "@/services/payments/reconcile";
+import { reconcileCardCharge } from "@/services/payments/cardReconcile";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
   try {
     const charge = await getCardChargeStatus(chargeId);
-    await reconcilePaymentReference("pagbank", chargeId, categorizeCardStatus(charge.status));
+    await reconcileCardCharge("pagbank", chargeId, charge);
   } catch (error) {
     console.error("[webhook-pagbank]", { code: error instanceof Error ? error.name : "UNKNOWN" });
     return NextResponse.json({ received: false }, { status: 502, headers: NO_STORE_HEADERS });
