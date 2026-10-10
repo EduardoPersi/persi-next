@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
-import { getPrivateCartHeaders } from "@/lib/commerce/cartResponsePolicy";
+import { getCartTokenCookieOptions, getPrivateCartHeaders } from "@/lib/commerce/cartResponsePolicy";
 import { getCheckoutAttempt } from "@/lib/commerce/checkoutAttempt";
 import { resolveAttemptOutcome, type AttemptOutcome } from "@/lib/commerce/paymentPolling";
 import { createTrustedIpRateLimiter } from "@/lib/network/rateLimit";
@@ -9,8 +9,11 @@ import { getServerAccountSession } from "@/services/account/serverSession";
 import { getCardChargeStatus as getMercadoPagoCardChargeStatus } from "@/services/payments/mercadopago/charge";
 import { getCardChargeStatus as getPagBankCardChargeStatus } from "@/services/payments/pagbank/charge";
 import { categorizeCardStatus, categorizeMercadoPagoCardStatus } from "@/services/payments/reconcile";
-import { isAuthorizedForOrderStatus } from "@/services/payments/statusAuthorization";
-import { getOrderById } from "@/services/woocommerce/orders";
+import {
+  isAuthorizedByAttemptKey,
+  isAuthorizedForOrderStatus,
+} from "@/services/payments/statusAuthorization";
+import { getCheckoutOwnerToken, getOrderById } from "@/services/woocommerce/orders";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -81,11 +84,15 @@ export async function GET(request: Request) {
     }
     if (!attempt?.order_id) return processing();
 
-    // Só quem criou o pedido consulta (mesma regra da rota de status).
+    // Só quem criou o pedido consulta (mesma regra da rota de status). Quem recarregou
+    // a página no meio do pagamento pode estar com o Cart-Token antigo (a resposta com o
+    // cookie novo se perdeu): a posse da chave da tentativa, num pedido de menos de 30
+    // minutos, vale como segunda prova e reencaixa o cookie abaixo.
     const order = await getOrderById(Number(attempt.order_id));
     const cartToken = (await cookies()).get(CART_TOKEN_COOKIE)?.value;
     const session = await getServerAccountSession();
-    if (!isAuthorizedForOrderStatus(order, cartToken, session?.customer.email)) {
+    const authorizedByToken = isAuthorizedForOrderStatus(order, cartToken, session?.customer.email);
+    if (!authorizedByToken && !isAuthorizedByAttemptKey(order, key, Date.now())) {
       return processing();
     }
 
@@ -93,12 +100,23 @@ export async function GET(request: Request) {
       ? await isCardDeclined(attempt.payment_method, attempt.provider_reference)
       : null;
     const outcome = resolveAttemptOutcome(attempt, cardDeclined, order.status);
-    return respond({
+    const response = respond({
       outcome,
       ...(outcome === "created"
         ? { confirmationUrl: `/checkout/confirmacao?attempt=${encodeURIComponent(key)}` }
         : {}),
     });
+    // O cliente vai abrir a página do pedido, que confere o Cart-Token: devolve ao
+    // navegador o token do pedido (o que a resposta perdida teria entregado).
+    const ownerToken = getCheckoutOwnerToken(order);
+    if (outcome === "created" && !authorizedByToken && ownerToken) {
+      response.cookies.set(
+        CART_TOKEN_COOKIE,
+        ownerToken,
+        getCartTokenCookieOptions(process.env.NODE_ENV === "production"),
+      );
+    }
+    return response;
   } catch {
     return processing();
   }
