@@ -73,10 +73,13 @@ export function resolveAttemptOutcome(
 export interface PollCheck {
   outcome: AttemptOutcome;
   confirmationUrl?: string;
+  /** Só quando a prova foi a chave da tentativa: confirmação simples, sem link para o pedido. */
+  orderNumber?: number;
 }
 
 export type PollResult =
   | { kind: "created"; confirmationUrl: string }
+  | { kind: "created_simple"; orderNumber: number }
   | { kind: "declined" }
   | { kind: "not_found" }
   | { kind: "timeout" }
@@ -116,6 +119,14 @@ export async function pollPaymentAttempt(options: {
     if (result?.outcome === "not_found" && options.stopOnNotFound) return { kind: "not_found" };
     if (result?.outcome === "created" && result.confirmationUrl) {
       return { kind: "created", confirmationUrl: result.confirmationUrl };
+    }
+    if (
+      result?.outcome === "created" &&
+      typeof result.orderNumber === "number" &&
+      Number.isInteger(result.orderNumber) &&
+      result.orderNumber > 0
+    ) {
+      return { kind: "created_simple", orderNumber: result.orderNumber };
     }
     await options.wait(intervalMs);
   }

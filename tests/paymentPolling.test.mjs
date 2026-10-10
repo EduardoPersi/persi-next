@@ -200,7 +200,9 @@ test("a consulta da tentativa é só leitura e só para quem criou o pedido", ()
   ]) {
     assert.ok(!route.includes(proibido), `não pode haver ${proibido}`);
   }
-  assert.ok(route.includes("isAuthorizedForOrderStatus(order, cartToken, session?.customer.email)"));
+  // A autorização (cookie, conta ou a chave da tentativa) passa por resolveAttemptAccess.
+  assert.ok(route.includes("resolveAttemptAccess({"));
+  assert.ok(route.includes("sessionEmail: session?.customer.email,"));
   assert.ok(route.includes("rateLimiter.isLimited(request.headers)"));
   // Dúvida vira "processing": nada é liberado por engano.
   assert.ok(route.includes('"processing" satisfies AttemptOutcome'));

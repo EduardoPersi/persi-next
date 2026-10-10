@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { CART_TOKEN_COOKIE } from "@/app/api/cart/cart-response";
 import { getPrivateCartHeaders } from "@/lib/commerce/cartResponsePolicy";
+import { buildAttemptResponseBody, resolveAttemptAccess } from "@/lib/commerce/attemptResponse";
 import { getCheckoutAttempt } from "@/lib/commerce/checkoutAttempt";
 import { resolveAttemptOutcome, type AttemptOutcome } from "@/lib/commerce/paymentPolling";
 import { createTrustedIpRateLimiter } from "@/lib/network/rateLimit";
@@ -9,7 +10,6 @@ import { getServerAccountSession } from "@/services/account/serverSession";
 import { getCardChargeStatus as getMercadoPagoCardChargeStatus } from "@/services/payments/mercadopago/charge";
 import { getCardChargeStatus as getPagBankCardChargeStatus } from "@/services/payments/pagbank/charge";
 import { categorizeCardStatus, categorizeMercadoPagoCardStatus } from "@/services/payments/reconcile";
-import { isAuthorizedForOrderStatus } from "@/services/payments/statusAuthorization";
 import { getOrderById } from "@/services/woocommerce/orders";
 
 export const dynamic = "force-dynamic";
@@ -81,24 +81,29 @@ export async function GET(request: Request) {
     }
     if (!attempt?.order_id) return processing();
 
-    // Só quem criou o pedido consulta (mesma regra da rota de status).
+    // Só quem criou o pedido consulta (mesma regra da rota de status). Quem recarregou
+    // a página no meio do pagamento pode estar com o Cart-Token antigo (a resposta com o
+    // cookie novo se perdeu): a posse da chave da tentativa, num pedido de menos de 30
+    // minutos, vale como segunda prova, SÓ para devolver o desfecho (e o número do
+    // pedido). Nunca devolve cookie nem token, e a página do pedido segue exigindo o
+    // Cart-Token ou a conta.
     const order = await getOrderById(Number(attempt.order_id));
     const cartToken = (await cookies()).get(CART_TOKEN_COOKIE)?.value;
     const session = await getServerAccountSession();
-    if (!isAuthorizedForOrderStatus(order, cartToken, session?.customer.email)) {
-      return processing();
-    }
+    const access = resolveAttemptAccess({
+      order,
+      cartToken,
+      sessionEmail: session?.customer.email,
+      key,
+      nowMs: Date.now(),
+    });
+    if (access === "none") return processing();
 
     const cardDeclined = attempt.provider_reference
       ? await isCardDeclined(attempt.payment_method, attempt.provider_reference)
       : null;
     const outcome = resolveAttemptOutcome(attempt, cardDeclined, order.status);
-    return respond({
-      outcome,
-      ...(outcome === "created"
-        ? { confirmationUrl: `/checkout/confirmacao?attempt=${encodeURIComponent(key)}` }
-        : {}),
-    });
+    return respond(buildAttemptResponseBody({ outcome, access, key, orderId: order.id }));
   } catch {
     return processing();
   }
