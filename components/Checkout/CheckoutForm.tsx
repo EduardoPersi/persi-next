@@ -87,6 +87,7 @@ import { CheckoutPayment } from "./CheckoutPayment";
 import { CheckoutShippingPlaceholder } from "./CheckoutShippingPlaceholder";
 import { CheckoutStepCard, type CheckoutStepState } from "./CheckoutStepCard";
 import { CheckoutTerms } from "./CheckoutTerms";
+import { PaymentConfirmedNotice } from "./PaymentConfirmedNotice";
 import { PaymentProcessingNotice } from "./PaymentProcessingNotice";
 import {
   createIdempotencyKey,
@@ -160,9 +161,11 @@ export function CheckoutForm({
   // chave, sem liberar outro pagamento. Ver lib/commerce/paymentPolling.ts.
   // Chave pendente guardada (recarregou durante ou depois de uma tentativa de pagamento):
   // começa já travado, consultando o estado dela antes de liberar qualquer pagamento.
-  const [paymentProcessing, setPaymentProcessing] = useState<"idle" | "confirming" | "timeout">(
+  const [paymentProcessing, setPaymentProcessing] = useState<"idle" | "confirming" | "timeout" | "confirmed">(
     () => (readPendingPayment(browserPendingStorage()) ? "confirming" : "idle"),
   );
+  // Número do pedido da confirmação simples (quando a prova foi só a chave da tentativa).
+  const [confirmedOrderNumber, setConfirmedOrderNumber] = useState<number | null>(null);
   const isUnmountedRef = useRef(false);
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [installments, setInstallments] = useState(1);
@@ -397,6 +400,13 @@ export function CheckoutForm({
     void refreshCart();
   };
 
+  // Confirmação simples: só o número do pedido, sem dado pessoal (ver PaymentConfirmedNotice).
+  const showSimpleConfirmation = (orderNumber: number) => {
+    markOrderCreated();
+    setConfirmedOrderNumber(orderNumber);
+    setPaymentProcessing("confirmed");
+  };
+
   // Recarregou a página com uma chave pendente (menos de 30 min): consulta o estado
   // dela, só leitura, ANTES de liberar qualquer pagamento. Mesma espera do 409.
   const resumedPendingRef = useRef(false);
@@ -416,6 +426,10 @@ export function CheckoutForm({
       if (resumed.kind === "created") {
         navigate(resumed.confirmationUrl);
         setHasCreatedOrder();
+        return;
+      }
+      if (resumed.kind === "created_simple") {
+        showSimpleConfirmation(resumed.orderNumber);
         return;
       }
       if (resumed.kind === "declined") {
@@ -532,6 +546,10 @@ export function CheckoutForm({
           if (polled.kind === "created") {
             markOrderCreated();
             navigate(polled.confirmationUrl);
+            return;
+          }
+          if (polled.kind === "created_simple") {
+            showSimpleConfirmation(polled.orderNumber);
             return;
           }
           if (polled.kind === "declined") {
@@ -763,12 +781,20 @@ export function CheckoutForm({
             upcomingText="Finalize seu cadastro e endereço para avançar..."
           >
             <div className="space-y-5">
-              {paymentProcessing !== "idle" ? (
+              {paymentProcessing === "confirmed" && confirmedOrderNumber !== null ? (
+                <PaymentConfirmedNotice orderNumber={confirmedOrderNumber} />
+              ) : paymentProcessing === "confirming" || paymentProcessing === "timeout" ? (
                 <PaymentProcessingNotice state={paymentProcessing} />
               ) : null}
               <div
                 inert={paymentProcessing !== "idle"}
-                className={paymentProcessing !== "idle" ? "space-y-5 opacity-50" : "space-y-5"}
+                className={
+                  paymentProcessing === "confirmed"
+                    ? "hidden"
+                    : paymentProcessing !== "idle"
+                      ? "space-y-5 opacity-50"
+                      : "space-y-5"
+                }
               >
               <CheckoutPayment
                 method={paymentMethod}

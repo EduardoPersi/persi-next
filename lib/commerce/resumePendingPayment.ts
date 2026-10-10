@@ -16,6 +16,8 @@ import { pollPaymentAttempt, type PollCheck } from "./paymentPolling.ts";
  *
  *   none       nada pendente (ou com 30 min ou mais, ignorada): libera como sempre;
  *   created    a cobrança existe: vai para a página do pedido (a chave sai);
+ *   created_simple  idem, mas o navegador só provou ser o dono pela chave (Cart-Token
+ *              antigo): confirmação simples com o número do pedido, sem dados;
  *   declined   recusa definitiva: a chave sai e o fluxo da recusa começa
  *              (chave NOVA + "Pagar com Pix");
  *   not_found  a tentativa nunca existiu: a chave sai e libera normalmente;
@@ -26,6 +28,7 @@ import { pollPaymentAttempt, type PollCheck } from "./paymentPolling.ts";
 export type ResumeResult =
   | { kind: "none" }
   | { kind: "created"; confirmationUrl: string }
+  | { kind: "created_simple"; orderNumber: number }
   | { kind: "declined"; newKey: string }
   | { kind: "not_found" }
   | { kind: "timeout" }
@@ -55,6 +58,9 @@ export async function resumePendingPayment(options: {
     case "created":
       clearPendingPayment(options.storage);
       return { kind: "created", confirmationUrl: polled.confirmationUrl };
+    case "created_simple":
+      clearPendingPayment(options.storage);
+      return { kind: "created_simple", orderNumber: polled.orderNumber };
     case "declined":
       clearPendingPayment(options.storage);
       return {
